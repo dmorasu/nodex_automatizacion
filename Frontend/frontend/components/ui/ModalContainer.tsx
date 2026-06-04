@@ -2,7 +2,12 @@
 
 import { Fragment } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
-import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react"
+import {
+  Dialog,
+  DialogPanel,
+  Transition,
+  TransitionChild
+} from "@headlessui/react"
 
 import AddEstadosForm from "../estados/AddEstadosForm"
 import EditEstadosForm from "../estados/EditEstadosForm"
@@ -12,25 +17,16 @@ import AddLogisticaForm from "../logistica/AddLogisticaForm"
 import AddProgramacionForm from "../programacion/AddProgramacionForm"
 import AddTramitadorForm from "../tramitador/AddTramitadorForm"
 import EvaluacionModal from "../evaluacion/evaluacionModal"
+import AddSubEstadoForm from "../subEstados/AddSubEstadosForm"
 
 import { SolicitudTramiteType } from "@/src/type/solicitudes"
-
-const componenteMap = {
-  AddEstado: AddEstadosForm,
-  EditEstado: EditEstadosForm,
-  AddTrazabilidad: AddTrazabilidadForm,
-  AddCuentaCobro: AddCuentaCobroForm,
-  AddLogistica: AddLogisticaForm,
-  AddProgramacion: AddProgramacionForm,
-  AddTramitador: AddTramitadorForm,
-  Evaluar: EvaluacionModal
-}
 
 export default function ModalContainer({
   solicitudTramite
 }: {
   solicitudTramite: SolicitudTramiteType
 }) {
+
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -44,27 +40,26 @@ export default function ModalContainer({
   const addLogistica = searchParams.get("addLogistica")
   const addProgramacion = searchParams.get("addProgramacion")
   const addTramitador = searchParams.get("addTramitador")
-
-  // ⭐ NUEVO — evaluación
+  const addSubEstado = searchParams.get("addSubEstado")
   const evaluar = searchParams.get("evaluar")
 
- const getComponentName = () => {
-  if (evaluar) return "Evaluar"
-  if (addEstado) return "AddEstado"
-  if (addTrazabilidad) return "AddTrazabilidad"
-  if (addCuentaCobro) return "AddCuentaCobro"
-  if (addLogistica) return "AddLogistica"
-  if (addProgramacion) return "AddProgramacion"
-  if (addTramitador) return "AddTramitador"
-}
+  const getComponentName = () => {
+    if (evaluar) return "Evaluar"
+    if (addEstado) return "AddEstado"
+    if (addTrazabilidad) return "AddTrazabilidad"
+    if (addCuentaCobro) return "AddCuentaCobro"
+    if (addLogistica) return "AddLogistica"
+    if (addProgramacion) return "AddProgramacion"
+    if (addTramitador) return "AddTramitador"
+    if (addSubEstado) return "AddSubEstado"
+  }
 
   const componenteName = getComponentName()
-  const ComponenteRender = componenteName
-    ? componenteMap[componenteName as keyof typeof componenteMap]
-    : null
 
   const closeModal = () => {
-    const hideModal = new URLSearchParams(searchParams.toString())
+    const hideModal = new URLSearchParams(
+      searchParams.toString()
+    )
 
     Array.from(hideModal.entries()).forEach(([key]) => {
       hideModal.delete(key)
@@ -75,11 +70,15 @@ export default function ModalContainer({
 
   return (
     <Transition appear show={show} as={Fragment}>
-     <Dialog
-  as="div"
-  className="relative z-10"
-  onClose={componenteName === "Evaluar" ? () => {} : closeModal}
->
+      <Dialog
+        as="div"
+        className="relative z-10"
+        onClose={
+          componenteName === "Evaluar"
+            ? () => {}
+            : closeModal
+        }
+      >
         <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
@@ -94,6 +93,7 @@ export default function ModalContainer({
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
+
             <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
@@ -103,39 +103,85 @@ export default function ModalContainer({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-5xl transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all p-16">
+              <DialogPanel
+                className="
+                  w-full
+                  max-w-5xl
+                  transform
+                  overflow-hidden
+                  rounded-2xl
+                  bg-white
+                  text-left
+                  align-middle
+                  shadow-xl
+                  transition-all
+                  p-16
+                "
+              >
 
-                {ComponenteRender ? (
-                  <ComponenteRender
+                {componenteName === "AddEstado" && (
+                  <AddEstadosForm
                     closeModal={closeModal}
-                    solicitudId={solicitudTramite.id} // ⭐ importante para evaluación
-                    programacion={
-                      componenteName === "AddProgramacion"
-                        ? solicitudTramite.programacion
-                        : undefined
-                    }
-                    logistica={
-                      componenteName === "AddLogistica"
-                        ? solicitudTramite.logistica
-                        : undefined
-                    }
-                    cuentaCobro={
-                      componenteName === "AddCuentaCobro"
-                        ? solicitudTramite.cuentaCobro
-                        : undefined
-                    }
-                    tramitador={
-                      componenteName === "AddTramitador"
-                        ? solicitudTramite.tramitador
-                        : undefined
-                    }
                   />
-                ) : null}
+                )}
+
+               
+
+                {componenteName === "AddTrazabilidad" && (
+                  <AddTrazabilidadForm
+                    closeModal={closeModal}
+                  />
+                )}
+
+                {componenteName === "AddCuentaCobro" && (
+                  <AddCuentaCobroForm
+                    closeModal={closeModal}
+                    cuentaCobro={solicitudTramite.cuentaCobro}
+                  />
+                )}
+
+                {componenteName === "AddLogistica" && (
+                  <AddLogisticaForm
+                    closeModal={closeModal}
+                    logistica={solicitudTramite.logistica}
+                  />
+                )}
+
+                {componenteName === "AddProgramacion" && (
+                  <AddProgramacionForm
+                    closeModal={closeModal}
+                    programacion={solicitudTramite.programacion}
+                  />
+                )}
+
+                {componenteName === "AddTramitador" && (
+                  <AddTramitadorForm
+                    closeModal={closeModal}
+                    tramitador={solicitudTramite.tramitador}
+                  />
+                )}
+
+                {componenteName === "Evaluar" && (
+                  <EvaluacionModal
+                    closeModal={closeModal}
+                    solicitudId={solicitudTramite.id}
+                  />
+                )}
+
+                {componenteName === "AddSubEstado" && (
+                  <AddSubEstadoForm
+                    closeModal={closeModal}
+                    tramiteId={solicitudTramite.tramiteId}
+                    solicitudTramiteId={solicitudTramite.id}
+                  />
+                )}
 
               </DialogPanel>
             </TransitionChild>
+
           </div>
         </div>
+
       </Dialog>
     </Transition>
   )

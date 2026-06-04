@@ -25,8 +25,8 @@ import logisticaBulkRouter from './routes/logisticaBulkRouter'
 import programacionActualizacionesRouter from './routes/programacionBulkRouter'
 import trazabilidadActualizacionesRouter from './routes/trazabilidadBulkRouter'
 import estadosActualizacionesRouter from './routes/estadosBulkRouter'
-
-
+import tiposRechazoRoutes from "./routes/tipoRechazosRouter";
+import subEstadosRouter from './routes/subEstadosRouter'
 
 
 async function connectDB() {
@@ -88,7 +88,8 @@ app.use('/api/bulk/programacion', programacionActualizacionesRouter)
 app.use('/api/bulk/trazabilidad', trazabilidadActualizacionesRouter)
 app.use('/api/bulk/estados', estadosActualizacionesRouter)
 app.use('/api/bulk/tramitador', tramitadorActualizacionesRouter)
-
+app.use("/api/tiposRechazo", tiposRechazoRoutes);
+app.use('/api/subEstados',subEstadosRouter)
 
 
 export default app

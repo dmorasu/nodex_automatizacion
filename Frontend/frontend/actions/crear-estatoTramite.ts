@@ -13,13 +13,21 @@ export default async function CrearEstadoTramite(
   prevState: ActionStateType,
   formData: FormData
 ): Promise<ActionStateType> {
+
   try {
+
     const estadoTramiteData = {
       estadoId: Number(formData.get("estadoId")),
+      tipoRechazoId: formData.get("tipoRechazoId")
+        ? Number(formData.get("tipoRechazoId"))
+        : null,
       solicitudTramitesId
     }
 
-    const estadoTramite = EstadoTramitesSchema.safeParse(estadoTramiteData)
+    const estadoTramite = EstadoTramitesSchema.safeParse({
+      estadoId: estadoTramiteData.estadoId,
+      solicitudTramitesId
+    })
 
     if (!estadoTramite.success) {
       return {
@@ -33,19 +41,23 @@ export default async function CrearEstadoTramite(
 
     const req = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        estadoId: estadoTramite.data.estadoId,
+        estadoId: estadoTramiteData.estadoId,
+        tipoRechazoId: estadoTramiteData.tipoRechazoId,
         solicitudTramiteId: solicitudTramitesId
       })
     })
 
     const json = await req.json()
-   
-console.log("RESPUESTA BACKEND:", json)
-console.log("STATUS:", req.status)
+
+    console.log("RESPUESTA BACKEND:", json)
+    console.log("STATUS:", req.status)
 
     if (!req.ok) {
+
       const { error } = ErrorResponoseSchema.parse(json)
 
       return {
@@ -61,7 +73,10 @@ console.log("STATUS:", req.status)
       requiereEvaluacion: json.requiereEvaluacion ?? false
     }
 
-  } catch {
+  } catch (error) {
+
+    console.error(error)
+
     return {
       errors: ["Error inesperado al actualizar estado"],
       success: "",

@@ -1,6 +1,8 @@
 import type { Request,Response } from "express";
 import Trazabilidad from "../models/trazabilidad";
-
+import SolicitudTramites from "../models/solicitudTramites";
+import Usuarios from "../models/usuarios";
+import { crearNotificacion } from "../services/notificacionesServices";
 declare global{
     namespace Express{
         interface Request{
@@ -14,24 +16,36 @@ export class TrazabilidadController{
         
     }
 
-    static create =async (req: Request, res:Response) =>{
-         // console.log("req.params.solicitudTramiteId");
-         //console.log(req.params.solicitudTramitesId);
-         //console.log(req.solicitudTramites.id);
-          try {
-                const trazabilidad = new Trazabilidad(req.body)
-                trazabilidad.solicitudTramiteId =req.solicitudTramites.id
-                await trazabilidad.save()
-                res.status(201).json('Registro Guardado')
+    static create = async (req: Request, res: Response) => {
+  try {
 
+    const trazabilidad = new Trazabilidad(req.body)
+    trazabilidad.solicitudTramiteId = req.solicitudTramites.id
 
-          } catch (error) {
-                res.status(500).json({error:"Hubo un error"})
-          }
-         
-         
+    await trazabilidad.save()
 
+    const solicitud = await SolicitudTramites.findByPk(
+      req.solicitudTramites.id,
+      { include: [Usuarios] }
+    )
+
+    if (solicitud?.usuario?.correoUsuario) {
+      crearNotificacion({
+        solicitud,
+        tipo: 'TRAZABILIDAD',
+        destinatario: solicitud.usuario,
+        data: {
+          observacion: trazabilidad.observacionTrazabilidad // 🔥 CLAVE
+        }
+      }).catch(console.error)
     }
+
+    return res.status(201).json('Registro Guardado')
+
+  } catch (error) {
+    return res.status(500).json({ error: "Hubo un error" })
+  }
+}
 
 
     static getById =async (req: Request, res:Response) =>{

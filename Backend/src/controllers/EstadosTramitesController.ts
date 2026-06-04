@@ -1,8 +1,12 @@
 import type { Request,Response } from "express";
 import { db } from "../config/db"
+import SolicitudTramites from '../models/solicitudTramites'
 import EstadosTramites from "../models/estadosTramites";
 import Programacion from "../models/programacion";
 import Estados from "../models/estados"
+import Usuarios from '../models/usuarios'
+import { crearNotificacion } from '../services/notificacionesServices'
+import Tramitador from "../models/tramitador";
 
 declare global{
     namespace Express{
@@ -17,31 +21,39 @@ export class EstadosTramitesController{
         
     }
 
-  static create = async (req: Request, res: Response) => {
+ static create = async (req: Request, res: Response) => {
+
   const transaction = await db.transaction()
 
   try {
     const estadosTramites = new EstadosTramites(req.body)
     estadosTramites.solicitudTramiteId = req.solicitudTramites.id
 
-    console.log("ESTADO RECIBIDO:", estadosTramites.estadoId)
-
-    // Guardar estado dentro de la transacción
     await estadosTramites.save({ transaction })
+    
 
-    // 🔎 Validación más robusta (opcional pero recomendada)
-    const estado = await Estados.findByPk(estadosTramites.estadoId, { transaction })
+    const estado = await Estados.findByPk(
+      estadosTramites.estadoId,
+      { transaction }
+    )
 
     const esFinalizado =
       Number(estadosTramites.estadoId) === 6 ||
       estado?.nombreEstado?.toLowerCase() === "finalizado"
 
+    // 🔥 CAMBIO: cargar solicitud SIEMPRE
+    let solicitud: SolicitudTramites | null = await SolicitudTramites.findByPk(
+      estadosTramites.solicitudTramiteId,
+      {
+        include: [Usuarios,Tramitador,],
+        transaction
+      }
+    )
+
     if (esFinalizado) {
-      console.log("ENTRÓ A PROCESO FINALIZADO")
 
       const fechaActual = new Date()
 
-      // 🔥 Buscar si ya existe programación
       const programacion = await Programacion.findOne({
         where: {
           solicitudTramiteId: estadosTramites.solicitudTramiteId
@@ -50,13 +62,9 @@ export class EstadosTramitesController{
       })
 
       if (programacion) {
-        // ✅ UPDATE
         programacion.fechaFinalizacionServicio = fechaActual
         await programacion.save({ transaction })
-
-        console.log("Programación actualizada")
       } else {
-        // ✅ CREATE (caso que te faltaba)
         await Programacion.create(
           {
             solicitudTramiteId: estadosTramites.solicitudTramiteId,
@@ -64,26 +72,48 @@ export class EstadosTramitesController{
           },
           { transaction }
         )
-
-        console.log("Programación creada")
       }
-
-      await transaction.commit()
-
-      return res.status(201).json({
-        success: true,
-        requiereEvaluacion: true
-      })
     }
 
     await transaction.commit()
 
+    await crearNotificacion({
+  solicitud,
+  tipo: 'CAMBIO_ESTADO',
+  destinatario: solicitud.usuario,
+  data: {
+    estadoId: estado.id,
+    estado: estado.nombreEstado,
+    nombre: solicitud.usuario.nombreUsuario,
+    fecha: new Date().toLocaleDateString(),
+    tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
+    municipio: solicitud.municipios?.nombreMunicipio|| 'N/A',
+    programador: solicitud.usuario.nombreUsuario,
+    novedad: 'Descripción de novedad'
+  }
+})
+
+    // =========================
+    // 🔔 NOTIFICACIÓN (EMAIL)
+    // =========================
+    if (esFinalizado && solicitud?.usuario) {
+
+      crearNotificacion({
+        solicitud,
+        tipo: 'FINALIZADO',
+        destinatario: solicitud.usuario // ✔ CORRECTO
+      }).catch(console.error)
+    }
+
+      
+
     return res.status(201).json({
       success: true,
-      requiereEvaluacion: false
+      requiereEvaluacion: esFinalizado
     })
 
   } catch (error: any) {
+
     await transaction.rollback()
 
     console.error("ERROR CREATE ESTADO:", error)
@@ -91,11 +121,12 @@ export class EstadosTramitesController{
     return res.status(500).json({
       success: false,
       error: "Error al actualizar el estado del trámite",
-      detalle: process.env.NODE_ENV === "development" ? error.message : undefined
+      detalle: process.env.NODE_ENV === "development"
+        ? error.message
+        : undefined
     })
   }
 }
-
     static getById =async (req: Request, res:Response) =>{
         res.json(req.estadosTramites)
 

@@ -23,6 +23,7 @@ import Trazabilidad from "./trazabilidad";
 import CuentaCobros from "./cuentaCobro";
 import Tramite from "./tramite";
 import EvaluacionSolicitud from "./evaluacionSolicitud"
+import SubEstadosSolicitud from './subEstadosSolicitud';
 
 @Table({
   tableName: "SolicitudTramites",
@@ -121,6 +122,11 @@ declare evaluacion: EvaluacionSolicitud
 
   @HasMany(() => Trazabilidad, { foreignKey: "solicitudTramiteId" })
   declare trazabilidad: Trazabilidad[];
+
+  @HasMany(() => SubEstadosSolicitud,{
+    foreignKey:'solicitudTramiteId'
+})
+declare subEstadosSolicitud: SubEstadosSolicitud[];
 
   // ===== Relaciones 1 - 1 =====
 

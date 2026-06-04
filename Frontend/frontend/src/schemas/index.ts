@@ -165,15 +165,22 @@ export const Trazabilidad = z.object({
 
 export const Programacion = z.object({
         id: z.number(),
+
         fechaProbableEntrega: z.string().nullable().optional(),
         fechaFinalizacionServicio: z.string().nullable().optional(),
         fechaRealizacionDiligencia: z.string().nullable().optional(),
+
         valorTramite: z.string().nullable().optional(),
         valorViaticos: z.string().nullable().optional(),
-        conceptoViaticos:z.string().nullable().optional(),
-        conceptoHonorarios:z.string().nullable().optional()
 
+        conceptoViaticos: z.string().nullable().optional(),
+        conceptoHonorarios: z.string().nullable().optional(),
 
+        requiereCita: z.boolean().optional(),
+
+        fechaCita: z.string().nullable().optional(),
+
+        horaCita: z.string().nullable().optional()
 })
 
 export const logistica = z.object({
@@ -313,7 +320,7 @@ export const SolicitudAPIRespuestaSchema = z.object({
   id: z.number(),
   detalleSolicitud: z.string(),
   direccionTramite: z.string(),
-
+tramiteId: z.number(),
   fechaEntregaResultado: z.string().nullable(),
   matriculaInmobiliaria: z.string().nullable(),
   placa: z.string().nullable(),

@@ -117,43 +117,46 @@ export default function SolicitudTramitesForm({ solicitud }: { solicitud?: Solic
       <div className="space-y-3 mt-4">
         <label className="text-sm uppercase font-bold">Identificación del Inmueble</label>
         <select
-          name="tipoDocumento"
-          value={tipoDocumento}
-          onChange={(e) => setTipoDocumento(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-400"
-        >
-          <option value="">Seleccione una opción</option>
-          <option value="placa">Placa</option>
-          <option value="matricula">Matrícula inmobiliaria</option>
-        </select>
+  name="tipoDocumento"
+  value={tipoDocumento}
+  onChange={(e) => setTipoDocumento(e.target.value)}
+  required
+  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-400"
+>
+  <option value="">Seleccione una opción</option>
+  <option value="placa">Placa</option>
+  <option value="matricula">Matrícula inmobiliaria</option>
+</select>
 
         {tipoDocumento === "placa" && (
-          <div>
-            <label className="text-sm uppercase font-bold">Placa</label>
-            <input
-              type="text"
-              id='placa'
-              name="placa"
-              placeholder="Ingrese la placa"
-              className="w-full p-3 mt-1 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400"
-              defaultValue={solicitud?.placa??""}
-            />
-          </div>
-        )}
+  <div>
+    <label className="text-sm uppercase font-bold">Placa</label>
+    <input
+      type="text"
+      id="placa"
+      name="placa"
+      required
+      placeholder="Ingrese la placa"
+      className="w-full p-3 mt-1 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400"
+      defaultValue={solicitud?.placa ?? ""}
+    />
+  </div>
+)}
 
-        {tipoDocumento === "matricula" && (
-          <div>
-            <label className="text-sm uppercase font-bold">Matrícula inmobiliaria</label>
-            <input
-              id='matricula'
-              type="text"
-              name="matricula"
-              placeholder="Ingrese la matrícula inmobiliaria"
-              className="w-full p-3 mt-1 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400"
-              defaultValue={solicitud?.matriculaInmobiliaria??""}
-            />
-          </div>
-        )}
+{tipoDocumento === "matricula" && (
+  <div>
+    <label className="text-sm uppercase font-bold">Matrícula inmobiliaria</label>
+    <input
+      id="matricula"
+      type="text"
+      name="matricula"
+      required
+      placeholder="Ingrese la matrícula inmobiliaria"
+      className="w-full p-3 mt-1 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-400"
+      defaultValue={solicitud?.matriculaInmobiliaria ?? ""}
+    />
+  </div>
+)}
       </div>
 
       <div className="space-y-3 mt-4">

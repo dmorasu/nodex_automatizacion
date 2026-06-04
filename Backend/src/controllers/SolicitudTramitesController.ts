@@ -16,6 +16,9 @@ import Operaciones from '../models/operaciones'
 import Tramite from '../models/tramite'
 import Tramitador from '../models/tramitador'
 import Transportadora from '../models/trasnportadora'
+import { crearNotificacion } from '../services/notificacionesServices'
+import SubEstadosSolicitud from "../models/subEstadosSolicitud"
+import SubEstados from "../models/subEstados"
 
 
 
@@ -106,7 +109,7 @@ static obtenerSolicitudes = async (req: Request, res: Response) => {
         },
         {
           model: Programacion,
-          attributes:["id","fechaFinalizacionServicio"]
+          attributes:["id","fechaFinalizacionServicio","fechaRealizacionDiligencia","valorTramite"]
         },
         {
           model: EstadosTramites,
@@ -138,25 +141,83 @@ static obtenerSolicitudes = async (req: Request, res: Response) => {
 }
 
 static asignarTramitador = async (req: Request, res: Response) => {
-  try {
-    const { tramitadorId } = req.body
+    try {
 
-    if (!tramitadorId) {
-      return res.status(400).json({ error: 'Debe enviar tramitadorId' })
+      const { tramitadorId } = req.body
+
+      if (!tramitadorId) {
+        return res.status(400).json({ error: 'Debe enviar tramitadorId' })
+      }
+
+      // 🔥 TRAER TODO LO NECESARIO
+      const solicitud = await SolicitudTramites.findByPk(
+        req.solicitudTramites.id,
+        {
+          include: [
+            Programacion,
+            Usuarios,
+            Municipios
+          ]
+        }
+      )
+
+      if (!solicitud) {
+        return res.status(404).json({ error: 'Solicitud no encontrada' })
+      }
+
+      // =========================
+      // UPDATE
+      // =========================
+      solicitud.tramitadorId = tramitadorId
+      await solicitud.save()
+
+      // =========================
+      // 🔥 TRAMITADOR
+      // =========================
+      const tramitador = await Tramitador.findByPk(tramitadorId)
+
+      // =========================
+      // 🔥 INSTANCIAS RELACIONADAS
+      // =========================
+      const programacion = solicitud.programacion
+      const usuario = solicitud.usuario
+      const municipio = solicitud.municipios
+
+      // =========================
+      // 🔔 NOTIFICACIÓN
+      // =========================
+      if (tramitador) {
+
+        await crearNotificacion({
+          solicitud,
+          tipo: 'ASIGNADO',
+          destinatario: tramitador,
+          data: {
+            nombre: tramitador.nombreTramitador,
+
+            valor: programacion?.valorTramite || 0,
+
+            fecha: programacion?.fechaProbableEntrega
+              ? new Date(programacion.fechaProbableEntrega).toLocaleDateString('es-CO')
+              : 'Sin fecha',
+
+            solicitante: usuario?.nombreUsuario || 'N/A',
+
+            programador: usuario?.nombreUsuario || 'N/A',
+
+            municipio: municipio?.nombreMunicipio || 'N/A'
+          }
+        })
+      }
+
+      return res.status(201).json('Tramitador asignado correctamente')
+
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json('No se puede guardar el registro')
     }
-
-    // req.solicitudTramites ya viene cargado por middleware
-    req.solicitudTramites.tramitadorId = tramitadorId
-    await req.solicitudTramites.save()
-
-    res.status(201).json( 'Tramitador asignado correctamente' )
-
-
-  } catch (error) {
-    console.log(error);
-    res.status(500).json('No se puede guardar el registro')
   }
-}
+
    
 static getAll = async (req: Request, res: Response) => {
   try {
@@ -228,6 +289,7 @@ static getAll = async (req: Request, res: Response) => {
         include: [
           Clientes,
           Municipios,
+          
 
           {
             model: Trazabilidad,

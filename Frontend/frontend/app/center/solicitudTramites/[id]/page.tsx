@@ -13,6 +13,7 @@ import Link from 'next/link';
 import React from 'react'
 import clsx from "clsx"
 import AddTramitadorBoton from '@/components/tramitador/AddTramitadorBoton';
+import AddSubEstadoBoton from '@/components/subEstados/AddSubEstadosBoton';
 
 
 const ModalContainer = dynamic(
@@ -84,24 +85,15 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
       </div>
 
       {/* Fila 2 */}
+      
       <div className="flex flex-wrap lg:justify-end gap-3">
+        <AddSubEstadoBoton/>
+        
 
-        <Link
-          href="/center/dashboard"
-          className="
-            flex items-center justify-center gap-2
-            h-10 min-w-[140px]
-            px-4
-            bg-red-400 text-white font-medium rounded-md
-            hover:bg-white hover:text-slate-600
-            hover:border hover:border-red-400
-            transition
-          "
-        >
-          <ArrowLeft size={18} />
-          Volver
-        </Link>
+        
 
+        <AddCuentaCobroBoton />
+        <AddTrazabilidadBoton />
         <Link
           href="/center/torreControl"
           className="
@@ -117,9 +109,22 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
           <Radar size={18} />
           Torre Control
         </Link>
-
-        <AddCuentaCobroBoton />
-        <AddTrazabilidadBoton />
+        <Link
+          href="/center/dashboard"
+          className="
+            flex items-center justify-center gap-2
+            h-10 min-w-[140px]
+            px-4
+            bg-red-400 text-white font-medium rounded-md
+            hover:bg-white hover:text-slate-600
+            hover:border hover:border-red-400
+            transition
+          "
+        >
+          <ArrowLeft size={18} />
+          Volver
+        </Link>
+        
 
       </div>
 

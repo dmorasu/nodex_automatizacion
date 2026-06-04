@@ -1,5 +1,12 @@
 import type { Request,Response } from "express";
 import Programacion from "../models/programacion";
+import { crearNotificacion } from "../services/notificacionesServices";
+import SolicitudTramites from "../models/solicitudTramites";
+import Usuarios from "../models/usuarios";
+import Municipios from "../models/municipios";
+import Tramite from "../models/tramite";
+import Operaciones from "../models/operaciones";
+import Tramitador from "../models/tramitador";
 
 declare global{
     namespace Express{
@@ -16,54 +23,65 @@ export class ProgramacionController{
 
     static create = async (req: Request, res: Response) => {
   try {
-    const solicitudId = req.solicitudTramites.id;
+
+    const solicitudId = req.solicitudTramites.id
 
     let programacion = await Programacion.findOne({
       where: { solicitudTramiteId: solicitudId }
-    });
+    })
 
     if (!programacion) {
-      // Crear si no existe
-      programacion = await Programacion.create({
-        solicitudTramiteId: solicitudId,
-        fechaProbableEntrega: req.body.fechaProbableEntrega || null,
-        valorTramite: req.body.valorTramite || null,
-        valorViaticos: req.body.valorViaticos || null,
-        conceptoHonorarios:req.body.conceptoHonorarios || null,
-        conceptoViaticos:req.body.conceptoViaticos || null
-      });
+     programacion = await Programacion.create({
+  solicitudTramiteId: solicitudId,
+  fechaProbableEntrega: req.body.fechaProbableEntrega || null,
+  valorTramite: req.body.valorTramite || null,
+  valorViaticos: req.body.valorViaticos || null,
+  conceptoHonorarios: req.body.conceptoHonorarios || null,
+  conceptoViaticos: req.body.conceptoViaticos || null,
+
+  requiereCita: req.body.requiereCita || false,
+  fechaCita: req.body.fechaCita || null,
+  horaCita: req.body.horaCita || null
+})
+    
     } else {
-      // Actualizar solo lo que venga en el body
-
-      if (req.body.fechaProbableEntrega !== undefined) {
-        programacion.fechaProbableEntrega = req.body.fechaProbableEntrega || null;
-      }
-
-      if (req.body.valorTramite !== undefined) {
-        programacion.valorTramite = req.body.valorTramite || null;
-      }
-
-      if (req.body.valorViaticos !== undefined) {
-        programacion.valorViaticos = req.body.valorViaticos || null;
-      }
-
-      if (req.body.conceptoViaticos !== undefined) {
-        programacion.conceptoViaticos = req.body.conceptoViaticos || null;
-      }
-      if (req.body.conceptoHonorarios !== undefined) {
-        programacion.conceptoHonorarios = req.body.conceptoHonorarios || null;
-      }
-
-      await programacion.save();
+      Object.assign(programacion, req.body)
+      await programacion.save()
     }
 
-    res.status(201).json("Programación guardada correctamente");
+    // 🔥 cargar usuario
+    const solicitud = await SolicitudTramites.findByPk(
+      solicitudId,
+      { include: [Usuarios,Municipios,Tramite,Operaciones,Tramitador] }
+    )
+
+    // 🔔 NOTIFICACIÓN
+    if (solicitud?.usuario?.correoUsuario) {
+      await crearNotificacion({
+  solicitud,
+  tipo: 'PROGRAMACION',
+  destinatario: solicitud.usuario,
+  data: {
+    nombre: solicitud.usuario.nombreUsuario,
+    tipo: solicitud.tramite.nombreTramite,
+    fecha: programacion.fechaProbableEntrega
+      ? new Date(programacion.fechaProbableEntrega).toLocaleDateString()
+      : 'Sin fecha',
+    tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
+    municipio: solicitud.municipios?.nombreMunicipio|| 'N/A',
+    operacion: solicitud.operaciones.nombreOperacion||'N/A',
+    programador: solicitud.tramite.responsable
+  }
+})
+    }
+
+    return res.status(201).json("Programación guardada correctamente")
 
   } catch (error) {
-    console.error("ERROR PROGRAMACION:", error);
-    res.status(500).json("Hubo un error" );
+    console.error("ERROR PROGRAMACION:", error)
+    return res.status(500).json("Hubo un error")
   }
-};
+}
 
 
 

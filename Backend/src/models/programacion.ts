@@ -50,6 +50,24 @@ class Programacion extends Model {
   })
   declare conceptoViaticos: string | null
 
+  @Column({
+  type: DataType.BOOLEAN,
+  defaultValue: false
+})
+declare requiereCita: boolean
+
+@Column({
+  type: DataType.DATEONLY,
+  allowNull: true
+})
+declare fechaCita: Date | null
+
+@Column({
+  type: DataType.TIME,
+  allowNull: true
+})
+declare horaCita: string | null
+
   @ForeignKey(() => SolicitudTramites)
   @Column({ unique: true,field: 'solicitudTramiteId'  })
   declare solicitudTramiteId: number

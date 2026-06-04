@@ -15,6 +15,7 @@ import { validateEstadosTramitesInput, validateEstadosTramitesExits } from '../m
 import { validateLogisticaInput, validateLogisticaId } from '../middleware/logistica'
 import { validateProgramacionInput, validateProgramacionExits } from '../middleware/programacion'
 import { validateCuentaCobroInput, validateCuentaCobroExits } from '../middleware/cuentaCobro'
+import { SubEstadosSolicitudController } from '../controllers/SubEstadosSolicitudController'
 import { autenticacion } from '../middleware/auth'
 
 const router = Router()
@@ -47,6 +48,7 @@ router.param('estadosTramitesId', validateEstadosTramitesExits)
 router.param('logisticaId', validateLogisticaId)
 router.param('programacionId', validateProgramacionExits)
 router.param('cuentaCobroId', validateCuentaCobroExits)
+
 
 
 
@@ -90,6 +92,8 @@ router.delete('/:solicitudTramitesId/trazabilidad/:trazabilidadId',
   TrazabilidadController.deleteById
 )
 
+
+
 // ================= ESTADOS =================
 router.post('/:solicitudTramitesId/estadosTramites',
   validateEstadosTramitesInput,
@@ -106,6 +110,13 @@ router.put('/:solicitudTramitesId/estadosTramites/:estadosTramitesId',
 )
 router.delete('/:solicitudTramitesId/estadosTramites/:estadosTramitesId',
   EstadosTramitesController.deleteById
+)
+
+//================== SUBESTADOS =============
+router.post(
+  '/:solicitudTramitesId/subEstadosSolicitud',
+  validateSolicitudTramiteExits,
+  SubEstadosSolicitudController.create
 )
 
 // ================= LOGISTICA =================

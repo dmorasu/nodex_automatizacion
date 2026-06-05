@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { SubEstadosController } from "../controllers/subEstadosController"
+import { SubEstadosController } from "../controllers/SubEstadosController"
 
 const router = Router()
 

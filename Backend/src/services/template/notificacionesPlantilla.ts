@@ -111,7 +111,7 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
       <p>🏙️ Municipio: ${data.municipio || ''}</p>
       <p>👤 Programador: ${data.programador || ''}</p>
 
-      <p>📎 Los soportes ya han sido entregados.</p>
+      <p>📎 Los soportes ya han sido cargados en la carpeta del Trámite
       <p>📞 Si tienes alguna inquietud, contáctanos.</p>
 
       <p>¡Gracias por tu confianza! 😊</p>
@@ -164,7 +164,7 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
       <p>👤 Operación: ${data.operacion || ''}</p>
       <p>👤 Programador: ${data.programador || ''}</p>
 
-      <p>📞 Si tienes alguna inquietud, no dudes en contactarnos.</p>
+      
       <p>¡Gracias por tu atención!</p>
     `)
   }
@@ -186,7 +186,7 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
         <h3>📌 Detalles de la diligencia:</h3>
 
         <p>⚠️ Novedad: ${data.novedad || ''}</p>
-        <p>📅 Fecha de reprogramación: ${data.fecha || ''}</p>
+        <p>📅 Fecha de reprogramación: Pendiente de la subsanación para progamacion  </p>
         <p>🧑‍💼 Corresponsal: ${data.tramitador || ''}</p>
         <p>🏙️ Municipio: ${data.municipio || ''}</p>
         <p>👤 Programador: ${data.programador || ''}</p>

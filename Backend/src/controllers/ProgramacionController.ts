@@ -8,6 +8,7 @@ import Tramite from "../models/tramite";
 import Operaciones from "../models/operaciones";
 import Tramitador from "../models/tramitador";
 
+
 declare global{
     namespace Express{
         interface Request{
@@ -55,6 +56,9 @@ export class ProgramacionController{
       { include: [Usuarios,Municipios,Tramite,Operaciones,Tramitador] }
     )
 
+console.log('Solicitud ID:', solicitud?.id)
+console.log('TramitadorId:', solicitud?.tramitadorId)
+console.log('Tramitador:', solicitud?.tramitador)
     // 🔔 NOTIFICACIÓN
     if (solicitud?.usuario?.correoUsuario) {
       await crearNotificacion({

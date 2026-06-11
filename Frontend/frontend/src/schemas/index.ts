@@ -283,7 +283,7 @@ export const ProgramacionSchema = z.object({
                 .min(1, "Debe seleccionar la fecha de Entrega"),
         conceptoHonorarios: z.string()
                 .min(1, "Debe inserta el concepto de los Honorarios"),
-        valorTramite:z.string().min(1,"Debe ingresar el Valor del Trámite")
+        valorTramite:z.number().min(0,"Debe ingresar el Valor del Trámite")
 
 })
 

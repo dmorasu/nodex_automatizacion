@@ -1,18 +1,18 @@
-"use server"
+"use server";
 
 import {
   ErrorResponoseSchema,
   SuccessSchema,
   ProgramacionSchema
-} from "@/src/schemas"
+} from "@/src/schemas";
 
-import { cookies } from "next/headers"
-import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 type ActionStateType = {
-  errors: string[],
-  success: string
-}
+  errors: string[];
+  success: string;
+};
 
 export default async function CrearProgramacion(
   solicitudTramiteId: number,
@@ -20,84 +20,111 @@ export default async function CrearProgramacion(
   formData: FormData
 ) {
 
+  const valorTramite = formData.get("valorTramite")?.toString() ?? "";
+  const valorViaticos = formData.get("valorViaticos")?.toString() ?? "";
+
   const programacionData = {
     solicitudTramiteId,
 
-    fechaProbableEntrega: formData.get('fechaProbableEntrega'),
+    fechaProbableEntrega:
+      formData.get("fechaProbableEntrega")?.toString() ?? "",
 
-    valorTramite: formData.get('valorTramite'),
-    valorViaticos: formData.get('valorViaticos'),
+    valorTramite:
+      valorTramite.trim() === ""
+        ? 0
+        : Number(valorTramite),
 
-    conceptoViaticos: formData.get('conceptoViaticos'),
-    conceptoHonorarios: formData.get('conceptoHonorarios'),
+    valorViaticos:
+      valorViaticos.trim() === ""
+        ? 0
+        : Number(valorViaticos),
 
-    requiereCita: formData.get('requiereCita') === 'true',
+    conceptoHonorarios:
+      formData.get("conceptoHonorarios")?.toString() ?? "",
 
-    fechaCita: formData.get('fechaCita'),
-    horaCita: formData.get('horaCita')
-  }
+    conceptoViaticos:
+      formData.get("conceptoViaticos")?.toString() ?? "",
 
-  console.log("PROGRAMACION DATA:", programacionData)
+    requiereCita:
+      formData.get("requiereCita") === "true",
+
+    fechaCita:
+      formData.get("fechaCita")?.toString() || null,
+
+    horaCita:
+      formData.get("horaCita")?.toString() || null
+  };
+
+  console.log("PROGRAMACION DATA:", programacionData);
 
   const programacion = ProgramacionSchema.safeParse({
     fechaProbableEntrega: programacionData.fechaProbableEntrega,
     conceptoHonorarios: programacionData.conceptoHonorarios,
     valorTramite: programacionData.valorTramite
-  })
+  });
 
   if (!programacion.success) {
     return {
       errors: programacion.error.issues.map(issue => issue.message),
-      success: ''
-    }
+      success: ""
+    };
   }
 
-  const token = cookies().get("TOKEN")?.value
+  const token = cookies().get("TOKEN")?.value;
 
-  const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}/programacion`
+  const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}/programacion`;
 
-  const req = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      solicitudTramiteId,
+  try {
+    const req = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(programacionData)
+    });
 
-      fechaProbableEntrega: programacionData.fechaProbableEntrega,
+    const responseText = await req.text();
 
-      valorTramite: programacionData.valorTramite,
-      valorViaticos: programacionData.valorViaticos,
+    let json;
 
-      conceptoHonorarios: programacionData.conceptoHonorarios,
-      conceptoViaticos: programacionData.conceptoViaticos,
+    try {
+      json = JSON.parse(responseText);
+    } catch {
+      json = { error: responseText };
+    }
 
-      requiereCita: programacionData.requiereCita,
-      fechaCita: programacionData.fechaCita,
-      horaCita: programacionData.horaCita
-    })
-  })
+    console.log("RESPUESTA:", json);
 
-  const json = await req.json()
+    if (!req.ok) {
+      if (typeof json === "object" && json?.error) {
+        return {
+          errors: [json.error],
+          success: ""
+        };
+      }
 
-  console.log("RESPUESTA:", json)
+      return {
+        errors: ["Hubo un error al guardar la programación"],
+        success: ""
+      };
+    }
 
-  if (!req.ok) {
+    revalidatePath(`/center/solicitudTramites/${solicitudTramiteId}`);
 
-    const { error } = ErrorResponoseSchema.parse(json)
+    const success = SuccessSchema.parse(json);
 
     return {
-      errors: [error],
-      success: ''
-    }
-  }
+      errors: [],
+      success
+    };
 
-  revalidatePath(`/center/solicitudTramites/${solicitudTramiteId}`)
+  } catch (error) {
+    console.error("ERROR PROGRAMACION ACTION:", error);
 
-  const success = SuccessSchema.parse(json)
-
-  return {
-    errors: [],
-    success
+    return {
+      errors: ["Error de conexión con el servidor"],
+      success: ""
+    };
   }
 }

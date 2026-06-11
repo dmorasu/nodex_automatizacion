@@ -7,6 +7,11 @@ import Estados from "../models/estados"
 import Usuarios from '../models/usuarios'
 import { crearNotificacion } from '../services/notificacionesServices'
 import Tramitador from "../models/tramitador";
+import SubEstadosSolicitud from '../models/subEstadosSolicitud'
+import SubEstados from '../models/subEstados'
+import Trazabilidad from '../models/trazabilidad'
+import Municipios from "../models/municipios";
+import Operaciones from "../models/operaciones";
 
 declare global{
     namespace Express{
@@ -45,7 +50,7 @@ export class EstadosTramitesController{
     let solicitud: SolicitudTramites | null = await SolicitudTramites.findByPk(
       estadosTramites.solicitudTramiteId,
       {
-        include: [Usuarios,Tramitador,],
+        include: [Usuarios,Tramitador,Municipios,Operaciones],
         transaction
       }
     )
@@ -76,6 +81,26 @@ export class EstadosTramitesController{
     }
 
     await transaction.commit()
+    const ultimoSubEstado = await SubEstadosSolicitud.findOne({
+  where: {
+    solicitudTramiteId: solicitud.id
+  },
+  include: [SubEstados],
+  order: [['createdAt', 'DESC']]
+})
+
+const ultimaTrazabilidad = await Trazabilidad.findOne({
+  where: {
+    solicitudTramiteId: solicitud.id
+  },
+  order: [['createdAt', 'DESC']]
+})
+
+const novedadTexto = `
+Subestado: ${ultimoSubEstado?.subEstado?.nombre || 'Sin subestado'}
+
+Observación: ${ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observación'}
+`
 
     await crearNotificacion({
   solicitud,
@@ -88,8 +113,9 @@ export class EstadosTramitesController{
     fecha: new Date().toLocaleDateString(),
     tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
     municipio: solicitud.municipios?.nombreMunicipio|| 'N/A',
+    operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
     programador: solicitud.usuario.nombreUsuario,
-    novedad: 'Descripción de novedad'
+    novedad: novedadTexto
   }
 })
 

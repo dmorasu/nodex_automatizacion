@@ -12,6 +12,7 @@ export const sendEmail = async (
 
     const response = await sgMail.send({
       to,
+      cc:'torredecontrol@gomezpinedaabogados.com',
       from: process.env.EMAIL_FROM!, // dominio verificado
       subject,
       html

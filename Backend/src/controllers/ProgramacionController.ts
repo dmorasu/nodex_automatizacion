@@ -7,6 +7,7 @@ import Municipios from "../models/municipios";
 import Tramite from "../models/tramite";
 import Operaciones from "../models/operaciones";
 import Tramitador from "../models/tramitador";
+import { formatearFecha} from "../utils/fechaColombia";
 
 
 declare global{
@@ -69,7 +70,7 @@ console.log('Tramitador:', solicitud?.tramitador)
     nombre: solicitud.usuario.nombreUsuario,
     tipo: solicitud.tramite.nombreTramite,
     fecha: programacion.fechaProbableEntrega
-      ? new Date(programacion.fechaProbableEntrega).toLocaleDateString()
+      ? formatearFecha(programacion.fechaProbableEntrega)
       : 'Sin fecha',
     tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
     municipio: solicitud.municipios?.nombreMunicipio|| 'N/A',

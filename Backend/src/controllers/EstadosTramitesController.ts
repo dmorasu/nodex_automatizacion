@@ -12,6 +12,8 @@ import SubEstados from '../models/subEstados'
 import Trazabilidad from '../models/trazabilidad'
 import Municipios from "../models/municipios";
 import Operaciones from "../models/operaciones";
+import { fechaColombia } from "../utils/fechaColombia";
+import TiposRechazo from "../models/tiposRechazos";
 
 declare global{
     namespace Express{
@@ -50,7 +52,7 @@ export class EstadosTramitesController{
     let solicitud: SolicitudTramites | null = await SolicitudTramites.findByPk(
       estadosTramites.solicitudTramiteId,
       {
-        include: [Usuarios,Tramitador,Municipios,Operaciones],
+        include: [Usuarios,Tramitador,Municipios,Operaciones,EstadosTramites],
         transaction
       }
     )
@@ -80,14 +82,16 @@ export class EstadosTramitesController{
       }
     }
 
+    
+
     await transaction.commit()
-    const ultimoSubEstado = await SubEstadosSolicitud.findOne({
-  where: {
-    solicitudTramiteId: solicitud.id
-  },
-  include: [SubEstados],
-  order: [['createdAt', 'DESC']]
-})
+    const estadoConRechazo = await EstadosTramites.findByPk(
+  estadosTramites.id,
+  {
+    include: [TiposRechazo]
+  }
+)
+   
 
 const ultimaTrazabilidad = await Trazabilidad.findOne({
   where: {
@@ -97,40 +101,57 @@ const ultimaTrazabilidad = await Trazabilidad.findOne({
 })
 
 const novedadTexto = `
-Subestado: ${ultimoSubEstado?.subEstado?.nombre || 'Sin subestado'}
+Tipo de rechazo: ${
+  estadoConRechazo?.tipoRechazo?.nombre || 'Sin rechazo'
+}
 
-Observación: ${ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observación'}
+Observación: ${
+  ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observación'
+}
 `
 
-    await crearNotificacion({
-  solicitud,
-  tipo: 'CAMBIO_ESTADO',
-  destinatario: solicitud.usuario,
-  data: {
-    estadoId: estado.id,
-    estado: estado.nombreEstado,
-    nombre: solicitud.usuario.nombreUsuario,
-    fecha: new Date().toLocaleDateString(),
-    tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
-    municipio: solicitud.municipios?.nombreMunicipio|| 'N/A',
-    operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
-    programador: solicitud.usuario.nombreUsuario,
-    novedad: novedadTexto
-  }
-})
+   // =========================
+// 🔔 NOTIFICACIONES EMAIL
+// =========================
 
-    // =========================
-    // 🔔 NOTIFICACIÓN (EMAIL)
-    // =========================
-    if (esFinalizado && solicitud?.usuario) {
+if (Number(estadosTramites.estadoId) === 3 && solicitud?.usuario) {
 
-      crearNotificacion({
-        solicitud,
-        tipo: 'FINALIZADO',
-        destinatario: solicitud.usuario // ✔ CORRECTO
-      }).catch(console.error)
+  await crearNotificacion({
+    solicitud,
+    tipo: 'CAMBIO_ESTADO',
+    destinatario: solicitud.usuario,
+    data: {
+      estadoId: estado.id,
+      estado: estado.nombreEstado,
+      nombre: solicitud.usuario.nombreUsuario,
+      fecha: fechaColombia(),
+      tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
+      municipio: solicitud.municipios?.nombreMunicipio || 'N/A',
+      operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
+      programador: solicitud.usuario.nombreUsuario,
+      novedad: novedadTexto
     }
+  })
+}
 
+if (esFinalizado && solicitud?.usuario) {
+
+  await crearNotificacion({
+    solicitud,
+    tipo: 'FINALIZADO',
+    destinatario: solicitud.usuario,
+    data: {
+      nombre: solicitud.usuario.nombreUsuario,
+      fecha: fechaColombia(),
+      tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
+      municipio: solicitud.municipios?.nombreMunicipio || 'N/A',
+      operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
+      programador: solicitud.usuario.nombreUsuario,
+      tipo: solicitud.operaciones?.nombreOperacion || 'N/A',
+      resultado: 'Finalizado'
+    }
+  })
+}
       
 
     return res.status(201).json({

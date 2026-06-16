@@ -3,6 +3,9 @@ import Trazabilidad from "../models/trazabilidad";
 import SolicitudTramites from "../models/solicitudTramites";
 import Usuarios from "../models/usuarios";
 import { crearNotificacion } from "../services/notificacionesServices";
+import EstadosTramites from "../models/estadosTramites";
+import Estados from "../models/estados";
+
 declare global{
     namespace Express{
         interface Request{
@@ -28,16 +31,24 @@ export class TrazabilidadController{
       req.solicitudTramites.id,
       { include: [Usuarios] }
     )
+    const ultimoEstado = await EstadosTramites.findOne({
+  where: {
+    solicitudTramiteId: req.solicitudTramites.id
+  },
+  include: [Estados],
+  order: [['createdAt', 'DESC']]
+})
 
     if (solicitud?.usuario?.correoUsuario) {
-      crearNotificacion({
+      /* crearNotificacion({
         solicitud,
         tipo: 'TRAZABILIDAD',
         destinatario: solicitud.usuario,
         data: {
-          observacion: trazabilidad.observacionTrazabilidad // 🔥 CLAVE
+          observacion: trazabilidad.observacionTrazabilidad, // 🔥 CLAVE
+          estado: ultimoEstado?.estado?.nombreEstado || 'Sin estado'
         }
-      }).catch(console.error)
+      }).catch(console.error) */
     }
 
     return res.status(201).json('Registro Guardado')

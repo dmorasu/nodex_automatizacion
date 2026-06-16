@@ -40,10 +40,7 @@ const layout = (content: string) => `
 
     ${content}
 
-    <!-- CONTACTO -->
-    <div style="margin-top:25px;font-size:13px;color:#374151;text-align:center;line-height:1.6;">
-      📞 6040401990 &nbsp;&nbsp;|&nbsp;&nbsp; 🌐 gomezpineda.com
-    </div>
+    
 
     <!-- FIRMA -->
     <p style="margin-top:15px;font-size:14px;color:#374151;text-align:center;">
@@ -99,14 +96,14 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
       <h2>📢 ¡Hola ${data.nombre || ''}!</h2>
 
       <p>
-        Tu diligencia con consecutivo <b>#${solicitud.id}</b> ha sido finalizada exitosamente ✅
+        Tu diligencia con consecutivo <b>#${solicitud.id} - ${solicitud.placa??""} ${solicitud.matriculaInmobiliaria??""}</b> ha sido finalizada exitosamente ✅
       </p>
 
       <h3>📌 Detalles:</h3>
 
       <p>🔹 Tipo de diligencia: ${data.tipo || ''}</p>
       <p>📌 Resultado: ${data.resultado || ''}</p>
-      <p>📅 Fecha: ${data.fecha || ''}</p>
+      <p>📅 Fecha en la que se Finaliza el Servicio: ${data.fecha || ''}</p>
       <p>🧑‍💼 Corresponsal: ${data.tramitador || ''}</p>
       <p>🏙️ Municipio: ${data.municipio || ''}</p>
       <p>👤 Programador: ${data.programador || ''}</p>
@@ -133,32 +130,34 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
       subject: '📌 Nueva trazabilidad',
       text: observacion,
       html: layout(`
-        <h2 style="color:#1d4ed8;">📌 Nueva trazabilidad</h2>
+  <h2 style="color:#1d4ed8;">📌 Nueva trazabilidad</h2>
 
-        <p><b>🆔 Trámite:</b> ${solicitud.id}</p>
+  <p><b>🆔 Trámite:</b> ${solicitud.id} - ${solicitud.placa??""} ${solicitud.matriculaInmobiliaria??""}</b></p>
 
-        <div style="background:#f9fafb;padding:15px;border-radius:8px;border:1px solid #e5e7eb;">
-          ${observacion}
-        </div>
-      `)
+  <p><b>🔄 Estado actual:</b> ${data.estado || 'Sin estado'}</p>
+
+  <div style="background:#f9fafb;padding:15px;border-radius:8px;border:1px solid #e5e7eb;">
+    ${observacion}
+  </div>
+`)
     }
   }
 
  if (tipo === 'PROGRAMACION') {
   return {
-    subject: `📅 Su Trámite #${solicitud.id} ha sido programado `,
+    subject: `📅 Su Trámite  #${solicitud.id} - ${solicitud.placa??""} ${solicitud.matriculaInmobiliaria??""} ha sido programado `,
     text: '',
     html: layout(`
       <h2>📢 ¡Hola ${data.nombre || ''}!</h2>
 
       <p>
-        Tu diligencia con consecutivo <b>#${solicitud.id}</b> ha sido programada ✅
+        Tu diligencia con consecutivo <b>#${solicitud.id} - ${solicitud.placa??""} ${solicitud.matriculaInmobiliaria??""}</b> ha sido programada ✅
       </p>
 
       <h3>📌 Detalles de la programación:</h3>
 
       <p>🔹 Tipo de diligencia: ${data.tipo || ''}</p>
-      <p>📅 Fecha: ${data.fecha || ''}</p>
+      <p>📅 Fecha en la que se realizará la Diligencia:: ${data.fecha || ''}</p>
       <p>🧑‍💼 Corresponsal: ${data.tramitador || ''}</p>
       <p>🏙️ Municipio: ${data.municipio || ''}</p>
       <p>👤 Operación: ${data.operacion || ''}</p>
@@ -180,13 +179,13 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
         <h2>📢 ¡Hola ${data.nombre || ''}!</h2>
 
         <p>
-          Queremos informarte que tu diligencia con consecutivo <b>#${solicitud.id}</b> presenta una novedad ⚠️
+          Queremos informarte que tu diligencia con consecutivo <b>#${solicitud.id} - ${solicitud.placa??""} ${solicitud.matriculaInmobiliaria??""}</b> presenta una novedad ⚠️
         </p>
 
         <h3>📌 Detalles de la diligencia:</h3>
 
         <p>⚠️ Novedad: ${data.novedad || ''}</p>
-        <p>📅 Fecha de reprogramación: Pendiente de la subsanación para progamacion  </p>
+        <p>📅 Fecha de reprogramación: Pendiente de la subsanación para programación  </p>
         <p>🧑‍💼 Corresponsal: ${data.tramitador || ''}</p>
         <p>🏙️ Municipio: ${data.municipio || ''}</p>
         <p>👤 Programador: ${data.programador || ''}</p>

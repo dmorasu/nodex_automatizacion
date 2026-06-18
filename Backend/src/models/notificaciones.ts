@@ -6,28 +6,28 @@ import { Table, Column, Model, DataType } from 'sequelize-typescript'
 class Notificacion extends Model {
 
   @Column(DataType.INTEGER)
-  solicitudTramiteId!: number
+  declare solicitudTramiteId: number
 
   @Column(DataType.STRING)
-  tipo!: string
+  declare tipo: string
 
   @Column(DataType.STRING)
-  canal!: string
+  declare canal: string
 
   @Column(DataType.STRING)
-  destinatario!: string
+  declare destinatario: string
 
   @Column(DataType.TEXT)
-  mensaje!: string
+  declare mensaje: string
 
   @Column(DataType.STRING)
-  estado!: string
+  declare estado: string
 
   @Column(DataType.TEXT)
-  error!: string
+  declare error: string | null
 
   @Column(DataType.DATE)
-  fechaEnvio!: Date
+  declare fechaEnvio: Date | null
 }
 
 export default Notificacion

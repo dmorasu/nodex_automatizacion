@@ -14,6 +14,7 @@ import Municipios from "../models/municipios";
 import Operaciones from "../models/operaciones";
 import { fechaColombia } from "../utils/fechaColombia";
 import TiposRechazo from "../models/tiposRechazos";
+import Tramite from "../models/tramite";
 
 declare global{
     namespace Express{
@@ -52,7 +53,7 @@ export class EstadosTramitesController{
     let solicitud: SolicitudTramites | null = await SolicitudTramites.findByPk(
       estadosTramites.solicitudTramiteId,
       {
-        include: [Usuarios,Tramitador,Municipios,Operaciones,EstadosTramites],
+        include: [Usuarios,Tramitador,Municipios,Operaciones,EstadosTramites,Tramite],
         transaction
       }
     )
@@ -121,16 +122,15 @@ if (Number(estadosTramites.estadoId) === 3 && solicitud?.usuario) {
     tipo: 'CAMBIO_ESTADO',
     destinatario: solicitud.usuario,
     data: {
-      estadoId: estado.id,
-      estado: estado.nombreEstado,
-      nombre: solicitud.usuario.nombreUsuario,
-      fecha: fechaColombia(),
-      tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
-      municipio: solicitud.municipios?.nombreMunicipio || 'N/A',
-      operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
-      programador: solicitud.usuario.nombreUsuario,
-      novedad: novedadTexto
-    }
+  nombre: solicitud.usuario.nombreUsuario,
+  fecha: fechaColombia(),
+  tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
+  municipio: solicitud.municipios?.nombreMunicipio || 'N/A',
+  operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
+  programador: solicitud.tramite?.responsable || 'N/A',
+  tipo: solicitud.tramite?.nombreTramite || 'N/A',
+  resultado: ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observaciones'
+}
   })
 }
 
@@ -145,10 +145,15 @@ if (esFinalizado && solicitud?.usuario) {
       fecha: fechaColombia(),
       tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
       municipio: solicitud.municipios?.nombreMunicipio || 'N/A',
+
+      // Operación
       operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
-      programador: solicitud.usuario.nombreUsuario,
-      tipo: solicitud.operaciones?.nombreOperacion || 'N/A',
-      resultado: 'Finalizado'
+
+      // Tipo de diligencia / trámite
+      tipo: solicitud.tramite?.nombreTramite || 'N/A',
+
+      programador: solicitud.tramite?.responsable || 'N/A',
+      resultado: ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observaciones'
     }
   })
 }

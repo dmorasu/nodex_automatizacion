@@ -12,6 +12,7 @@ type TemplateData = {
   estado?: string
   fecha?: string
   operacion?:string
+  tipo?:string
   [key: string]: any
 }
 
@@ -90,7 +91,7 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
 
   if (tipo === 'FINALIZADO') {
   return {
-    subject: '✅ Diligencia finalizada',
+    subject:  `✅ 📅 Su Trámite #${solicitud.id} - ${solicitud.placa ?? ''} ${solicitud.matriculaInmobiliaria ?? ''} ha sido finalizado`,
     text: '',
     html: layout(`
       <h2>📢 ¡Hola ${data.nombre || ''}!</h2>
@@ -101,7 +102,7 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
 
       <h3>📌 Detalles:</h3>
 
-      <p>🔹 Tipo de diligencia: ${data.tipo || ''}</p>
+      <p>🔹 Tipo de diligencia: ${data.tipo|| ''}</p>
       <p>📌 Resultado: ${data.resultado || ''}</p>
       <p>📅 Fecha en la que se Finaliza el Servicio: ${data.fecha || ''}</p>
       <p>🧑‍💼 Corresponsal: ${data.tramitador || ''}</p>

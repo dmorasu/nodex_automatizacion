@@ -76,14 +76,14 @@ export const procesarTrazabilidadController = async (req: Request, res: Response
 
         if (!solicitud?.usuario?.correoUsuario) return
 
-        await crearNotificacion({
+       /*  await crearNotificacion({
           solicitud,
           tipo: 'TRAZABILIDAD',
           destinatario: solicitud.usuario,
           data: {
             observacion: row.observacionTrazabilidad // 🔥 clave
           }
-        })
+        }) */
 
       } catch (error) {
         console.error('Error notificando trazabilidad', row, error)

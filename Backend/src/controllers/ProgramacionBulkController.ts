@@ -8,8 +8,14 @@ import { procesarProgramacion } from '../services/programacionActualizaciones'
 import { generarPlantillaProgramacion } from '../utils/generarPlantillaProgramacion'
 
 import SolicitudTramites from '../models/solicitudTramites'
+import Programacion from '../models/programacion'
+import Tramite from '../models/tramite'
+import Operaciones from '../models/operaciones'
+import Tramitador from '../models/tramitador'
+import Municipios from '../models/municipios'
 import Usuarios from '../models/usuarios'
 import { crearNotificacion } from '../services/notificacionesServices'
+import { formatearFecha} from "../utils/fechaColombia";
 
 // 🔥 tipo del Excel (ajústalo si tienes más columnas)
 type ProgramacionRow = {
@@ -76,23 +82,54 @@ export const procesarProgramacionController = async (req: Request, res: Response
     const tareas = Array.from(unique.values()).map(async (row) => {
       try {
 
-        const solicitud = await SolicitudTramites.findByPk(
-          row.solicitudTramiteId,
-          { include: [Usuarios] }
-        )
+       const solicitud = await SolicitudTramites.findByPk(
+  row.solicitudTramiteId,
+  {
+    include: [
+      Usuarios,
+      Programacion,
+      Tramite,
+      Tramitador,
+      Municipios,
+      Operaciones
+    ]
+  }
+)
 
-        if (!solicitud?.usuario?.correoUsuario) return
+if (!solicitud?.usuario?.correoUsuario) {
+  return
+}
 
-        await crearNotificacion({
-          solicitud,
-          tipo: 'PROGRAMACION',
-          destinatario: solicitud.usuario,
-          data: {
-            fechaProbableEntrega: row.fechaProbableEntrega,
-            valorTramite: row.valorTramite,
-            valorViaticos: row.valorViaticos
-          }
-        })
+const programacion = solicitud.programacion
+
+
+
+
+if (!programacion) {
+  console.log(
+    `⚠️ Solicitud ${row.solicitudTramiteId} sin programación`
+  )
+  return
+}
+
+await crearNotificacion({
+  solicitud,
+  tipo: 'PROGRAMACION',
+  destinatario: solicitud.usuario,
+  data: {
+    nombre: solicitud.usuario?.nombreUsuario,
+    tipo: solicitud.tramite?.nombreTramite,
+    fecha:  formatearFecha(programacion.fechaProbableEntrega),
+    tramitador: solicitud.tramitador?.nombreTramitador,
+    municipio: solicitud.municipios?.nombreMunicipio,
+    operacion: solicitud.operaciones?.nombreOperacion,
+    programador: solicitud.tramite?.responsable
+  }
+})
+console.log(
+  '📋 Programación BD:',
+  data
+)
 
       } catch (error) {
         console.error('Error notificando programación', row, error)

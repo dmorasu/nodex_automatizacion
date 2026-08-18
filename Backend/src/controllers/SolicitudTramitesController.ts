@@ -265,20 +265,43 @@ static getAll = async (req: Request, res: Response) => {
   }
 };
 
-     static create= async (req:Request, res:Response)=>{
+   static create = async (req: Request, res: Response) => {
 
-         try {
-                const solicitudTramites= new SolicitudTramites(req.body)
-                await solicitudTramites.save()
-                res.status(201).json("Dato ingresado correctamente")
-        } catch (error) {
-              console.log(error);
-              res.status(500).json({error:'No se puede guardar el registro'})
-            
-        }
+  try {
 
-       
-    }
+    // ==========================================
+    // CREAR SOLICITUD
+    // ==========================================
+
+    const solicitudTramites =
+      await SolicitudTramites.create(req.body);
+
+
+    // ==========================================
+    // RESPUESTA
+    // ==========================================
+
+    return res.status(201).json({
+      mensaje: "Solicitud creada correctamente",
+
+      solicitud: solicitudTramites
+    });
+
+
+  } catch (error) {
+
+    console.error(
+      "ERROR AL CREAR SOLICITUD:",
+      error
+    );
+
+    return res.status(500).json({
+      error: "No se puede guardar el registro"
+    });
+
+  }
+
+};
 
 
      static getById = async (req: Request, res: Response) => {

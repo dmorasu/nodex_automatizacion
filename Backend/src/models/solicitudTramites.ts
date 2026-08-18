@@ -24,6 +24,7 @@ import CuentaCobros from "./cuentaCobro";
 import Tramite from "./tramite";
 import EvaluacionSolicitud from "./evaluacionSolicitud"
 import SubEstadosSolicitud from './subEstadosSolicitud';
+import DocumentoSolicitud from "./documentosSolicitud";
 
 @Table({
   tableName: "SolicitudTramites",
@@ -116,6 +117,11 @@ declare tramite: Tramite
   foreignKey: "solicitudTramiteId"
 })
 declare evaluacion: EvaluacionSolicitud
+
+  @HasMany(() => DocumentoSolicitud, {
+  foreignKey: "solicitudTramiteId",
+})
+declare documentos: DocumentoSolicitud[];
 
   @HasMany(() => EstadosTramites, { foreignKey: "solicitudTramiteId" })
   declare estadosTramites: EstadosTramites[];

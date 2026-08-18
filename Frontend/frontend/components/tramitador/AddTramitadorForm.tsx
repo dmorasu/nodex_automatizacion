@@ -6,13 +6,16 @@ import { useFormState } from "react-dom"
 import { useParams } from "next/navigation"
 import { useEffect } from "react"
 import { toast } from "react-toastify"
+import { User } from "lucide-react"
+
 import ErrorMessage from "../ui/ErrorMessage"
 
-// 👉 Server Action que asigna tramitador
-import  AsignarTramitadorSolicitud from "@/actions/asignar-Tramitador-action"
+import AsignarTramitadorSolicitud from "@/actions/asignar-Tramitador-action"
 import { TramitadorType } from "@/src/type/solicitudes"
 
-export default function AddTramitadorForm({  closeModal,
+
+export default function AddTramitadorForm({
+  closeModal,
   tramitador
 }: {
   closeModal: () => void
@@ -21,64 +24,214 @@ export default function AddTramitadorForm({  closeModal,
 
   const { id } = useParams()
 
-  // Bind del Server Action con el id de la solicitud
-  const asignarTramitadorConId = AsignarTramitadorSolicitud.bind(null, Number(id))
 
-  const [state, dispatch] = useFormState(asignarTramitadorConId, {
-    errors: [],
-    success: ""
-  })
+  // =====================================================
+  // ACTION
+  // =====================================================
+
+  const asignarTramitadorConId =
+    AsignarTramitadorSolicitud.bind(
+      null,
+      Number(id)
+    )
+
+
+  const [state, dispatch] =
+    useFormState(
+      asignarTramitadorConId,
+      {
+        errors: [],
+        success: ""
+      }
+    )
+
+
+  // =====================================================
+  // RESPUESTA
+  // =====================================================
 
   useEffect(() => {
+
     if (state.success) {
+
       toast.success(state.success)
+
       closeModal()
+
     }
+
   }, [state, closeModal])
+
 
   return (
     <>
-      <DialogTitle
-        as="h3"
-        className="font-black text-4xl text-sky-400 my-5"
-      >
-        Asignar Tramitador
-      </DialogTitle>
 
-      <p className="text-xl font-bold">
-        Busca y asigna un{" "}
-        <span className="text-sky-400">Tramitador</span>
-      </p>
+      {/* ================================================= */}
+      {/* ENCABEZADO                                       */}
+      {/* ================================================= */}
+
+      <div className="
+        flex
+        items-center
+        gap-3
+        mb-6
+      ">
+
+
+        {/* ICONO */}
+
+        <div className="
+          flex
+          items-center
+          justify-center
+          w-9
+          h-9
+          rounded-lg
+          bg-sky-50
+          border
+          border-sky-100
+          shrink-0
+        ">
+
+          <User
+            size={18}
+            className="text-sky-500"
+          />
+
+        </div>
+
+
+        {/* TÍTULO */}
+
+        <div>
+
+          <DialogTitle
+            as="h3"
+            className="
+              text-lg
+              font-semibold
+              text-slate-800
+              leading-tight
+            "
+          >
+            Asignar Tramitador
+          </DialogTitle>
+
+
+          <p className="
+            mt-1
+            text-xs
+            text-slate-400
+          ">
+            Seleccione el tramitador responsable de gestionar la solicitud.
+          </p>
+
+        </div>
+
+      </div>
+
+
+
+      {/* ================================================= */}
+      {/* ERRORES                                           */}
+      {/* ================================================= */}
 
       {state.errors.map(error => (
-        <ErrorMessage key={error}>{error}</ErrorMessage>
+
+        <ErrorMessage
+          key={error}
+        >
+          {error}
+        </ErrorMessage>
+
       ))}
 
+
+
+      {/* ================================================= */}
+      {/* FORMULARIO                                        */}
+      {/* ================================================= */}
+
       <form
-        className="bg-gray-100 shadow-lg rounded-lg p-10 mt-10 border"
+        className="
+          space-y-5
+        "
         noValidate
         action={dispatch}
       >
 
-        {/* 🔹 Combobox de búsqueda inteligente */}
-        <div className="space-y-3">
-          <label className="text-sm uppercase font-bold">
+
+        {/* =============================================== */}
+        {/* TRAMITADOR                                      */}
+        {/* =============================================== */}
+
+        <div>
+
+          <label className="
+            block
+            mb-1.5
+            text-xs
+            font-medium
+            text-slate-600
+          ">
             Tramitador
           </label>
 
-          <TramitadorComboBox 
+
+          <TramitadorComboBox
             name="tramitadorId"
-            defaultValue={tramitador?.id}
-            defaultLabel={tramitador?.nombreTramitador}
-/>
+            defaultValue={
+              tramitador?.id
+            }
+            defaultLabel={
+              tramitador?.nombreTramitador
+            }
+          />
+
         </div>
 
-        <input
-          type="submit"
-          className="bg-sky-400 w-full p-3 mt-6 text-white uppercase font-bold hover:bg-amber-600 cursor-pointer transition-colors"
-          value="Asignar Tramitador"
-        />
+
+
+        {/* ================================================= */}
+        {/* BOTÓN                                             */}
+        {/* ================================================= */}
+
+        <div className="
+          flex
+          justify-end
+          pt-2
+        ">
+
+          <button
+            type="submit"
+            className="
+              inline-flex
+              items-center
+              justify-center
+              h-9
+              min-w-[150px]
+              px-4
+              rounded-md
+              bg-sky-500
+              text-white
+              text-xs
+              font-medium
+              transition-all
+              hover:bg-sky-600
+              focus:outline-none
+              focus:ring-2
+              focus:ring-sky-200
+              cursor-pointer
+            "
+          >
+            Asignar Tramitador
+          </button>
+
+        </div>
+
+
       </form>
+
     </>
   )
 }

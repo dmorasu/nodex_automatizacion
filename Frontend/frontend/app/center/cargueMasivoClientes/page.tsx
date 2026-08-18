@@ -1,52 +1,580 @@
-import CrearSolicitudesForm from "@/components/solicitudTramites/CrearSolicitudes";
 import Link from "next/link";
-import {Metadata} from 'next'
+import { Metadata } from "next";
 
-import CrearCargueMasivaForm from "@/components/cargueMasiva/cargueMasivaForm";
-import CargaMasivaClientes from "@/components/cargueMasivoClientes/cargaMasivaClientesForm";
+import {
+  ArrowLeft,
+  FileSpreadsheet,
+  Upload,
+  CheckCircle2,
+} from "lucide-react";
 
-export const metadata :Metadata={
-  title:'Nodex - Centro Admin',
-  description: 'Nodex - Centro Admin'
-}
+import CargaMasivaClientes
+  from "@/components/cargueMasivoClientes/cargaMasivaClientesForm";
+
+
+export const metadata: Metadata = {
+  title: "Nodex - Cargue Masivo de Clientes",
+  description: "Nodex - Creación Masiva de Clientes",
+};
+
 
 export default function CargueMasivoClientesPage() {
+
   return (
-    <>
-      <div className='flex flex-col-reverse md:flex-row md:justify-between items-center'>
-        <div className='w-full md:w-auto'>
-          <h1 className='font-semibold text-3xl text-gray-900  my-5'>
-            Creación Masiva de Clientes:
-          </h1>
-          <p className="text-l font-bold">Procecimiento: {''}
-            <span className="text-blue-600">Para Cargue Másivo</span>
+
+    <div className="
+      w-full
+      space-y-6
+    ">
+
+
+      {/* ===================================================== */}
+      {/* ENCABEZADO                                            */}
+      {/* ===================================================== */}
+
+      <div className="
+        flex
+        flex-col
+        sm:flex-row
+        sm:items-center
+        sm:justify-between
+        gap-4
+      ">
+
+
+        {/* ================================================= */}
+        {/* TÍTULO                                             */}
+        {/* ================================================= */}
+
+        <div>
+
+          <div className="
+            flex
+            items-center
+            gap-2
+          ">
+
+            <div className="
+              flex
+              items-center
+              justify-center
+              w-9
+              h-9
+              rounded-lg
+              bg-sky-50
+              border
+              border-sky-100
+            ">
+
+              <FileSpreadsheet
+                size={18}
+                className="
+                  text-sky-500
+                "
+              />
+
+            </div>
+
+
+            <h1 className="
+              text-xs
+              font-semibold
+              text-slate-800
+            ">
+
+              Creación Masiva de Clientes
+
+            </h1>
+
+          </div>
+
+
+          <p className="
+            mt-1
+            ml-11
+            text-xs
+            text-slate-400
+          ">
+
+            Cree múltiples clientes mediante una plantilla de Excel.
+
           </p>
+
         </div>
-        
-        
-        
+
+
+
+        {/* ================================================= */}
+        {/* VOLVER                                             */}
+        {/* ================================================= */}
 
         <Link
-          href={'/center'}
-          className='bg-gray-400 p-2 rounded-lg text-white font-bold w-full md:w-auto text-center'
+          href="/center"
+          className="
+            inline-flex
+            items-center
+            justify-center
+            gap-2
+            h-9
+            px-3
+            rounded-md
+            border
+            border-slate-200
+            bg-white
+            text-slate-500
+            text-xs
+            font-medium
+            transition
+            hover:bg-slate-50
+            hover:text-slate-700
+            hover:border-slate-300
+          "
         >
+
+          <ArrowLeft
+            size={14}
+          />
+
           Volver
+
         </Link>
+
       </div>
 
-      <div className='p-10 mt-10  shadow-lg  border-2 shadow-blue-400'>
+
+
+      {/* ===================================================== */}
+      {/* PROCEDIMIENTO                                         */}
+      {/* ===================================================== */}
+
+      <div className="
+        bg-white
+        border
+        border-slate-200
+        rounded-xl
+        p-5
+      ">
+
+
+        {/* ================================================= */}
+        {/* ENCABEZADO                                         */}
+        {/* ================================================= */}
+
+        <div className="
+          flex
+          items-center
+          gap-2
+          mb-5
+        ">
+
+          <div className="
+            flex
+            items-center
+            justify-center
+            w-8
+            h-8
+            rounded-lg
+            bg-sky-50
+            border
+            border-sky-100
+          ">
+
+            <Upload
+              size={15}
+              className="
+                text-sky-500
+              "
+            />
+
+          </div>
+
+
+          <div>
+
+            <h2 className="
+              text-xs
+              font-semibold
+              text-slate-700
+            ">
+
+              Procedimiento para cargue masivo
+
+            </h2>
+
+
+            <p className="
+              mt-0.5
+              text-xs
+              text-slate-400
+            ">
+
+              Siga los siguientes pasos para crear los clientes.
+
+            </p>
+
+          </div>
+
+        </div>
+
+
+
+        {/* ================================================= */}
+        {/* PASOS                                             */}
+        {/* ================================================= */}
+
+        <div className="
+          grid
+          grid-cols-1
+          md:grid-cols-2
+          gap-3
+        ">
+
+
+          {/* ================================================= */}
+          {/* PASO 1                                             */}
+          {/* ================================================= */}
+
+          <div className="
+            flex
+            items-start
+            gap-3
+            p-3
+            rounded-lg
+            bg-slate-50
+            border
+            border-slate-100
+          ">
+
+            <div className="
+              flex
+              items-center
+              justify-center
+              shrink-0
+              w-7
+              h-7
+              rounded-full
+              bg-sky-100
+              text-sky-600
+              text-xs
+              font-semibold
+            ">
+
+              1
+
+            </div>
+
+
             <div>
-              <p className="text-small ">1. Descargue la plantilla de Excel {''}</p>
-        <p className="text-small ">2. Registre lo datos a cargar en la plantilla. {''}</p>
-        <p className="text-small ">3. Cargue el Archivo con los datos guardados {''}</p>
-        <p className="text-small ">4. Valide los datos cargados{''}</p>
-        <p className="text-small ">5. Guarde  los datos cargados{''}</p>
+
+              <p className="
+                text-xs
+                font-medium
+                text-slate-700
+              ">
+
+                Descargar la plantilla
+
+              </p>
+
+
+              <p className="
+                mt-0.5
+                text-xs
+                text-slate-400
+              ">
+
+                Descargue la plantilla oficial de clientes.
+
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          {/* ================================================= */}
+          {/* PASO 2                                             */}
+          {/* ================================================= */}
+
+          <div className="
+            flex
+            items-start
+            gap-3
+            p-3
+            rounded-lg
+            bg-slate-50
+            border
+            border-slate-100
+          ">
+
+            <div className="
+              flex
+              items-center
+              justify-center
+              shrink-0
+              w-7
+              h-7
+              rounded-full
+              bg-sky-100
+              text-sky-600
+              text-xs
+              font-semibold
+            ">
+
+              2
+
+            </div>
+
+
+            <div>
+
+              <p className="
+                text-xs
+                font-medium
+                text-slate-700
+              ">
+
+                Registrar los datos
+
+              </p>
+
+
+              <p className="
+                mt-0.5
+                text-xs
+                text-slate-400
+              ">
+
+                Registre la información de los clientes en la plantilla.
+
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          {/* ================================================= */}
+          {/* PASO 3                                             */}
+          {/* ================================================= */}
+
+          <div className="
+            flex
+            items-start
+            gap-3
+            p-3
+            rounded-lg
+            bg-slate-50
+            border
+            border-slate-100
+          ">
+
+            <div className="
+              flex
+              items-center
+              justify-center
+              shrink-0
+              w-7
+              h-7
+              rounded-full
+              bg-sky-100
+              text-sky-600
+              text-xs
+              font-semibold
+            ">
+
+              3
+
+            </div>
+
+
+            <div>
+
+              <p className="
+                text-xs
+                font-medium
+                text-slate-700
+              ">
+
+                Cargar el archivo
+
+              </p>
+
+
+              <p className="
+                mt-0.5
+                text-xs
+                text-slate-400
+              ">
+
+                Seleccione y cargue el archivo con los clientes.
+
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          {/* ================================================= */}
+          {/* PASO 4                                             */}
+          {/* ================================================= */}
+
+          <div className="
+            flex
+            items-start
+            gap-3
+            p-3
+            rounded-lg
+            bg-slate-50
+            border
+            border-slate-100
+          ">
+
+            <div className="
+              flex
+              items-center
+              justify-center
+              shrink-0
+              w-7
+              h-7
+              rounded-full
+              bg-sky-100
+              text-sky-600
+              text-xs
+              font-semibold
+            ">
+
+              4
+
+            </div>
+
+
+            <div>
+
+              <p className="
+                text-xs
+                font-medium
+                text-slate-700
+              ">
+
+                Validar los datos
+
+              </p>
+
+
+              <p className="
+                mt-0.5
+                text-xs
+                text-slate-400
+              ">
+
+                Verifique que la información cargada sea correcta.
+
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          {/* ================================================= */}
+          {/* PASO 5                                             */}
+          {/* ================================================= */}
+
+          <div className="
+            md:col-span-2
+            flex
+            items-start
+            gap-3
+            p-3
+            rounded-lg
+            bg-slate-50
+            border
+            border-slate-100
+          ">
+
+            <div className="
+              flex
+              items-center
+              justify-center
+              shrink-0
+              w-7
+              h-7
+              rounded-full
+              bg-emerald-50
+              text-emerald-600
+              border
+              border-emerald-100
+              text-xs
+              font-semibold
+            ">
+
+              <CheckCircle2
+                size={14}
+              />
+
+            </div>
+
+
+            <div>
+
+              <p className="
+                text-xs
+                font-medium
+                text-slate-700
+              ">
+
+                Guardar los datos
+
+              </p>
+
+
+              <p className="
+                mt-0.5
+                text-xs
+                text-slate-400
+              ">
+
+                Una vez validados, guarde los clientes en Nodex.
+
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
-      <div>
-        <CargaMasivaClientes></CargaMasivaClientes>
+
+
+
+      {/* ===================================================== */}
+      {/* CARGUE                                               */}
+      {/* ===================================================== */}
+
+      <div className="
+        bg-white
+        border
+        border-slate-200
+        rounded-xl
+        p-5
+      ">
+
+
+       
+
+
+        <CargaMasivaClientes />
+
       </div>
-           
-      </div>
-    </>
-  )
+
+    </div>
+
+  );
 }

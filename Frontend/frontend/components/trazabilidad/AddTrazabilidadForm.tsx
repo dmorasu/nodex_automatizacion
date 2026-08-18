@@ -1,67 +1,259 @@
-import { DialogTitle } from "@headlessui/react";
+"use client"
 
-import { useFormState } from "react-dom";
-import { useParams } from "next/navigation";
-import ErrorMessage from "../ui/ErrorMessage";
-import { useEffect } from "react";
+import { DialogTitle } from "@headlessui/react"
+import { useFormState } from "react-dom"
+import { useParams } from "next/navigation"
+import { useEffect } from "react"
+import { toast } from "react-toastify"
+import { Activity } from "lucide-react"
 
-import { toast } from "react-toastify";
-import CrearTrazabilidad from "@/actions/crear-Trazabilidad";
+import ErrorMessage from "../ui/ErrorMessage"
+import CrearTrazabilidad from "@/actions/crear-Trazabilidad"
 
-export default function AddTrazabilidadForm({closeModal}:{closeModal:()=>void}){
-    const {id}=useParams()
 
-    const crearTrazabilidadconId=CrearTrazabilidad.bind(null,+id)
+export default function AddTrazabilidadForm({
+  closeModal
+}: {
+  closeModal: () => void
+}) {
 
-    const [state,distpach]=useFormState(crearTrazabilidadconId,{
-        errors:[],
-        success:""
-    })
-    useEffect(()=>{
-        if(state.success){
-          toast.success(state.success)
-          closeModal()
-        }
-      },[state])
-      return (
-        <>
+  const { id } = useParams()
+
+
+  // =====================================================
+  // ACTION
+  // =====================================================
+
+  const crearTrazabilidadconId =
+    CrearTrazabilidad.bind(
+      null,
+      +id
+    )
+
+
+  const [state, dispatch] =
+    useFormState(
+      crearTrazabilidadconId,
+      {
+        errors: [],
+        success: ""
+      }
+    )
+
+
+  // =====================================================
+  // RESPUESTA
+  // =====================================================
+
+  useEffect(() => {
+
+    if (state.success) {
+
+      toast.success(state.success)
+
+      closeModal()
+
+    }
+
+  }, [state, closeModal])
+
+
+  return (
+    <>
+
+      {/* ================================================= */}
+      {/* ENCABEZADO                                       */}
+      {/* ================================================= */}
+
+      <div className="
+        flex
+        items-center
+        gap-3
+        mb-6
+      ">
+
+
+        {/* ICONO */}
+
+        <div className="
+          flex
+          items-center
+          justify-center
+          w-9
+          h-9
+          rounded-lg
+          bg-sky-50
+          border
+          border-sky-100
+          shrink-0
+        ">
+
+          <Activity
+            size={18}
+            className="text-sky-500"
+          />
+
+        </div>
+
+
+        {/* TÍTULO */}
+
+        <div>
+
           <DialogTitle
             as="h3"
-            className="font-black text-4xl text-sky-400 my-5"
+            className="
+              text-lg
+              font-semibold
+              text-slate-800
+              leading-tight
+            "
           >
-             Trazabilidad
+            Trazabilidad de la Solicitud
           </DialogTitle>
-    
-          <p className="text-xl font-bold">Registre las actualizaciones del {''}
-            <span className="text-sky-400">Trámite</span>
-          </p>
-          {state.errors.map(error=><ErrorMessage key={error}>{error}</ErrorMessage>)}
-          <form
-            className="b shadow-lg rounded-lg p-10 mt-10 border"
-            noValidate
-            action={distpach}
-          >
-           <div className=" py-3">
-                <label htmlFor="name" className="text-sm uppercase font-bold">
-                    Observacion:
-                </label>
-                <textarea
-                    id="observacionTrazabilidad"
-                    className="w-full p-3 border border-gray-100 bg-slate-100"
-                    rows={5}
-                    placeholder="Detalle de la Observacion"
-                    name="observacionTrazabilidad"
-                    
-                />
-           </div>
-            <input
-              type="submit"
-              className="bg-sky-400 w-full p-3 text-white uppercase font-bold hover:bg-amber-600 cursor-pointer transition-colors"
-              value='Agregar'
-            />
-          </form>
-        </>
-      )
 
-  
+
+          <p className="
+            mt-1
+            text-xs
+            text-slate-400
+          ">
+            Registre y consulte las actualizaciones y novedades asociadas al trámite.
+          </p>
+
+        </div>
+
+      </div>
+
+
+
+      {/* ================================================= */}
+      {/* ERRORES                                           */}
+      {/* ================================================= */}
+
+      {state.errors.map(error => (
+
+        <ErrorMessage
+          key={error}
+        >
+          {error}
+        </ErrorMessage>
+
+      ))}
+
+
+
+      {/* ================================================= */}
+      {/* FORMULARIO                                        */}
+      {/* ================================================= */}
+
+      <form
+        className="
+          space-y-5
+        "
+        noValidate
+        action={dispatch}
+      >
+
+
+        {/* =============================================== */}
+        {/* OBSERVACIÓN                                     */}
+        {/* =============================================== */}
+
+        <div>
+
+          <label
+            htmlFor="observacionTrazabilidad"
+            className="
+              block
+              mb-1.5
+              text-xs
+              font-medium
+              text-slate-600
+            "
+          >
+            Observación
+          </label>
+
+
+          <textarea
+            id="observacionTrazabilidad"
+            name="observacionTrazabilidad"
+            rows={5}
+            placeholder="Detalle de la observación..."
+            className="
+              w-full
+              px-3
+              py-2.5
+              rounded-md
+              border
+              border-slate-200
+              bg-slate-50
+              text-xs
+              text-slate-700
+              placeholder:text-slate-400
+              outline-none
+              resize-y
+              transition
+              focus:bg-white
+              focus:border-sky-400
+              focus:ring-2
+              focus:ring-sky-100
+            "
+          />
+
+          <p className="
+            mt-1.5
+            text-[11px]
+            text-slate-400
+          ">
+            Registre la información relevante sobre la actualización del trámite.
+          </p>
+
+        </div>
+
+
+
+        {/* ================================================= */}
+        {/* BOTÓN                                             */}
+        {/* ================================================= */}
+
+        <div className="
+          flex
+          justify-end
+          pt-2
+        ">
+
+          <button
+            type="submit"
+            className="
+              inline-flex
+              items-center
+              justify-center
+              h-9
+              min-w-[120px]
+              px-4
+              rounded-md
+              bg-sky-500
+              text-white
+              text-xs
+              font-medium
+              transition-all
+              hover:bg-sky-600
+              focus:outline-none
+              focus:ring-2
+              focus:ring-sky-200
+              cursor-pointer
+            "
+          >
+            Agregar
+          </button>
+
+        </div>
+
+
+      </form>
+
+    </>
+  )
 }

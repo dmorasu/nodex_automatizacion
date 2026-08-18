@@ -1,15 +1,18 @@
-import React from 'react'
-import Image from 'next/image'
+import Image from "next/image";
 
 export default function Logo() {
   return (
     <Image
-  src="/logoblanconodex_.png"
-  alt="Logo Nodex"
-  width={300}
-  height={600}
-  className="h-auto w-56 "  // agrega h-auto para mantener proporción
-  priority
-/>
-  )
+      src="/nodextramites.png"
+      alt="Logo Nodex"
+      width={160}
+      height={50}
+      className="
+        w-[130px]
+        h-auto
+        object-contain
+      "
+      priority
+    />
+  );
 }

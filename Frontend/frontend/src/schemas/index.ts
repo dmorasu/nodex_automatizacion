@@ -49,8 +49,7 @@ export const CrearSolicitudSchema = z.object({
         matriculaInmobiliaria: z.string().optional().nullable(),
         entidadId:z.string()
                   .min(1, { message: 'La Entidad no puede estar vacio' }),
-        documentosAportados:z.string()
-                  .min(1, { message: 'DocumentosAportados no puede estar vacio' }),
+        
         usuarioId:z.string()
                   .min(1, { message: 'El Usuario no puede estar vacio' }),
         

@@ -1,65 +1,348 @@
-import EditarSolicitudTramiteForm from "@/components/solicitudTramites/EditarSolicitudTramiteForm"
-import { verificacionSesion } from "@/src/auth/dal"
-import { SolicitudAPIRespuestaSchema } from "@/src/schemas"
+import EditarSolicitudTramiteForm
+  from "@/components/solicitudTramites/EditarSolicitudTramiteForm"
+
+import {
+  verificacionSesion
+} from "@/src/auth/dal"
+
+import {
+  SolicitudAPIRespuestaSchema
+} from "@/src/schemas"
+
 import Link from "next/link"
 
+import {
+  ArrowLeft,
+  FilePenLine,
+  UserRound
+} from "lucide-react"
 
 
 
+const getSolicitudTramites = async (
+  solicitudTramiteId: string
+) => {
 
+  const url =
+    `${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}`
 
-const getSolicitudTramites = async (solicitudTramiteId:string)=>{
-  const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}`
-  const req =await fetch(url,{
-    cache: 'no-store',
+  const req =
+    await fetch(
+      url,
+      {
+        cache: "no-store"
+      }
+    )
 
-  })
-  const json =await req.json()
- 
- 
-  const solicitud= SolicitudAPIRespuestaSchema.parse(json)
-  console.log(json)
+  const json =
+    await req.json()
+
+  const solicitud =
+    SolicitudAPIRespuestaSchema.parse(
+      json
+    )
+
   return solicitud
 }
 
-// // export async function  generateMetadata({params}:{params:{id:string}}) {
-// //   const solicitud = await getSolicitudTramites(params.id)
-// //   console.log(solicitud)
-// //   return {
-    
-// //     title:solicitud.id
-// //   }
-// }
-export default  async function EditarSolicitudTramitePage({params}:{params:{id:string}}) {
-  const id= params.id
 
-  const solicitud =await getSolicitudTramites(id)
-  
-  const {usuario}=await verificacionSesion()
+
+// =====================================================
+// PÁGINA
+// =====================================================
+
+export default async function EditarSolicitudTramitePage({
+  params
+}: {
+  params: {
+    id: string
+  }
+}) {
+
+  const id =
+    params.id
+
+
+  const solicitud =
+    await getSolicitudTramites(id)
+
+
+  const {
+    usuario
+  } =
+    await verificacionSesion()
+
+
+
   return (
-     <>
-      <div className='flex flex-col-reverse md:flex-row md:justify-between items-center'>
-        <div className='w-full md:w-auto'>
-          <h1 className='font-black text-4xl text-sky-400 my-5'>
-            Editar Solicitud de Trámite: {solicitud.id}
-          </h1>
-          <p className="text-xl font-bold">Modifique los datos de la {''}
-            <span className="text-amber-500">Solicitud:{solicitud.clientes?.nombreCliente}</span>
-          </p>
+
+    <>
+
+      {/* ================================================= */}
+      {/* ENCABEZADO                                       */}
+      {/* ================================================= */}
+
+      <div className="
+        flex
+        flex-col
+        gap-4
+
+        md:flex-row
+        md:items-center
+        md:justify-between
+
+        mb-6
+      ">
+
+
+        {/* =============================================== */}
+        {/* TÍTULO                                          */}
+        {/* =============================================== */}
+
+        <div>
+
+          <div className="
+            flex
+            items-center
+            gap-2
+          ">
+
+
+            <div className="
+              flex
+              items-center
+              justify-center
+
+              w-8
+              h-8
+
+              rounded-lg
+
+              bg-sky-50
+              border
+              border-sky-100
+            ">
+
+              <FilePenLine
+                size={16}
+                className="
+                  text-sky-500
+                "
+              />
+
+            </div>
+
+
+            <h1 className="
+              text-base
+              font-semibold
+              text-slate-800
+            ">
+
+              Editar Solicitud #{solicitud.id}
+
+            </h1>
+
+          </div>
+
+
+
+          {/* ============================================= */}
+          {/* DESCRIPCIÓN                                   */}
+          {/* ============================================= */}
+
+          <div className="
+            flex
+            items-center
+            gap-2
+            mt-2
+            ml-10
+          ">
+
+            <UserRound
+              size={13}
+              className="
+                text-slate-400
+              "
+            />
+
+            <p className="
+              text-xs
+              text-slate-400
+            ">
+
+              Modifica la información de la solicitud de{" "}
+
+              <span className="
+                font-medium
+                text-sky-500
+              ">
+
+                {solicitud.clientes?.nombreCliente
+                  ?? "Cliente"}
+
+              </span>
+
+            </p>
+
+          </div>
+
         </div>
+
+
+
+        {/* =============================================== */}
+        {/* VOLVER                                          */}
+        {/* =============================================== */}
+
         <Link
-          href={'/center'}
-          className='bg-amber-500 p-2 rounded-lg text-white font-bold w-full md:w-auto text-center'
+          href="/center"
+          className="
+            h-9
+            px-4
+
+            flex
+            items-center
+            justify-center
+            gap-2
+
+            rounded-md
+
+            bg-white
+            border
+            border-slate-200
+
+            text-slate-600
+            text-xs
+            font-medium
+
+            transition
+
+            hover:bg-slate-50
+            hover:border-slate-300
+            hover:text-sky-600
+
+            focus:outline-none
+            focus:ring-2
+            focus:ring-sky-100
+          "
         >
-          Volver
-        </Link>
-      </div>
-      <div className='p-10 mt-10  shadow-lg border '>
-          <EditarSolicitudTramiteForm
-              solicitud={solicitud}
-              usuario={usuario}
+
+          <ArrowLeft
+            size={14}
           />
+
+          Volver
+
+        </Link>
+
       </div>
+
+
+
+      {/* ================================================= */}
+      {/* FORMULARIO                                       */}
+      {/* ================================================= */}
+
+      <div className="
+        bg-white
+
+        border
+        border-slate-200
+
+        rounded-xl
+
+        shadow-sm
+
+        p-5
+        sm:p-6
+
+        mt-5
+      ">
+
+        {/* =============================================== */}
+        {/* CABECERA DEL FORMULARIO                        */}
+        {/* =============================================== */}
+
+        <div className="
+          flex
+          items-center
+          gap-3
+
+          pb-4
+          mb-5
+
+          border-b
+          border-slate-100
+        ">
+
+
+          <div className="
+            flex
+            items-center
+            justify-center
+
+            w-8
+            h-8
+
+            rounded-lg
+
+            bg-sky-50
+            border
+            border-sky-100
+          ">
+
+            <FilePenLine
+              size={15}
+              className="
+                text-sky-500
+              "
+            />
+
+          </div>
+
+
+          <div>
+
+            <h2 className="
+              text-xs
+              font-semibold
+              text-slate-700
+            ">
+
+              Información de la solicitud
+
+            </h2>
+
+
+            <p className="
+              mt-0.5
+              text-xs
+              text-slate-400
+            ">
+
+              Actualiza los datos registrados del trámite.
+
+            </p>
+
+          </div>
+
+        </div>
+
+
+
+        {/* =============================================== */}
+        {/* FORMULARIO                                     */}
+        {/* =============================================== */}
+
+        <EditarSolicitudTramiteForm
+          solicitud={solicitud}
+          usuario={usuario}
+        />
+
+      </div>
+
     </>
+
   )
 }

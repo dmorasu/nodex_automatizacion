@@ -1,61 +1,354 @@
 "use client"
+
 import { Fragment } from "react"
 import Link from "next/link"
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react"
-import { EllipsisVerticalIcon } from "@heroicons/react/20/solid"
-import { SolicitudTramites } from "@/src/schemas"
-import { useRouter } from "next/navigation"
+
+import {
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  Transition
+} from "@headlessui/react"
+
+import {
+  MoreVertical,
+  Eye,
+  Pencil,
+  Radar
+} from "lucide-react"
+
+import {
+  SolicitudTramites
+} from "@/src/schemas"
 
 
-export default function SolicitudTramiteMenu({solicitudId}:{solicitudId:SolicitudTramites['id']}) {
-  const router =useRouter()
+export default function SolicitudTramiteMenu({
+  solicitudId
+}: {
+  solicitudId: SolicitudTramites["id"]
+}) {
+
+
   return (
-    <>
-      <Menu as="div" className="relative flex-none">
-        <MenuButton className="-m-2.5 block p-2.5 rounded-2xl bg-gray-100 text-gray-500 hover:text-gray-900">
-          <span className="sr-only">opciones</span>
-          <EllipsisVerticalIcon className="h-9 w-9" aria-hidden="true" />
-        </MenuButton>
-        <Transition
-          as={Fragment}
-          enter="transition ease-out duration-100"
-          enterFrom="transform opacity-0 scale-95"
-          enterTo="transform opacity-100 scale-100"
-          leave="transition ease-in duration-75"
-          leaveFrom="transform opacity-100 scale-100"
-          leaveTo="transform opacity-0 scale-95"
-        >
-          <MenuItems className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-            <MenuItem>
-              <Link
-                href={`/center/solicitudTramites/${solicitudId}`}
-                className='block px-3 py-1 text-sm leading-6 text-gray-900'
-              >
-                Ver Trámite
-              </Link>
-            </MenuItem>
-            <MenuItem>
-              <Link
-                href={`/center/solicitudTramites/${solicitudId}/edit`}
-                className='block px-3 py-1 text-sm leading-6 text-sky-500 font-semibold hover:text-red-500'
-              >
-                Editar 
-              </Link>
-            </MenuItem>
-            <MenuItem>
-              <Link
-                href={`/center/torreControl`}
-                className='block px-3 py-1 text-sm leading-6 text-sky-500 font-semibold hover:text-red-500'
-              >
-                Torre Control
-              </Link>
-            </MenuItem>
-            
 
-            
-          </MenuItems>
-        </Transition>
-      </Menu>
-    </>
+    <Menu
+      as="div"
+      className="
+        relative
+        inline-block
+        text-left
+      "
+    >
+
+
+      {/* ================================================= */}
+      {/* BOTÓN                                             */}
+      {/* ================================================= */}
+
+      <MenuButton
+        className="
+          flex
+          items-center
+          justify-center
+
+          w-8
+          h-8
+
+          rounded-md
+
+          bg-white
+          border
+          border-slate-200
+
+          text-slate-400
+
+          transition
+
+          hover:bg-sky-50
+          hover:border-sky-200
+          hover:text-sky-500
+
+          focus:outline-none
+          focus:ring-2
+          focus:ring-sky-100
+        "
+      >
+
+        <span className="sr-only">
+          Opciones de solicitud
+        </span>
+
+        <MoreVertical
+          size={16}
+        />
+
+      </MenuButton>
+
+
+
+      {/* ================================================= */}
+      {/* MENÚ                                              */}
+      {/* ================================================= */}
+
+      <Transition
+        as={Fragment}
+
+        enter="
+          transition
+          ease-out
+          duration-100
+        "
+
+        enterFrom="
+          opacity-0
+          scale-95
+          -translate-y-1
+        "
+
+        enterTo="
+          opacity-100
+          scale-100
+          translate-y-0
+        "
+
+        leave="
+          transition
+          ease-in
+          duration-75
+        "
+
+        leaveFrom="
+          opacity-100
+          scale-100
+          translate-y-0
+        "
+
+        leaveTo="
+          opacity-0
+          scale-95
+          -translate-y-1
+        "
+      >
+
+        <MenuItems
+          className="
+            absolute
+            right-0
+            z-50
+            mt-2
+
+            w-48
+
+            origin-top-right
+
+            rounded-lg
+
+            bg-white
+
+            border
+            border-slate-200
+
+            shadow-lg
+
+            p-1
+
+            focus:outline-none
+          "
+        >
+
+
+          {/* ============================================= */}
+          {/* VER TRÁMITE                                   */}
+          {/* ============================================= */}
+
+          <MenuItem>
+
+            {({ focus }) => (
+
+              <Link
+                href={
+                  `/center/solicitudTramites/${solicitudId}`
+                }
+
+                className={`
+                  flex
+                  items-center
+                  gap-2.5
+
+                  w-full
+
+                  px-3
+                  py-2
+
+                  rounded-md
+
+                  text-xs
+                  font-medium
+
+                  transition
+
+                  ${
+                    focus
+                      ? `
+                        bg-sky-50
+                        text-sky-600
+                      `
+                      : `
+                        text-slate-600
+                      `
+                  }
+                `}
+              >
+
+                <Eye
+                  size={14}
+                  className="
+                    shrink-0
+                    text-sky-500
+                  "
+                />
+
+                <span>
+                  Ver trámite
+                </span>
+
+              </Link>
+
+            )}
+
+          </MenuItem>
+
+
+
+          {/* ============================================= */}
+          {/* EDITAR                                        */}
+          {/* ============================================= */}
+
+          <MenuItem>
+
+            {({ focus }) => (
+
+              <Link
+                href={
+                  `/center/solicitudTramites/${solicitudId}/edit`
+                }
+
+                className={`
+                  flex
+                  items-center
+                  gap-2.5
+
+                  w-full
+
+                  px-3
+                  py-2
+
+                  rounded-md
+
+                  text-xs
+                  font-medium
+
+                  transition
+
+                  ${
+                    focus
+                      ? `
+                        bg-sky-50
+                        text-sky-600
+                      `
+                      : `
+                        text-slate-600
+                      `
+                  }
+                `}
+              >
+
+                <Pencil
+                  size={14}
+                  className="
+                    shrink-0
+                    text-sky-500
+                  "
+                />
+
+                <span>
+                  Editar trámite
+                </span>
+
+              </Link>
+
+            )}
+
+          </MenuItem>
+
+
+
+          {/* ============================================= */}
+          {/* TORRE DE CONTROL                              */}
+          {/* ============================================= */}
+
+          <MenuItem>
+
+            {({ focus }) => (
+
+              <Link
+                href="/center/torreControl"
+
+                className={`
+                  flex
+                  items-center
+                  gap-2.5
+
+                  w-full
+
+                  px-3
+                  py-2
+
+                  rounded-md
+
+                  text-xs
+                  font-medium
+
+                  transition
+
+                  ${
+                    focus
+                      ? `
+                        bg-sky-50
+                        text-sky-600
+                      `
+                      : `
+                        text-slate-600
+                      `
+                  }
+                `}
+              >
+
+                <Radar
+                  size={14}
+                  className="
+                    shrink-0
+                    text-sky-500
+                  "
+                />
+
+                <span>
+                  Torre de control
+                </span>
+
+              </Link>
+
+            )}
+
+          </MenuItem>
+
+
+        </MenuItems>
+
+      </Transition>
+
+    </Menu>
+
   )
 }

@@ -20,11 +20,15 @@ export const procesarLogistica = async (data: any[]) => {
           transaction: t
         })
 
+console.log("Solicitud:", row.solicitudTramiteId);
+console.log("Existe:", !!existe);
+
         // 🔥 CONVERSIÓN DE FECHAS
         const fechaProg = excelDateToString(row.fechaProgramacionLogistica)
 const fechaEntrega = excelDateToString(row.fechaEntregaTransportadora)
 
         if (existe) {
+          console.log("ACTUALIZANDO", existe.id);
           await existe.update({
             numeroGuia: row.numeroGuia || null,
             destinatario: row.destinatario || null,
@@ -35,7 +39,10 @@ const fechaEntrega = excelDateToString(row.fechaEntregaTransportadora)
           }, { transaction: t })
 
         } else {
-
+       console.log("CREANDO", {
+  solicitudTramiteId: row.solicitudTramiteId,
+  numeroGuia: row.numeroGuia
+});
           await Logistica.create({
             solicitudTramiteId: row.solicitudTramiteId,
             numeroGuia: row.numeroGuia || null,
@@ -49,6 +56,11 @@ const fechaEntrega = excelDateToString(row.fechaEntregaTransportadora)
 
       } catch (error: any) {
         errores.push({ fila, error: error.message })
+        console.error("ERROR FILA", fila, error);
+  errores.push({
+    fila,
+    error: error.message
+  });
       }
     }
 

@@ -12,22 +12,69 @@ export default function AddEstadosBoton() {
     <button
       type="button"
       className="
-        flex items-center justify-center gap-2
-        h-10 min-w-[140px]
-        px-4
-        bg-sky-400 text-white
-        font-medium rounded-md
+        group
+        flex
+        items-center
+        gap-2.5
+        h-10
+        px-3
+        rounded-lg
+        bg-slate-50
+        border
+        border-slate-200
+        text-slate-600
         transition-all
-        hover:bg-white hover:text-sky-400
-        hover:border border-sky-400
-        focus:outline-none focus:ring-2 focus:ring-blue-400
+        duration-200
+        hover:bg-sky-50
+        hover:border-sky-200
+        hover:text-sky-600
+        focus:outline-none
+        focus:ring-2
+        focus:ring-sky-100
       "
       onClick={() =>
-        router.push(`${pathname}?addEstado=true&showModal=true`)
+        router.push(
+          `${pathname}?addEstado=true&showModal=true`
+        )
       }
     >
-      <Flag size={18} />
-      Estado
+
+      <span className="
+        flex
+        items-center
+        justify-center
+        w-7
+        h-7
+        rounded-md
+        bg-white
+        border
+        border-slate-200
+        group-hover:bg-sky-100
+        group-hover:border-sky-200
+        transition-all
+      ">
+
+        <Flag
+          size={16}
+          className="
+            text-sky-500
+            group-hover:text-sky-600
+          "
+        />
+
+      </span>
+
+
+      <span className="
+        text-xs
+        font-medium
+        whitespace-nowrap
+      ">
+
+        Estado
+
+      </span>
+
     </button>
   )
 }

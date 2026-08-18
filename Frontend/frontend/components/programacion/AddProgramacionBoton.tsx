@@ -12,22 +12,69 @@ export default function AddProgramacionBoton() {
     <button
       type="button"
       className="
-        flex items-center justify-center gap-2
-        h-10 min-w-[140px]
-        px-4
-        bg-sky-400 text-white
-        font-medium rounded-md
+        group
+        flex
+        items-center
+        gap-2.5
+        h-10
+        px-3
+        rounded-lg
+        bg-slate-50
+        border
+        border-slate-200
+        text-slate-600
         transition-all
-        hover:bg-white hover:text-sky-400
-        hover:border border-sky-400
-        focus:outline-none focus:ring-2 focus:ring-blue-400
+        duration-200
+        hover:bg-teal-50
+        hover:border-teal-200
+        hover:text-teal-600
+        focus:outline-none
+        focus:ring-2
+        focus:ring-teal-100
       "
       onClick={() =>
-        router.push(`${pathname}?addProgramacion=true&showModal=true`)
+        router.push(
+          `${pathname}?addProgramacion=true&showModal=true`
+        )
       }
     >
-      <Calendar size={18} />
-      Programación
+
+      <span className="
+        flex
+        items-center
+        justify-center
+        w-7
+        h-7
+        rounded-md
+        bg-white
+        border
+        border-slate-200
+        group-hover:bg-teal-100
+        group-hover:border-teal-200
+        transition-all
+      ">
+
+        <Calendar
+          size={14}
+          className="
+            text-teal-500
+            group-hover:text-teal-600
+          "
+        />
+
+      </span>
+
+
+      <span className="
+        text-xs
+        font-medium
+        whitespace-nowrap
+      ">
+
+        Programación
+
+      </span>
+
     </button>
   )
 }

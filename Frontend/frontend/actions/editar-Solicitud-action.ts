@@ -25,7 +25,7 @@ export async function EditarSolicitudTramite(solicitudTramiteId: SolicitudTramit
         fechaEntregaResultado:formData.get('fechaEntregaResultado'),
         placa:formData.get('placa'),
         matriculaInmobiliaria:formData.get('matricula'),
-        documentosAportados:formData.get('documentosAportados'),
+        
         usuarioId:formData.get('usuarioId')
    }
 
@@ -55,7 +55,7 @@ export async function EditarSolicitudTramite(solicitudTramiteId: SolicitudTramit
               matriculaInmobiliaria:solicitudTramiteData.matriculaInmobiliaria,
               entidadId:solicitudTramiteData.entidadId,
               tramiteId:solicitudTramiteData.tramiteId,
-              documentosAportados:solicitudTramiteData.documentosAportados,
+             
               usuarioId:solicitudTramiteData.usuarioId
     })
    })

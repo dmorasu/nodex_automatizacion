@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+
 import {
   FileText,
   Upload,
@@ -11,7 +12,9 @@ import {
   Download,
   Trash2,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
+
 
 interface Documento {
   id: number;
@@ -25,19 +28,22 @@ interface Documento {
   createdAt?: string;
 }
 
+
 interface Props {
   solicitudTramiteId: number;
   apiUrl: string;
 }
+
 
 export default function DocumentosSolicitud({
   solicitudTramiteId,
   apiUrl,
 }: Props) {
 
-  // ==========================================
+
+  // =====================================================
   // ESTADOS
-  // ==========================================
+  // =====================================================
 
   const [documentos, setDocumentos] =
     useState<Documento[]>([]);
@@ -60,54 +66,77 @@ export default function DocumentosSolicitud({
   const [error, setError] =
     useState("");
 
-  // Documento actualmente abierto en el visor
-  const [documentoVisualizando, setDocumentoVisualizando] =
+
+  // Documento actualmente abierto
+
+  const [
+    documentoVisualizando,
+    setDocumentoVisualizando
+  ] =
     useState<Documento | null>(null);
 
-  // URL temporal del PDF
-  const [pdfUrl, setPdfUrl] =
+
+  // URL temporal del documento
+
+  const [archivoUrl, setArchivoUrl] =
     useState<string | null>(null);
 
-  const [cargandoPdf, setCargandoPdf] =
+
+  const [cargandoArchivo, setCargandoArchivo] =
     useState(false);
+
 
   const inputRef =
     useRef<HTMLInputElement>(null);
 
 
-  // ==========================================
+  // =====================================================
   // FORMATEAR TAMAÑO
-  // ==========================================
+  // =====================================================
 
   const formatearTamano = (
     bytes: number
   ) => {
 
     if (bytes < 1024) {
+
       return `${bytes} B`;
+
     }
 
-    if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
+
+    if (
+      bytes <
+      1024 * 1024
+    ) {
+
+      return `${(
+        bytes / 1024
+      ).toFixed(1)} KB`;
+
     }
+
 
     return `${(
       bytes /
       (1024 * 1024)
     ).toFixed(2)} MB`;
+
   };
 
 
-  // ==========================================
+  // =====================================================
   // OBTENER DOCUMENTOS
-  // ==========================================
+  // =====================================================
 
   const obtenerDocumentos = async () => {
 
     try {
 
       setCargandoLista(true);
+
       setError("");
+
 
       const response =
         await fetch(
@@ -146,11 +175,13 @@ export default function DocumentosSolicitud({
         error
       );
 
+
       setError(
         error instanceof Error
           ? error.message
           : "Error obteniendo documentos"
       );
+
 
     } finally {
 
@@ -161,9 +192,9 @@ export default function DocumentosSolicitud({
   };
 
 
-  // ==========================================
-  // CARGAR DOCUMENTOS AL ABRIR LA PÁGINA
-  // ==========================================
+  // =====================================================
+  // CARGAR DOCUMENTOS AL ABRIR
+  // =====================================================
 
   useEffect(() => {
 
@@ -172,16 +203,18 @@ export default function DocumentosSolicitud({
   }, [solicitudTramiteId]);
 
 
-  // ==========================================
+  // =====================================================
   // SELECCIONAR ARCHIVOS
-  // ==========================================
+  // =====================================================
 
   const seleccionarArchivos = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
 
     setMensaje("");
+
     setError("");
+
 
     const seleccionados =
       Array.from(
@@ -192,13 +225,15 @@ export default function DocumentosSolicitud({
     if (
       seleccionados.length === 0
     ) {
+
       return;
+
     }
 
 
-    // ==========================================
+    // ===================================================
     // MÁXIMO 10 ARCHIVOS
-    // ==========================================
+    // ===================================================
 
     if (
       seleccionados.length > 10
@@ -209,38 +244,49 @@ export default function DocumentosSolicitud({
       );
 
       return;
+
     }
 
 
-    // ==========================================
-    // VALIDAR CADA ARCHIVO
-    // ==========================================
+    // ===================================================
+    // TIPOS Y TAMAÑOS
+    // ===================================================
+
+    const tiposPermitidos = [
+      "application/pdf",
+      "image/jpeg",
+      "image/jpg",
+    ];
+
 
     for (
       const archivo
       of seleccionados
     ) {
 
-      // ------------------------------------------
-      // PDF
-      // ------------------------------------------
+
+      // -----------------------------------------------
+      // TIPO
+      // -----------------------------------------------
 
       if (
-        archivo.type !==
-        "application/pdf"
+        !tiposPermitidos.includes(
+          archivo.type
+        )
       ) {
 
         setError(
-          `El archivo "${archivo.name}" no es un PDF.`
+          `El archivo "${archivo.name}" no es un formato permitido. Solo se permiten PDF y JPG.`
         );
 
         return;
+
       }
 
 
-      // ------------------------------------------
+      // -----------------------------------------------
       // TAMAÑO
-      // ------------------------------------------
+      // -----------------------------------------------
 
       if (
         archivo.size >
@@ -252,12 +298,13 @@ export default function DocumentosSolicitud({
         );
 
         return;
+
       }
 
 
-      // ------------------------------------------
+      // -----------------------------------------------
       // NOMBRE MÁXIMO 20 CARACTERES
-      // ------------------------------------------
+      // -----------------------------------------------
 
       const posicionPunto =
         archivo.name.lastIndexOf(".");
@@ -281,14 +328,15 @@ export default function DocumentosSolicitud({
         );
 
         return;
+
       }
 
     }
 
 
-    // ==========================================
-    // MÁXIMO 50 MB TOTAL
-    // ==========================================
+    // ===================================================
+    // MÁXIMO 320 MB TOTAL
+    // ===================================================
 
     const tamañoTotal =
       seleccionados.reduce(
@@ -308,6 +356,7 @@ export default function DocumentosSolicitud({
       );
 
       return;
+
     }
 
 
@@ -318,9 +367,9 @@ export default function DocumentosSolicitud({
   };
 
 
-  // ==========================================
+  // =====================================================
   // SUBIR DOCUMENTOS
-  // ==========================================
+  // =====================================================
 
   const subirDocumentos = async () => {
 
@@ -333,6 +382,7 @@ export default function DocumentosSolicitud({
       );
 
       return;
+
     }
 
 
@@ -351,7 +401,9 @@ export default function DocumentosSolicitud({
 
       formData.append(
         "solicitudTramiteId",
-        String(solicitudTramiteId)
+        String(
+          solicitudTramiteId
+        )
       );
 
 
@@ -418,11 +470,13 @@ export default function DocumentosSolicitud({
         error
       );
 
+
       setError(
         error instanceof Error
           ? error.message
           : "No se pudieron cargar los documentos"
       );
+
 
     } finally {
 
@@ -433,9 +487,9 @@ export default function DocumentosSolicitud({
   };
 
 
-  // ==========================================
+  // =====================================================
   // VER DOCUMENTO
-  // ==========================================
+  // =====================================================
 
   const verDocumento = async (
     documento: Documento
@@ -447,25 +501,29 @@ export default function DocumentosSolicitud({
         documento
       );
 
-      setCargandoPdf(true);
+      setCargandoArchivo(true);
 
       setError("");
 
-      // Limpiar URL anterior si existe
-      if (pdfUrl) {
+
+      // ================================================
+      // LIMPIAR URL ANTERIOR
+      // ================================================
+
+      if (archivoUrl) {
 
         URL.revokeObjectURL(
-          pdfUrl
+          archivoUrl
         );
 
-        setPdfUrl(null);
+        setArchivoUrl(null);
 
       }
 
 
-      // ==========================================
-      // SOLICITAR PDF AL BACKEND
-      // ==========================================
+      // ================================================
+      // SOLICITAR DOCUMENTO
+      // ================================================
 
       const response =
         await fetch(
@@ -482,19 +540,23 @@ export default function DocumentosSolicitud({
         let mensajeError =
           "No se pudo visualizar el documento";
 
+
         try {
 
           const data =
             await response.json();
+
 
           mensajeError =
             data.error ||
             data.detalle ||
             mensajeError;
 
+
         } catch {
 
           // La respuesta no era JSON
+
         }
 
 
@@ -505,17 +567,17 @@ export default function DocumentosSolicitud({
       }
 
 
-      // ==========================================
-      // CONVERTIR RESPUESTA A BLOB
-      // ==========================================
+      // ================================================
+      // CONVERTIR A BLOB
+      // ================================================
 
       const blob =
         await response.blob();
 
 
-      // ==========================================
+      // ================================================
       // CREAR URL TEMPORAL
-      // ==========================================
+      // ================================================
 
       const url =
         URL.createObjectURL(
@@ -523,7 +585,9 @@ export default function DocumentosSolicitud({
         );
 
 
-      setPdfUrl(url);
+      setArchivoUrl(
+        url
+      );
 
 
     } catch (error) {
@@ -533,11 +597,16 @@ export default function DocumentosSolicitud({
         error
       );
 
+
       setDocumentoVisualizando(
         null
       );
 
-      setPdfUrl(null);
+
+      setArchivoUrl(
+        null
+      );
+
 
       setError(
         error instanceof Error
@@ -545,30 +614,33 @@ export default function DocumentosSolicitud({
           : "No se pudo visualizar el documento"
       );
 
+
     } finally {
 
-      setCargandoPdf(false);
+      setCargandoArchivo(false);
 
     }
 
   };
 
 
-  // ==========================================
+  // =====================================================
   // CERRAR VISOR
-  // ==========================================
+  // =====================================================
 
   const cerrarVisor = () => {
 
-    if (pdfUrl) {
+    if (archivoUrl) {
 
       URL.revokeObjectURL(
-        pdfUrl
+        archivoUrl
       );
 
     }
 
-    setPdfUrl(null);
+
+    setArchivoUrl(null);
+
 
     setDocumentoVisualizando(
       null
@@ -577,9 +649,9 @@ export default function DocumentosSolicitud({
   };
 
 
-  // ==========================================
+  // =====================================================
   // DESCARGAR DOCUMENTO
-  // ==========================================
+  // =====================================================
 
   const descargarDocumento = async (
     documento: Documento
@@ -588,6 +660,7 @@ export default function DocumentosSolicitud({
     try {
 
       setError("");
+
 
       const response =
         await fetch(
@@ -604,17 +677,21 @@ export default function DocumentosSolicitud({
         let mensajeError =
           "No se pudo descargar el documento";
 
+
         try {
 
           const data =
             await response.json();
+
 
           mensajeError =
             data.error ||
             data.detalle ||
             mensajeError;
 
+
         } catch {}
+
 
         throw new Error(
           mensajeError
@@ -623,17 +700,17 @@ export default function DocumentosSolicitud({
       }
 
 
-      // ==========================================
+      // ================================================
       // OBTENER BLOB
-      // ==========================================
+      // ================================================
 
       const blob =
         await response.blob();
 
 
-      // ==========================================
-      // CREAR URL TEMPORAL
-      // ==========================================
+      // ================================================
+      // CREAR URL
+      // ================================================
 
       const url =
         URL.createObjectURL(
@@ -641,31 +718,38 @@ export default function DocumentosSolicitud({
         );
 
 
-      // ==========================================
-      // CREAR LINK DE DESCARGA
-      // ==========================================
+      // ================================================
+      // CREAR LINK
+      // ================================================
 
       const enlace =
-        document.createElement("a");
+        document.createElement(
+          "a"
+        );
+
 
       enlace.href =
         url;
 
+
       enlace.download =
         documento.nombreOriginal;
+
 
       document.body.appendChild(
         enlace
       );
 
+
       enlace.click();
+
 
       enlace.remove();
 
 
-      // ==========================================
+      // ================================================
       // LIBERAR MEMORIA
-      // ==========================================
+      // ================================================
 
       URL.revokeObjectURL(
         url
@@ -679,6 +763,7 @@ export default function DocumentosSolicitud({
         error
       );
 
+
       setError(
         error instanceof Error
           ? error.message
@@ -690,9 +775,9 @@ export default function DocumentosSolicitud({
   };
 
 
-  // ==========================================
+  // =====================================================
   // ELIMINAR DOCUMENTO
-  // ==========================================
+  // =====================================================
 
   const eliminarDocumento = async (
     documento: Documento
@@ -705,7 +790,9 @@ export default function DocumentosSolicitud({
 
 
     if (!confirmar) {
+
       return;
+
     }
 
 
@@ -745,10 +832,9 @@ export default function DocumentosSolicitud({
       }
 
 
-      // ==========================================
-      // SI EL DOCUMENTO ESTÁ ABIERTO,
-      // CERRAR VISOR
-      // ==========================================
+      // ================================================
+      // SI ESTÁ ABIERTO
+      // ================================================
 
       if (
         documentoVisualizando?.id ===
@@ -760,9 +846,9 @@ export default function DocumentosSolicitud({
       }
 
 
-      // ==========================================
-      // ACTUALIZAR LISTA LOCAL
-      // ==========================================
+      // ================================================
+      // ACTUALIZAR LISTA
+      // ================================================
 
       setDocumentos(
         documentos.filter(
@@ -784,11 +870,13 @@ export default function DocumentosSolicitud({
         error
       );
 
+
       setError(
         error instanceof Error
           ? error.message
           : "No se pudo eliminar el documento"
       );
+
 
     } finally {
 
@@ -801,18 +889,29 @@ export default function DocumentosSolicitud({
   };
 
 
-  // ==========================================
+  // =====================================================
+  // DETERMINAR SI ES IMAGEN
+  // =====================================================
+
+  const esImagen =
+    documentoVisualizando?.tipoArchivo ===
+      "image/jpeg" ||
+    documentoVisualizando?.tipoArchivo ===
+      "image/jpg";
+
+
+  // =====================================================
   // RETURN
-  // ==========================================
+  // =====================================================
 
   return (
 
     <div className="mt-10">
 
 
-      {/* ===================================== */}
-      {/* TITULO */}
-      {/* ===================================== */}
+      {/* ================================================= */}
+      {/* TITULO                                           */}
+      {/* ================================================= */}
 
       <h4 className="
         text-2xl
@@ -826,9 +925,9 @@ export default function DocumentosSolicitud({
       </h4>
 
 
-      {/* ===================================== */}
-      {/* CONTENEDOR PRINCIPAL */}
-      {/* ===================================== */}
+      {/* ================================================= */}
+      {/* CONTENEDOR PRINCIPAL                              */}
+      {/* ================================================= */}
 
       <div className="
         mt-8
@@ -840,9 +939,9 @@ export default function DocumentosSolicitud({
       ">
 
 
-        {/* ================================= */}
-        {/* CARGAR DOCUMENTOS */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* CARGAR DOCUMENTOS                                 */}
+        {/* ================================================= */}
 
         <div className="
           flex
@@ -872,7 +971,7 @@ export default function DocumentosSolicitud({
               mt-1
             ">
 
-              PDF · máximo 32 MB por archivo ·
+              PDF o JPG · máximo 32 MB por archivo ·
               máximo 10 archivos
 
             </p>
@@ -888,9 +987,9 @@ export default function DocumentosSolicitud({
           ">
 
 
-            {/* ================================= */}
-            {/* SELECCIONAR */}
-            {/* ================================= */}
+            {/* ============================================= */}
+            {/* SELECCIONAR                                   */}
+            {/* ============================================= */}
 
             <label
               htmlFor={`documentos-${solicitudTramiteId}`}
@@ -910,7 +1009,9 @@ export default function DocumentosSolicitud({
               "
             >
 
-              <Upload size={18} />
+              <Upload
+                size={18}
+              />
 
               Seleccionar documentos
 
@@ -921,7 +1022,7 @@ export default function DocumentosSolicitud({
               ref={inputRef}
               id={`documentos-${solicitudTramiteId}`}
               type="file"
-              accept="application/pdf,.pdf"
+              accept="application/pdf,image/jpeg,image/jpg"
               multiple
               className="hidden"
               onChange={
@@ -930,9 +1031,9 @@ export default function DocumentosSolicitud({
             />
 
 
-            {/* ================================= */}
-            {/* CARGAR */}
-            {/* ================================= */}
+            {/* ============================================= */}
+            {/* CARGAR                                        */}
+            {/* ============================================= */}
 
             {archivos.length > 0 && (
 
@@ -941,7 +1042,9 @@ export default function DocumentosSolicitud({
                 onClick={
                   subirDocumentos
                 }
-                disabled={cargando}
+                disabled={
+                  cargando
+                }
                 className="
                   flex
                   items-center
@@ -975,7 +1078,9 @@ export default function DocumentosSolicitud({
 
                   <>
 
-                    <Upload size={18} />
+                    <Upload
+                      size={18}
+                    />
 
                     Cargar
 
@@ -992,9 +1097,9 @@ export default function DocumentosSolicitud({
         </div>
 
 
-        {/* ================================= */}
-        {/* ARCHIVOS SELECCIONADOS */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* ARCHIVOS SELECCIONADOS                            */}
+        {/* ================================================= */}
 
         {archivos.length > 0 && (
 
@@ -1045,10 +1150,24 @@ export default function DocumentosSolicitud({
                       gap-3
                     ">
 
-                      <FileText
-                        size={20}
-                        className="text-red-500"
-                      />
+                      {archivo.type.startsWith(
+                        "image/"
+                      ) ? (
+
+                        <ImageIcon
+                          size={20}
+                          className="text-sky-500"
+                        />
+
+                      ) : (
+
+                        <FileText
+                          size={20}
+                          className="text-red-500"
+                        />
+
+                      )}
+
 
                       <span className="
                         text-sm
@@ -1085,9 +1204,9 @@ export default function DocumentosSolicitud({
         )}
 
 
-        {/* ================================= */}
-        {/* MENSAJE ÉXITO */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* MENSAJE ÉXITO                                    */}
+        {/* ================================================= */}
 
         {mensaje && (
 
@@ -1116,9 +1235,9 @@ export default function DocumentosSolicitud({
         )}
 
 
-        {/* ================================= */}
-        {/* MENSAJE ERROR */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* MENSAJE ERROR                                    */}
+        {/* ================================================= */}
 
         {error && (
 
@@ -1147,9 +1266,9 @@ export default function DocumentosSolicitud({
         )}
 
 
-        {/* ================================= */}
-        {/* LISTA DE DOCUMENTOS */}
-        {/* ================================= */}
+        {/* ================================================= */}
+        {/* LISTA DE DOCUMENTOS                              */}
+        {/* ================================================= */}
 
         <div className="mt-8">
 
@@ -1205,9 +1324,9 @@ export default function DocumentosSolicitud({
           </div>
 
 
-          {/* ================================= */}
-          {/* CARGANDO */}
-          {/* ================================= */}
+          {/* ================================================= */}
+          {/* CARGANDO                                         */}
+          {/* ================================================= */}
 
           {cargandoLista ? (
 
@@ -1276,9 +1395,9 @@ export default function DocumentosSolicitud({
                   >
 
 
-                    {/* ======================= */}
-                    {/* INFORMACIÓN */}
-                    {/* ======================= */}
+                    {/* ===================================== */}
+                    {/* INFORMACIÓN                             */}
+                    {/* ===================================== */}
 
                     <div className="
                       flex
@@ -1295,10 +1414,23 @@ export default function DocumentosSolicitud({
                         flex-shrink-0
                       ">
 
-                        <FileText
-                          size={24}
-                          className="text-red-500"
-                        />
+                        {documento.tipoArchivo.startsWith(
+                          "image/"
+                        ) ? (
+
+                          <ImageIcon
+                            size={24}
+                            className="text-sky-500"
+                          />
+
+                        ) : (
+
+                          <FileText
+                            size={24}
+                            className="text-red-500"
+                          />
+
+                        )}
 
                       </div>
 
@@ -1325,7 +1457,14 @@ export default function DocumentosSolicitud({
                             documento.tamano
                           )}
 
-                          {" · PDF"}
+                          {" · "}
+
+                          {documento.tipoArchivo ===
+                          "application/pdf"
+                            ? "PDF"
+                            : "JPG"
+                          }
+
 
                           {documento.createdAt && (
 
@@ -1350,9 +1489,9 @@ export default function DocumentosSolicitud({
                     </div>
 
 
-                    {/* ======================= */}
-                    {/* ACCIONES */}
-                    {/* ======================= */}
+                    {/* ===================================== */}
+                    {/* ACCIONES                               */}
+                    {/* ===================================== */}
 
                     <div className="
                       flex
@@ -1363,7 +1502,7 @@ export default function DocumentosSolicitud({
 
 
                       {/* ================================= */}
-                      {/* VER */}
+                      {/* VER                                 */}
                       {/* ================================= */}
 
                       <button
@@ -1402,7 +1541,7 @@ export default function DocumentosSolicitud({
 
 
                       {/* ================================= */}
-                      {/* DESCARGAR */}
+                      {/* DESCARGAR                           */}
                       {/* ================================= */}
 
                       <button
@@ -1441,7 +1580,7 @@ export default function DocumentosSolicitud({
 
 
                       {/* ================================= */}
-                      {/* ELIMINAR */}
+                      {/* ELIMINAR                            */}
                       {/* ================================= */}
 
                       <button
@@ -1489,6 +1628,7 @@ export default function DocumentosSolicitud({
 
                         )}
 
+
                         <span className="hidden sm:inline">
                           Eliminar
                         </span>
@@ -1511,9 +1651,9 @@ export default function DocumentosSolicitud({
       </div>
 
 
-      {/* ================================================== */}
-      {/* MODAL VISUALIZADOR PDF */}
-      {/* ================================================== */}
+      {/* ================================================= */}
+      {/* MODAL VISUALIZADOR                                */}
+      {/* ================================================= */}
 
       {documentoVisualizando && (
 
@@ -1534,9 +1674,9 @@ export default function DocumentosSolicitud({
         >
 
 
-          {/* ========================================= */}
-          {/* VENTANA */}
-          {/* ========================================= */}
+          {/* ================================================= */}
+          {/* VENTANA                                           */}
+          {/* ================================================= */}
 
           <div
             className="
@@ -1556,9 +1696,9 @@ export default function DocumentosSolicitud({
           >
 
 
-            {/* ================================= */}
-            {/* HEADER DEL MODAL */}
-            {/* ================================= */}
+            {/* ================================================= */}
+            {/* HEADER DEL MODAL                                  */}
+            {/* ================================================= */}
 
             <div
               className="
@@ -1573,7 +1713,9 @@ export default function DocumentosSolicitud({
             >
 
 
-              {/* INFORMACIÓN */}
+              {/* =============================================== */}
+              {/* INFORMACIÓN                                      */}
+              {/* =============================================== */}
 
               <div
                 className="
@@ -1586,16 +1728,27 @@ export default function DocumentosSolicitud({
 
                 <div
                   className="
-                    bg-red-50
+                    bg-slate-100
                     p-2
                     rounded-lg
                   "
                 >
 
-                  <FileText
-                    size={22}
-                    className="text-red-500"
-                  />
+                  {esImagen ? (
+
+                    <ImageIcon
+                      size={22}
+                      className="text-sky-500"
+                    />
+
+                  ) : (
+
+                    <FileText
+                      size={22}
+                      className="text-red-500"
+                    />
+
+                  )}
 
                 </div>
 
@@ -1628,7 +1781,12 @@ export default function DocumentosSolicitud({
                       documentoVisualizando.tamano
                     )}
 
-                    {" · PDF"}
+                    {" · "}
+
+                    {esImagen
+                      ? "JPG"
+                      : "PDF"
+                    }
 
                   </p>
 
@@ -1637,7 +1795,9 @@ export default function DocumentosSolicitud({
               </div>
 
 
-              {/* ACCIONES DEL HEADER */}
+              {/* =============================================== */}
+              {/* ACCIONES                                         */}
+              {/* =============================================== */}
 
               <div
                 className="
@@ -1648,7 +1808,9 @@ export default function DocumentosSolicitud({
               >
 
 
-                {/* DESCARGAR */}
+                {/* ============================================= */}
+                {/* DESCARGAR                                      */}
+                {/* ============================================= */}
 
                 <button
                   type="button"
@@ -1682,7 +1844,9 @@ export default function DocumentosSolicitud({
                 </button>
 
 
-                {/* CERRAR */}
+                {/* ============================================= */}
+                {/* CERRAR                                         */}
+                {/* ============================================= */}
 
                 <button
                   type="button"
@@ -1715,9 +1879,9 @@ export default function DocumentosSolicitud({
             </div>
 
 
-            {/* ================================= */}
-            {/* PDF */}
-            {/* ================================= */}
+            {/* ================================================= */}
+            {/* VISOR                                             */}
+            {/* ================================================= */}
 
             <div
               className="
@@ -1727,7 +1891,7 @@ export default function DocumentosSolicitud({
               "
             >
 
-              {cargandoPdf ? (
+              {cargandoArchivo ? (
 
                 <div
                   className="
@@ -1754,19 +1918,65 @@ export default function DocumentosSolicitud({
 
                 </div>
 
-              ) : pdfUrl ? (
 
-                <iframe
-                  src={pdfUrl}
-                  title={
-                    documentoVisualizando.nombreOriginal
-                  }
-                  className="
-                    w-full
-                    h-full
-                    border-0
-                  "
-                />
+              ) : archivoUrl ? (
+
+                esImagen ? (
+
+                  /* ==========================================
+                     JPG / JPEG
+                     ========================================== */
+
+                  <div
+                    className="
+                      w-full
+                      h-full
+                      flex
+                      items-center
+                      justify-center
+                      bg-gray-100
+                      p-6
+                      overflow-auto
+                    "
+                  >
+
+                    <img
+                      src={archivoUrl}
+                      alt={
+                        documentoVisualizando.nombreOriginal
+                      }
+                      className="
+                        max-w-full
+                        max-h-full
+                        object-contain
+                        rounded-lg
+                        shadow-lg
+                      "
+                    />
+
+                  </div>
+
+
+                ) : (
+
+                  /* ==========================================
+                     PDF
+                     ========================================== */
+
+                  <iframe
+                    src={archivoUrl}
+                    title={
+                      documentoVisualizando.nombreOriginal
+                    }
+                    className="
+                      w-full
+                      h-full
+                      border-0
+                    "
+                  />
+
+                )
+
 
               ) : (
 

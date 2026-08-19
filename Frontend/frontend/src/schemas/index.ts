@@ -81,8 +81,7 @@ export const EditarSolicitudSchema = z.object({
         matriculaInmobiliaria: z.string().optional().nullable(),
         entidadId:z.string()
                   .min(1, { message: 'La Entidad no puede estar vacio' }),
-        documentosAportados:z.string()
-                  .min(1, { message: 'DocumentosAportados no puede estar vacio' }),
+     
     
         
         
@@ -130,7 +129,8 @@ export const TramitadorSchema=z.object({
 
 export const MunicipioSchema = z.object({
         id: z.number(),
-        nombreMunicipio: z.string()
+        nombreMunicipio: z.string(),
+        responsable:z.string()
 })
 
 

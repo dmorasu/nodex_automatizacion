@@ -12,11 +12,30 @@ const fileFilter: multer.Options["fileFilter"] = (
   // VALIDAR TIPO
   // ==========================================
 
-  if (file.mimetype !== "application/pdf") {
+  fileFilter: (req, file, cb) => {
+
+  const tiposPermitidos = [
+    "application/pdf",
+    "image/jpeg",
+    "image/jpg",
+  ];
+
+  if (
+    !tiposPermitidos.includes(
+      file.mimetype
+    )
+  ) {
+
     return cb(
-      new Error("Solo se permiten archivos PDF.")
+      new Error(
+        "Solo se permiten archivos PDF o JPG"
+      )
     );
+
   }
+
+  cb(null, true);
+}
 
 
   // ==========================================

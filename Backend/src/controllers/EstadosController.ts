@@ -44,12 +44,27 @@ export class EstadosController{
     
     }
 
-    static getById= async (req:Request,res:Response)=>{
-        
-         res.json(req.estados)
+    static getById = async (req: Request, res: Response) => {
+    try {
 
-    
+        if (!req.estados) {
+            return res.status(404).json({
+                error: "Estado no encontrado"
+            })
+        }
+
+        return res.json([req.estados])
+
+    } catch (error) {
+
+        console.error(error)
+
+        return res.status(500).json({
+            error: "Hubo un error"
+        })
+
     }
+}
      static updateById= async (req:Request,res:Response)=>{
         await req.estados.update(req.body)
         res.json('Registro Actualizado')

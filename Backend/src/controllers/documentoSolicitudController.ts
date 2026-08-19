@@ -15,110 +15,137 @@ import { db } from "../config/db";
 
 
 export class DocumentoSolicitudController {
+
+
+  // =====================================================
+  // VER DOCUMENTO
+  // =====================================================
+
   static verDocumento = async (
-  req: Request,
-  res: Response
-) => {
+    req: Request,
+    res: Response
+  ) => {
 
-  try {
+    try {
 
-    // ==========================================
-    // 1. AUTENTICACIÓN
-    // ==========================================
+      // ==========================================
+      // 1. AUTENTICACIÓN
+      // ==========================================
 
-    if (!req.usuario) {
-      return res.status(401).json({
-        error: "Usuario no autenticado"
-      });
-    }
+      if (!req.usuario) {
 
+        return res.status(401).json({
+          error: "Usuario no autenticado"
+        });
 
-    // ==========================================
-    // 2. OBTENER ID
-    // ==========================================
-
-    const { id } = req.params;
+      }
 
 
-    if (!id) {
-      return res.status(400).json({
-        error: "Debe indicar el documento"
-      });
-    }
+      // ==========================================
+      // 2. OBTENER ID
+      // ==========================================
+
+      const { id } = req.params;
 
 
-    // ==========================================
-    // 3. BUSCAR DOCUMENTO
-    // ==========================================
+      if (!id) {
 
-    const documento =
-      await DocumentoSolicitud.findByPk(id);
+        return res.status(400).json({
+          error: "Debe indicar el documento"
+        });
 
-
-    if (!documento) {
-      return res.status(404).json({
-        error: "El documento no existe"
-      });
-    }
+      }
 
 
-    // ==========================================
-    // 4. OBTENER PDF DE AZURE
-    // ==========================================
+      // ==========================================
+      // 3. BUSCAR DOCUMENTO
+      // ==========================================
 
-    const archivo =
-      await obtenerArchivo(
+      const documento =
+        await DocumentoSolicitud.findByPk(id);
+
+
+      if (!documento) {
+
+        return res.status(404).json({
+          error: "El documento no existe"
+        });
+
+      }
+
+
+      // ==========================================
+      // 4. OBTENER ARCHIVO DE AZURE
+      // ==========================================
+
+      const ultimoSlash =
+        documento.rutaArchivo.lastIndexOf("/");
+
+
+      const rutaDirectorio =
         documento.rutaArchivo.substring(
           0,
-          documento.rutaArchivo.lastIndexOf("/")
-        ),
-        documento.nombreArchivo
+          ultimoSlash
+        );
+
+
+      const archivo =
+        await obtenerArchivo(
+          rutaDirectorio,
+          documento.nombreArchivo
+        );
+
+
+      // ==========================================
+      // 5. HEADERS
+      // ==========================================
+
+      res.setHeader(
+        "Content-Type",
+        documento.tipoArchivo
       );
 
 
-    // ==========================================
-    // 5. HEADERS
-    // ==========================================
-
-    res.setHeader(
-      "Content-Type",
-      documento.tipoArchivo
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${documento.nombreOriginal}"`
-    );
-
-    res.setHeader(
-      "Content-Length",
-      archivo.length
-    );
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${documento.nombreOriginal}"`
+      );
 
 
-    // ==========================================
-    // 6. ENVIAR PDF
-    // ==========================================
-
-    return res.send(archivo);
-
-
-  } catch (error) {
-
-    console.error(
-      "ERROR AL VISUALIZAR DOCUMENTO:",
-      error
-    );
+      res.setHeader(
+        "Content-Length",
+        archivo.length
+      );
 
 
-    return res.status(500).json({
-      error:
-        "No se pudo visualizar el documento"
-    });
+      // ==========================================
+      // 6. ENVIAR ARCHIVO
+      // ==========================================
 
-  }
+      return res.send(archivo);
 
-};
+
+    } catch (error) {
+
+      console.error(
+        "ERROR AL VISUALIZAR DOCUMENTO:",
+        error
+      );
+
+
+      return res.status(500).json({
+        error:
+          "No se pudo visualizar el documento"
+      });
+
+    }
+
+  };
+
+
+  // =====================================================
+  // SUBIR DOCUMENTOS
+  // =====================================================
 
   static subirDocumentos = async (
     req: Request,
@@ -129,6 +156,7 @@ export class DocumentoSolicitudController {
       rutaDirectorio: string;
       nombreArchivo: string;
     }[] = [];
+
 
     try {
 
@@ -144,7 +172,9 @@ export class DocumentoSolicitudController {
 
       }
 
-      const usuarioId = req.usuario.id;
+
+      const usuarioId =
+        req.usuario.id;
 
 
       // ==========================================
@@ -159,14 +189,15 @@ export class DocumentoSolicitudController {
       if (!solicitudTramiteId) {
 
         return res.status(400).json({
-          error: "Debe enviar solicitudTramiteId"
+          error:
+            "Debe enviar solicitudTramiteId"
         });
 
       }
 
 
       // ==========================================
-      // 3. VALIDAR ARCHIVOS
+      // 3. OBTENER ARCHIVOS
       // ==========================================
 
       const archivos =
@@ -179,31 +210,124 @@ export class DocumentoSolicitudController {
       ) {
 
         return res.status(400).json({
-          error: "Debe seleccionar al menos un documento PDF"
+          error:
+            "Debe seleccionar al menos un archivo"
         });
 
       }
 
 
       // ==========================================
-      // 4. VALIDAR MÁXIMO DE ARCHIVOS
+      // 4. TIPOS PERMITIDOS
       // ==========================================
 
-      if (archivos.length > 10) {
+      const tiposPermitidos = [
+        "application/pdf",
+        "image/jpeg",
+        "image/jpg",
+      ];
+
+
+      // ==========================================
+      // 5. VALIDAR CADA ARCHIVO
+      // ==========================================
+
+      const MAX_SIZE =
+        32 * 1024 * 1024;
+
+
+      for (
+        const archivo
+        of archivos
+      ) {
+
+        // ------------------------------------------
+        // TIPO
+        // ------------------------------------------
+
+        if (
+          !tiposPermitidos.includes(
+            archivo.mimetype
+          )
+        ) {
+
+          return res.status(400).json({
+            error:
+              `El archivo "${archivo.originalname}" no es válido. Solo se permiten PDF y JPG.`
+          });
+
+        }
+
+
+        // ------------------------------------------
+        // TAMAÑO
+        // ------------------------------------------
+
+        if (
+          archivo.size > MAX_SIZE
+        ) {
+
+          return res.status(400).json({
+            error:
+              `El archivo "${archivo.originalname}" supera los 32 MB.`
+          });
+
+        }
+
+
+        // ------------------------------------------
+        // NOMBRE
+        // ------------------------------------------
+
+        const extension =
+          path.extname(
+            archivo.originalname
+          );
+
+
+        const nombreBase =
+          path.basename(
+            archivo.originalname,
+            extension
+          );
+
+
+        if (
+          nombreBase.length > 20
+        ) {
+
+          return res.status(400).json({
+            error:
+              `El nombre del archivo "${archivo.originalname}" no puede tener más de 20 caracteres.`
+          });
+
+        }
+
+      }
+
+
+      // ==========================================
+      // 6. MÁXIMO DE ARCHIVOS
+      // ==========================================
+
+      if (
+        archivos.length > 10
+      ) {
 
         return res.status(400).json({
-          error: "Puede cargar máximo 10 documentos por solicitud"
+          error:
+            "Puede cargar máximo 10 documentos por solicitud"
         });
 
       }
 
 
       // ==========================================
-      // 5. VALIDAR TAMAÑO TOTAL
+      // 7. TAMAÑO TOTAL
       // ==========================================
 
       const MAX_TOTAL_SIZE =
-        50 * 1024 * 1024; // 50 MB
+        320 * 1024 * 1024;
 
 
       const tamañoTotal =
@@ -214,18 +338,21 @@ export class DocumentoSolicitudController {
         );
 
 
-      if (tamañoTotal > MAX_TOTAL_SIZE) {
+      if (
+        tamañoTotal >
+        MAX_TOTAL_SIZE
+      ) {
 
         return res.status(400).json({
           error:
-            "El tamaño total de los documentos no puede superar los 50 MB"
+            "El tamaño total de los documentos no puede superar los 320 MB"
         });
 
       }
 
 
       // ==========================================
-      // 6. VALIDAR SOLICITUD
+      // 8. VALIDAR SOLICITUD
       // ==========================================
 
       const solicitud =
@@ -245,7 +372,7 @@ export class DocumentoSolicitudController {
 
 
       // ==========================================
-      // 7. DIRECTORIO DE LA SOLICITUD
+      // 9. DIRECTORIO
       // ==========================================
 
       const rutaDirectorio =
@@ -253,7 +380,7 @@ export class DocumentoSolicitudController {
 
 
       // ==========================================
-      // 8. PREPARAR NOMBRES
+      // 10. PREPARAR DOCUMENTOS
       // ==========================================
 
       const documentosPreparados: {
@@ -263,13 +390,16 @@ export class DocumentoSolicitudController {
       }[] = [];
 
 
-      // Nombres que ya hemos reservado
-      // dentro de esta misma petición
+      // Nombres reservados durante esta petición
+
       const nombresReservados =
         new Set<string>();
 
 
-      for (const archivo of archivos) {
+      for (
+        const archivo
+        of archivos
+      ) {
 
         const extension =
           path.extname(
@@ -296,7 +426,9 @@ export class DocumentoSolicitudController {
         // ==========================================
 
         while (
-          nombresReservados.has(nombreArchivo) ||
+          nombresReservados.has(
+            nombreArchivo
+          ) ||
           await archivoExiste(
             rutaDirectorio,
             nombreArchivo
@@ -331,7 +463,7 @@ export class DocumentoSolicitudController {
 
 
       // ==========================================
-      // 9. TRANSACCIÓN POSTGRESQL
+      // 11. TRANSACCIÓN POSTGRESQL
       // ==========================================
 
       const transaction =
@@ -340,9 +472,9 @@ export class DocumentoSolicitudController {
 
       try {
 
-        // ==========================================
-        // 10. SUBIR TODOS LOS ARCHIVOS A AZURE
-        // ==========================================
+        // ========================================
+        // 12. SUBIR ARCHIVOS A AZURE
+        // ========================================
 
         for (
           const documento
@@ -360,7 +492,8 @@ export class DocumentoSolicitudController {
           );
 
 
-          // Guardamos para rollback
+          // Guardar para rollback
+
           archivosSubidos.push({
 
             rutaDirectorio,
@@ -373,9 +506,9 @@ export class DocumentoSolicitudController {
         }
 
 
-        // ==========================================
-        // 11. CREAR REGISTROS EN POSTGRESQL
-        // ==========================================
+        // ========================================
+        // 13. CREAR REGISTROS POSTGRESQL
+        // ========================================
 
         const documentos =
           await DocumentoSolicitud.bulkCreate(
@@ -384,7 +517,9 @@ export class DocumentoSolicitudController {
               documento => ({
 
                 solicitudTramiteId:
-                  Number(solicitudTramiteId),
+                  Number(
+                    solicitudTramiteId
+                  ),
 
                 usuarioId,
 
@@ -413,16 +548,16 @@ export class DocumentoSolicitudController {
           );
 
 
-        // ==========================================
-        // 12. CONFIRMAR TRANSACCIÓN
-        // ==========================================
+        // ========================================
+        // 14. CONFIRMAR TRANSACCIÓN
+        // ========================================
 
         await transaction.commit();
 
 
-        // ==========================================
-        // 13. RESPUESTA
-        // ==========================================
+        // ========================================
+        // 15. RESPUESTA
+        // ========================================
 
         return res.status(201).json({
 
@@ -468,9 +603,9 @@ export class DocumentoSolicitudController {
 
       } catch (error) {
 
-        // ==========================================
+        // ========================================
         // ROLLBACK POSTGRESQL
-        // ==========================================
+        // ========================================
 
         await transaction.rollback();
 
@@ -506,9 +641,11 @@ export class DocumentoSolicitudController {
 
           );
 
+
           console.log(
             `Archivo eliminado por rollback: ${archivo.nombreArchivo}`
           );
+
 
         } catch (errorAzure) {
 
@@ -542,347 +679,421 @@ export class DocumentoSolicitudController {
 
   };
 
+
+  // =====================================================
+  // LISTAR DOCUMENTOS
+  // =====================================================
+
   static listarDocumentos = async (
-  req: Request,
-  res: Response
-) => {
+    req: Request,
+    res: Response
+  ) => {
 
-  try {
+    try {
 
-    // ==========================================
-    // 1. VALIDAR USUARIO AUTENTICADO
-    // ==========================================
+      // ==========================================
+      // 1. AUTENTICACIÓN
+      // ==========================================
 
-    if (!req.usuario) {
-      return res.status(401).json({
-        error: "Usuario no autenticado"
-      });
-    }
+      if (!req.usuario) {
 
+        return res.status(401).json({
+          error:
+            "Usuario no autenticado"
+        });
 
-    // ==========================================
-    // 2. OBTENER ID DE LA SOLICITUD
-    // ==========================================
-
-    const { solicitudTramiteId } = req.params;
+      }
 
 
-    if (!solicitudTramiteId) {
-      return res.status(400).json({
-        error: "Debe indicar el ID de la solicitud"
-      });
-    }
+      // ==========================================
+      // 2. ID SOLICITUD
+      // ==========================================
 
-
-    // ==========================================
-    // 3. VALIDAR QUE LA SOLICITUD EXISTA
-    // ==========================================
-
-    const solicitud =
-      await SolicitudTramites.findByPk(
+      const {
         solicitudTramiteId
+      } = req.params;
+
+
+      if (!solicitudTramiteId) {
+
+        return res.status(400).json({
+          error:
+            "Debe indicar el ID de la solicitud"
+        });
+
+      }
+
+
+      // ==========================================
+      // 3. VALIDAR SOLICITUD
+      // ==========================================
+
+      const solicitud =
+        await SolicitudTramites.findByPk(
+          solicitudTramiteId
+        );
+
+
+      if (!solicitud) {
+
+        return res.status(404).json({
+          error:
+            "La solicitud de trámite no existe"
+        });
+
+      }
+
+
+      // ==========================================
+      // 4. BUSCAR DOCUMENTOS
+      // ==========================================
+
+      const documentos =
+        await DocumentoSolicitud.findAll({
+
+          where: {
+
+            solicitudTramiteId:
+              Number(
+                solicitudTramiteId
+              )
+
+          },
+
+          order: [
+            ["createdAt", "DESC"]
+          ],
+
+          attributes: [
+
+            "id",
+
+            "solicitudTramiteId",
+
+            "nombreOriginal",
+
+            "nombreArchivo",
+
+            "rutaArchivo",
+
+            "tipoArchivo",
+
+            "tamano",
+
+            "usuarioId",
+
+            "createdAt"
+
+          ]
+
+        });
+
+
+      // ==========================================
+      // 5. RESPUESTA
+      // ==========================================
+
+      return res.status(200).json({
+
+        solicitudTramiteId:
+          Number(
+            solicitudTramiteId
+          ),
+
+        totalDocumentos:
+          documentos.length,
+
+        documentos
+
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "ERROR AL LISTAR DOCUMENTOS:",
+        error
       );
 
 
-    if (!solicitud) {
-      return res.status(404).json({
-        error: "La solicitud de trámite no existe"
+      return res.status(500).json({
+        error:
+          "No se pudieron obtener los documentos"
       });
+
     }
 
-
-    // ==========================================
-    // 4. BUSCAR DOCUMENTOS
-    // ==========================================
-
-    const documentos =
-      await DocumentoSolicitud.findAll({
-
-        where: {
-          solicitudTramiteId:
-            Number(solicitudTramiteId)
-        },
-
-        order: [
-          ["createdAt", "DESC"]
-        ],
-
-        attributes: [
-          "id",
-          "solicitudTramiteId",
-          "nombreOriginal",
-          "nombreArchivo",
-          "rutaArchivo",
-          "tipoArchivo",
-          "tamano",
-          "usuarioId",
-          "createdAt"
-        ]
-
-      });
+  };
 
 
-    // ==========================================
-    // 5. RESPUESTA
-    // ==========================================
+  // =====================================================
+  // DESCARGAR DOCUMENTO
+  // =====================================================
 
-    return res.status(200).json({
+  static descargarDocumento = async (
+    req: Request,
+    res: Response
+  ) => {
 
-      solicitudTramiteId:
-        Number(solicitudTramiteId),
+    try {
 
-      totalDocumentos:
-        documentos.length,
+      // ==========================================
+      // 1. AUTENTICACIÓN
+      // ==========================================
 
-      documentos
+      if (!req.usuario) {
 
-    });
+        return res.status(401).json({
+          error:
+            "Usuario no autenticado"
+        });
 
-
-  } catch (error) {
-
-    console.error(
-      "ERROR AL LISTAR DOCUMENTOS:",
-      error
-    );
-
-
-    return res.status(500).json({
-      error:
-        "No se pudieron obtener los documentos"
-    });
-
-  }
-
-};
-
-static descargarDocumento = async (
-  req: Request,
-  res: Response
-) => {
-
-  try {
-
-    // ==========================================
-    // 1. AUTENTICACIÓN
-    // ==========================================
-
-    if (!req.usuario) {
-      return res.status(401).json({
-        error: "Usuario no autenticado"
-      });
-    }
+      }
 
 
-    // ==========================================
-    // 2. ID
-    // ==========================================
+      // ==========================================
+      // 2. ID
+      // ==========================================
 
-    const { id } = req.params;
-
-
-    if (!id) {
-      return res.status(400).json({
-        error: "Debe indicar el documento"
-      });
-    }
+      const { id } =
+        req.params;
 
 
-    // ==========================================
-    // 3. BUSCAR DOCUMENTO
-    // ==========================================
+      if (!id) {
 
-    const documento =
-      await DocumentoSolicitud.findByPk(id);
+        return res.status(400).json({
+          error:
+            "Debe indicar el documento"
+        });
 
-
-    if (!documento) {
-      return res.status(404).json({
-        error: "El documento no existe"
-      });
-    }
+      }
 
 
-    // ==========================================
-    // 4. OBTENER ARCHIVO
-    // ==========================================
+      // ==========================================
+      // 3. BUSCAR DOCUMENTO
+      // ==========================================
 
-    const ultimoSlash =
-      documento.rutaArchivo.lastIndexOf("/");
+      const documento =
+        await DocumentoSolicitud.findByPk(
+          id
+        );
 
 
-    const rutaDirectorio =
-      documento.rutaArchivo.substring(
-        0,
-        ultimoSlash
+      if (!documento) {
+
+        return res.status(404).json({
+          error:
+            "El documento no existe"
+        });
+
+      }
+
+
+      // ==========================================
+      // 4. OBTENER ARCHIVO
+      // ==========================================
+
+      const ultimoSlash =
+        documento.rutaArchivo.lastIndexOf("/");
+
+
+      const rutaDirectorio =
+        documento.rutaArchivo.substring(
+          0,
+          ultimoSlash
+        );
+
+
+      const archivo =
+        await obtenerArchivo(
+
+          rutaDirectorio,
+
+          documento.nombreArchivo
+
+        );
+
+
+      // ==========================================
+      // 5. HEADERS
+      // ==========================================
+
+      res.setHeader(
+        "Content-Type",
+        documento.tipoArchivo
       );
 
 
-    const archivo =
-      await obtenerArchivo(
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${documento.nombreOriginal}"`
+      );
+
+
+      res.setHeader(
+        "Content-Length",
+        archivo.length
+      );
+
+
+      // ==========================================
+      // 6. ENVIAR
+      // ==========================================
+
+      return res.send(
+        archivo
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        "ERROR AL DESCARGAR DOCUMENTO:",
+        error
+      );
+
+
+      return res.status(500).json({
+        error:
+          "No se pudo descargar el documento"
+      });
+
+    }
+
+  };
+
+
+  // =====================================================
+  // ELIMINAR DOCUMENTO
+  // =====================================================
+
+  static eliminarDocumento = async (
+    req: Request,
+    res: Response
+  ) => {
+
+    try {
+
+      // ==========================================
+      // 1. AUTENTICACIÓN
+      // ==========================================
+
+      if (!req.usuario) {
+
+        return res.status(401).json({
+          error:
+            "Usuario no autenticado"
+        });
+
+      }
+
+
+      // ==========================================
+      // 2. ID
+      // ==========================================
+
+      const { id } =
+        req.params;
+
+
+      if (!id) {
+
+        return res.status(400).json({
+          error:
+            "Debe indicar el documento"
+        });
+
+      }
+
+
+      // ==========================================
+      // 3. BUSCAR DOCUMENTO
+      // ==========================================
+
+      const documento =
+        await DocumentoSolicitud.findByPk(
+          id
+        );
+
+
+      if (!documento) {
+
+        return res.status(404).json({
+          error:
+            "El documento no existe"
+        });
+
+      }
+
+
+      // ==========================================
+      // 4. OBTENER RUTA
+      // ==========================================
+
+      const ultimoSlash =
+        documento.rutaArchivo.lastIndexOf("/");
+
+
+      const rutaDirectorio =
+        documento.rutaArchivo.substring(
+          0,
+          ultimoSlash
+        );
+
+
+      // ==========================================
+      // 5. ELIMINAR DE AZURE
+      // ==========================================
+
+      await eliminarArchivo(
+
         rutaDirectorio,
+
         documento.nombreArchivo
+
       );
 
 
-    // ==========================================
-    // 5. HEADERS DE DESCARGA
-    // ==========================================
+      // ==========================================
+      // 6. ELIMINAR DE POSTGRESQL
+      // ==========================================
 
-    res.setHeader(
-      "Content-Type",
-      documento.tipoArchivo
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${documento.nombreOriginal}"`
-    );
-
-    res.setHeader(
-      "Content-Length",
-      archivo.length
-    );
+      await documento.destroy();
 
 
-    // ==========================================
-    // 6. ENVIAR
-    // ==========================================
+      // ==========================================
+      // 7. RESPUESTA
+      // ==========================================
 
-    return res.send(archivo);
+      return res.status(200).json({
 
+        mensaje:
+          "Documento eliminado correctamente",
 
-  } catch (error) {
+        id:
+          documento.id,
 
-    console.error(
-      "ERROR AL DESCARGAR DOCUMENTO:",
-      error
-    );
+        nombreOriginal:
+          documento.nombreOriginal
 
-
-    return res.status(500).json({
-      error:
-        "No se pudo descargar el documento"
-    });
-
-  }
-
-};
-static eliminarDocumento = async (
-  req: Request,
-  res: Response
-) => {
-
-  try {
-
-    // ==========================================
-    // 1. AUTENTICACIÓN
-    // ==========================================
-
-    if (!req.usuario) {
-      return res.status(401).json({
-        error: "Usuario no autenticado"
       });
-    }
 
 
-    // ==========================================
-    // 2. ID
-    // ==========================================
+    } catch (error) {
 
-    const { id } = req.params;
-
-
-    if (!id) {
-      return res.status(400).json({
-        error: "Debe indicar el documento"
-      });
-    }
-
-
-    // ==========================================
-    // 3. BUSCAR DOCUMENTO
-    // ==========================================
-
-    const documento =
-      await DocumentoSolicitud.findByPk(id);
-
-
-    if (!documento) {
-      return res.status(404).json({
-        error: "El documento no existe"
-      });
-    }
-
-
-    // ==========================================
-    // 4. OBTENER RUTA
-    // ==========================================
-
-    const ultimoSlash =
-      documento.rutaArchivo.lastIndexOf("/");
-
-
-    const rutaDirectorio =
-      documento.rutaArchivo.substring(
-        0,
-        ultimoSlash
+      console.error(
+        "ERROR AL ELIMINAR DOCUMENTO:",
+        error
       );
 
 
-    // ==========================================
-    // 5. ELIMINAR DE AZURE
-    // ==========================================
+      return res.status(500).json({
+        error:
+          "No se pudo eliminar el documento"
+      });
 
-    await eliminarArchivo(
-      rutaDirectorio,
-      documento.nombreArchivo
-    );
+    }
 
-
-    // ==========================================
-    // 6. ELIMINAR DE POSTGRESQL
-    // ==========================================
-
-    await documento.destroy();
-
-
-    // ==========================================
-    // 7. RESPUESTA
-    // ==========================================
-
-    return res.status(200).json({
-
-      mensaje:
-        "Documento eliminado correctamente",
-
-      id:
-        documento.id,
-
-      nombreOriginal:
-        documento.nombreOriginal
-
-    });
-
-
-  } catch (error) {
-
-    console.error(
-      "ERROR AL ELIMINAR DOCUMENTO:",
-      error
-    );
-
-
-    return res.status(500).json({
-      error:
-        "No se pudo eliminar el documento"
-    });
-
-  }
-
-};
-
-
-
+  };
 
 }

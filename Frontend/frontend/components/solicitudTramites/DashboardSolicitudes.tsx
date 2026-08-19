@@ -1297,7 +1297,7 @@ export default function DashboardPageClient() {
                         grid
                         grid-cols-1
                         sm:grid-cols-2
-                        xl:grid-cols-4
+                        xl:grid-cols-5
                         gap-x-6
                         gap-y-3
                         mt-4
@@ -1370,16 +1370,40 @@ export default function DashboardPageClient() {
                           ">
 
                             {
-                              solicitud
-                                .tramite
-                                ?.responsable ??
+                              solicitud.municipios?.responsable??
                               "Sin analista asignado"
                             }
 
                           </p>
 
                         </div>
+                        {/* ASIGNADO */}
 
+                        <div>
+
+                          <span className="
+                            block
+                            text-[11px]
+                            text-slate-400
+                          ">
+                            Creado por:
+                          </span>
+
+                          <p className="
+                            text-xs
+                            text-slate-600
+                          ">
+
+                            {
+                              solicitud
+                                .usuario
+                                ?.nombreUsuario ??
+                              "creado automaticamente"
+                            }
+
+                          </p>
+
+                        </div>
 
 
                         {/* FECHA CREACIÓN */}

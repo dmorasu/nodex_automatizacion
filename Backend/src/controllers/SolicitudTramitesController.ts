@@ -83,7 +83,7 @@ static obtenerSolicitudes = async (req: Request, res: Response) => {
         },
         {
           model: Municipios,
-          attributes: ["id","nombreMunicipio"]
+          attributes: ["id","nombreMunicipio","responsable"]
         },
         {
           model: Operaciones,
@@ -249,7 +249,7 @@ static getAll = async (req: Request, res: Response) => {
         },
         {
           model: Municipios,
-          attributes: ['id', 'nombreMunicipio'],
+          attributes: ['id', 'nombreMunicipio','responsable'],
         },
         {
           model: Usuarios,
@@ -311,7 +311,12 @@ static getAll = async (req: Request, res: Response) => {
       {
         include: [
           Clientes,
-          Municipios,
+          {
+            model:Municipios,
+            attributes: ["id","nombreMunicipio","responsable"]
+          },
+
+          
           
 
           {
@@ -542,7 +547,14 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
 
       include: [
         { model: Clientes, required: false },
-        { model: Municipios },
+        {
+  model: Municipios,
+  attributes: [
+    "id",
+    "nombreMunicipio",
+    "responsable"
+  ]
+},
         {
           model: Tramite,
           required: !!tramiteId,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useFormState } from "react-dom"
 import { toast } from "react-toastify"
 import { useRouter } from "next/navigation"
@@ -27,7 +27,7 @@ export default function CrearSolicitudesForm({
 
 
   // =====================================================
-  // FORM STATE
+  // ESTADO DEL FORMULARIO
   // =====================================================
 
   const [state, dispatch] =
@@ -39,6 +39,14 @@ export default function CrearSolicitudesForm({
         solicitudId: undefined
       }
     )
+
+
+  // =====================================================
+  // BLOQUEAR DOBLE ENVÍO
+  // =====================================================
+
+  const [isSubmitting, setIsSubmitting] =
+    useState(false)
 
 
   // =====================================================
@@ -61,6 +69,9 @@ export default function CrearSolicitudesForm({
         }
       )
 
+      // Si hubo error permitimos intentar nuevamente
+      setIsSubmitting(false)
+
     }
 
 
@@ -73,7 +84,7 @@ export default function CrearSolicitudesForm({
       toast.success(
         state.success,
         {
-          autoClose: 1200,
+          autoClose: 320,
 
           // =============================================
           // CUANDO SE CIERRA EL TOAST
@@ -139,7 +150,31 @@ export default function CrearSolicitudesForm({
         space-y-5
       "
       noValidate
+
       action={dispatch}
+
+      onSubmit={(e) => {
+
+        // =================================================
+        // EVITAR DOBLE SUBMIT
+        // =================================================
+
+        if (isSubmitting) {
+
+          e.preventDefault()
+
+          return
+
+        }
+
+
+        // =================================================
+        // BLOQUEAR INMEDIATAMENTE
+        // =================================================
+
+        setIsSubmitting(true)
+
+      }}
     >
 
 
@@ -147,34 +182,40 @@ export default function CrearSolicitudesForm({
       {/* INFORMACIÓN DE LA SOLICITUD                       */}
       {/* ================================================= */}
 
-      <div className="
-        bg-slate-50
-        border
-        border-slate-200
-        rounded-xl
-        p-4
-      ">
+      <div
+        className="
+          bg-slate-50
+          border
+          border-slate-200
+          rounded-xl
+          p-4
+        "
+      >
 
 
-        <div className="
-          flex
-          items-center
-          gap-2
-          mb-4
-        ">
-
-
-          <div className="
+        <div
+          className="
             flex
             items-center
-            justify-center
-            w-8
-            h-8
-            rounded-lg
-            bg-white
-            border
-            border-sky-100
-          ">
+            gap-2
+            mb-4
+          "
+        >
+
+
+          <div
+            className="
+              flex
+              items-center
+              justify-center
+              w-8
+              h-8
+              rounded-lg
+              bg-white
+              border
+              border-sky-100
+            "
+          >
 
             <FilePlus2
               size={15}
@@ -188,22 +229,26 @@ export default function CrearSolicitudesForm({
 
           <div>
 
-            <p className="
-              text-xs
-              font-semibold
-              text-slate-700
-            ">
+            <p
+              className="
+                text-xs
+                font-semibold
+                text-slate-700
+              "
+            >
 
               Información de la solicitud
 
             </p>
 
 
-            <p className="
-              mt-0.5
-              text-xs
-              text-slate-400
-            ">
+            <p
+              className="
+                mt-0.5
+                text-xs
+                text-slate-400
+              "
+            >
 
               Complete la información requerida para crear el trámite.
 
@@ -223,7 +268,6 @@ export default function CrearSolicitudesForm({
       </div>
 
 
-
       {/* ================================================= */}
       {/* USUARIO                                          */}
       {/* ================================================= */}
@@ -236,14 +280,16 @@ export default function CrearSolicitudesForm({
       />
 
 
-
       {/* ================================================= */}
       {/* CREAR SOLICITUD                                   */}
       {/* ================================================= */}
 
       <button
         type="submit"
-        className="
+
+        disabled={isSubmitting}
+
+        className={`
           w-full
           h-10
           flex
@@ -251,31 +297,48 @@ export default function CrearSolicitudesForm({
           justify-center
           gap-2
           rounded-lg
-          bg-sky-50
-          text-sky-600
           text-xs
           font-semibold
           border
-          border-sky-200
           transition-all
           duration-200
-          hover:bg-sky-500
-          hover:text-white
-          hover:border-sky-500
-          active:scale-[0.99]
           focus:outline-none
           focus:ring-2
           focus:ring-sky-100
-        "
+
+          ${
+            isSubmitting
+              ? `
+                bg-slate-100
+                text-slate-400
+                border-slate-200
+                cursor-not-allowed
+                opacity-70
+              `
+              : `
+                bg-sky-50
+                text-sky-600
+                border-sky-200
+                hover:bg-sky-500
+                hover:text-white
+                hover:border-sky-500
+                active:scale-[0.99]
+              `
+          }
+        `}
       >
 
         <FilePlus2
           size={15}
         />
 
-        Crear Solicitud
+        {isSubmitting
+          ? "Creando solicitud..."
+          : "Crear Solicitud"
+        }
 
       </button>
+
 
     </form>
 

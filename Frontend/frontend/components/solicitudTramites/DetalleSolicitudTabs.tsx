@@ -823,7 +823,7 @@ export default function DetalleSolicitudTabs({
           text-xs
           text-gray-800
         ">
-          {solicitudTramite.tramite?.responsable ??
+          {solicitudTramite.municipios?.responsable ??
             "Sin asignar"}
         </span>
 

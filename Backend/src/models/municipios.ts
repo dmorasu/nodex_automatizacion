@@ -32,6 +32,10 @@ class Municipios extends Model{
         type: DataType.DOUBLE
     })
     declare latitud:number
+    @Column({
+        type: DataType.STRING(100)
+    })
+    declare responsable:string
 
     @HasMany(()=>SolicitudTramites,{
         onUpdate:'CASCADE',

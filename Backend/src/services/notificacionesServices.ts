@@ -1,8 +1,10 @@
-// services/notificaciones.service.ts
-
 import { notificationQueue } from '../queues/notificacionesQueues'
 import Notificacion from '../models/notificaciones'
-import { construirMensaje, TipoNotificacion } from './template/notificacionesPlantilla'
+
+import {
+  construirMensaje,
+  TipoNotificacion
+} from './template/notificacionesPlantilla'
 
 type NotificacionParams = {
   solicitud: any
@@ -18,13 +20,24 @@ export const crearNotificacion = async ({
   data = {}
 }: NotificacionParams) => {
 
-  const { subject, text, html } = construirMensaje(tipo, solicitud, data)
+ 
 
+  const {
+    subject,
+    text,
+    html
+  } = construirMensaje(
+    tipo,
+    solicitud,
+    data
+  )
+
+  console.log('📧 SUBJECT GENERADO:', subject)
   console.log('🔥 Tipo notificación:', tipo)
 
-  // =========================
-  // 📲 WHATSAPP → ASIGNADO
-  // =========================
+  // =====================================
+  // WHATSAPP
+  // =====================================
   if (tipo === 'ASIGNADO') {
 
     if (!destinatario?.numeroTramitador) {
@@ -32,7 +45,6 @@ export const crearNotificacion = async ({
       return
     }
 
-    // 🔥 Guardar notificación
     const notif = await Notificacion.create({
 
       solicitudTramiteId: solicitud.id,
@@ -46,12 +58,12 @@ export const crearNotificacion = async ({
       mensaje: text,
 
       estado: 'PENDIENTE'
-
     })
+
+    console.log('💾 NOTIFICACIÓN WHATSAPP CREADA:', notif.id)
 
     const notifId = notif.getDataValue('id')
 
-    // 🔥 Enviar a cola BullMQ
     await notificationQueue.add('send', {
 
       notificacionId: notifId,
@@ -60,42 +72,41 @@ export const crearNotificacion = async ({
 
       to: destinatario.numeroTramitador,
 
-      // 🔥 TEMPLATE META
-      templateSid: 'HXdcf69d425019b1e6572b7757ce14d59e',
+      templateSid:
+        'HXdcf69d425019b1e6572b7757ce14d59e',
 
-      // 🔥 VARIABLES TEMPLATE
       variables: {
 
-        "1": data.nombre || 'Tramitador',
+        '1': data.nombre || 'Tramitador',
 
-        "2": data.valor || '0',
+        '2': data.valor || '0',
 
-        "3": data.fecha || 'Pendiente',
+        '3': data.fecha || 'Pendiente',
 
-        "4": data.solicitante || 'N/A',
+        '4': data.solicitante || 'N/A',
 
-        "5": solicitud.id?.toString() || 'N/A',
+        '5': solicitud.id?.toString() || 'N/A',
 
-        "6": data.programador || 'N/A'
-
+        '6': data.programador || 'N/A'
       }
-
     })
 
-    console.log('✅ WhatsApp agregado a cola')
-
+    console.log('📥 WhatsApp agregado a cola')
     return
   }
 
-  // =========================
-  // 📧 EMAIL → RESTO
-  // =========================
+  // =====================================
+  // EMAIL
+  // =====================================
   const tiposEmail: TipoNotificacion[] = [
     'FINALIZADO',
-    'CAMBIO_ESTADO',
+    'EN_ESPERA_POR_NOVEDAD',
     'PROGRAMACION',
-    'TRAZABILIDAD'
+    'TRAZABILIDAD',
+    'LOGISTICA'
   ]
+
+  console.log('🔍 ¿TIPO PERMITIDO PARA EMAIL?:', tiposEmail.includes(tipo))
 
   if (tiposEmail.includes(tipo)) {
 
@@ -117,12 +128,38 @@ export const crearNotificacion = async ({
       mensaje: html,
 
       estado: 'PENDIENTE'
-
     })
+
+    console.log('💾 NOTIFICACIÓN EMAIL CREADA')
+    console.log('🆔 NOTIFICACIÓN ID:', notif.id)
 
     const notifId = notif.getDataValue('id')
 
-    await notificationQueue.add('send', {
+    let cc: string[] = []
+
+    if (tipo === 'EN_ESPERA_POR_NOVEDAD') {
+
+      cc.push(
+        'torredecontrol@gomezpinedaabogados.com'
+      )
+
+      if (Number(solicitud.operacionesId) === 9) {
+
+        cc.push(
+          'novedadesvehiculos@gomezpinedaabogados.com'
+        )
+      }
+    }
+
+    console.log('📧 DESTINATARIO:', destinatario.correoUsuario)
+    console.log(
+      '📧 CC:',
+      cc.length > 0 ? cc.join(', ') : 'Sin copia'
+    )
+
+    console.log('📤 AGREGANDO JOB A REDIS...')
+
+    const job = await notificationQueue.add('send', {
 
       notificacionId: notifId,
 
@@ -130,17 +167,22 @@ export const crearNotificacion = async ({
 
       to: destinatario.correoUsuario,
 
+      cc: cc.length > 0
+        ? cc
+        : undefined,
+
       subject,
 
       message: html
-
     })
 
-    console.log('✅ Email agregado a cola')
+    console.log('✅ EMAIL AGREGADO A COLA')
+    console.log('🆔 JOB ID:', job.id)
+    console.log('📌 QUEUE:', notificationQueue.name)
 
     return
   }
 
-  console.log('⚠️ Tipo no manejado:', tipo)
-
+  console.log('⚠️⚠️⚠️ TIPO NO MANEJADO ⚠️⚠️⚠️')
+  console.log('TIPO RECIBIDO:', tipo)
 }

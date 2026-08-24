@@ -75,7 +75,7 @@ console.log('Tramitador:', solicitud?.tramitador)
     tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
     municipio: solicitud.municipios?.nombreMunicipio|| 'N/A',
     operacion: solicitud.operaciones.nombreOperacion||'N/A',
-    programador: solicitud.tramite.responsable
+    programador: solicitud.municipios.responsable
   }
 })
     }

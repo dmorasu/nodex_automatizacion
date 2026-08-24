@@ -38,6 +38,7 @@ export default async function CrearEstadoTramite(
     }
 
     const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramitesId}/estadosTramites`
+    
 
     const req = await fetch(url, {
       method: "POST",

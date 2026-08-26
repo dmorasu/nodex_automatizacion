@@ -10,33 +10,22 @@ export const sendEmail = async (
 ) => {
   try {
 
-    console.log('📧 Enviando email a:', to)
+    const correosCC = [
+      'torredecontrol@gomezpinedaabogados.com',
+      ...(cc || [])
+    ]
 
-    if (cc && cc.length > 0) {
-      console.log('📧 Enviando copia a:', cc.join(', '))
-    }
-
-    const response = await sgMail.send({
+    await sgMail.send({
       to,
       from: process.env.EMAIL_FROM!,
       subject,
       html,
-
-      ...(cc && cc.length > 0 ? { cc } : {})
+      cc: correosCC
     })
-
-    console.log(
-      '✅ Email enviado:',
-      response[0].statusCode
-    )
 
   } catch (error: any) {
 
-    console.error(
-      '❌ ERROR EMAIL:',
-      error.response?.body || error.message
-    )
-
     throw error
+
   }
 }

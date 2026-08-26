@@ -194,16 +194,26 @@ export class LogisticaController {
 
       const logisticaCompleta =
         await Logistica.findByPk(
-    logistica.id,
-    {
-      include: [
-        {
-          model: Transportadora,
-          as: 'transportadora'
-        }
-      ]
-    }
-  )
+          logistica.id,
+          {
+            include: [
+              {
+                model: Transportadora,
+                as: 'transportadora'
+              }
+            ]
+          }
+        )
+
+
+      // =====================================
+      // CONVERTIR A OBJETO PLANO
+      // =====================================
+
+      const logisticaData =
+        logisticaCompleta
+          ? logisticaCompleta.toJSON()
+          : null
 
 
       // =====================================
@@ -216,21 +226,30 @@ export class LogisticaController {
           {
             include: [
               Usuarios,
-              Tramite,
-            
+              Tramite
             ]
           }
         )
 
 
+      // =====================================
+      // LOGS
+      // =====================================
+
       console.log(
         '📦 LOGÍSTICA:',
-        logisticaCompleta?.toJSON()
+        logisticaData
       )
 
       console.log(
         '🚛 TRANSPORTADORA:',
-        logisticaCompleta?.transportadora
+        logisticaData?.transportadora
+      )
+
+      console.log(
+        '🚛 NOMBRE TRANSPORTADORA:',
+        logisticaData?.transportadora
+          ?.nombreTransportadora
       )
 
 
@@ -241,7 +260,7 @@ export class LogisticaController {
       if (
         solicitud &&
         solicitud.usuario &&
-        logisticaCompleta
+        logisticaData
       ) {
 
         await crearNotificacion({
@@ -264,29 +283,30 @@ export class LogisticaController {
               'N/A',
 
             numeroGuia:
-              logisticaCompleta.numeroGuia ||
+              logisticaData.numeroGuia ||
               'N/A',
 
             valorEnvio:
-              logisticaCompleta.valorEnvio ||
+              logisticaData.valorEnvio ||
               'N/A',
 
+            // 🚛 AHORA SE TOMA DEL OBJETO PLANO
             transportadora:
-              logisticaCompleta.transportadora
+              logisticaData.transportadora
                 ?.nombreTransportadora ||
               'N/A',
 
             destinatario:
-              logisticaCompleta.destinatario ||
+              logisticaData.destinatario ||
               'N/A',
 
             fechaProbableEntrega:
-              logisticaCompleta
+              logisticaData
                 .fechaProgramacionLogistica ||
               'N/A',
 
             fechaEntregaTransportadora:
-              logisticaCompleta
+              logisticaData
                 .fechaEntregaTransportadora ||
               'N/A'
 

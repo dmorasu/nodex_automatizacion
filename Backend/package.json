@@ -22,6 +22,7 @@
   "dependencies": {
     "@azure/storage-file-share": "^12.32.0",
     "@sendgrid/mail": "^8.1.6",
+    "axios": "^1.20.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.76.2",
     "colors": "^1.4.0",
@@ -36,6 +37,7 @@
     "lucide-react": "^0.563.0",
     "morgan": "^1.10.1",
     "multer": "^2.2.0",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",

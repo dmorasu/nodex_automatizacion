@@ -1,5 +1,8 @@
 import { notificationQueue } from '../queues/notificacionesQueues'
 import Notificacion from '../models/notificaciones'
+import {
+  generarPdfDocumentosSolicitud
+} from "../services/generarDocumentosPDFSolicitudes"
 
 import {
   construirMensaje,
@@ -20,8 +23,6 @@ export const crearNotificacion = async ({
   data = {}
 }: NotificacionParams) => {
 
- 
-
   const {
     subject,
     text,
@@ -38,60 +39,175 @@ export const crearNotificacion = async ({
   // =====================================
   // WHATSAPP
   // =====================================
-  if (tipo === 'ASIGNADO') {
+  if (tipo === "ASIGNADO") {
 
-    if (!destinatario?.numeroTramitador) {
-      console.log('❌ Sin número tramitador')
+    if (
+      !destinatario?.numeroTramitador
+    ) {
+
+      console.log(
+        "❌ Sin número tramitador"
+      )
+
       return
     }
 
-    const notif = await Notificacion.create({
+    // =====================================
+    // CREAR NOTIFICACIÓN
+    // =====================================
 
-      solicitudTramiteId: solicitud.id,
+    const notif =
+      await Notificacion.create({
 
-      tipo,
+        solicitudTramiteId:
+          solicitud.id,
 
-      canal: 'WHATSAPP',
+        tipo,
 
-      destinatario: destinatario.numeroTramitador,
+        canal:
+          "WHATSAPP",
 
-      mensaje: text,
+        destinatario:
+          destinatario.numeroTramitador,
 
-      estado: 'PENDIENTE'
-    })
+        mensaje:
+          text,
 
-    console.log('💾 NOTIFICACIÓN WHATSAPP CREADA:', notif.id)
+        estado:
+          "PENDIENTE"
 
-    const notifId = notif.getDataValue('id')
+      })
 
-    await notificationQueue.add('send', {
+    console.log(
+      "💾 NOTIFICACIÓN WHATSAPP CREADA:",
+      notif.id
+    )
 
-      notificacionId: notifId,
+    const notifId =
+      notif.getDataValue(
+        "id"
+      )
 
-      canal: 'WHATSAPP',
+    // =====================================
+    // GENERAR PDF DOCUMENTOS
+    // =====================================
 
-      to: destinatario.numeroTramitador,
+    let mediaUrl:
+      string | undefined
 
-      templateSid:
-        'HXdcf69d425019b1e6572b7757ce14d59e',
+    try {
 
-      variables: {
+      console.log(
+        "📄 BUSCANDO DOCUMENTOS DEL TRÁMITE..."
+      )
 
-        '1': data.nombre || 'Tramitador',
+      const pdf =
+        await generarPdfDocumentosSolicitud(
+          solicitud.id
+        )
 
-        '2': data.valor || '0',
+      if (pdf) {
 
-        '3': data.fecha || 'Pendiente',
+        mediaUrl =
+          pdf.mediaUrl
 
-        '4': data.solicitante || 'N/A',
+        console.log(
+          "📎 PDF LISTO PARA WHATSAPP"
+        )
 
-        '5': solicitud.id?.toString() || 'N/A',
+        console.log(
+          "📄 DOCUMENTOS:",
+          pdf.totalDocumentos
+        )
 
-        '6': data.programador || 'N/A'
+        console.log(
+          "📃 PÁGINAS:",
+          pdf.totalPaginas
+        )
       }
-    })
 
-    console.log('📥 WhatsApp agregado a cola')
+    } catch (error) {
+
+      console.error(
+        "⚠️ NO SE PUDO GENERAR EL PDF:",
+        error
+      )
+
+    }
+
+    // =====================================
+    // AGREGAR JOB A REDIS
+    // =====================================
+
+    await notificationQueue.add(
+      "send",
+      {
+
+        notificacionId:
+          notifId,
+
+        solicitudTramiteId:
+          solicitud.id,
+
+        canal:
+          "WHATSAPP",
+
+        to:
+          destinatario.numeroTramitador,
+
+        templateSid:
+          "HXdcf69d425019b1e6572b7757ce14d59e",
+
+        variables: {
+
+          "1":
+            data.nombre ||
+            "Tramitador",
+
+          "2":
+            String(
+              data.valor || "0"
+            ),
+
+          "3":
+            data.fecha ||
+            "Pendiente",
+
+          "4":
+            data.solicitante ||
+            "N/A",
+
+          "5":
+            String(
+              solicitud.id || "N/A"
+            ),
+
+          "6":
+            data.programador ||
+            "N/A"
+
+        },
+
+        // =====================================
+        // PDF
+        // =====================================
+
+        mediaUrl
+
+      }
+    )
+
+    console.log(
+      "📥 WHATSAPP AGREGADO A COLA"
+    )
+
+    console.log(
+      "📎 PDF:",
+      mediaUrl
+        ? "ADJUNTADO"
+        : "SIN DOCUMENTOS"
+    )
+
     return
   }
 
@@ -106,83 +222,138 @@ export const crearNotificacion = async ({
     'LOGISTICA'
   ]
 
-  console.log('🔍 ¿TIPO PERMITIDO PARA EMAIL?:', tiposEmail.includes(tipo))
+  console.log(
+    '🔍 ¿TIPO PERMITIDO PARA EMAIL?:',
+    tiposEmail.includes(tipo)
+  )
 
   if (tiposEmail.includes(tipo)) {
 
     if (!destinatario?.correoUsuario) {
-      console.log('❌ Sin correo usuario')
+
+      console.log(
+        '❌ Sin correo usuario'
+      )
+
       return
     }
 
-    const notif = await Notificacion.create({
+    const notif =
+      await Notificacion.create({
 
-      solicitudTramiteId: solicitud.id,
+        solicitudTramiteId:
+          solicitud.id,
 
-      tipo,
+        tipo,
 
-      canal: 'EMAIL',
+        canal:
+          'EMAIL',
 
-      destinatario: destinatario.correoUsuario,
+        destinatario:
+          destinatario.correoUsuario,
 
-      mensaje: html,
+        mensaje:
+          html,
 
-      estado: 'PENDIENTE'
-    })
+        estado:
+          'PENDIENTE'
 
-    console.log('💾 NOTIFICACIÓN EMAIL CREADA')
-    console.log('🆔 NOTIFICACIÓN ID:', notif.id)
+      })
 
-    const notifId = notif.getDataValue('id')
+    console.log(
+      '💾 NOTIFICACIÓN EMAIL CREADA'
+    )
+
+    console.log(
+      '🆔 NOTIFICACIÓN ID:',
+      notif.id
+    )
+
+    const notifId =
+      notif.getDataValue('id')
 
     let cc: string[] = []
 
-    if (tipo === 'EN_ESPERA_POR_NOVEDAD') {
+    // =====================================
+    // CC ESPECIAL PARA NOVEDADES
+    // =====================================
+
+    if (
+      tipo === 'EN_ESPERA_POR_NOVEDAD' &&
+      Number(solicitud.operacionesId) === 9
+    ) {
 
       cc.push(
-        'torredecontrol@gomezpinedaabogados.com'
+        'novedadesvehiculos@gomezpinedaabogados.com'
       )
-
-      if (Number(solicitud.operacionesId) === 9) {
-
-        cc.push(
-          'novedadesvehiculos@gomezpinedaabogados.com'
-        )
-      }
     }
 
-    console.log('📧 DESTINATARIO:', destinatario.correoUsuario)
     console.log(
-      '📧 CC:',
-      cc.length > 0 ? cc.join(', ') : 'Sin copia'
+      '📧 DESTINATARIO:',
+      destinatario.correoUsuario
     )
 
-    console.log('📤 AGREGANDO JOB A REDIS...')
+    console.log(
+      '📧 CC:',
+      cc.length > 0
+        ? cc.join(', ')
+        : 'Sin copia adicional'
+    )
 
-    const job = await notificationQueue.add('send', {
+    console.log(
+      '📤 AGREGANDO JOB A REDIS...'
+    )
 
-      notificacionId: notifId,
+    const job =
+      await notificationQueue.add(
+        'send',
+        {
 
-      canal: 'EMAIL',
+          notificacionId:
+            notifId,
 
-      to: destinatario.correoUsuario,
+          canal:
+            'EMAIL',
 
-      cc: cc.length > 0
-        ? cc
-        : undefined,
+          to:
+            destinatario.correoUsuario,
 
-      subject,
+          cc:
+            cc.length > 0
+              ? cc
+              : undefined,
 
-      message: html
-    })
+          subject,
 
-    console.log('✅ EMAIL AGREGADO A COLA')
-    console.log('🆔 JOB ID:', job.id)
-    console.log('📌 QUEUE:', notificationQueue.name)
+          message:
+            html
+
+        }
+      )
+
+    console.log(
+      '✅ EMAIL AGREGADO A COLA'
+    )
+
+    console.log(
+      '🆔 JOB ID:',
+      job.id
+    )
+
+    console.log(
+      '📌 QUEUE:',
+      notificationQueue.name
+    )
 
     return
   }
 
-  console.log('⚠️⚠️⚠️ TIPO NO MANEJADO ⚠️⚠️⚠️')
-  console.log('TIPO RECIBIDO:', tipo)
+  console.log(
+    '⚠️⚠️⚠️ TIPO NO MANEJADO ⚠️⚠️⚠️'
+  )
+
+  console.log(
+    'TIPO RECIBIDO:',
+    tipo
+  )
 }

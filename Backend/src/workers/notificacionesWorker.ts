@@ -28,13 +28,24 @@ new Worker(
     // LOGS DEL JOB
     // ================================
 
-    console.log('🚨🚨🚨 WORKER NUEVO EJECUTÁNDOSE - VERSION 999 🚨🚨🚨')
+    console.log(
+      '🚨🚨🚨 WORKER NUEVO EJECUTÁNDOSE 🚨🚨🚨'
+    )
 
-    console.log('📥 Job recibido:', job.data)
+    console.log(
+      '📥 Job recibido:',
+      job.data
+    )
 
-    console.log('🆔 Job ID:', job.id)
+    console.log(
+      '🆔 Job ID:',
+      job.id
+    )
 
-    console.log('📌 Queue:', job.queueName)
+    console.log(
+      '📌 Queue:',
+      job.queueName
+    )
 
     console.log(
       '📅 Timestamp:',
@@ -46,18 +57,31 @@ new Worker(
       job.attemptsMade
     )
 
+
     // ================================
     // EXTRAER DATOS
     // ================================
 
     const {
+
       notificacionId,
+
       canal,
+
       to,
+
       cc,
+
       subject,
-      message
+
+      message,
+
+      solicitudTramiteId,
+
+      mediaUrl
+
     } = job.data
+
 
     try {
 
@@ -67,9 +91,14 @@ new Worker(
 
       if (canal === 'EMAIL') {
 
-        console.log('📧 Enviando email...')
+        console.log(
+          '📧 Enviando email...'
+        )
 
-        console.log('📧 Para:', to)
+        console.log(
+          '📧 Para:',
+          to
+        )
 
         console.log(
           '📧 CC:',
@@ -82,11 +111,21 @@ new Worker(
         )
 
         await sendEmail(
+
           to,
+
           subject,
+
           message,
+
           cc
+
         )
+
+        console.log(
+          '✅ EMAIL ENVIADO'
+        )
+
       }
 
 
@@ -96,7 +135,14 @@ new Worker(
 
       if (canal === 'WHATSAPP') {
 
-        console.log('📲 Enviando WhatsApp...')
+        console.log(
+          '📲 Enviando template WhatsApp...'
+        )
+
+
+        // =====================================
+        // 1. ENVIAR TEMPLATE APROBADO
+        // =====================================
 
         await sendWhatsApp({
 
@@ -109,7 +155,52 @@ new Worker(
 
           variables:
             job.data.variables
+
         })
+
+        console.log(
+          '✅ TEMPLATE WHATSAPP ENVIADO'
+        )
+
+
+        // =====================================
+        // 2. ENVIAR PDF
+        // =====================================
+
+        if (mediaUrl) {
+
+          console.log(
+            '📎 ENVIANDO PDF...'
+          )
+
+          console.log(
+            '🔗 URL PDF:',
+            mediaUrl
+          )
+
+          await sendWhatsApp({
+
+            to,
+
+            body:
+              `📎 Documentos correspondientes al trámite #${solicitudTramiteId}`,
+
+            mediaUrl
+
+          })
+
+          console.log(
+            '✅ PDF ENVIADO POR WHATSAPP'
+          )
+
+        } else {
+
+          console.log(
+            'ℹ️ No hay PDF adjunto para esta notificación'
+          )
+
+        }
+
       }
 
 
@@ -122,6 +213,7 @@ new Worker(
           notificacionId
         )
 
+
       if (!notif) {
 
         console.log(
@@ -130,6 +222,7 @@ new Worker(
         )
 
         return
+
       }
 
 
@@ -139,16 +232,22 @@ new Worker(
 
       await notif.update({
 
-        estado: 'ENVIADO',
+        estado:
+          'ENVIADO',
 
-        fechaEnvio: new Date(),
+        fechaEnvio:
+          new Date(),
 
-        error: null
+        error:
+          null
+
       })
 
+
       console.log(
-        '✅ Notificación actualizada'
+        '✅ Notificación actualizada como ENVIADA'
       )
+
 
     } catch (error: any) {
 
@@ -157,25 +256,39 @@ new Worker(
         error.message
       )
 
+
+      // =====================================
+      // ACTUALIZAR NOTIFICACIÓN ERROR
+      // =====================================
+
       await Notificacion.update(
 
         {
 
-          estado: 'ERROR',
+          estado:
+            'ERROR',
 
-          error: error.message
+          error:
+            error.message
+
         },
 
         {
 
           where: {
 
-            id: notificacionId
+            id:
+              notificacionId
+
           }
+
         }
+
       )
 
+
       throw error
+
     }
 
   },
@@ -185,4 +298,5 @@ new Worker(
     connection
 
   }
+
 )

@@ -15,12 +15,16 @@ export const sendEmail = async (
       ...(cc || [])
     ]
 
+    const ccUnicos = [
+      ...new Set(correosCC)
+    ]
+
     await sgMail.send({
       to,
       from: process.env.EMAIL_FROM!,
       subject,
       html,
-      cc: correosCC
+      cc: ccUnicos
     })
 
   } catch (error: any) {

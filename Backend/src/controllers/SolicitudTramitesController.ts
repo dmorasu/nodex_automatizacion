@@ -22,6 +22,7 @@ import SubEstados from "../models/subEstados"
 
 
 
+
 declare global{
     namespace Express{
         interface Request{
@@ -188,7 +189,7 @@ static asignarTramitador = async (req: Request, res: Response) => {
       // =========================
       if (tramitador) {
 
-       /*  await crearNotificacion({
+       await crearNotificacion({
           solicitud,
           tipo: 'ASIGNADO',
           destinatario: tramitador,
@@ -207,7 +208,7 @@ static asignarTramitador = async (req: Request, res: Response) => {
 
             municipio: municipio?.nombreMunicipio || 'N/A'
           }
-        }) */
+        }) 
       }
 
       return res.status(201).json('Tramitador asignado correctamente')

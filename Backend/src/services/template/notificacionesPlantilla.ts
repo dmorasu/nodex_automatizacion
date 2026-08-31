@@ -1,62 +1,61 @@
-import SolicitudTramites from '../../models/solicitudTramites'
+import SolicitudTramites from "../../models/solicitudTramites";
 
 export type TipoNotificacion =
-  | 'ASIGNADO'
-  | 'FINALIZADO'
-  | 'TRAZABILIDAD'
-  | 'PROGRAMACION'
-  | 'EN_ESPERA_POR_NOVEDAD'
-  | 'LOGISTICA'
-
+  | "ASIGNADO"
+  | "FINALIZADO"
+  | "TRAZABILIDAD"
+  | "PROGRAMACION"
+  | "EN_ESPERA_POR_NOVEDAD"
+  | "LOGISTICA";
 
 type TemplateData = {
-  nombre?: string
-  observacion?: string
-  estado?: string
-  estadoId?: number
-  fecha?: string
-  operacion?: string
-  tipo?: string
-  novedad?: string
-  tipoRechazo?: string
-  tramitador?: string
-  municipio?: string
-  programador?: string
-  resultado?: string
-  valor?: string | number
-  solicitante?: string
-  [key: string]: any
-}
+  nombre?: string;
+  observacion?: string;
+  estado?: string;
+  estadoId?: number;
+  fecha?: string;
+  operacion?: string;
+  tipo?: string;
+  novedad?: string;
+  tipoRechazo?: string;
+  tramitador?: string;
+  municipio?: string;
+  programador?: string;
+  resultado?: string;
+  valor?: string | number;
+  solicitante?: string;
+  [key: string]: any;
+};
 
 // =====================================
 // COMPONENTES VISUALES PARA EMAIL
 // =====================================
 
-const badge = (texto: string, tipo = 'blue') => {
+const badge = (texto: string, tipo = "blue") => {
   const colores: Record<string, { bg: string; color: string }> = {
     blue: {
-      bg: '#e0f2fe',
-      color: '#0369a1'
+      bg: "#e0f2fe",
+      color: "#0369a1",
     },
     green: {
-      bg: '#dcfce7',
-      color: '#15803d'
+      bg: "#dcfce7",
+      color: "#15803d",
     },
     orange: {
-      bg: '#ffedd5',
-      color: '#c2410c'
+      bg: "#ffedd5",
+      color: "#c2410c",
     },
     red: {
-      bg: '#fee2e2',
-      color: '#dc2626'
+      bg: "#fee2e2",
+      color: "#dc2626",
     },
     gray: {
-      bg: '#f3f4f6',
-      color: '#4b5563'
-    }
-  }
+      bg: "#f3f4f6",
+      color: "#4b5563",
+    },
+  };
 
-  const color = colores[tipo] || colores.blue
+  const color = colores[tipo] || colores.blue;
 
   return `
     <span
@@ -72,14 +71,10 @@ const badge = (texto: string, tipo = 'blue') => {
     >
       ${texto}
     </span>
-  `
-}
+  `;
+};
 
-const infoCard = (
-  icono: string,
-  titulo: string,
-  valor: string | number
-) => `
+const infoCard = (icono: string, titulo: string, valor: string | number) => `
   <tr>
     <td
       style="
@@ -125,14 +120,14 @@ const infoCard = (
                 line-height:1.4;
               "
             >
-              ${valor || 'N/A'}
+              ${valor || "N/A"}
             </div>
           </td>
         </tr>
       </table>
     </td>
   </tr>
-`
+`;
 
 const detailsBox = (content: string) => `
   <table
@@ -154,7 +149,7 @@ const detailsBox = (content: string) => `
       </td>
     </tr>
   </table>
-`
+`;
 
 // =====================================
 // LAYOUT CORPORATIVO MODERNO
@@ -163,11 +158,11 @@ const detailsBox = (content: string) => `
 const layout = (
   content: string,
   options?: {
-    title?: string
-    subtitle?: string
-    status?: string
-    statusType?: string
-  }
+    title?: string;
+    subtitle?: string;
+    status?: string;
+    statusType?: string;
+  },
 ) => `
 <!DOCTYPE html>
 <html lang="es">
@@ -290,11 +285,8 @@ const layout = (
               >
                 ${
                   options?.status
-                    ? badge(
-                        options.status,
-                        options.statusType || 'blue'
-                      )
-                    : ''
+                    ? badge(options.status, options.statusType || "blue")
+                    : ""
                 }
               </td>
 
@@ -339,13 +331,13 @@ const layout = (
                       ${options.subtitle}
                     </div>
                   `
-                  : ''
+                  : ""
               }
 
             </td>
           </tr>
         `
-          : ''
+          : ""
       }
 
 
@@ -411,7 +403,7 @@ const layout = (
 </body>
 
 </html>
-`
+`;
 
 // =====================================
 // CONSTRUIR MENSAJE
@@ -420,58 +412,53 @@ const layout = (
 export const construirMensaje = (
   tipo: TipoNotificacion,
   solicitud: SolicitudTramites,
-  data: TemplateData = {}
+  data: TemplateData = {},
 ) => {
-
   // =====================================
   // ASIGNADO - WHATSAPP
   // =====================================
 
-  if (tipo === 'ASIGNADO') {
+  if (tipo === "ASIGNADO") {
+      return {
+                subject: "Asignación de diligencia",
 
-    return {
-      subject: 'Asignación de diligencia',
+                text: `
+          👋 *Hola ${data.nombre || "Tramitador"}!*, buen día 😊
 
-      text: `
-👋 *Hola ${data.nombre || 'Tramitador'}!*, buen día 😊
+              Tienes una diligencia programada por parte de Gómez Pineda Abogados S.A.S.. A continuación, te compartimos los detalles de la gestión:
 
-Te escribo para solicitar tu apoyo con la siguiente diligencia:
+          🔹 *Detalle de la diligencia:*
 
-🔹 *Detalle de la diligencia:*
+          💰 *Valor Honorarios:* $${data.valor || "0"}
 
-💰 *Valor Honorarios:* $${data.valor || '0'}
+          📅 *Fecha de realización:* ${data.fecha || "Pendiente"}
 
-📅 *Fecha de realización:* ${data.fecha || 'Pendiente'}
+          🧑‍💼 Nombre del solicitante: ${data.solicitante || "N/A"}
 
-🧑‍💼 Nombre del solicitante: ${data.solicitante || 'N/A'}
+          📌 *Consecutivo del trámite:* ${solicitud.id}
 
-📌 *Consecutivo del trámite:* ${solicitud.id}
+          👤 *Programador:* ${data.programador || "N/A"}
 
-👤 *Programador:* ${data.programador || 'N/A'}
+          *¡Un saludo!*
+                `,
 
-*¡Un saludo!*
-      `,
-
-      html: ''
-    }
-  }
- // =====================================
+                html: "",
+              };
+      }
+  // =====================================
   // LOGÍSTICA
   // =====================================
 
-  if (tipo === 'LOGISTICA') {
-
+  if (tipo === "LOGISTICA") {
     return {
-
       subject:
         `📦 Envío registrado - Trámite #${solicitud.id} ` +
-        `${solicitud.placa ?? ''} ` +
-        `${solicitud.matriculaInmobiliaria ?? ''}`,
+        `${solicitud.placa ?? ""} ` +
+        `${solicitud.matriculaInmobiliaria ?? ""}`,
 
-      text: '',
+      text: "",
 
       html: layout(
-
         `
         <p
           style="
@@ -481,7 +468,7 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
             margin-top:0;
           "
         >
-          📢 Hola <strong>${data.nombre || ''}</strong>,
+          📢 Hola <strong>${data.nombre || ""}</strong>,
         </p>
 
         <p
@@ -495,14 +482,10 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
           <strong>#${solicitud.id}</strong>,
           asociado a
           <strong>
-            ${
-              solicitud.placa ||
-              solicitud.matriculaInmobiliaria ||
-              'N/A'
-            }
+            ${solicitud.placa || solicitud.matriculaInmobiliaria || "N/A"}
           </strong>
           y al trámite
-          <strong>${data.tipo || 'N/A'}</strong>,
+          <strong>${data.tipo || "N/A"}</strong>,
           ha sido registrado exitosamente. ✅
         </p>
 
@@ -520,42 +503,28 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
 
         ${detailsBox(`
 
+          ${infoCard("📦", "Número de guía", data.numeroGuia || "N/A")}
+
           ${infoCard(
-            '📦',
-            'Número de guía',
-            data.numeroGuia || 'N/A'
+            "💰",
+            "Valor del envío",
+            data.valorEnvio ? `$${data.valorEnvio}` : "N/A",
+          )}
+
+          ${infoCard("🚛", "Transportadora", data.transportadora || "N/A")}
+
+          ${infoCard("👤", "Destinatario", data.destinatario || "N/A")}
+
+          ${infoCard(
+            "📅",
+            "Fecha probable de entrega",
+            data.fechaProbableEntrega || "N/A",
           )}
 
           ${infoCard(
-            '💰',
-            'Valor del envío',
-            data.valorEnvio
-              ? `$${data.valorEnvio}`
-              : 'N/A'
-          )}
-
-          ${infoCard(
-            '🚛',
-            'Transportadora',
-            data.transportadora || 'N/A'
-          )}
-
-          ${infoCard(
-            '👤',
-            'Destinatario',
-            data.destinatario || 'N/A'
-          )}
-
-          ${infoCard(
-            '📅',
-            'Fecha probable de entrega',
-            data.fechaProbableEntrega || 'N/A'
-          )}
-
-          ${infoCard(
-            '📅',
-            'Fecha de entrega por la transportadora',
-            data.fechaEntregaTransportadora || 'N/A'
+            "📅",
+            "Fecha de entrega por la transportadora",
+            data.fechaEntregaTransportadora || "N/A",
           )}
 
         `)}
@@ -589,36 +558,33 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
         `,
 
         {
-          title: '📦 Envío documental registrado',
+          title: "📦 Envío documental registrado",
 
-          subtitle:
-            `Información logística del trámite #${solicitud.id}`,
+          subtitle: `Información logística del trámite #${solicitud.id}`,
 
-          status: 'LOGÍSTICA',
+          status: "LOGÍSTICA",
 
-          statusType: 'blue'
-        }
-      )
-    }
+          statusType: "blue",
+        },
+      ),
+    };
   }
 
   // =====================================
   // FINALIZADO
   // =====================================
 
-  if (tipo === 'FINALIZADO') {
-
+  if (tipo === "FINALIZADO") {
     return {
       subject:
         `✅ Su Trámite #${solicitud.id} - ` +
-        `${solicitud.placa ?? ''} ` +
-        `${solicitud.matriculaInmobiliaria ?? ''} ` +
+        `${solicitud.placa ?? ""} ` +
+        `${solicitud.matriculaInmobiliaria ?? ""} ` +
         `ha sido finalizado`,
 
-      text: '',
+      text: "",
 
       html: layout(
-
         `
         <p
           style="
@@ -628,48 +594,24 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
             margin:0;
           "
         >
-          Hola <strong>${data.nombre || ''}</strong>, queremos informarte que
+          Hola <strong>${data.nombre || ""}</strong>, queremos informarte que
           el trámite <strong>#${solicitud.id}</strong> ha sido finalizado
           exitosamente.
         </p>
 
         ${detailsBox(`
 
-          ${infoCard(
-            '📋',
-            'Tipo de diligencia',
-            data.tipo || 'N/A'
-          )}
+          ${infoCard("📋", "Tipo de diligencia", data.tipo || "N/A")}
 
-          ${infoCard(
-            '📌',
-            'Resultado',
-            data.resultado || 'Sin resultado'
-          )}
+          ${infoCard("📌", "Resultado", data.resultado || "Sin resultado")}
 
-          ${infoCard(
-            '📅',
-            'Fecha de finalización',
-            data.fecha || 'N/A'
-          )}
+          ${infoCard("📅", "Fecha de finalización", data.fecha || "N/A")}
 
-          ${infoCard(
-            '🧑‍💼',
-            'Corresponsal',
-            data.tramitador || 'N/A'
-          )}
+          ${infoCard("🧑‍💼", "Corresponsal", data.tramitador || "N/A")}
 
-          ${infoCard(
-            '📍',
-            'Municipio',
-            data.municipio || 'N/A'
-          )}
+          ${infoCard("📍", "Municipio", data.municipio || "N/A")}
 
-          ${infoCard(
-            '👤',
-            'Programador',
-            data.programador || 'N/A'
-          )}
+          ${infoCard("👤", "Programador", data.programador || "N/A")}
 
         `)}
 
@@ -701,37 +643,32 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
         `,
 
         {
-          title: 'Trámite finalizado',
+          title: "Trámite finalizado",
           subtitle: `Consecutivo #${solicitud.id}`,
-          status: 'FINALIZADO',
-          statusType: 'green'
-        }
-      )
-    }
+          status: "FINALIZADO",
+          statusType: "green",
+        },
+      ),
+    };
   }
-
 
   // =====================================
   // TRAZABILIDAD
   // =====================================
 
-  if (tipo === 'TRAZABILIDAD') {
-
-    const observacion = (
-      data.observacion || 'Sin detalle'
-    )
+  if (tipo === "TRAZABILIDAD") {
+    const observacion = (data.observacion || "Sin detalle")
       .toString()
       .slice(0, 500)
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
 
     return {
-      subject: '📌 Nueva trazabilidad',
+      subject: "📌 Nueva trazabilidad",
 
       text: observacion,
 
       html: layout(
-
         `
         <p
           style="
@@ -747,17 +684,9 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
 
         ${detailsBox(`
 
-          ${infoCard(
-            '🆔',
-            'Consecutivo',
-            `#${solicitud.id}`
-          )}
+          ${infoCard("🆔", "Consecutivo", `#${solicitud.id}`)}
 
-          ${infoCard(
-            '🔄',
-            'Estado actual',
-            data.estado || 'Sin estado'
-          )}
+          ${infoCard("🔄", "Estado actual", data.estado || "Sin estado")}
 
         `)}
 
@@ -797,33 +726,30 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
         `,
 
         {
-          title: 'Nueva actualización',
-          subtitle: 'Se ha registrado una nueva trazabilidad',
-          status: 'TRAZABILIDAD',
-          statusType: 'blue'
-        }
-      )
-    }
+          title: "Nueva actualización",
+          subtitle: "Se ha registrado una nueva trazabilidad",
+          status: "TRAZABILIDAD",
+          statusType: "blue",
+        },
+      ),
+    };
   }
-
 
   // =====================================
   // PROGRAMACIÓN
   // =====================================
 
-  if (tipo === 'PROGRAMACION') {
-
+  if (tipo === "PROGRAMACION") {
     return {
       subject:
         `📅 Su Trámite #${solicitud.id} - ` +
-        `${solicitud.placa ?? ''} ` +
-        `${solicitud.matriculaInmobiliaria ?? ''} ` +
+        `${solicitud.placa ?? ""} ` +
+        `${solicitud.matriculaInmobiliaria ?? ""} ` +
         `ha sido programado`,
 
-      text: '',
+      text: "",
 
       html: layout(
-
         `
         <p
           style="
@@ -833,47 +759,23 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
             margin-top:0;
           "
         >
-          Hola <strong>${data.nombre || ''}</strong>. Tu diligencia con
+          Hola <strong>${data.nombre || ""}</strong>. Tu diligencia con
           consecutivo <strong>#${solicitud.id}</strong> ha sido programada.
         </p>
 
         ${detailsBox(`
 
-          ${infoCard(
-            '📋',
-            'Tipo de diligencia',
-            data.tipo || 'N/A'
-          )}
+          ${infoCard("📋", "Tipo de diligencia", data.tipo || "N/A")}
 
-          ${infoCard(
-            '📅',
-            'Fecha programada',
-            data.fecha || 'Pendiente'
-          )}
+          ${infoCard("📅", "Fecha programada", data.fecha || "Pendiente")}
 
-          ${infoCard(
-            '🧑‍💼',
-            'Corresponsal',
-            data.tramitador || 'N/A'
-          )}
+          ${infoCard("🧑‍💼", "Corresponsal", data.tramitador || "N/A")}
 
-          ${infoCard(
-            '📍',
-            'Municipio',
-            data.municipio || 'N/A'
-          )}
+          ${infoCard("📍", "Municipio", data.municipio || "N/A")}
 
-          ${infoCard(
-            '🏢',
-            'Operación',
-            data.operacion || 'N/A'
-          )}
+          ${infoCard("🏢", "Operación", data.operacion || "N/A")}
 
-          ${infoCard(
-            '👤',
-            'Programador',
-            data.programador || 'N/A'
-          )}
+          ${infoCard("👤", "Programador", data.programador || "N/A")}
 
         `)}
 
@@ -895,37 +797,32 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
         `,
 
         {
-          title: 'Diligencia programada',
+          title: "Diligencia programada",
           subtitle: `Trámite #${solicitud.id}`,
-          status: 'PROGRAMADO',
-          statusType: 'blue'
-        }
-      )
-    }
+          status: "PROGRAMADO",
+          statusType: "blue",
+        },
+      ),
+    };
   }
-
 
   // =====================================
   // EN ESPERA POR NOVEDAD
   // =====================================
 
-  if (tipo === 'EN_ESPERA_POR_NOVEDAD') {
-
+  if (tipo === "EN_ESPERA_POR_NOVEDAD") {
     if (Number(data.estadoId) === 3) {
-
       return {
-
         subject:
-          `⚠️ Su Trámite ${data.tipo || ''} ` +
+          `⚠️ Su Trámite ${data.tipo || ""} ` +
           `con consecutivo #${solicitud.id} – ` +
-          `${solicitud.placa || 'Sin placa'} / ` +
-          `${solicitud.matriculaInmobiliaria || 'Sin matrícula'} ` +
+          `${solicitud.placa || "Sin placa"} / ` +
+          `${solicitud.matriculaInmobiliaria || "Sin matrícula"} ` +
           `presenta novedad`,
 
-        text: '',
+        text: "",
 
         html: layout(
-
           `
           <p
             style="
@@ -935,60 +832,36 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
               margin-top:0;
             "
           >
-            Hola <strong>${data.nombre || ''}</strong>, queremos informarte que
+            Hola <strong>${data.nombre || ""}</strong>, queremos informarte que
             el trámite <strong>#${solicitud.id}</strong> presenta una novedad
             que requiere gestión.
           </p>
 
           ${detailsBox(`
 
+            ${infoCard("📋", "Tipo de trámite", data.tipo || "N/A")}
+
             ${infoCard(
-              '📋',
-              'Tipo de trámite',
-              data.tipo || 'N/A'
+              "⚠️",
+              "Novedad reportada",
+              data.novedad || "Sin observaciones",
             )}
 
             ${infoCard(
-              '⚠️',
-              'Novedad reportada',
-              data.novedad || 'Sin observaciones'
+              "🚫",
+              "Tipo de rechazo",
+              data.tipoRechazo || "Sin tipo de rechazo",
             )}
 
-            ${infoCard(
-              '🚫',
-              'Tipo de rechazo',
-              data.tipoRechazo || 'Sin tipo de rechazo'
-            )}
+            ${infoCard("📅", "Reprogramación", "Pendiente de subsanación")}
 
-            ${infoCard(
-              '📅',
-              'Reprogramación',
-              'Pendiente de subsanación'
-            )}
+            ${infoCard("🧑‍💼", "Corresponsal", data.tramitador || "N/A")}
 
-            ${infoCard(
-              '🧑‍💼',
-              'Corresponsal',
-              data.tramitador || 'N/A'
-            )}
+            ${infoCard("📍", "Municipio", data.municipio || "N/A")}
 
-            ${infoCard(
-              '📍',
-              'Municipio',
-              data.municipio || 'N/A'
-            )}
+            ${infoCard("👤", "Programador", data.programador || "N/A")}
 
-            ${infoCard(
-              '👤',
-              'Programador',
-              data.programador || 'N/A'
-            )}
-
-            ${infoCard(
-              '🏢',
-              'Operación',
-              data.operacion || 'N/A'
-            )}
+            ${infoCard("🏢", "Operación", data.operacion || "N/A")}
 
           `)}
 
@@ -1016,28 +889,25 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
           `,
 
           {
-            title: 'Trámite con novedad',
+            title: "Trámite con novedad",
             subtitle: `Consecutivo #${solicitud.id}`,
-            status: 'REQUIERE ATENCIÓN',
-            statusType: 'orange'
-          }
-        )
-      }
+            status: "REQUIERE ATENCIÓN",
+            statusType: "orange",
+          },
+        ),
+      };
     }
-
 
     // =====================================
     // FALLBACK
     // =====================================
 
     return {
+      subject: "🔄 En Espera por Novedad",
 
-      subject: '🔄 En Espera por Novedad',
-
-      text: '',
+      text: "",
 
       html: layout(
-
         `
         <p
           style="
@@ -1052,37 +922,26 @@ Te escribo para solicitar tu apoyo con la siguiente diligencia:
 
         ${detailsBox(`
 
-          ${infoCard(
-            '🆔',
-            'Trámite',
-            `#${solicitud.id}`
-          )}
+          ${infoCard("🆔", "Trámite", `#${solicitud.id}`)}
 
-          ${infoCard(
-            '🔄',
-            'Nuevo estado',
-            data.estado || 'Sin estado'
-          )}
+          ${infoCard("🔄", "Nuevo estado", data.estado || "Sin estado")}
 
         `)}
         `,
 
         {
-          title: 'En espera por novedad',
+          title: "En espera por novedad",
           subtitle: `Trámite #${solicitud.id}`,
-          status: 'EN ESPERA',
-          statusType: 'orange'
-        }
-      )
-    }
+          status: "EN ESPERA",
+          statusType: "orange",
+        },
+      ),
+    };
   }
-  
 
   // =====================================
   // TIPO NO SOPORTADO
   // =====================================
 
-  throw new Error(
-    `Tipo de notificación no soportado: ${tipo}`
-  )
-}
+  throw new Error(`Tipo de notificación no soportado: ${tipo}`);
+};

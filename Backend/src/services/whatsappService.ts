@@ -1,5 +1,5 @@
-import twilio from 'twilio'
-import dotenv from 'dotenv'
+import twilio from "twilio"
+import dotenv from "dotenv"
 
 dotenv.config()
 
@@ -13,43 +13,78 @@ type WhatsAppParams = {
   body?: string
   templateSid?: string
   variables?: Record<string, string>
+  mediaUrl?: string
 }
 
 export const sendWhatsApp = async ({
   to,
   body,
   templateSid,
-  variables
+  variables,
+  mediaUrl
 }: WhatsAppParams) => {
 
-  console.log('📲 Enviando WhatsApp a:', to)
+  console.log("📲 Enviando WhatsApp a:", to)
 
-  // 🔥 TEMPLATE META
+  // =====================================
+  // TEMPLATE META
+  // =====================================
+
   if (templateSid) {
 
-    return client.messages.create({
+    console.log("📲 ENVIANDO TEMPLATE")
 
-      from: process.env.TWILIO_WHATSAPP_FROM!,
+    const mensaje = await client.messages.create({
 
-      to: `whatsapp:${to}`,
+      from:
+        process.env.TWILIO_WHATSAPP_FROM!,
 
-      contentSid: templateSid,
+      to:
+        `whatsapp:${to}`,
 
-      contentVariables: JSON.stringify(variables || {})
+      contentSid:
+        templateSid,
+
+      contentVariables:
+        JSON.stringify(
+          variables || {}
+        )
 
     })
 
+    console.log("📩 TWILIO SID:", mensaje.sid)
+    console.log("📊 TWILIO STATUS:", mensaje.status)
+    console.log("❌ TWILIO ERROR:", mensaje.errorCode)
+
+    return mensaje
   }
 
-  // 🔥 MENSAJE NORMAL
-  return client.messages.create({
+  // =====================================
+  // MENSAJE NORMAL CON PDF
+  // =====================================
 
-    from: process.env.TWILIO_WHATSAPP_FROM!,
+  console.log("📎 MEDIA URL:", mediaUrl)
 
-    to: `whatsapp:${to}`,
+  const mensaje = await client.messages.create({
 
-    body
+    from:
+      process.env.TWILIO_WHATSAPP_FROM!,
+
+    to:
+      `whatsapp:${to}`,
+
+    body,
+
+    mediaUrl:
+      mediaUrl
+        ? [mediaUrl]
+        : undefined
 
   })
 
+  console.log("📩 PDF TWILIO SID:", mensaje.sid)
+  console.log("📊 PDF TWILIO STATUS:", mensaje.status)
+  console.log("❌ PDF TWILIO ERROR:", mensaje.errorCode)
+
+  return mensaje
 }

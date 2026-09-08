@@ -175,41 +175,19 @@ static asignarTramitador = async (req: Request, res: Response) => {
       // =========================
       // 🔥 TRAMITADOR
       // =========================
-      const tramitador = await Tramitador.findByPk(tramitadorId)
+      
 
       // =========================
       // 🔥 INSTANCIAS RELACIONADAS
       // =========================
       const programacion = solicitud.programacion
       const usuario = solicitud.usuario
-      const municipio = solicitud.municipios
+      
 
       // =========================
       // 🔔 NOTIFICACIÓN
       // =========================
-      if (tramitador) {
-
-       await crearNotificacion({
-          solicitud,
-          tipo: 'ASIGNADO',
-          destinatario: tramitador,
-          data: {
-            nombre: tramitador.nombreTramitador,
-
-            valor: programacion?.valorTramite || 0,
-
-            fecha: programacion?.fechaProbableEntrega
-              ? new Date(programacion.fechaProbableEntrega).toLocaleDateString('es-CO')
-              : 'Sin fecha',
-
-            solicitante: usuario?.nombreUsuario || 'N/A',
-
-            programador: usuario?.nombreUsuario || 'N/A',
-
-            municipio: municipio?.nombreMunicipio || 'N/A'
-          }
-        }) 
-      }
+      
 
       return res.status(201).json('Tramitador asignado correctamente')
 

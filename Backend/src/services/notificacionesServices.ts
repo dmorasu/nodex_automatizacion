@@ -138,64 +138,41 @@ export const crearNotificacion = async ({
     // =====================================
     // AGREGAR JOB A REDIS
     // =====================================
+    const link= "https://wa.me/573166507738?utm_source=chatgpt.com"
 
-    await notificationQueue.add(
-      "send",
-      {
+    
+    const variables: Record<string, string> = {
+  "1": String(data.nombre || "Nombre Tramitador"),
+  "2": String(data.numeroTramite || "Número Solicitud"),
+  "3": String(data.tipoTramite || "Tipo de Trámite"),
+  "4": String(data.ubicacion || "Dirección Trámite"),
+  "5": String(data.mueble || "Placa o Matricula"),
+  "6": String(data.cliente || "Nombre del Cliente"),
+  "7": String(data.tarifa ?? "N/A"),
+  "8": String(data.fecha || "N/A"),
+  "9": String(data.programador || "N/A"),
+  "10": String(data.solicitante || "N/A"),
+  "11": String(link)
+}
+if (mediaUrl) {
+  variables["12"] = mediaUrl
+}
+const templateSid = mediaUrl
+  ? "HX5f9cccdf40ed318dcdc85f97b22ea97f"
+  : "HXaef0b548184ee7432dc8434e22606cbe"
 
-        notificacionId:
-          notifId,
-
-        solicitudTramiteId:
-          solicitud.id,
-
-        canal:
-          "WHATSAPP",
-
-        to:
-          destinatario.numeroTramitador,
-
-        templateSid:
-          "HXdcf69d425019b1e6572b7757ce14d59e",
-
-        variables: {
-
-          "1":
-            data.nombre ||
-            "Tramitador",
-
-          "2":
-            String(
-              data.valor || "0"
-            ),
-
-          "3":
-            data.fecha ||
-            "Pendiente",
-
-          "4":
-            data.solicitante ||
-            "N/A",
-
-          "5":
-            String(
-              solicitud.id || "N/A"
-            ),
-
-          "6":
-            data.programador ||
-            "N/A"
-
-        },
-
-        // =====================================
-        // PDF
-        // =====================================
-
-        mediaUrl
-
-      }
-    )
+  await notificationQueue.add(
+  "send",
+  {
+    notificacionId: notifId,
+    solicitudTramiteId: solicitud.id,
+    canal: "WHATSAPP",
+    to: destinatario.numeroTramitador,
+    templateSid,
+    variables
+  }
+)
+   
 
     console.log(
       "📥 WHATSAPP AGREGADO A COLA"

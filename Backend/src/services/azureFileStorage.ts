@@ -191,27 +191,87 @@ export const subirArchivo = async (
       rutaDirectorio
     )
 
-
   const fileClient =
     directoryClient.getFileClient(
       nombreArchivo
     )
 
+  // ==========================================
+  // CREAR ARCHIVO
+  // ==========================================
 
   await fileClient.create(
     buffer.length
   )
 
+  // ==========================================
+  // SUBIR CONTENIDO
+  // ==========================================
 
   await fileClient.uploadData(
     buffer
   )
 
+  // ==========================================
+  // DEFINIR CONTENT-TYPE
+  // ==========================================
+
+  const extension =
+    nombreArchivo
+      .split(".")
+      .pop()
+      ?.toLowerCase()
+
+  let contentType =
+    "application/octet-stream"
+
+  switch (extension) {
+
+    case "pdf":
+      contentType = "application/pdf"
+      break
+
+    case "jpg":
+    case "jpeg":
+      contentType = "image/jpeg"
+      break
+
+    case "png":
+      contentType = "image/png"
+      break
+
+    default:
+      contentType =
+        "application/octet-stream"
+
+  }
+
+  // ==========================================
+  // GUARDAR CONTENT-TYPE EN AZURE
+  // ==========================================
+
+  await fileClient.setHttpHeaders({
+
+    fileContentType: contentType
+
+  })
+
+  console.log(
+    "✅ ARCHIVO SUBIDO"
+  )
+
+  console.log(
+    "📁 Archivo:",
+    `${rutaDirectorio}/${nombreArchivo}`
+  )
+
+  console.log(
+    "📄 Content-Type:",
+    contentType
+  )
 
   return `${rutaDirectorio}/${nombreArchivo}`
-
 }
-
 
 // ==========================================
 // OBTENER ARCHIVO

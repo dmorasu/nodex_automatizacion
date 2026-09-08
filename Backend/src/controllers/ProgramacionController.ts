@@ -1,4 +1,4 @@
-import type { Request,Response } from "express";
+import type { Request, Response } from "express";
 import Programacion from "../models/programacion";
 import { crearNotificacion } from "../services/notificacionesServices";
 import SolicitudTramites from "../models/solicitudTramites";
@@ -7,107 +7,149 @@ import Municipios from "../models/municipios";
 import Tramite from "../models/tramite";
 import Operaciones from "../models/operaciones";
 import Tramitador from "../models/tramitador";
-import { formatearFecha} from "../utils/fechaColombia";
+import { formatearFecha } from "../utils/fechaColombia";
+import Clientes from "../models/clientes";
 
 
-declare global{
-    namespace Express{
-        interface Request{
-            programacion?:Programacion      
-        }
+declare global {
+  namespace Express {
+    interface Request {
+      programacion?: Programacion
     }
-}
-
-export class ProgramacionController{
-    static getAll =async (req: Request, res:Response) =>{
-        
-    }
-
-    static create = async (req: Request, res: Response) => {
-  try {
-
-    const solicitudId = req.solicitudTramites.id
-
-    let programacion = await Programacion.findOne({
-      where: { solicitudTramiteId: solicitudId }
-    })
-
-    if (!programacion) {
-     programacion = await Programacion.create({
-  solicitudTramiteId: solicitudId,
-  fechaProbableEntrega: req.body.fechaProbableEntrega || null,
-  valorTramite: req.body.valorTramite || null,
-  valorViaticos: req.body.valorViaticos || null,
-  conceptoHonorarios: req.body.conceptoHonorarios || null,
-  conceptoViaticos: req.body.conceptoViaticos || null,
-
-  requiereCita: req.body.requiereCita || false,
-  fechaCita: req.body.fechaCita || null,
-  horaCita: req.body.horaCita || null
-})
-    
-    } else {
-      Object.assign(programacion, req.body)
-      await programacion.save()
-    }
-
-    // 🔥 cargar usuario
-    const solicitud = await SolicitudTramites.findByPk(
-      solicitudId,
-      { include: [Usuarios,Municipios,Tramite,Operaciones,Tramitador] }
-    )
-
-console.log('Solicitud ID:', solicitud?.id)
-console.log('TramitadorId:', solicitud?.tramitadorId)
-console.log('Tramitador:', solicitud?.tramitador)
-    // 🔔 NOTIFICACIÓN
-    if (solicitud?.usuario?.correoUsuario) {
-      await crearNotificacion({
-  solicitud,
-  tipo: 'PROGRAMACION',
-  destinatario: solicitud.usuario,
-  data: {
-    nombre: solicitud.usuario.nombreUsuario,
-    tipo: solicitud.tramite.nombreTramite,
-    fecha: programacion.fechaProbableEntrega
-      ? formatearFecha(programacion.fechaProbableEntrega)
-      : 'Sin fecha',
-    tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
-    municipio: solicitud.municipios?.nombreMunicipio|| 'N/A',
-    operacion: solicitud.operaciones.nombreOperacion||'N/A',
-    programador: solicitud.municipios.responsable
-  }
-})
-    }
-
-    return res.status(201).json("Programación guardada correctamente")
-
-  } catch (error) {
-    console.error("ERROR PROGRAMACION:", error)
-    return res.status(500).json("Hubo un error")
   }
 }
 
+export class ProgramacionController {
+  static getAll = async (req: Request, res: Response) => {
+
+  }
+
+  static create = async (req: Request, res: Response) => {
+    try {
+
+      const solicitudId = req.solicitudTramites.id
+
+      let programacion = await Programacion.findOne({
+        where: { solicitudTramiteId: solicitudId }
+      })
+
+      if (!programacion) {
+        programacion = await Programacion.create({
+          solicitudTramiteId: solicitudId,
+          fechaProbableEntrega: req.body.fechaProbableEntrega || null,
+          valorTramite: req.body.valorTramite || null,
+          valorViaticos: req.body.valorViaticos || null,
+          conceptoHonorarios: req.body.conceptoHonorarios || null,
+          conceptoViaticos: req.body.conceptoViaticos || null,
+
+          requiereCita: req.body.requiereCita || false,
+          fechaCita: req.body.fechaCita || null,
+          horaCita: req.body.horaCita || null
+        })
+
+      } else {
+        Object.assign(programacion, req.body)
+        await programacion.save()
+      }
+
+      // 🔥 cargar usuario
+      const solicitud = await SolicitudTramites.findByPk(
+        solicitudId,
+        { include: [Usuarios, Municipios, Tramite, Operaciones, Tramitador, Programacion, Clientes] }
+      )
+
+      console.log('Solicitud ID:', solicitud?.id)
+      console.log('TramitadorId:', solicitud?.tramitadorId)
+      console.log('Tramitador:', solicitud?.tramitador)
+      //🔔 NOTIFICACIÓN
+      if (solicitud?.usuario?.correoUsuario) {
+        await crearNotificacion({
+          solicitud,
+          tipo: 'PROGRAMACION',
+          destinatario: solicitud.usuario,
+          data: {
+            nombre: solicitud.usuario.nombreUsuario,
+            tipo: solicitud.tramite.nombreTramite,
+            fecha: programacion.fechaProbableEntrega
+              ? formatearFecha(programacion.fechaProbableEntrega)
+              : 'Sin fecha',
+            tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
+            municipio: solicitud.municipios?.nombreMunicipio || 'N/A',
+            operacion: solicitud.operaciones.nombreOperacion || 'N/A',
+            programador: solicitud.municipios.responsable
+          }
+        })
+      }
 
 
 
-    static getById =async (req: Request, res:Response) =>{
-        res.json(req.programacion)
+      const usuario = solicitud.usuario
+      const municipio = solicitud.municipios
+      const tramitador = solicitud.tramitador
+      if (tramitador) {
 
+        crearNotificacion({
+          solicitud,
+          tipo: 'ASIGNADO',
+          destinatario: tramitador,
+          data: {
+
+            nombre: tramitador.nombreTramitador,
+            numeroTramite: solicitud.id,
+            tipoTramite: solicitud.tramite.nombreTramite,
+
+            ubicacion: solicitud.direccionTramite,
+
+            mueble: solicitud.placa || solicitud.matriculaInmobiliaria || 'N/A',
+            cliente: solicitud.clientes.nombreCliente,
+            tarifa: programacion?.valorTramite || 0,
+
+            fecha: programacion?.fechaProbableEntrega
+              ? new Date(programacion.fechaProbableEntrega).toLocaleDateString('es-CO')
+              : 'Sin fecha',
+
+            solicitante: usuario?.nombreUsuario || 'N/A',
+
+            programador: solicitud.municipios.responsable || 'N/A',
+
+            municipio: municipio?.nombreMunicipio || 'N/A'
+          }
+
+
+        })
+
+      }
+
+
+
+      return res.status(201).json("Programación guardada correctamente")
+
+    } catch (error) {
+      console.error("ERROR PROGRAMACION:", error)
+      return res.status(500).json("Hubo un error")
     }
+  }
 
-    static updateById =async (req: Request, res:Response) =>{
-        req.programacion.update(req.body)
-        res.json("Se actualizo el registro")
 
-    }
 
-    static deleteById =async (req: Request, res:Response) =>{
-        await req.programacion.destroy()
-        res.json('Registro Eliminado')
 
-    }
+  static getById = async (req: Request, res: Response) => {
+    res.json(req.programacion)
 
-    
+  }
+
+  static updateById = async (req: Request, res: Response) => {
+    req.programacion.update(req.body)
+    res.json("Se actualizo el registro")
+
+  }
+
+  static deleteById = async (req: Request, res: Response) => {
+    await req.programacion.destroy()
+    res.json('Registro Eliminado')
+
+  }
+
+
 
 }

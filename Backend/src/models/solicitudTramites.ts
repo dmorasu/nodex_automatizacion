@@ -25,6 +25,7 @@ import Tramite from "./tramite";
 import EvaluacionSolicitud from "./evaluacionSolicitud"
 import SubEstadosSolicitud from './subEstadosSolicitud';
 import DocumentoSolicitud from "./documentosSolicitud";
+import Estados from "./estados";
 
 @Table({
   tableName: "SolicitudTramites",
@@ -110,6 +111,19 @@ declare tramiteId:number
 
 @BelongsTo(()=>Tramite)
 declare tramite: Tramite
+
+
+@ForeignKey(() => Estados)
+@Column({
+  type: DataType.INTEGER,
+  allowNull: true
+})
+declare estadoActualTramite: number;
+
+@BelongsTo(() => Estados, {
+  foreignKey: "estadoActualTramite"
+})
+declare estadoActual: Estados;
 
   // ===== Relaciones 1 - N =====
 

@@ -6,6 +6,12 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import { db } from './config/db'
 
+
+// Schedulers
+
+
+
+import "./Schedulers/notificacionesDiligenciasScheduler" 
 // Routers existentes
 import usuarioRouter from "./routes/usuarioRouter"
 import entidadRouter from "./routes/entidadRouter"
@@ -28,6 +34,8 @@ import estadosActualizacionesRouter from './routes/estadosBulkRouter'
 import tiposRechazoRoutes from "./routes/tipoRechazosRouter";
 import subEstadosRouter from './routes/subEstadosRouter'
 import documentoSolicitudRouter from "./routes/documentoSolicitudRouter";
+import notificacionesPruebaRouter from "./routes/notificacionesPruebaRouter"
+
 
 
 async function connectDB() {
@@ -92,6 +100,14 @@ app.use('/api/bulk/tramitador', tramitadorActualizacionesRouter)
 app.use("/api/tiposRechazo", tiposRechazoRoutes);
 app.use('/api/subEstados',subEstadosRouter)
 app.use('/api/documentos', documentoSolicitudRouter)
+
+// Rutas para pruebas de notificaciones automaticas
+
+app.use(
+  "/api/test/notificaciones",
+  notificacionesPruebaRouter
+)
+
 
 
 export default app

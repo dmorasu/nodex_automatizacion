@@ -14,6 +14,7 @@ import Operaciones from "../models/operaciones"
 import { fechaColombia } from "../utils/fechaColombia"
 import TiposRechazo from "../models/tiposRechazos"
 import Tramite from "../models/tramite"
+import Clientes from "../models/clientes"
 
 declare global {
   namespace Express {
@@ -45,7 +46,7 @@ export class EstadosTramitesController {
 
     try {
 
-      
+
 
       // ========================================
       // CREAR NUEVO ESTADO
@@ -76,6 +77,32 @@ export class EstadosTramitesController {
         "✅ ESTADO GUARDADO. ID:",
         estadosTramites.id
       )
+      // ========================================
+      // ACTUALIZAR ESTADO ACTUAL DE LA SOLICITUD
+      // ========================================
+
+      await SolicitudTramites.update(
+        {
+          estadoActualTramite: Number(estadosTramites.estadoId)
+        },
+        {
+          where: {
+            id: estadosTramites.solicitudTramiteId
+          },
+          transaction
+        }
+      )
+
+      console.log(
+        "🔄 ESTADO ACTUALIZADO EN SOLICITUD:",
+        {
+          solicitudTramiteId:
+            estadosTramites.solicitudTramiteId,
+
+          estadoActualTramite:
+            Number(estadosTramites.estadoId)
+        }
+      )
 
       // ========================================
       // CONSULTAR ESTADO
@@ -88,10 +115,7 @@ export class EstadosTramitesController {
         }
       )
 
-      console.log(
-        "🔎 ESTADO:",
-        estado?.nombreEstado
-      )
+
 
       const esFinalizado =
         Number(estadosTramites.estadoId) === 6 ||
@@ -99,10 +123,7 @@ export class EstadosTramitesController {
           ?.toLowerCase()
           .trim() === "finalizado"
 
-      console.log(
-        "🏁 ES FINALIZADO:",
-        esFinalizado
-      )
+
 
       // ========================================
       // CARGAR SOLICITUD
@@ -117,7 +138,8 @@ export class EstadosTramitesController {
               Tramitador,
               Municipios,
               Operaciones,
-              Tramite
+              Tramite,
+              Clientes
             ],
             transaction
           }
@@ -132,7 +154,7 @@ export class EstadosTramitesController {
       console.log("📋 SOLICITUD CARGADA:", {
         id: solicitud.id,
         usuarioId: solicitud.usuarioId,
-       
+
         usuario:
           solicitud.usuario?.nombreUsuario || "N/A",
         operacion:
@@ -204,6 +226,67 @@ export class EstadosTramitesController {
           )
         }
       }
+      // ========================================
+// NOTIFICACIÓN:
+// DESISTIDO
+// ========================================
+
+if (
+  Number(estadosTramites.estadoId) === 5 &&
+  solicitud.tramitador
+) {
+
+  console.log(
+    "🚫 GENERANDO NOTIFICACIÓN DESISTIDO"
+  )
+
+  await crearNotificacion({
+
+    solicitud,
+
+    tipo:
+      "DESISTIDO",
+
+    destinatario:
+      solicitud.tramitador,
+
+    data: {
+
+      nombre:
+        solicitud.tramitador
+          ?.nombreTramitador ||
+        "N/A",
+
+      tipo:
+        solicitud.tramite
+          ?.nombreTramite ||
+        "N/A",
+
+      mueble:
+        solicitud.placa ||
+        solicitud.matriculaInmobiliaria ||
+        "N/A",
+
+      programador:
+        solicitud.municipios
+          ?.responsable ||
+        "N/A"
+
+    }
+
+  })
+
+  console.log(
+    "✅ NOTIFICACIÓN DESISTIDO CREADA"
+  )
+
+} else {
+
+  console.log(
+    "ℹ️ NO APLICA NOTIFICACIÓN DESISTIDO"
+  )
+
+}
 
       // ========================================
       // CONFIRMAR TRANSACCIÓN
@@ -250,12 +333,12 @@ export class EstadosTramitesController {
           ]
         })
 
-      
+
       // ========================================
       // LOG GENERAL DE NOTIFICACIONES
       // ========================================
 
-      
+
 
       // ========================================
       // NOTIFICACIÓN:

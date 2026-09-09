@@ -6,7 +6,10 @@ export type TipoNotificacion =
   | "TRAZABILIDAD"
   | "PROGRAMACION"
   | "EN_ESPERA_POR_NOVEDAD"
-  | "LOGISTICA";
+  | "LOGISTICA"
+  | "DILIGENCIA_HOY"
+  | "DILIGENCIA_VENCIDA"
+  | "DESISTIDO";
 
 type TemplateData = {
   nombre?: string;
@@ -445,6 +448,52 @@ export const construirMensaje = (
                 html: "",
               };
       }
+
+  // =====================================
+// DESISTIDO - WHATSAPP
+// =====================================
+
+if (tipo === "DESISTIDO") {
+
+  return {
+
+    subject:
+      "📢 Diligencia Cancelada",
+
+    text: `
+📢 *Diligencia Cancelada*
+
+Hola ${data.nombre || "N/A"},
+
+Te informamos que la siguiente diligencia asignada por Gómez Pineda Abogados S.A.S. ha sido cancelada, por lo que no es necesario continuar con la gestión programada.
+
+📋 *Detalles*
+
+• Tipo: ${data.tipo || "N/A"}
+• Placa/Matrícula: ${data.mueble || "N/A"}
+• Cliente: ${solicitud.clientes?.nombreCliente || "N/A"}
+• Número de Solicitud: ${solicitud.id}
+
+👤 *Responsable*
+
+• Programador: ${data.programador || "N/A"}
+
+Si cuentas con documentación o novedades relacionadas con esta diligencia, por favor compártelas a través de los canales habituales de atención.
+
+📞 *Soporte*
+
+Para cualquier inquietud, comunícate con la Central Torre de Control:
+
+🔗 ${data.linkSoporte || "N/A"}
+
+✅ Gracias por tu apoyo y colaboración.
+`,
+
+    html: ""
+
+  }
+
+}
   // =====================================
   // LOGÍSTICA
   // =====================================
@@ -938,6 +987,105 @@ export const construirMensaje = (
       ),
     };
   }
+
+
+  // =====================================
+// DILIGENCIA PROGRAMADA PARA HOY
+// WHATSAPP
+// =====================================
+
+if (tipo === "DILIGENCIA_HOY") {
+
+  return {
+
+    subject:
+      "📢 Diligencia Programada para Hoy",
+
+    text: `
+📢 *Diligencia Programada para Hoy*
+
+Hola ${data.nombre || "N/A"},
+
+Te recordamos que hoy tienes una diligencia programada por Gómez Pineda Abogados S.A.S.
+
+📋 *Detalles*
+
+• Tipo: ${data.tipo || "N/A"}
+• Placa/Matrícula: ${data.mueble || "N/A"}
+• Ubicación: ${data.ubicacion || "N/A"}
+• Número de Solicitud: ${solicitud.id}
+• Estado: En Curso
+
+👤 *Responsable*
+
+• Programador: ${data.programador || "N/A"}
+
+📞 *Soporte*
+
+Recuerda cargar los soportes correspondientes y reportar cualquier novedad durante la gestión.
+
+Si requieres apoyo, comunícate con la Central Torre de Control:
+
+🔗 ${data.linkSoporte || "N/A"}
+
+✅ Gracias por tu gestión. Te deseamos una excelente jornada.
+`,
+
+    html: ""
+
+  }
+
+}
+
+
+// =====================================
+// DILIGENCIA VENCIDA
+// WHATSAPP
+// =====================================
+
+if (tipo === "DILIGENCIA_VENCIDA") {
+
+  return {
+
+    subject:
+      "📢 Actualización de Diligencia Pendiente",
+
+    text: `
+📢 *Actualización de Diligencia Pendiente*
+
+Hola ${data.nombre || "N/A"},
+
+Observamos que la diligencia programada por Gómez Pineda Abogados S.A.S. ya superó la fecha prevista. Agradecemos nos compartas una actualización sobre su estado.
+
+📋 *Detalles*
+
+• Tipo: ${data.tipo || "N/A"}
+• Placa/Matrícula: ${data.mueble || "N/A"}
+• Ubicación: ${data.ubicacion || "N/A"}
+• Número de Solicitud: ${solicitud.id}
+• Estado: En Curso - Vencida
+• Fecha Programada: ${data.fecha || "N/A"}
+
+👤 *Responsable*
+
+• Programador: ${data.programador || "N/A"}
+
+📞 *Soporte*
+
+Recuerda cargar los soportes correspondientes y reportar cualquier novedad durante la gestión.
+
+Si requieres apoyo, comunícate con la Central Torre de Control:
+
+🔗 ${data.linkSoporte || "N/A"}
+
+✅ Gracias por tu gestión. Te deseamos una excelente jornada.
+`,
+
+    html: ""
+
+  }
+
+}
 
   // =====================================
   // TIPO NO SOPORTADO

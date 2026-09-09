@@ -123,7 +123,7 @@ await crearNotificacion({
     tramitador: solicitud.tramitador?.nombreTramitador,
     municipio: solicitud.municipios?.nombreMunicipio,
     operacion: solicitud.operaciones?.nombreOperacion,
-    programador: solicitud.tramite?.responsable
+    programador: solicitud.municipios?.responsable
   }
 })
 console.log(

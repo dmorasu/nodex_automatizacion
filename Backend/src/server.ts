@@ -35,6 +35,7 @@ import tiposRechazoRoutes from "./routes/tipoRechazosRouter";
 import subEstadosRouter from './routes/subEstadosRouter'
 import documentoSolicitudRouter from "./routes/documentoSolicitudRouter";
 import notificacionesPruebaRouter from "./routes/notificacionesPruebaRouter"
+import notificacionesRouter from "./routes/notificacionesRouter"
 
 
 
@@ -100,6 +101,7 @@ app.use('/api/bulk/tramitador', tramitadorActualizacionesRouter)
 app.use("/api/tiposRechazo", tiposRechazoRoutes);
 app.use('/api/subEstados',subEstadosRouter)
 app.use('/api/documentos', documentoSolicitudRouter)
+app.use('/api/notificaciones', notificacionesRouter)
 
 // Rutas para pruebas de notificaciones automaticas
 

@@ -14,9 +14,11 @@ import {
   ClipboardList,
   DollarSign,
   MapPinned,
+  MessageCircle,
 } from "lucide-react";
 
 import DocumentosSolicitud from "@/components/documentos/DocumentosSolicitud";
+import NotificacionesWhatsApp from "@/components/solicitudTramites/NotificacionesWhatsApp"
 
 import {
   formatoFechaFinaizacion,
@@ -38,10 +40,10 @@ export default function DetalleSolicitudTabs({
   apiUrl,
 }: Props) {
 
-  const [tabActiva, setTabActiva] =
-    useState<"informacion" | "documentos" | "trazabilidad">(
-      "informacion"
-    );
+ const [tabActiva, setTabActiva] =
+  useState<
+    "informacion" | "documentos" | "trazabilidad" | "whatsapp"
+  >("informacion");
 
 
   return (
@@ -185,10 +187,39 @@ export default function DetalleSolicitudTabs({
 
         </button>
 
+        {/* WHATSAPP */}
+
+<button
+  type="button"
+  onClick={() => setTabActiva("whatsapp")}
+  className={`
+    flex
+    items-center
+    justify-center
+    gap-2
+    px-5
+    py-3
+    text-sm
+    font-medium
+    transition
+    border-b-2
+
+    ${
+      tabActiva === "whatsapp"
+        ? "border-sky-500 text-sky-600 bg-white"
+        : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+    }
+  `}
+>
+  <MessageCircle size={17} />
+
+  Notificaciones WhatsApp
+</button>
+
+
 
       </div>
-
-
+          
 
       {/* ===================================================== */}
       {/* CONTENIDO                                              */}
@@ -1053,6 +1084,7 @@ export default function DetalleSolicitudTabs({
 
                   )
                 )}
+                
 
               </div>
 
@@ -1107,6 +1139,19 @@ export default function DetalleSolicitudTabs({
           </div>
 
         )}
+
+        {/* ===================================================== */}
+{/* WHATSAPP                                              */}
+{/* ===================================================== */}
+
+{tabActiva === "whatsapp" && (
+
+  <NotificacionesWhatsApp
+    solicitudTramiteId={solicitudTramiteId}
+    apiUrl={apiUrl}
+  />
+
+)}
 
 
       </div>

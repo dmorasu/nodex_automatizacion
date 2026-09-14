@@ -16,7 +16,7 @@ import {
 
 cron.schedule(
 
-  "48 13 * * *",
+  "00 8 * * *",
 
   async () => {
 
@@ -149,17 +149,17 @@ cron.schedule(
 
 
 // ======================================================
-// 12:00 PM - DILIGENCIAS VENCIDAS
+// 13:00 PM - DILIGENCIAS VENCIDAS
 // ======================================================
 
 cron.schedule(
 
-  "50 13 * * *",
+  "00 13 * * *",
 
   async () => {
 
     console.log(
-      "🚨 CRON 12:00 PM - DILIGENCIAS VENCIDAS"
+      "🚨 CRON 13:00 PM - DILIGENCIAS VENCIDAS"
     )
 
     try {

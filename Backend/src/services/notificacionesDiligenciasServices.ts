@@ -309,6 +309,9 @@ export const obtenerDiligenciasVencidas =
       const fechaHoy =
         obtenerFechaColombia()
 
+      const fechaLimiteVencida = new Date(fechaHoy);
+      fechaLimiteVencida.setDate(fechaLimiteVencida.getDate() - 1);
+
 
       console.log(
         "=============================================="
@@ -363,7 +366,7 @@ export const obtenerDiligenciasVencidas =
 
                 Op.lt,
 
-                fechaHoy
+                fechaLimiteVencida
 
               )
 

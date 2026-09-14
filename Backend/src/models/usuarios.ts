@@ -9,8 +9,7 @@ import {
 } from "sequelize-typescript";
 
 import SolicitudTramites from "./solicitudTramites";
-import Roles from "./roles";
-import UsuariosRoles from "./usuariosroles";
+
 
 
 @Table({
@@ -51,18 +50,6 @@ class Usuarios extends Model {
   declare solicitudTramites: SolicitudTramites;
 
 
-  @HasMany(() => UsuariosRoles, {
-    foreignKey: "usuarioId"
-  })
-  declare usuariosRoles: UsuariosRoles[];
-
-
-  @BelongsToMany(() => Roles, {
-    through: () => UsuariosRoles,
-    foreignKey: "usuarioId",
-    otherKey: "rolId"
-  })
-  declare roles: Roles[];
 }
 
 export default Usuarios;

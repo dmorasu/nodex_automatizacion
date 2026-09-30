@@ -7,7 +7,13 @@ import { generarPlantillaTramitador } from '../utils/generarPlantillaTramitador'
 
 import Tramitador from '../models/tramitador'
 import SolicitudTramites from '../models/solicitudTramites'
+import Usuarios from '../models/usuarios'
+import Municipios from '../models/municipios'
+import Tramite from '../models/tramite'
+import Programacion from '../models/programacion'
+import Clientes from '../models/clientes'
 import { crearNotificacion } from '../services/notificacionesServices'
+import { formatearFecha } from '../utils/fechaColombia'
 
 // 🔥 tipo del Excel
 type TramitadorRow = {
@@ -69,15 +75,47 @@ export const procesarTramitadorController = async (req: Request, res: Response) 
     const tareas = Array.from(unique.values()).map(async (row) => {
       try {
 
-        const solicitud = await SolicitudTramites.findByPk(row.solicitudTramiteId)
+        const solicitud = await SolicitudTramites.findByPk(
+          row.solicitudTramiteId,
+          {
+            include: [
+              Usuarios,
+              Municipios,
+              Tramite,
+              Programacion,
+              Clientes
+            ]
+          }
+        )
         const tramitador = await Tramitador.findByPk(row.tramitadorId)
 
         if (!solicitud || !tramitador?.numeroTramitador) return
 
+        const programacion = solicitud.programacion
+
         await crearNotificacion({
           solicitud,
           tipo: 'ASIGNADO',
-          destinatario: tramitador
+          destinatario: tramitador,
+          data: {
+            nombre: tramitador.nombreTramitador || 'N/A',
+            numeroTramite: solicitud.id,
+            tipoTramite: solicitud.tramite?.nombreTramite || 'N/A',
+            detalle: solicitud.detalleSolicitud || 'N/A',
+            ubicacion: solicitud.direccionTramite || 'N/A',
+            mueble:
+              solicitud.placa ||
+              solicitud.matriculaInmobiliaria ||
+              'N/A',
+            cliente: solicitud.clientes?.nombreCliente || 'N/A',
+            tarifa: programacion?.valorTramite || 0,
+            fecha: programacion?.fechaProbableEntrega
+              ? formatearFecha(programacion.fechaProbableEntrega)
+              : 'Sin fecha',
+            solicitante: solicitud.usuario?.nombreUsuario || 'N/A',
+            programador: solicitud.municipios?.responsable || 'N/A',
+            municipio: solicitud.municipios?.nombreMunicipio || 'N/A'
+          }
         })
 
       } catch (error) {

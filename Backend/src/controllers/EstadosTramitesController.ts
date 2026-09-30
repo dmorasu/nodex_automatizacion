@@ -257,7 +257,7 @@ if (
           ?.nombreTramitador ||
         "N/A",
 
-      tipo:
+      tipoTramite:
         solicitud.tramite
           ?.nombreTramite ||
         "N/A",

@@ -56,6 +56,8 @@ export const validateSolicitudTramitesInput = async (
   await body("detalleSolicitud")
     .notEmpty()
     .withMessage("Debe ingresar un detalle a la solicitud")
+    .isLength({ max: 200 })
+    .withMessage("El detalle de la solicitud no puede superar los 200 caracteres")
     .run(req);
   await body("fechaEntregaResultado")
     .notEmpty()

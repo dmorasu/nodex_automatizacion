@@ -91,6 +91,10 @@ export const validarSolicitudesExcel = async (req: Request, res: Response) => {
       if (isNaN(entidadId))   errores.push({ fila:filaExcel, error:'entidadId inválido' })
       if (isNaN(tramiteId))   errores.push({ fila:filaExcel, error:'tramiteId inválido' })
 
+      if ((row.detalleSolicitud?.toString().trim().length ?? 0) > 200) {
+        errores.push({ fila:filaExcel, error:'detalleSolicitud supera los 200 caracteres' })
+      }
+
       if (!await Clientes.findByPk(clienteId))   errores.push({ fila:filaExcel, error:'clienteId no existe' })
       if (!await Municipios.findByPk(municipioId)) errores.push({ fila:filaExcel, error:'municipiosId no existe' })
       if (!await Operaciones.findByPk(operacionId)) errores.push({ fila:filaExcel, error:'operacionesId no existe' })
@@ -166,6 +170,11 @@ export const cargaMasivaSolicitudes = async (req: Request, res: Response) => {
           isNaN(tramiteId)
         ) {
           errores.push({ fila: filaExcel, error: "IDs inválidos o vacíos" })
+          continue
+        }
+
+        if ((row.detalleSolicitud?.toString().trim().length ?? 0) > 200) {
+          errores.push({ fila: filaExcel, error: "detalleSolicitud supera los 200 caracteres" })
           continue
         }
 

@@ -1,3 +1,4 @@
+import { SolarPanelIcon } from "lucide-react";
 import SolicitudTramites from "../../models/solicitudTramites";
 
 export type TipoNotificacion =
@@ -423,26 +424,38 @@ export const construirMensaje = (
 
   if (tipo === "ASIGNADO") {
       return {
-                subject: "Asignación de diligencia",
+                subject: "Diligencia Asignada",
 
                 text: `
-          👋 *Hola ${data.nombre || "Tramitador"}!*, buen día 😊
+          👋 *Hola ${data.nombre || "Tramitador"}!*
 
-              Tienes una diligencia programada por parte de Gómez Pineda Abogados S.A.S.. A continuación, te compartimos los detalles de la gestión:
+              Tienes una diligencia programada por Gómez Pineda Abogados S.A.S. A continuación, te compartimos los detalles:
 
           🔹 *Detalle de la diligencia:*
 
-          💰 *Valor Honorarios:* $${data.valor || "0"}
+             *Solicitud:* $${solicitud.id || "0"}
 
-          📅 *Fecha de realización:* ${data.fecha || "Pendiente"}
+             • Tipo: ${data.tipo &&"/"&&solicitud.detalleSolicitud || "N/A" }
 
-          🧑‍💼 Nombre del solicitante: ${data.solicitante || "N/A"}
+              Ubicación: ${solicitud.direccionTramite || "N/A"}
 
-          📌 *Consecutivo del trámite:* ${solicitud.id}
+             *Placa/Matricula:* ${solicitud.matriculaInmobiliaria || solicitud.placa || "N/A"}
 
-          👤 *Programador:* ${data.programador || "N/A"}
+             *Cliente:* ${solicitud.clientes.nombreCliente || "N/A"}
 
-          *¡Un saludo!*
+             *Tarifa:* ${solicitud.programacion.valorTramite || "N/A"}
+
+             *Fecha:* ${solicitud.programacion.fechaProbableEntrega|| "N/A"}
+
+             👥 *Asignación*
+
+             *Programador:* ${solicitud.municipios.responsable || "N/A"}
+             *Solicitante:* ${solicitud.usuario.nombreUsuario || "N/A"}
+
+          📞 *Soporte*
+              ¿Tienes alguna inquietud? Comunícate con la Central Torre de Control:
+
+              ✅ Gracias por tu apoyo y gestión.
                 `,
 
                 html: "",
@@ -469,7 +482,7 @@ Te informamos que la siguiente diligencia asignada por Gómez Pineda Abogados S.
 
 📋 *Detalles*
 
-• Tipo: ${data.tipo || "N/A"}
+• Tipo: ${data.tipo &&"/"&&solicitud.detalleSolicitud || "N/A" }
 • Placa/Matrícula: ${data.mueble || "N/A"}
 • Cliente: ${solicitud.clientes?.nombreCliente || "N/A"}
 • Número de Solicitud: ${solicitud.id}
@@ -1010,7 +1023,7 @@ Te recordamos que hoy tienes una diligencia programada por Gómez Pineda Abogado
 
 📋 *Detalles*
 
-• Tipo: ${data.tipo || "N/A"}
+•• Tipo: ${data.tipo &&"/"&&solicitud.detalleSolicitud || "N/A" }
 • Placa/Matrícula: ${data.mueble || "N/A"}
 • Ubicación: ${data.ubicacion || "N/A"}
 • Número de Solicitud: ${solicitud.id}
@@ -1059,7 +1072,7 @@ Observamos que la diligencia programada por Gómez Pineda Abogados S.A.S. ya sup
 
 📋 *Detalles*
 
-• Tipo: ${data.tipo || "N/A"}
+• Tipo: ${data.tipo &&"/"&&solicitud.detalleSolicitud || "N/A" }
 • Placa/Matrícula: ${data.mueble || "N/A"}
 • Ubicación: ${data.ubicacion || "N/A"}
 • Número de Solicitud: ${solicitud.id}

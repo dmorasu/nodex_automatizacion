@@ -72,6 +72,9 @@ cron.schedule(
                 .tramite
                 ?.nombreTramite,
 
+            detalle:
+              solicitud.detalleSolicitud,
+
             mueble:
               solicitud.placa ||
               solicitud.matriculaInmobiliaria ||
@@ -209,6 +212,9 @@ cron.schedule(
               solicitud
                 .tramite
                 ?.nombreTramite,
+
+            detalle:
+              solicitud.detalleSolicitud,
 
             mueble:
               solicitud.placa ||

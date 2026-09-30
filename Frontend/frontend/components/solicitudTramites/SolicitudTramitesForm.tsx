@@ -105,7 +105,8 @@ const [mostrarDocumentos, setMostrarDocumentos] =
           id="detalleSolicitud"
           name="detalleSolicitud"
           rows={4}
-          placeholder="Describa el detalle de la solicitud"
+          maxLength={200}
+          placeholder="Describa el detalle de la solicitud (máximo 200 caracteres)"
           defaultValue={
             solicitud?.detalleSolicitud
           }
@@ -404,6 +405,32 @@ const [mostrarDocumentos, setMostrarDocumentos] =
         </label>
 
 
+        {/* En edición la placa / matrícula no se puede modificar */}
+        {solicitud?.id ? (
+
+          <div className="
+            w-full
+            px-3
+            py-2.5
+            text-xs
+            text-slate-500
+            bg-slate-50
+            border
+            border-slate-200
+            rounded-md
+          ">
+
+            {solicitud.placa
+              ? `Placa: ${solicitud.placa}`
+              : solicitud.matriculaInmobiliaria
+                ? `Matrícula inmobiliaria: ${solicitud.matriculaInmobiliaria}`
+                : "Sin placa ni matrícula registrada"}
+
+          </div>
+
+        ) : (<>
+
+
         {/* =============================================== */}
         {/* TIPO DE IDENTIFICACIÓN                          */}
         {/* =============================================== */}
@@ -567,10 +594,12 @@ const [mostrarDocumentos, setMostrarDocumentos] =
 
         )}
 
+        </>)}
+
       </div>
 
 {/* ================================================= */}
-{/* DOCUMENTOS                                      */}
+{/* DOCUMENTOS                                     */}
 {/* ================================================= */}
 
 <div className="space-y-1.5">

@@ -29,7 +29,8 @@ export const inicioSesionSchema = z.object({
 
 export const CrearSolicitudSchema = z.object({
         detalleSolicitud: z.string()
-                .min(1, { message: 'El detalle de la solicitud no puede estar vacio' }),
+                .min(1, { message: 'El detalle de la solicitud no puede estar vacio' })
+                .max(200, { message: 'El detalle de la solicitud no puede superar los 200 caracteres' }),
         /* amount: z.coerce. --> Me sirve para convertir de string a int para validacion 
                  number({message: 'Cantidad no válida'})*/
         direccionTramite: z.string()
@@ -61,7 +62,8 @@ export const CrearSolicitudSchema = z.object({
 })
 export const EditarSolicitudSchema = z.object({
         detalleSolicitud: z.string()
-                .min(1, { message: 'El detalle de la solicitud no puede estar vacio' }),
+                .min(1, { message: 'El detalle de la solicitud no puede estar vacio' })
+                .max(200, { message: 'El detalle de la solicitud no puede superar los 200 caracteres' }),
         /* amount: z.coerce. --> Me sirve para convertir de string a int para validacion 
                  number({message: 'Cantidad no válida'})*/
         direccionTramite: z.string()

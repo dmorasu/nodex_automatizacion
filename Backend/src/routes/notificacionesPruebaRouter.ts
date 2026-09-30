@@ -36,6 +36,10 @@ const prepararDatos = (
       solicitud.tramite?.nombreTramite ||
       "N/A",
 
+    detalle:
+      solicitud.detalleSolicitud ||
+      "N/A",
+
     mueble:
       solicitud.placa ||
       solicitud.matriculaInmobiliaria ||

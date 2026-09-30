@@ -361,7 +361,9 @@ static getAll = async (req: Request, res: Response) => {
 
 
      static updateById = async (req:Request, res:Response)=>{
-        await req.solicitudTramites.update(req.body)
+        // La placa y la matrícula inmobiliaria no se pueden modificar al editar
+        const { placa, matriculaInmobiliaria, ...datos } = req.body
+        await req.solicitudTramites.update(datos)
         res.json('Solicitud Actualizada')
     }
 

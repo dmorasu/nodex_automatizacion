@@ -73,7 +73,7 @@ export default function TramitadorComboBox({
 
 
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/tramitador?search=${query}`,
+      `/api/backend/tramitador?search=${query}`,
       {
         signal: controller.signal
       }

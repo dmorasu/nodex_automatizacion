@@ -1,6 +1,9 @@
 import { notificationQueue } from '../queues/notificacionesQueues'
 import Notificacion from '../models/notificaciones'
 import { generarPdfDocumentosSolicitud } from './generarDocumentosPDFSolicitudes'
+import { textoDePlantilla } from './plantillasWhatsapp'
+import SolicitudTramites from '../models/solicitudTramites'
+import Usuarios from '../models/usuarios'
 import {
   construirMensaje,
   TipoNotificacion
@@ -24,7 +27,7 @@ const TEMPLATES_WHATSAPP = {
   ASIGNADO_SIN_PDF: 'HXf9d1720fe95164674fdcf0a016a811da',
   DESISTIDO: 'HXdc84769685d853246741b746ec42474d',
   DILIGENCIA_HOY: 'HX5124a3f392efb6f07b8b4ed22786b9ec',
-  DILIGENCIA_VENCIDA: 'HX19c7d166aed5ea4034962cdb2a6da75d'
+  DILIGENCIA_VENCIDA: 'HXa8990ef995f16aa61ac2fcbeb6cabc88'
 }
 
 const TIPOS_EMAIL: TipoNotificacion[] = [
@@ -233,12 +236,16 @@ const enviarWhatsapp = async (
 
   const { templateSid, variables } = await constructor(solicitud, data)
 
+  // Se guarda el texto de la plantilla aprobada que de verdad se envía (el worker lo
+  // reemplaza por el que confirma Twilio). `texto` queda solo como respaldo.
+  const mensaje = (await textoDePlantilla(templateSid, variables)) ?? texto
+
   const notificacionId = await registrarNotificacion(
     solicitud.id,
     tipo,
     'WHATSAPP',
     telefono,
-    texto
+    mensaje
   )
 
   const job = await notificationQueue.add('send', {
@@ -299,6 +306,25 @@ const enviarEmail = async (
 }
 
 
+// Nombre del analista asignado al trámite (null si no tiene)
+const nombreAnalistaAsignado = async (solicitud: any): Promise<string | null> => {
+  try {
+    let analistaId = solicitud?.analistaAsignado
+    if (analistaId === undefined && solicitud?.id) {
+      const fila = await SolicitudTramites.findByPk(solicitud.id, { attributes: ['id', 'analistaAsignado'] })
+      analistaId = fila?.analistaAsignado
+    }
+    if (!analistaId) return null
+
+    const analista = await Usuarios.findByPk(analistaId, { attributes: ['id', 'nombreUsuario'] })
+    return analista?.nombreUsuario ?? null
+  } catch (error) {
+    console.warn('⚠️ No se pudo leer el analista del trámite:', (error as Error).message)
+    return null
+  }
+}
+
+
 // =====================================
 // PUNTO DE ENTRADA
 // =====================================
@@ -309,6 +335,11 @@ export const crearNotificacion = async ({
   destinatario,
   data = {}
 }: NotificacionParams) => {
+
+  // El "Programador" de todas las notificaciones es el analista asignado al trámite.
+  // Si el trámite no tiene analista, se conserva el que mandó quien llamó.
+  const programador = await nombreAnalistaAsignado(solicitud)
+  if (programador) data = { ...data, programador }
 
   const params = { solicitud, tipo, destinatario, data }
 

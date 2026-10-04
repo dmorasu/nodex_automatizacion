@@ -1,0 +1,94 @@
+import { body, param } from 'express-validator'
+import { CATALOGOS_EDITABLES } from '../../controllers/gastos/CatalogosGastosController'
+import { PARAMETROS } from '../../services/gastos/constantes'
+
+const CATALOGOS = Object.keys(CATALOGOS_EDITABLES)
+
+export const validarCatalogo =
+  param('catalogo')
+    .isIn(CATALOGOS)
+    .withMessage(`Catálogo no válido. Opciones: ${CATALOGOS.join(', ')}`)
+
+export const validarCrearCatalogo = [
+  validarCatalogo,
+
+  body('codigo')
+    .trim()
+    .notEmpty().withMessage('El código es obligatorio')
+    .matches(/^[A-Z0-9_]+$/).withMessage('El código solo puede tener mayúsculas, números y guion bajo')
+    .isLength({ max: 50 }).withMessage('El código no puede superar 50 caracteres'),
+
+  body('nombre')
+    .trim()
+    .notEmpty().withMessage('El nombre es obligatorio')
+    .isLength({ max: 100 }).withMessage('El nombre no puede superar 100 caracteres')
+]
+
+export const validarActualizarCatalogo = [
+  validarCatalogo,
+
+  param('id')
+    .isInt({ min: 1 }).withMessage('Id no válido'),
+
+  body('nombre')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('El nombre no puede estar vacío')
+    .isLength({ max: 100 }).withMessage('El nombre no puede superar 100 caracteres'),
+
+  body('activo')
+    .optional()
+    .isBoolean().withMessage('Activo debe ser verdadero o falso')
+]
+
+export const validarActualizarParametro = [
+  param('clave')
+    .isIn(Object.values(PARAMETROS)).withMessage('Parámetro no válido'),
+
+  body('valor')
+    .isFloat({ min: 0, max: 1 }).withMessage('El valor debe ser un número entre 0 y 1 (ej: 0.11 = 11 %)')
+]
+
+const datosUsuario = [
+  body('nombreUsuario')
+    .isString().trim()
+    .notEmpty().withMessage('El nombre es obligatorio')
+    .isLength({ max: 100 }).withMessage('El nombre no puede superar 100 caracteres'),
+  body('correoUsuario')
+    .isEmail().withMessage('Correo no válido')
+    .isLength({ max: 100 }).withMessage('El correo no puede superar 100 caracteres'),
+  body('area').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
+]
+
+// Misma regla del registro de cuenta: mínimo 8 caracteres
+const contrasena = body('contrasena')
+  .isString()
+  .isLength({ min: 8, max: 100 }).withMessage('La contraseña debe tener mínimo 8 caracteres')
+
+export const validarCrearUsuario = [
+  ...datosUsuario,
+  contrasena,
+  body('roles').optional().isArray().withMessage('Roles no válidos'),
+  body('roles.*').isString()
+]
+
+export const validarActualizarUsuario = [
+  param('usuarioId').isInt({ min: 1 }).withMessage('Id de usuario no válido'),
+  ...datosUsuario
+]
+
+export const validarRestablecerContrasena = [
+  param('usuarioId').isInt({ min: 1 }).withMessage('Id de usuario no válido'),
+  contrasena
+]
+
+export const validarAsignarRoles = [
+  param('usuarioId')
+    .isInt({ min: 1 }).withMessage('Id de usuario no válido'),
+
+  body('roles')
+    .isArray().withMessage('Debe enviar la lista de roles'),
+
+  body('roles.*')
+    .isString().withMessage('Cada rol debe ser un código de texto')
+]

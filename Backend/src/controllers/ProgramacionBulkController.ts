@@ -2,7 +2,7 @@
 
 import { Request, Response } from 'express'
 
-import { parseExcel } from '../utils/excelParser'
+import { filasDeLaPeticion } from '../utils/filasMasivas'
 import { validarProgramacion } from '../utils/validacionesActualizaciones'
 import { procesarProgramacion } from '../services/programacionActualizaciones'
 import { generarPlantillaProgramacion } from '../utils/generarPlantillaProgramacion'
@@ -32,11 +32,11 @@ type ProgramacionRow = {
 // =========================
 export const validarProgramacionController = async (req: Request, res: Response) => {
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'Archivo requerido' })
+  const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
   }
-
-  const data = parseExcel(req.file.buffer) as ProgramacionRow[]
+  const data = filas as ProgramacionRow[]
 
   const errores = await validarProgramacion(data)
 
@@ -51,11 +51,11 @@ export const validarProgramacionController = async (req: Request, res: Response)
 // =========================
 export const procesarProgramacionController = async (req: Request, res: Response) => {
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'Archivo requerido' })
+  const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
   }
-
-  const data = parseExcel(req.file.buffer) as ProgramacionRow[]
+  const data = filas as ProgramacionRow[]
 
   const errores = await validarProgramacion(data)
 

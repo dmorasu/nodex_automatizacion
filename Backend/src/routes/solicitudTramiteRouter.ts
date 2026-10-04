@@ -2,6 +2,7 @@ import { Router } from 'express'
 import multer from 'multer'
 
 import { SolicitudTramitesController } from "../controllers/SolicitudTramitesController"
+import { AnalistasTramitesController } from "../controllers/AnalistasTramitesController"
 import { EstadosTramitesController } from '../controllers/EstadosTramitesController'
 import { TrazabilidadController } from '../controllers/TrazabilidadController'
 import { LogisticaController } from '../controllers/LogisticaController'
@@ -16,7 +17,11 @@ import { validateLogisticaInput, validateLogisticaId } from '../middleware/logis
 import { validateProgramacionInput, validateProgramacionExits } from '../middleware/programacion'
 import { validateCuentaCobroInput, validateCuentaCobroExits } from '../middleware/cuentaCobro'
 import { SubEstadosSolicitudController } from '../controllers/SubEstadosSolicitudController'
-import { autenticacion } from '../middleware/auth'
+import { requiereRol } from '../middleware/gastos/requiereRol'
+
+// La sesión y el perfil (Gestión de activos o Torre de control) se exigen en server.ts.
+// Estas acciones son solo de Torre de control:
+const soloTorreControl = requiereRol('TORRE_CONTROL')
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage() })
@@ -27,16 +32,26 @@ const upload = multer({ storage: multer.memoryStorage() })
 
 //------------------------------------Busquedas Dashboard-----------------------------------//
 
+// Para Gestión de activos, los listados devuelven solo sus trámites
 router.get('/buscar', SolicitudTramitesController.buscarSolicitudes)
 router.get('/filtrar', SolicitudTramitesController.filtrarSolicitudes)
 router.get('/solicitudes', SolicitudTramitesController.obtenerSolicitudes)
 
 //==================== TORRE CONTROL ============//
-router.get('/panel-control', SolicitudTramitesController.panelControl)
-router.get(
- '/torre-control',
- SolicitudTramitesController.torreControl
-)
+// Tablero de gestión: Torre de control (el analista recibe solo sus trámites)
+router.get('/tablero', soloTorreControl, SolicitudTramitesController.tablero)
+router.get('/tablero/exportar', soloTorreControl, SolicitudTramitesController.exportarTablero)
+
+//==================== ANALISTAS ============//
+// Ver la lista de analistas: cualquiera con acceso a trámites. Cambiar asignaciones:
+// solo Administrador de Torre de control (y Admin, que siempre pasa)
+const soloAdminTorreControl = requiereRol('ADMIN_TORRE_CONTROL')
+
+router.get('/analistas', AnalistasTramitesController.listar)
+router.get('/analistas/resumen', soloAdminTorreControl, AnalistasTramitesController.resumen)
+router.post('/analistas/reasignar', soloAdminTorreControl, AnalistasTramitesController.reasignar)
+router.get('/analistas/municipios', soloAdminTorreControl, AnalistasTramitesController.municipios)
+router.put('/analistas/municipios', soloAdminTorreControl, AnalistasTramitesController.asignarMunicipios)
 
 
 
@@ -52,7 +67,7 @@ router.param('cuentaCobroId', validateCuentaCobroExits)
 
 
 
-router.post('/carga-masiva',autenticacion, upload.single('file'), cargaMasivaSolicitudes )
+router.post('/carga-masiva', upload.single('file'), cargaMasivaSolicitudes )
 router.get('/plantilla', generarPlantillaExcel) 
 router.post('/validar-excel', upload.single('file'), validarSolicitudesExcel )
 
@@ -71,11 +86,12 @@ router.put('/:solicitudTramitesId',
   handleInputErrors,
   SolicitudTramitesController.updateById
 )
-router.delete('/:solicitudTramitesId', SolicitudTramitesController.deleteById)
+router.delete('/:solicitudTramitesId', soloTorreControl, SolicitudTramitesController.deleteById)
 
 
 // ================= TRAZABILIDAD =================
 router.post('/:solicitudTramitesId/trazabilidad',
+  soloTorreControl,
   validateTrazabilidadInput,
   handleInputErrors,
   TrazabilidadController.create
@@ -84,11 +100,13 @@ router.get('/:solicitudTramitesId/trazabilidad/:trazabilidadId',
   TrazabilidadController.getById
 )
 router.put('/:solicitudTramitesId/trazabilidad/:trazabilidadId',
+  soloTorreControl,
   validateTrazabilidadInput,
   handleInputErrors,
   TrazabilidadController.updateById
 )
 router.delete('/:solicitudTramitesId/trazabilidad/:trazabilidadId',
+  soloTorreControl,
   TrazabilidadController.deleteById
 )
 
@@ -96,6 +114,7 @@ router.delete('/:solicitudTramitesId/trazabilidad/:trazabilidadId',
 
 // ================= ESTADOS =================
 router.post('/:solicitudTramitesId/estadosTramites',
+  soloTorreControl,
   validateEstadosTramitesInput,
   handleInputErrors,
   EstadosTramitesController.create
@@ -104,23 +123,27 @@ router.get('/:solicitudTramitesId/estadosTramites/:estadosTramitesId',
   EstadosTramitesController.getById
 )
 router.put('/:solicitudTramitesId/estadosTramites/:estadosTramitesId',
+  soloTorreControl,
   validateEstadosTramitesInput,
   handleInputErrors,
   EstadosTramitesController.updateById
 )
 router.delete('/:solicitudTramitesId/estadosTramites/:estadosTramitesId',
+  soloTorreControl,
   EstadosTramitesController.deleteById
 )
 
 //================== SUBESTADOS =============
 router.post(
   '/:solicitudTramitesId/subEstadosSolicitud',
+  soloTorreControl,
   validateSolicitudTramiteExits,
   SubEstadosSolicitudController.create
 )
 
 // ================= LOGISTICA =================
 router.post('/:solicitudTramitesId/logistica',
+  soloTorreControl,
   validateLogisticaInput,
   handleInputErrors,
   LogisticaController.create
@@ -131,6 +154,7 @@ router.get('/:solicitudTramitesId/logistica/:logisticaId',
 
 // ================= PROGRAMACION =================
 router.post('/:solicitudTramitesId/programacion',
+  soloTorreControl,
   validateProgramacionInput,
   handleInputErrors,
   ProgramacionController.create
@@ -141,6 +165,7 @@ router.get('/:solicitudTramitesId/programacion/:programacionId',
 
 // ================= CUENTA COBRO =================
 router.post('/:solicitudTramitesId/cuentaCobro',
+  soloTorreControl,
   validateCuentaCobroInput,
   handleInputErrors,
   CuentaCobroController.create
@@ -149,6 +174,7 @@ router.get('/:solicitudTramitesId/cuentaCobro/:cuentaCobroId',
   CuentaCobroController.getById
 )
 //------------------------------------------------Rutas para Tramitador -------------------------------------------------------------------------------- 
-router.patch( '/:solicitudTramitesId/asignar-tramitador', validateSolicitudTramiteExits, SolicitudTramitesController.asignarTramitador )
+router.patch( '/:solicitudTramitesId/asignar-tramitador', soloTorreControl, validateSolicitudTramiteExits, SolicitudTramitesController.asignarTramitador )
+router.patch('/:solicitudTramitesId/analista', soloAdminTorreControl, AnalistasTramitesController.asignar)
 
 export default router

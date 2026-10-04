@@ -24,9 +24,22 @@ interface Documento {
   rutaArchivo: string;
   tipoArchivo: string;
   tamano: number;
-  usuarioId: number;
+  usuarioId: number | null;
   createdAt?: string;
+  // Quién lo subió: un usuario de Nodex Trámites o el tramitador desde su app
+  usuario?: { nombreUsuario: string } | null;
+  tramitador?: { nombreTramitador: string } | null;
+  // Clase que elige el tramitador al subirlo (Soporte, Factura, Boleta de reintegro, Ingreso u Otro)
+  tipoDocumento?: string | null;
 }
+
+const NOMBRES_TIPO_DOCUMENTO: Record<string, string> = {
+  SOPORTE: "Soporte",
+  FACTURA: "Factura",
+  BOLETA_REINTEGRO: "Boleta de reintegro",
+  INGRESO: "Ingreso",
+  OTRO: "Otro",
+};
 
 
 interface Props {
@@ -894,10 +907,7 @@ export default function DocumentosSolicitud({
   // =====================================================
 
   const esImagen =
-    documentoVisualizando?.tipoArchivo ===
-      "image/jpeg" ||
-    documentoVisualizando?.tipoArchivo ===
-      "image/jpg";
+    documentoVisualizando?.tipoArchivo.startsWith("image/") ?? false;
 
 
   // =====================================================
@@ -906,37 +916,14 @@ export default function DocumentosSolicitud({
 
   return (
 
-    <div className="mt-10">
+    <div>
 
 
       {/* ================================================= */}
-      {/* TITULO                                           */}
+      {/* CONTENEDOR PRINCIPAL (el título lo pone la sección del detalle) */}
       {/* ================================================= */}
 
-      <h4 className="
-        text-2xl
-        text-gray-600
-        text-center
-        font-bold
-      ">
-
-        Documentos de la Solicitud
-
-      </h4>
-
-
-      {/* ================================================= */}
-      {/* CONTENEDOR PRINCIPAL                              */}
-      {/* ================================================= */}
-
-      <div className="
-        mt-8
-        border
-        rounded-lg
-        shadow-lg
-        bg-white
-        p-6
-      ">
+      <div>
 
 
         {/* ================================================= */}
@@ -1462,7 +1449,9 @@ export default function DocumentosSolicitud({
                           {documento.tipoArchivo ===
                           "application/pdf"
                             ? "PDF"
-                            : "JPG"
+                            : documento.tipoArchivo === "image/png"
+                              ? "PNG"
+                              : "JPG"
                           }
 
 
@@ -1483,6 +1472,24 @@ export default function DocumentosSolicitud({
                           )}
 
                         </p>
+
+                        {/* QUIÉN LO SUBIÓ */}
+                        {documento.tramitador ? (
+                          <p className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {documento.tipoDocumento && (
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${documento.tipoDocumento === "FACTURA" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                                {NOMBRES_TIPO_DOCUMENTO[documento.tipoDocumento] ?? documento.tipoDocumento}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                              Subido por el tramitador {documento.tramitador.nombreTramitador}
+                            </span>
+                          </p>
+                        ) : documento.usuario && (
+                          <p className="text-[11px] text-gray-400">
+                            Subido por {documento.usuario.nombreUsuario}
+                          </p>
+                        )}
 
                       </div>
 

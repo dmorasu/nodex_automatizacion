@@ -7,7 +7,7 @@ export function useTramitadores() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/tramitador/tramitadores`)
+    fetch(`/api/backend/tramitador/tramitadores`)
       .then(res => res.json())
       .then(setData)
       .finally(() => setLoading(false))

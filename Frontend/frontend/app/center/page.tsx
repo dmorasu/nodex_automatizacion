@@ -1,5 +1,6 @@
 import CenterPageClient from "@/components/solicitudTramites/CenterPageClient"
 import { Metadata } from "next"
+import { cookies } from "next/headers"
 
 export const metadata: Metadata = {
   title: "Nodex - Inicio",
@@ -13,7 +14,11 @@ async function getSolicitudes(searchParams: any) {
   if (searchParams.search) query.append("search", searchParams.search)
 
   const url = `${process.env.API_URL}/solicitudTramites?${query.toString()}`
-  const req = await fetch(url, { cache: "no-store" })
+  // Con la sesión, Gestión de activos recibe solo los trámites que creó
+  const req = await fetch(url, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${cookies().get("TOKEN")?.value}` }
+  })
   const json = await req.json()
 
   return json

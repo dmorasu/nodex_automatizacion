@@ -1,5 +1,6 @@
 "use server";
 
+import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { ErrorResponoseSchema, CrearClienteSchema, SuccessSchema } from "@/src/schemas";
 import { success } from "zod";
 type ActionStateType={
@@ -32,6 +33,7 @@ export async function crearCliente(prevSatate:ActionStateType,formData: FormData
   const req = await fetch(url, {
     method: "POST",
     headers: {
+      ...encabezadosSesion(),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

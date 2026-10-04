@@ -24,7 +24,7 @@ export function useSubEstados(
     setLoading(true)
 
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/subEstados/${tramiteId}`
+      `/api/backend/subEstados/${tramiteId}`
     )
       .then(res => res.json())
       .then(data => {

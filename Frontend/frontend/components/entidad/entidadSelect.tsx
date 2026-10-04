@@ -40,7 +40,7 @@ export default function EntidadesSelect({
 
         const res =
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/entidad`
+            `/api/backend/entidad`
           )
 
         if (!res.ok) {

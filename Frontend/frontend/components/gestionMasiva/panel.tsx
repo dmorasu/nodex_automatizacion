@@ -23,7 +23,7 @@ export default function UploadPanel({ tipo }: UploadPanelProps) {
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState<string | null>(null)
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL
+  const baseUrl = "/api/backend" // proxy del frontend: agrega el token de sesión
 
   // =========================
   // RESET COMPLETO

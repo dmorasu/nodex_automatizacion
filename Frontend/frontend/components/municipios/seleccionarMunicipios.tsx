@@ -14,7 +14,7 @@ export default function SelectMunicipioModal({ onSelect }: { onSelect: (municipi
   useEffect(() => {
     const getMunicipios = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/municipios`)
+        const response = await fetch(`/api/backend/municipios`)
         const data = await response.json()
         setMunicipios(data)
         setFiltered(data)

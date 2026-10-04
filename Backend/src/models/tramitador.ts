@@ -1,5 +1,7 @@
-import { Table, Column, DataType, HasMany, Model } from 'sequelize-typescript'
+import { Table, Column, DataType, HasMany, HasOne, Model, ForeignKey, BelongsTo } from 'sequelize-typescript'
 import SolicitudTramites from './solicitudTramites'
+import AccesoTramitador from './tramitadores/accesoTramitador'
+import SedeMensajeria from './mensajeria/sedeMensajeria'
 
 @Table({
   tableName: 'Tramitador'
@@ -42,11 +44,31 @@ class Tramitador extends Model {
   })
   declare numeroTramitador: string
 
+  // Mensajero: tiene ruta diaria (mapa en Torre de control y "Mi ruta" en su app)
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  })
+  declare esMensajero: boolean
+
+  // Oficina de la que sale su ruta
+  @ForeignKey(() => SedeMensajeria)
+  @Column({ type: DataType.INTEGER })
+  declare sedeId: number | null
+
+  @BelongsTo(() => SedeMensajeria)
+  declare sede: SedeMensajeria
+
   @HasMany(() => SolicitudTramites, {
     onUpdate: 'CASCADE',
     onDelete: 'CASCADE'
   })
   declare solicitudesTramites: SolicitudTramites[]
+
+  // Acceso a la app Nodex Tramitadores (si se le creó)
+  @HasOne(() => AccesoTramitador)
+  declare acceso: AccesoTramitador
 }
 
 export default Tramitador

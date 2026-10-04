@@ -29,6 +29,8 @@ import { useTramitadores } from "@/hooks/useTramitadores"
 import { useOperaciones } from "@/hooks/useOperaciones"
 import { useEstados } from "@/hooks/useEstadosSelect"
 import { useSolicitudesFiltradas } from "@/hooks/useSolicitudesFiltradas"
+import { useAnalistas } from "@/hooks/useAnalistas"
+import { usePermisosAnalistas } from "@/src/auth/PerfilContexto"
 
 import SolicitudTramiteMenu
   from "@/components/solicitudTramites/MenuSolicitudTramites"
@@ -63,6 +65,10 @@ export default function DashboardPageClient() {
   const [operacionesId, setOperacionesId] =
     useState("")
 
+  // Analista asignado (id o "sin"). El analista no lo ve: el backend le muestra solo los suyos
+  const [analistaId, setAnalistaId] =
+    useState("")
+
   const [placa, setPlaca] =
     useState("")
 
@@ -92,6 +98,12 @@ export default function DashboardPageClient() {
   const { data: estados } =
     useEstados()
 
+  const { data: analistas } =
+    useAnalistas()
+
+  const { esAnalista } =
+    usePermisosAnalistas()
+
 
   const {
     data: solicitudes,
@@ -103,6 +115,7 @@ export default function DashboardPageClient() {
     estadoId,
     tramiteId,
     tramitadorId,
+    analistaId,
     operacionesId,
     placa,
     fechaFinalizacionDesde,
@@ -126,6 +139,7 @@ export default function DashboardPageClient() {
     setEstadoId("")
     setTramiteId("")
     setTramitadorId("")
+    setAnalistaId("")
     setOperacionesId("")
     setPlaca("")
     setFechaFinalizacionDesde("")
@@ -309,7 +323,9 @@ export default function DashboardPageClient() {
             text-xs
             text-slate-400
           ">
-            Gestión y seguimiento de las solicitudes de trámite.
+            {esAnalista
+              ? "Tus trámites asignados. Busca por número o identificación para encontrar cualquier trámite."
+              : "Gestión y seguimiento de las solicitudes de trámite."}
           </p>
 
         </div>
@@ -705,6 +721,28 @@ export default function DashboardPageClient() {
             ))}
 
           </select>
+
+
+
+          {/* ANALISTA (no aplica al analista: ve solo los suyos) */}
+
+          {!esAnalista && (
+            <select
+              value={analistaId}
+              onChange={(e) => {
+                setAnalistaId(e.target.value)
+                setPage(1)
+              }}
+              className="h-10 px-3 rounded-md border border-slate-200 bg-slate-50 text-xs text-slate-600 outline-none cursor-pointer focus:bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              aria-label="Analista"
+            >
+              <option value="">Analista</option>
+              <option value="sin">Sin analista</option>
+              {analistas.map(analista => (
+                <option key={analista.id} value={analista.id}>{analista.nombreUsuario}</option>
+              ))}
+            </select>
+          )}
 
 
 
@@ -1370,7 +1408,7 @@ export default function DashboardPageClient() {
                           ">
 
                             {
-                              solicitud.municipios?.responsable??
+                              solicitud.nombreAnalista ??
                               "Sin analista asignado"
                             }
 

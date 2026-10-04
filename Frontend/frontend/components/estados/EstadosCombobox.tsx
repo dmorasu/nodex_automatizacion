@@ -80,7 +80,7 @@ export default function EstadosLista({
       try {
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/estados`
+          `/api/backend/estados`
         )
 
         const data =

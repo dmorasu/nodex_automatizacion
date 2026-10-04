@@ -67,7 +67,7 @@ export default function EvaluacionModal({
 
         const res =
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/solicitudes/evaluacion/preguntas`,
+            `/api/backend/solicitudes/evaluacion/preguntas`,
             {
               credentials: "include"
             }

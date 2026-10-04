@@ -1,1160 +1,209 @@
 "use client";
 
 import { useState } from "react";
-
+import clsx from "clsx";
 import {
   Info,
   FileText,
   History,
-  CalendarDays,
-  User,
-  MapPin,
-  Car,
-  Building2,
-  ClipboardList,
-  DollarSign,
-  MapPinned,
   MessageCircle,
+  Wallet,
+  HardHat,
+  type LucideIcon,
 } from "lucide-react";
 
 import DocumentosSolicitud from "@/components/documentos/DocumentosSolicitud";
+import SeguimientoTramitador from "@/components/tramitador/SeguimientoTramitador"
+import type { Seguimiento } from "@/src/seguimientoTramitador"
 import NotificacionesWhatsApp from "@/components/solicitudTramites/NotificacionesWhatsApp"
-
-import {
-  formatoFechaFinaizacion,
-  formatoFechaSinZona,
-  formatoMoneda,
-} from "@/src/ultis";
+import GastosTramite from "@/components/gastos/GastosTramite"
+import type { GastoTramite } from "@/src/gastos/datosGastos"
+import Seccion from "@/components/ui/Seccion"
+import Dato from "@/components/ui/Dato"
+import { formatoFechaFinaizacion } from "@/src/ultis";
 
 
 interface Props {
   solicitudTramite: any;
   solicitudTramiteId: number;
   apiUrl: string;
+  // Pestaña Gastos (Nodex Gastos)
+  gastos: GastoTramite[];
+  urlGastos: string | null;
+  // Botón "Crear gasto" (solo Gestión de activos)
+  accionGasto?: React.ReactNode;
+  // Pestaña Tramitador (app Nodex Tramitadores)
+  seguimiento: Seguimiento;
 }
 
+type ClavePestana = "informacion" | "documentos" | "gastos" | "trazabilidad" | "tramitador" | "whatsapp"
 
+
+// Columna principal del detalle del trámite: información general y pestañas.
+// Estado, asignación, fechas y valores van en la columna lateral (page.tsx).
 export default function DetalleSolicitudTabs({
   solicitudTramite,
   solicitudTramiteId,
   apiUrl,
+  gastos,
+  urlGastos,
+  accionGasto,
+  seguimiento,
 }: Props) {
 
- const [tabActiva, setTabActiva] =
-  useState<
-    "informacion" | "documentos" | "trazabilidad" | "whatsapp"
-  >("informacion");
+  const [tabActiva, setTabActiva] = useState<ClavePestana>("informacion");
 
+  const reportePendiente = seguimiento.reportes.some(r => r.estado === "PENDIENTE");
+  const trazabilidad: any[] = solicitudTramite.trazabilidad ?? [];
+
+  const pestanas: { clave: ClavePestana, nombre: string, Icono: LucideIcon, insignia?: React.ReactNode }[] = [
+    { clave: "informacion", nombre: "Información", Icono: Info },
+    { clave: "documentos", nombre: "Documentos", Icono: FileText },
+    { clave: "gastos", nombre: "Gastos", Icono: Wallet, insignia: gastos.length > 0 && gastos.length },
+    { clave: "trazabilidad", nombre: "Trazabilidad", Icono: History, insignia: trazabilidad.length > 0 && trazabilidad.length },
+    {
+      clave: "tramitador",
+      nombre: "Tramitador",
+      Icono: HardHat,
+      insignia: reportePendiente ? "Realizado" : seguimiento.comentarios.length > 0 && seguimiento.comentarios.length
+    },
+    { clave: "whatsapp", nombre: "WhatsApp", Icono: MessageCircle },
+  ];
 
   return (
 
-    <div className="
-      bg-white
-      border
-      border-gray-200
-      rounded-lg
-      shadow-lg
-      overflow-hidden
-      mt-6
-    ">
+    <div className="space-y-6">
+
+      {/* PESTAÑAS */}
+      <nav className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm" aria-label="Secciones del trámite">
+        {pestanas.map(({ clave, nombre, Icono, insignia }) => (
+          <button
+            key={clave}
+            type="button"
+            onClick={() => setTabActiva(clave)}
+            aria-current={tabActiva === clave ? "page" : undefined}
+            className={clsx(
+              "inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition",
+              tabActiva === clave ? "bg-sky-50 text-sky-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+            )}
+          >
+            <Icono size={15} />
+            {nombre}
+            {insignia ? (
+              <span className={clsx(
+                "rounded-full px-1.5 py-px text-[10px]",
+                insignia === "Realizado" ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-600"
+              )}>
+                {insignia}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </nav>
 
 
-      {/* ===================================================== */}
-      {/* PESTAÑAS                                               */}
-      {/* ===================================================== */}
+      {/* INFORMACIÓN */}
+      {tabActiva === "informacion" && (
+        <>
+          <Seccion titulo="Datos del trámite">
+            <dl className="grid gap-5 sm:grid-cols-3">
+              <Dato etiqueta="Tipo de trámite" valor={solicitudTramite.tramite?.nombreTramite} />
+              <Dato etiqueta="Entidad" valor={solicitudTramite.entidad?.nombreEntidad} />
+              <Dato etiqueta="Operación" valor={solicitudTramite.operaciones?.nombreOperacion} />
+              <Dato etiqueta="Centro de costos" valor={solicitudTramite.operaciones?.centroDeCostos} />
+              {solicitudTramite.placa && <Dato etiqueta="Placa" valor={solicitudTramite.placa} />}
+              {solicitudTramite.matriculaInmobiliaria && <Dato etiqueta="Matrícula inmobiliaria" valor={solicitudTramite.matriculaInmobiliaria} />}
+              {!solicitudTramite.placa && !solicitudTramite.matriculaInmobiliaria && <Dato etiqueta="Placa / matrícula" valor={null} />}
+            </dl>
 
-      <div className="
-        flex
-        flex-wrap
-        border-b
-        border-gray-200
-        bg-gray-50
-      ">
+            {solicitudTramite.detalleSolicitud && (
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <Dato
+                  etiqueta="Detalle"
+                  valor={<span className="whitespace-pre-line leading-5">{solicitudTramite.detalleSolicitud}</span>}
+                />
+              </div>
+            )}
+          </Seccion>
 
+          <Seccion titulo="Cliente y ubicación">
+            <dl className="grid gap-5 sm:grid-cols-3">
+              <Dato etiqueta="Cliente" valor={solicitudTramite.clientes?.nombreCliente} />
+              <Dato etiqueta="Identificación" valor={solicitudTramite.clientes?.identificacionCliente} />
+              <Dato etiqueta="Ciudad" valor={solicitudTramite.municipios?.nombreMunicipio} />
+              <Dato etiqueta="Dirección" valor={solicitudTramite.direccionTramite} className="sm:col-span-3" />
+            </dl>
+          </Seccion>
 
-        {/* INFORMACIÓN */}
-
-        <button
-          type="button"
-          onClick={() => setTabActiva("informacion")}
-          className={`
-            flex
-            items-center
-            justify-center
-            gap-2
-            px-5
-            py-3
-            text-sm
-            font-medium
-            transition
-            border-b-2
-
-            ${
-              tabActiva === "informacion"
-                ? "border-sky-500 text-sky-600 bg-white"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-            }
-          `}
-        >
-
-          <Info size={17} />
-
-          Información
-
-        </button>
-
-
-
-        {/* DOCUMENTOS */}
-
-        <button
-          type="button"
-          onClick={() => setTabActiva("documentos")}
-          className={`
-            flex
-            items-center
-            justify-center
-            gap-2
-            px-5
-            py-3
-            text-sm
-            font-medium
-            transition
-            border-b-2
-
-            ${
-              tabActiva === "documentos"
-                ? "border-sky-500 text-sky-600 bg-white"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-            }
-          `}
-        >
-
-          <FileText size={17} />
-
-          Documentos
-
-        </button>
-
-
-
-        {/* TRAZABILIDAD */}
-
-        <button
-          type="button"
-          onClick={() => setTabActiva("trazabilidad")}
-          className={`
-            flex
-            items-center
-            justify-center
-            gap-2
-            px-5
-            py-3
-            text-sm
-            font-medium
-            transition
-            border-b-2
-
-            ${
-              tabActiva === "trazabilidad"
-                ? "border-sky-500 text-sky-600 bg-white"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-            }
-          `}
-        >
-
-          <History size={17} />
-
-          Trazabilidad
-
-          {solicitudTramite.trazabilidad?.length > 0 && (
-
-            <span className="
-              ml-1
-              px-2
-              py-0.5
-              rounded-full
-              bg-sky-100
-              text-sky-600
-              text-xs
-            ">
-
-              {solicitudTramite.trazabilidad.length}
-
-            </span>
-
+          {solicitudTramite.documentosAportados && (
+            <Seccion titulo="Documentos aportados">
+              <p className="whitespace-pre-line text-xs leading-5 text-slate-600">{solicitudTramite.documentosAportados}</p>
+            </Seccion>
           )}
-
-        </button>
-
-        {/* WHATSAPP */}
-
-<button
-  type="button"
-  onClick={() => setTabActiva("whatsapp")}
-  className={`
-    flex
-    items-center
-    justify-center
-    gap-2
-    px-5
-    py-3
-    text-sm
-    font-medium
-    transition
-    border-b-2
-
-    ${
-      tabActiva === "whatsapp"
-        ? "border-sky-500 text-sky-600 bg-white"
-        : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-    }
-  `}
->
-  <MessageCircle size={17} />
-
-  Notificaciones WhatsApp
-</button>
-
-
-
-      </div>
-          
-
-      {/* ===================================================== */}
-      {/* CONTENIDO                                              */}
-      {/* ===================================================== */}
-
-      <div className="p-6">
-
-
-        {/* ===================================================== */}
-        {/* INFORMACIÓN                                            */}
-        {/* ===================================================== */}
-
-        {tabActiva === "informacion" && (
-
-  <div>
-
-    {/* ================================================= */}
-    {/* ENCABEZADO */}
-    {/* ================================================= */}
-
-    <div className="
-      flex
-      items-center
-      gap-3
-      mb-6
-      pb-4
-      border-b
-      border-gray-200
-    ">
-
-      <div className="
-        bg-slate-50
-        p-2
-        rounded-lg
-      ">
-
-        <Info
-          size={21}
-          className="text-sky-500"
-        />
-
-      </div>
-
-      <div>
-
-        <h3 className="
-          text-base
-          font-semibold
-          text-gray-800
-        ">
-          Información de la Solicitud
-        </h3>
-
-        <p className="
-          text-xs
-          text-gray-500
-          mt-0.5
-        ">
-          Información general del trámite
-        </p>
-
-      </div>
-
-    </div>
-
-
-    {/* ================================================= */}
-    {/* INFORMACIÓN */}
-    {/* ================================================= */}
-
-    <div className="space-y-0">
-
-
-      {/* NÚMERO */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Número de Solicitud
-        </span>
-
-        <span className="
-          text-xs
-          font-semibold
-          text-gray-800
-        ">
-          {solicitudTramite.id}
-        </span>
-
-      </div>
-
-
-      {/* CLIENTE */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Cliente
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.clientes?.nombreCliente ??
-            "Sin cliente"}
-        </span>
-
-      </div>
-      {/* De */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Detalle
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.detalleSolicitud??""}
-        </span>
-
-      </div>
-            
-
-      {/* PLACA */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Placa
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.placa ?? "Sin Placa"}
-        </span>
-
-      </div>
-
-
-      {/* MATRÍCULA */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Matrícula Inmobiliaria
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.matriculaInmobiliaria ??
-            "Sin Matrícula"}
-        </span>
-
-      </div>
-
-
-      {/* CENTRO DE COSTOS */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Centro de Costos
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.operaciones?.centroDeCostos ??
-            "Sin Centro de Costos"}
-        </span>
-
-      </div>
-
-
-      {/* CIUDAD */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Ciudad
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.municipios?.nombreMunicipio ??
-            "Sin ciudad"}
-        </span>
-
-      </div>
-
-
-      {/* DIRECCIÓN */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Dirección
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.direccionTramite ??
-            "Sin dirección"}
-        </span>
-
-      </div>
-
-
-      {/* TIPO DE TRÁMITE */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Tipo de Trámite
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.tramite?.nombreTramite ??
-            "Sin trámite"}
-        </span>
-
-      </div>
-
-
-      {/* VALOR TRÁMITE */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Valor Trámite
-        </span>
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-800
-        ">
-          {formatoMoneda(
-            solicitudTramite.programacion?.valorTramite ?? "0"
+        </>
+      )}
+
+
+      {/* DOCUMENTOS */}
+      {tabActiva === "documentos" && (
+        <Seccion titulo="Documentos" descripcion="Archivos del trámite, incluidos los que sube el tramitador desde su app">
+          <DocumentosSolicitud solicitudTramiteId={solicitudTramiteId} apiUrl={apiUrl} />
+        </Seccion>
+      )}
+
+
+      {/* TRAZABILIDAD */}
+      {tabActiva === "trazabilidad" && (
+        <Seccion titulo="Trazabilidad" descripcion="Registro de actividades y observaciones de la solicitud">
+          {trazabilidad.length > 0 ? (
+            <ol className="relative space-y-5 border-l border-slate-200 pl-5">
+              {trazabilidad.map((registro: any) => (
+                <li key={registro.id} className="relative">
+                  <span className="absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-sky-400 ring-1 ring-sky-200" aria-hidden="true" />
+                  <p className="whitespace-pre-line text-xs leading-5 text-slate-700">{registro.observacionTrazabilidad}</p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {registro.nombreUsuario || "Sin usuario"} · {formatoFechaFinaizacion(registro.createdAt)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
+              <History size={30} className="mx-auto mb-2 text-slate-300" />
+              <p className="text-xs font-medium text-slate-500">No se han registrado observaciones</p>
+              <p className="mt-1 text-[11px] text-slate-400">La trazabilidad de esta solicitud aparecerá aquí.</p>
+            </div>
           )}
-        </span>
-
-      </div>
-
-
-      {/* VIÁTICOS */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Valor Viáticos
-        </span>
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-800
-        ">
-          {formatoMoneda(
-            solicitudTramite.programacion?.valorViaticos ?? "0"
-          )}
-        </span>
-
-      </div>
+        </Seccion>
+      )}
 
 
-      {/* FECHA CREACIÓN */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Fecha de Creación
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {formatoFechaFinaizacion(
-            solicitudTramite.createdAt
-          )}
-        </span>
-
-      </div>
-
-
-      {/* FECHA ENTREGA */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Fecha Entrega Resultado
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.fechaEntregaResultado
-            ? formatoFechaSinZona(
-                solicitudTramite.fechaEntregaResultado
-              )
-            : "Sin Fecha"}
-        </span>
-
-      </div>
-
-
-      {/* FECHA DILIGENCIA */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Fecha de Diligencia
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {formatoFechaSinZona(
-            solicitudTramite.programacion?.fechaProbableEntrega ??
-              "Sin Fecha"
-          )}
-        </span>
-
-      </div>
-
-
-      {/* FECHA FINALIZACIÓN */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Fecha Finalización Servicio
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.programacion?.fechaFinalizacionServicio
-            ? formatoFechaFinaizacion(
-                solicitudTramite.programacion.fechaFinalizacionServicio
-              )
-            : "Sin Fecha"}
-        </span>
-
-      </div>
+      {/* GASTOS */}
+      {tabActiva === "gastos" && (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <GastosTramite gastos={gastos} urlGastos={urlGastos} accion={accionGasto} />
+        </section>
+      )}
 
 
       {/* TRAMITADOR */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-        border-b
-        border-gray-100
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Tramitador Asignado
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.tramitador?.nombreTramitador ??
-            "No se ha asignado un Tramitador"}
-        </span>
-
-      </div>
-
-
-      {/* PROGRAMADOR */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        py-3
-      ">
-
-        <span className="
-          text-xs
-          font-medium
-          text-gray-500
-          sm:w-64
-          shrink-0
-        ">
-          Programador
-        </span>
-
-        <span className="
-          text-xs
-          text-gray-800
-        ">
-          {solicitudTramite.municipios?.responsable ??
-            "Sin asignar"}
-        </span>
-
-      </div>
-
-
-      
-
-    </div>
-
-  </div>
-
-)}
-
-
-
-        {/* ===================================================== */}
-        {/* DOCUMENTOS                                            */}
-        {/* ===================================================== */}
-
-        {tabActiva === "documentos" && (
-
-          <DocumentosSolicitud
-            solicitudTramiteId={
-              solicitudTramiteId
-            }
-            apiUrl={
-              apiUrl
-            }
+      {tabActiva === "tramitador" && (
+        <Seccion titulo="Tramitador" descripcion="Comentarios y reportes desde la app Nodex Tramitadores">
+          <SeguimientoTramitador
+            solicitudTramiteId={solicitudTramiteId}
+            seguimiento={seguimiento}
+            tramitador={solicitudTramite.tramitador?.nombreTramitador ?? null}
           />
-
-        )}
-
-
-
-        {/* ===================================================== */}
-        {/* TRAZABILIDAD                                          */}
-        {/* ===================================================== */}
-
-        {tabActiva === "trazabilidad" && (
-
-          <div>
-
-
-            {/* ================================================ */}
-            {/* ENCABEZADO                                        */}
-            {/* ================================================ */}
-
-            <div className="
-              flex
-              items-center
-              gap-3
-              mb-6
-              pb-4
-              border-b
-              border-gray-200
-            ">
-
-              <div className="
-                bg-sky-50
-                p-2
-                rounded-lg
-              ">
-
-                <History
-                  size={22}
-                  className="text-sky-500"
-                />
-
-              </div>
-
-
-              <div>
-
-                <h3 className="
-                  text-xm
-                  font-semibold
-                  text-gray-800
-                ">
-                  Historial de Gestión
-                </h3>
-
-                <p className="
-                  text-xs
-                  text-gray-500
-                  mt-0.5
-                ">
-                  Registro de actividades y observaciones de la solicitud
-                </p>
-
-              </div>
-
-            </div>
-
-
-
-            {/* ================================================ */}
-            {/* HISTORIAL                                          */}
-            {/* ================================================ */}
-
-            {solicitudTramite.trazabilidad?.length ? (
-
-              <div className="space-y-3">
-
-                {solicitudTramite.trazabilidad.map(
-                  (trazabilidad: any) => (
-
-                    <div
-                      key={trazabilidad.id}
-                      className="
-                        bg-slate-50
-                        border
-                        border-gray-200
-                        rounded-lg
-                        p-4
-                        transition
-                        hover:border-sky-200
-                      "
-                    >
-
-
-                      {/* OBSERVACIÓN */}
-
-                      <div className="
-                        flex
-                        items-start
-                        gap-3
-                      ">
-
-                        <div className="
-                          bg-sky-50
-                          p-2
-                          rounded-lg
-                          shrink-0
-                        ">
-
-                          <History
-                            size={18}
-                            className="text-sky-500"
-                          />
-
-                        </div>
-
-
-                        <div className="
-                          min-w-0
-                          flex-1
-                        ">
-
-
-                          <p className="
-                            text-xs
-                            
-                            text-gray-800
-                            leading-5
-                          ">
-
-                            {trazabilidad.observacionTrazabilidad}
-
-                          </p>
-
-
-
-                          {/* USUARIO + FECHA */}
-
-                          <div className="
-                            flex
-                            flex-col
-                            sm:flex-row
-                            sm:items-center
-                            gap-1
-                            sm:gap-4
-                            mt-3
-                          ">
-
-
-                            <p className="
-                              text-xs
-                              text-gray-500
-                            ">
-
-                              <span className="
-                                font-medium
-                                text-gray-600
-                              ">
-                                De:
-                              </span>{" "}
-
-                              {trazabilidad.nombreUsuario}
-
-                            </p>
-
-
-
-                            <span className="
-                              hidden
-                              sm:block
-                              text-gray-300
-                            ">
-                              •
-                            </span>
-
-
-
-                            <p className="
-                              text-xs
-                              text-gray-500
-                            ">
-
-                              {formatoFechaFinaizacion(
-                                trazabilidad.createdAt
-                              )}
-
-                            </p>
-
-
-                          </div>
-
-
-                        </div>
-
-
-                      </div>
-
-
-                    </div>
-
-                  )
-                )}
-                
-
-              </div>
-
-            ) : (
-
-
-              /* ============================================== */
-              /* SIN TRAZABILIDAD                                */
-              /* ============================================== */
-
-              <div className="
-                text-center
-                py-12
-                border
-                border-dashed
-                border-gray-300
-                rounded-lg
-                bg-slate-50
-              ">
-
-                <History
-                  size={35}
-                  className="
-                    mx-auto
-                    mb-3
-                    text-gray-300
-                  "
-                />
-
-
-                <p className="
-                  text-xm
-                  font-medium
-                  text-gray-500
-                ">
-                  No se han registrado observaciones
-                </p>
-
-
-                <p className="
-                  text-xs
-                  text-gray-400
-                  mt-1
-                ">
-                  La trazabilidad de esta solicitud aparecerá aquí.
-                </p>
-
-              </div>
-
-            )}
-
-          </div>
-
-        )}
-
-        {/* ===================================================== */}
-{/* WHATSAPP                                              */}
-{/* ===================================================== */}
-
-{tabActiva === "whatsapp" && (
-
-  <NotificacionesWhatsApp
-    solicitudTramiteId={solicitudTramiteId}
-    apiUrl={apiUrl}
-  />
-
-)}
-
-
-      </div>
+        </Seccion>
+      )}
+
+
+      {/* WHATSAPP */}
+      {tabActiva === "whatsapp" && (
+        <Seccion titulo="Notificaciones WhatsApp" descripcion="Mensajes enviados al tramitador">
+          <NotificacionesWhatsApp solicitudTramiteId={solicitudTramiteId} apiUrl={apiUrl} />
+        </Seccion>
+      )}
 
     </div>
 

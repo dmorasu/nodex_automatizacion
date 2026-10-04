@@ -20,20 +20,35 @@ import {
   Settings2,
   LogOut,
   ChevronRight,
+  HardHat,
+  ShieldCheck,
+  CircleCheckBig,
+  UserCog,
+  Route,
 } from "lucide-react"
 
 import Link from "next/link"
 
 import { Usuario } from "@/src/schemas"
+import { NOMBRES_PERFIL, type PerfilTramites } from "@/src/auth/perfiles"
 
 import { cerrarSesion } from "@/actions/cerrarSesion"
 
 
 export default function CenterMenu({
   usuario,
+  perfil,
+  esAdmin,
+  puedeAsignarAnalistas,
 }: {
   usuario: Usuario
+  perfil: PerfilTramites
+  esAdmin: boolean
+  puedeAsignarAnalistas: boolean
 }) {
+
+  // Gestión de activos no ve Torre de control ni Gestión masiva; Torre de control ve todo
+  const esTorreControl = perfil === "TORRE_CONTROL"
 
   return (
 
@@ -216,6 +231,10 @@ export default function CenterMenu({
 
                       </p>
 
+                      <p className="text-[11px] font-medium text-sky-600">
+                        {NOMBRES_PERFIL[perfil]}
+                      </p>
+
                     </div>
 
                   </div>
@@ -281,6 +300,7 @@ export default function CenterMenu({
 
                   {/* TORRE DE CONTROL */}
 
+                  {esTorreControl && (
                   <Link
                     href="/center/torreControl"
                     onClick={() => close()}
@@ -312,7 +332,7 @@ export default function CenterMenu({
                       text-sm
                       font-medium
                     ">
-                      Torre de Control
+                      Tablero de gestión
                     </span>
 
                     <ChevronRight
@@ -324,6 +344,7 @@ export default function CenterMenu({
                     />
 
                   </Link>
+                  )}
 
 
 
@@ -375,6 +396,52 @@ export default function CenterMenu({
 
 
 
+                  {/* REPORTADOS COMO REALIZADOS (app de tramitadores) */}
+
+                  <Link
+                    href="/center/reportesRealizado"
+                    onClick={() => close()}
+                    className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
+                  >
+                    <CircleCheckBig size={18} className="text-slate-400 group-hover:text-sky-500" />
+                    <span className="flex-1 text-sm font-medium">Reportados como realizados</span>
+                    <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
+                  </Link>
+
+
+
+                  {/* RUTAS DE MENSAJEROS (Torre de control) */}
+
+                  {esTorreControl && (
+                    <Link
+                      href="/center/rutas"
+                      onClick={() => close()}
+                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
+                    >
+                      <Route size={18} className="text-slate-400 group-hover:text-sky-500" />
+                      <span className="flex-1 text-sm font-medium">Rutas de mensajeros</span>
+                      <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
+                    </Link>
+                  )}
+
+
+
+                  {/* ANALISTAS (Administrador de Torre de control) */}
+
+                  {puedeAsignarAnalistas && (
+                    <Link
+                      href="/center/analistas"
+                      onClick={() => close()}
+                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
+                    >
+                      <UserCog size={18} className="text-slate-400 group-hover:text-sky-500" />
+                      <span className="flex-1 text-sm font-medium">Asignación de analistas</span>
+                      <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
+                    </Link>
+                  )}
+
+
+
                   {/* CLIENTES */}
 
                   <Link
@@ -420,6 +487,54 @@ export default function CenterMenu({
                     />
 
                   </Link>
+
+                  {/* TRAMITADORES (Torre de control) */}
+
+                  {esTorreControl && (
+                  <Link
+                    href="/center/tramitadores"
+                    onClick={() => close()}
+                    className="
+                      group
+                      flex
+                      items-center
+                      gap-3
+                      px-3
+                      py-2.5
+                      rounded-lg
+                      text-slate-600
+                      transition
+                      hover:bg-indigo-50
+                      hover:text-indigo-600
+                    "
+                  >
+
+                    <HardHat
+                      size={18}
+                      className="
+                        text-slate-400
+                        group-hover:text-indigo-500
+                      "
+                    />
+
+                    <span className="
+                      flex-1
+                      text-sm
+                      font-medium
+                    ">
+                      Tramitadores
+                    </span>
+
+                    <ChevronRight
+                      size={15}
+                      className="
+                        text-slate-300
+                        group-hover:text-indigo-400
+                      "
+                    />
+
+                  </Link>
+                  )}
 
 
 
@@ -529,10 +644,59 @@ export default function CenterMenu({
 
                   </Link>
 
+                  {/* CARGUE MASIVO DE GASTOS (Gestión de activos) */}
+
+                  {(perfil === "GESTION_ACTIVOS" || esAdmin) && (
+                  <Link
+                    href="/center/cargueMasivoGastos"
+                    onClick={() => close()}
+                    className="
+                      group
+                      flex
+                      items-center
+                      gap-3
+                      px-3
+                      py-2.5
+                      rounded-lg
+                      text-slate-600
+                      transition
+                      hover:bg-teal-50
+                      hover:text-teal-600
+                    "
+                  >
+
+                    <UserRoundPlus
+                      size={18}
+                      className="
+                        text-slate-400
+                        group-hover:text-teal-500
+                      "
+                    />
+
+                    <span className="
+                      flex-1
+                      text-sm
+                      font-medium
+                    ">
+                      Cargue masivo de gastos
+                    </span>
+
+                    <ChevronRight
+                      size={15}
+                      className="
+                        text-slate-300
+                        group-hover:text-teal-400
+                      "
+                    />
+
+                  </Link>
+                  )}
+
 
 
                   {/* GESTIÓN MASIVA */}
 
+                  {esTorreControl && (
                   <Link
                     href="/center/gestionMasiva"
                     onClick={() => close()}
@@ -576,8 +740,61 @@ export default function CenterMenu({
                     />
 
                   </Link>
+                  )}
 
                 </div>
+
+
+
+                {/* ADMINISTRACIÓN (solo Admin) */}
+
+                {esAdmin && (
+                  <div className="border-t border-slate-200 p-2">
+                  <Link
+                    href="/center/admin"
+                    onClick={() => close()}
+                    className="
+                      group
+                      flex
+                      items-center
+                      gap-3
+                      px-3
+                      py-2.5
+                      rounded-lg
+                      text-slate-600
+                      transition
+                      hover:bg-indigo-50
+                      hover:text-indigo-600
+                    "
+                  >
+
+                    <ShieldCheck
+                      size={18}
+                      className="
+                        text-slate-400
+                        group-hover:text-indigo-500
+                      "
+                    />
+
+                    <span className="
+                      flex-1
+                      text-sm
+                      font-medium
+                    ">
+                      Administración
+                    </span>
+
+                    <ChevronRight
+                      size={15}
+                      className="
+                        text-slate-300
+                        group-hover:text-indigo-400
+                      "
+                    />
+
+                  </Link>
+                  </div>
+                )}
 
 
 

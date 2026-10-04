@@ -74,7 +74,7 @@ export default function ClientesComboBox({
 
         const r =
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/clientes/${defaultValue}`
+            `/api/backend/clientes/${defaultValue}`
           )
 
 

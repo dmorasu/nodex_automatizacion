@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 
-import { parseExcel } from '../utils/excelParser'
+import { filasDeLaPeticion } from '../utils/filasMasivas'
 import { validarLogistica } from '../utils/validacionesActualizaciones'
 import { procesarLogistica } from '../services/logisticaActualizaciones'
 import { generarPlantillaLogistica } from '../utils/generarPlantillaLogistica'
@@ -11,11 +11,11 @@ import { generarPlantillaLogistica } from '../utils/generarPlantillaLogistica'
 export const validarLogisticaController = async (req: Request, res: Response) => {
   try {
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'Archivo requerido' })
-    }
-
-    const data = parseExcel(req.file.buffer)
+    const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
+  }
+  const data = filas
     const errores = await validarLogistica(data)
 
     return res.json({
@@ -37,11 +37,11 @@ export const validarLogisticaController = async (req: Request, res: Response) =>
 export const procesarLogisticaController = async (req: Request, res: Response) => {
   try {
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'Archivo requerido' })
-    }
-
-    const data = parseExcel(req.file.buffer)
+    const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
+  }
+  const data = filas
 
     const errores = await validarLogistica(data)
 

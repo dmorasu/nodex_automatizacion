@@ -41,23 +41,31 @@ export const validateTramitadorExits = async (
   }
 };
 
-export const validateTramitadorInput = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  await body("nombreTramitador")
-    .notEmpty()
-    .withMessage("El nombre no puede estar vacío")
-    .run(req);
-
-  await body("region")
-    .notEmpty()
-    .withMessage("La región no debe estar vacía")
-    .run(req);
-
-  next();
-};
+// Datos del tramitador (crear y editar). El número de WhatsApp se guarda solo con
+// dígitos e indicativo de país (ej: 573001234567), igual que los ya registrados.
+export const validateTramitadorInput = [
+  body("nombreTramitador")
+    .isString().trim()
+    .notEmpty().withMessage("El nombre no puede estar vacío")
+    .isLength({ max: 200 }).withMessage("El nombre no puede superar 200 caracteres"),
+  body("identificacion")
+    .isString().trim()
+    .notEmpty().withMessage("La identificación es obligatoria")
+    .isLength({ max: 50 }).withMessage("La identificación no puede superar 50 caracteres"),
+  body("correoTramitador")
+    .isEmail().withMessage("Correo no válido")
+    .isLength({ max: 150 }),
+  body("numeroTramitador")
+    .customSanitizer(valor => String(valor ?? "").replace(/[\s-]/g, ""))
+    .matches(/^\d{10,15}$/).withMessage("El WhatsApp debe tener solo números con el indicativo del país (ej: 573001234567)"),
+  body("region")
+    .isString().trim()
+    .notEmpty().withMessage("La región no debe estar vacía")
+    .isLength({ max: 100 }),
+  body("activo").optional().isBoolean().withMessage("Activo debe ser verdadero o falso").toBoolean(),
+  body("esMensajero").optional().isBoolean().withMessage("Mensajero debe ser verdadero o falso").toBoolean(),
+  body("sedeId").optional({ values: "null" }).isInt({ min: 1 }).withMessage("Sede no válida").toInt()
+]
 
 export const validateTramitadorId = async (
   req: Request,

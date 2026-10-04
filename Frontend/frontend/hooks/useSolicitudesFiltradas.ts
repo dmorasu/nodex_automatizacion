@@ -7,6 +7,7 @@ interface Filtros {
   estadoId?: string
   tramiteId?: string
   tramitadorId?: string
+  analistaId?: string
   operacionesId?: string
   placa?: string
   fechaFinalizacionDesde?: string
@@ -35,9 +36,9 @@ export function useSolicitudesFiltradas(filtros: Filtros) {
       }
     })
 
-    fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/solicitudTramites/filtrar?${query.toString()}`
-    )
+    // Pasa por la ruta interna del frontend, que agrega el token de la sesión
+    // (Gestión de activos recibe solo los trámites que creó)
+    fetch(`/api/backend/solicitudTramites/filtrar?${query.toString()}`)
       .then(res => res.json())
       .then(res => {
         setData(Array.isArray(res.data) ? res.data : [])

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
+import { usePerfil } from "@/src/auth/PerfilContexto"
 
 import {
   Download,
@@ -24,6 +26,8 @@ type ResultadoCarga = {
   message: string
   totalProcesados: number
   creados: number[]
+  // Números de los trámites creados (para la plantilla de gastos prellenada)
+  idsCreados?: number[]
   errores: ErrorExcel[]
 }
 
@@ -63,7 +67,7 @@ export default function CargaMasivaSolicitudes() {
   const descargarPlantilla = () => {
 
     window.location.href =
-      `${process.env.NEXT_PUBLIC_API_URL}/solicitudTramites/plantilla`
+      `/api/backend/solicitudTramites/plantilla`
 
   }
 
@@ -93,7 +97,7 @@ export default function CargaMasivaSolicitudes() {
 
       const res =
         await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/solicitudTramites/validar-excel`,
+          `/api/backend/solicitudTramites/validar-excel`,
           {
             method: "POST",
             body: formData,
@@ -181,7 +185,7 @@ export default function CargaMasivaSolicitudes() {
 
     xhr.open(
       "POST",
-      `${process.env.NEXT_PUBLIC_API_URL}/solicitudTramites/carga-masiva`
+      `/api/backend/solicitudTramites/carga-masiva`
     )
 
 
@@ -254,6 +258,9 @@ export default function CargaMasivaSolicitudes() {
           creados:
             json.creados ?? [],
 
+          idsCreados:
+            json.idsCreados ?? [],
+
           errores:
             json.errores ?? []
         })
@@ -307,6 +314,10 @@ export default function CargaMasivaSolicitudes() {
     creados,
     errores
   } = resultado
+
+  // Gestión de activos puede seguir con los gastos de los trámites recién creados
+  const perfil = usePerfil()
+  const idsCreados = resultado.idsCreados ?? []
 
 
   return (
@@ -1046,6 +1057,36 @@ export default function CargaMasivaSolicitudes() {
             </div>
 
           </div>
+
+
+
+          {/* ================================================= */}
+          {/* SIGUIENTE PASO: GASTOS DE ESTOS TRÁMITES          */}
+          {/* ================================================= */}
+
+          {perfil === "GESTION_ACTIVOS" && idsCreados.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-sky-50 px-4 py-3">
+              <p className="text-xs text-slate-600">
+                Se crearon <b>{idsCreados.length}</b> trámite(s). Si tienen gastos, descargue la plantilla prellenada,
+                complete solo los que tengan gasto y cárguela en <b>Cargue masivo de gastos</b>.
+              </p>
+              <div className="flex gap-2">
+                <a
+                  href={`/api/backend/gastos/cargue-masivo/plantilla?tramites=${idsCreados.join(",")}`}
+                  className="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-sky-500 text-white text-xs font-semibold hover:bg-sky-600"
+                >
+                  <Download size={14} />
+                  Plantilla de gastos de estos trámites
+                </a>
+                <Link
+                  href="/center/cargueMasivoGastos"
+                  className="inline-flex items-center h-9 px-3 rounded-md border border-sky-200 bg-white text-sky-700 text-xs font-semibold hover:bg-sky-100"
+                >
+                  Ir al cargue de gastos
+                </Link>
+              </div>
+            </div>
+          )}
 
 
 

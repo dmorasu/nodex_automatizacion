@@ -9,6 +9,7 @@ import {
 
 import SolicitudTramites from "./solicitudTramites";
 import Usuarios from "./usuarios";
+import Tramitador from "./tramitador";
 
 @Table({
   tableName: "DocumentosSolicitud",
@@ -26,15 +27,34 @@ class DocumentoSolicitud extends Model {
   declare solicitudTramite: SolicitudTramites;
 
 
+  // Quién lo subió: un usuario de Nodex Trámites o un tramitador desde su app (uno de los dos)
   @ForeignKey(() => Usuarios)
   @Column({
     type: DataType.INTEGER,
-    allowNull: false,
+    allowNull: true,
   })
-  declare usuarioId: number;
+  declare usuarioId: number | null;
 
   @BelongsTo(() => Usuarios)
   declare usuario: Usuarios;
+
+  @ForeignKey(() => Tramitador)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  declare tramitadorId: number | null;
+
+  @BelongsTo(() => Tramitador)
+  declare tramitador: Tramitador;
+
+  // Clase de documento que indica el tramitador al subirlo: SOPORTE, FACTURA u OTRO
+  // (los subidos desde Nodex Trámites no lo llevan)
+  @Column({
+    type: DataType.STRING(30),
+    allowNull: true,
+  })
+  declare tipoDocumento: string | null;
 
 
   @Column({

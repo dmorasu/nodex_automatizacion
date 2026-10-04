@@ -1,5 +1,6 @@
 "use server"
 
+import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { revalidatePath } from "next/cache"
 import { ErrorResponoseSchema } from "@/src/schemas"
 
@@ -31,6 +32,7 @@ export default async function CrearSubEstado(
     const req = await fetch(url, {
       method: "POST",
       headers: {
+      ...encabezadosSesion(),
         "Content-Type": "application/json"
       },
       body: JSON.stringify({

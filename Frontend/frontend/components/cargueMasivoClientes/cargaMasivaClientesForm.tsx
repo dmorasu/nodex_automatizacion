@@ -63,7 +63,7 @@ export default function CargaMasivaClientes() {
   const descargarPlantilla = () => {
 
     window.location.href =
-      `${process.env.NEXT_PUBLIC_API_URL}/clientes/plantilla`
+      `/api/backend/clientes/plantilla`
 
   }
 
@@ -93,7 +93,7 @@ export default function CargaMasivaClientes() {
 
       const res =
         await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/clientes/validar-excel`,
+          `/api/backend/clientes/validar-excel`,
           {
             method: "POST",
             body: formData,
@@ -180,7 +180,7 @@ export default function CargaMasivaClientes() {
 
     xhr.open(
       "POST",
-      `${process.env.NEXT_PUBLIC_API_URL}/clientes/carga-masiva`
+      `/api/backend/clientes/carga-masiva`
     )
 
 

@@ -148,6 +148,8 @@ export const cargaMasivaSolicitudes = async (req: Request, res: Response) => {
     })
 
     const creados: number[] = []
+    // Números de los trámites creados (para la plantilla de gastos prellenada)
+    const idsCreados: number[] = []
     const errores: any[] = []
 
     for (const [index, row] of rows.entries()) {
@@ -206,7 +208,7 @@ export const cargaMasivaSolicitudes = async (req: Request, res: Response) => {
           }
         }
 
-        await SolicitudTramites.create({
+        const tramite = await SolicitudTramites.create({
           detalleSolicitud: row.detalleSolicitud?.toString().trim(),
           direccionTramite: row.direccionTramite?.toString().trim(),
           clienteId,
@@ -222,6 +224,7 @@ export const cargaMasivaSolicitudes = async (req: Request, res: Response) => {
         })
 
         creados.push(filaExcel)
+        idsCreados.push(tramite.id)
 
       } catch (err: any) {
         errores.push({ fila: filaExcel, error: err.message })
@@ -232,6 +235,7 @@ export const cargaMasivaSolicitudes = async (req: Request, res: Response) => {
       message: "Carga masiva finalizada",
       totalProcesados: rows.length,
       creados,
+      idsCreados,
       errores
     })
 

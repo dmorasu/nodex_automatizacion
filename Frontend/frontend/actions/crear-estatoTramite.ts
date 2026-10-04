@@ -1,5 +1,6 @@
 "use server"
 
+import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { ErrorResponoseSchema, EstadoTramitesSchema } from "@/src/schemas"
 
 type ActionStateType = {
@@ -43,6 +44,7 @@ export default async function CrearEstadoTramite(
     const req = await fetch(url, {
       method: "POST",
       headers: {
+      ...encabezadosSesion(),
         "Content-Type": "application/json"
       },
       body: JSON.stringify({

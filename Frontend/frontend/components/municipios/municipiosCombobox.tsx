@@ -36,13 +36,16 @@ interface Props {
   onChange?: (value: number | null) => void
   defaultValue?: number
   name?: string
+  // Municipio que propone el autocompletado de la dirección (Google): queda seleccionado
+  seleccionExterna?: Municipio | null
 }
 
 
 export default function MunicipiosModalSelect({
   onChange,
   defaultValue,
-  name = "municipioId"
+  name = "municipioId",
+  seleccionExterna
 }: Props) {
 
 
@@ -76,7 +79,7 @@ export default function MunicipiosModalSelect({
 
         const res =
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/municipios/${defaultValue}`
+            `/api/backend/municipios/${defaultValue}`
           )
 
         if (!res.ok) return
@@ -101,6 +104,16 @@ export default function MunicipiosModalSelect({
 
   }, [defaultValue])
 
+
+
+  // Municipio propuesto por la dirección elegida en Google
+  useEffect(() => {
+    if (seleccionExterna) {
+      setSelected(seleccionExterna)
+      onChange?.(seleccionExterna.id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seleccionExterna])
 
 
   // =====================================================

@@ -16,12 +16,14 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-holidays": "^3.26.6",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
     "next": "14.2.33",
     "react": "^18",
     "react-day-picker": "^9.11.1",
     "react-dom": "^18",
     "react-hot-toast": "^2.6.0",
+    "react-leaflet": "^4.2.1",
     "react-toastify": "^11.0.5",
     "react-window": "^2.2.3",
     "server-only": "^0.0.1",
@@ -31,6 +33,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/leaflet": "1.9",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

@@ -145,11 +145,11 @@ export const estadosTramites = z.object({
         id: z.number(),
         estado: z.object({
                 nombreEstado: z.string()
-        })
-
-
-
-
+        }),
+        // Historial de estados en el detalle del trámite
+        estadoId: z.number().optional(),
+        createdAt: z.string().optional(),
+        tipoRechazo: z.object({ nombre: z.string() }).nullable().optional()
 })
 
 
@@ -345,7 +345,12 @@ tramiteId: z.number(),
   operaciones: operaciones.optional().nullable(),
   entidad: Entidad.optional().nullable(),
   tramite: Tramites.optional().nullable(),
-  tramitador: TramitadorSchema.optional().nullable()
+  tramitador: TramitadorSchema.optional().nullable(),
+  // Estado actual del trámite (SolicitudTramites.estadoActualTramite)
+  estadoActual: z.object({ id: z.number(), nombreEstado: z.string() }).nullable().optional(),
+  // Analista encargado (id de Usuarios) y su nombre
+  analistaAsignado: z.number().nullable().optional(),
+  nombreAnalista: z.string().nullable().optional()
 
 })
         .passthrough()

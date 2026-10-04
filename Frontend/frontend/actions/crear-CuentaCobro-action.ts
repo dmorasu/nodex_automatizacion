@@ -1,5 +1,6 @@
 "use server"
 
+import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { 
   ErrorResponoseSchema,
   SuccessSchema, 
@@ -59,7 +60,8 @@ export default async function CrearCuentaCobro(
 
   const req = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      ...encabezadosSesion(), "Content-Type": "application/json" },
     body: JSON.stringify(parsed.data)
   })
 

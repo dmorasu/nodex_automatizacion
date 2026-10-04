@@ -27,7 +27,7 @@ export function useMunicipiosSearch() {
         setLoading(true)
 
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/municipios/search?search=${search}&limit=20`,
+          `/api/backend/municipios/search?search=${search}&limit=20`,
           { signal: controller.signal }
         )
 

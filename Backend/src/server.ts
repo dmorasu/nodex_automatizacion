@@ -37,15 +37,36 @@ import documentoSolicitudRouter from "./routes/documentoSolicitudRouter";
 import notificacionesPruebaRouter from "./routes/notificacionesPruebaRouter"
 import notificacionesRouter from "./routes/notificacionesRouter"
 
+// Módulo de gastos
+import gastosRouter from "./routes/gastos"
+import appTramitadoresRouter from "./routes/tramitadores"
+import seguimientoTramitadorRouter from "./routes/tramitadores/seguimiento"
+import { seedGastos } from "./seeds/gastosSeed"
+import { ajustarEsquemaGastos } from "./seeds/ajustesEsquemaGastos"
+import { ajustarEsquemaTramitadores } from "./seeds/ajustesEsquemaTramitadores"
+import { ajustarEsquemaMensajeria, ajustarEsquemaTramites } from "./seeds/ajustesEsquemaTramites"
+import gestionMasivaRouter from "./routes/gestionMasivaRouter"
+import mensajeriaRouter from "./routes/mensajeriaRouter"
+import direccionesRouter from "./routes/direccionesRouter"
+import { autenticacion } from "./middleware/auth"
+import { requiereRol } from "./middleware/gastos/requiereRol"
+
 
 
 async function connectDB() {
     try {
         await db.authenticate()
+        // Antes de sync(): ajusta columnas que los modelos ya esperan
+        await ajustarEsquemaTramitadores()
+        await ajustarEsquemaTramites()
         await db.sync()
+        await ajustarEsquemaMensajeria()
+        await ajustarEsquemaGastos()
+        await seedGastos()
         console.log(colors.blue.bold('Conexion Exitosa'))
     } catch (error) {
         console.log(colors.red.bold('Fallo la Conexion a la base de Datos'))
+        console.error(error)
     }
 }
 
@@ -75,38 +96,62 @@ app.use(cors({
   credentials: true
 }))
 
-app.use(express.json())
+// 2 MB: la gestión masiva en pantalla envía hasta 500 filas en JSON
+app.use(express.json({ limit: "2mb" }))
 app.use(cookieParser())
 
 // 🔹 Rutas existentes
-app.use('/api/usuarios', usuarioRouter)
-app.use('/api/entidad', entidadRouter)
-app.use('/api/clientes', clienteRouter)
-app.use('/api/municipios', municipiosRouter)
-app.use('/api/operaciones', operacionesRouter)
-app.use('/api/tramites', tramiteRouter)
-app.use('/api/tarifa', tarifaRouter)
-app.use('/api/tramitador', tramitadorRouter)
-app.use('/api/solicitudTramites', solicitudTramiteRouter)
-app.use('/api/estados', estadosRouter)
+// ── Permisos ──────────────────────────────────────────────────
+// Trámites: sesión + perfil Gestión de activos o Torre de control (Admin siempre pasa).
+// Lo que solo puede hacer Torre de control se marca dentro de cada router.
+const accesoTramites = [autenticacion, requiereRol('GESTION_ACTIVOS', 'TORRE_CONTROL')]
+const soloTorreControl = [autenticacion, requiereRol('TORRE_CONTROL')]
+const soloAdmin = [autenticacion, requiereRol('ADMIN')]
+
+// 🔹 Públicas: login y registro (una cuenta nueva no tiene perfil hasta que se le asigne)
 app.use('/api/auth', authRouter)
-app.use("/api/solicitudes", evaluacionRoutes)
-app.use("/api/transportadora", transportadoraRouter)
-//app.use('/api/estados', estadosBulkRouter)
-app.use('/api/bulk/logistica', logisticaBulkRouter)
-app.use('/api/bulk/programacion', programacionActualizacionesRouter)
-app.use('/api/bulk/trazabilidad', trazabilidadActualizacionesRouter)
-app.use('/api/bulk/estados', estadosActualizacionesRouter)
-app.use('/api/bulk/tramitador', tramitadorActualizacionesRouter)
-app.use("/api/tiposRechazo", tiposRechazoRoutes);
-app.use('/api/subEstados',subEstadosRouter)
-app.use('/api/documentos', documentoSolicitudRouter)
-app.use('/api/notificaciones', notificacionesRouter)
 
-// Rutas para pruebas de notificaciones automaticas
+// 🔹 Usuarios: solo Admin
+app.use('/api/usuarios', ...soloAdmin, usuarioRouter)
 
+// 🔹 Trámites y sus catálogos
+app.use('/api/entidad', ...accesoTramites, entidadRouter)
+app.use('/api/clientes', ...accesoTramites, clienteRouter)
+app.use('/api/municipios', ...accesoTramites, municipiosRouter)
+app.use('/api/operaciones', ...accesoTramites, operacionesRouter)
+app.use('/api/tramites', ...accesoTramites, tramiteRouter)
+app.use('/api/tarifa', ...accesoTramites, tarifaRouter)
+app.use('/api/tramitador', ...accesoTramites, tramitadorRouter)
+app.use('/api/solicitudTramites', ...accesoTramites, solicitudTramiteRouter)
+app.use('/api/direcciones', ...accesoTramites, direccionesRouter)
+app.use('/api/estados', ...accesoTramites, estadosRouter)
+app.use("/api/solicitudes", ...accesoTramites, evaluacionRoutes)
+app.use("/api/transportadora", ...accesoTramites, transportadoraRouter)
+app.use("/api/tiposRechazo", ...accesoTramites, tiposRechazoRoutes);
+app.use('/api/subEstados', ...accesoTramites, subEstadosRouter)
+app.use('/api/documentos', ...accesoTramites, documentoSolicitudRouter)
+app.use('/api/notificaciones', ...accesoTramites, notificacionesRouter)
+app.use('/api/seguimiento-tramitador', ...accesoTramites, seguimientoTramitadorRouter)
+
+// 🔹 Gestión masiva: solo Torre de control
+app.use('/api/bulk/logistica', ...soloTorreControl, logisticaBulkRouter)
+app.use('/api/bulk/programacion', ...soloTorreControl, programacionActualizacionesRouter)
+app.use('/api/bulk/trazabilidad', ...soloTorreControl, trazabilidadActualizacionesRouter)
+app.use('/api/bulk/estados', ...soloTorreControl, estadosActualizacionesRouter)
+app.use('/api/bulk/tramitador', ...soloTorreControl, tramitadorActualizacionesRouter)
+app.use('/api/bulk/tramites', ...soloTorreControl, gestionMasivaRouter)
+app.use('/api/mensajeria', ...soloTorreControl, mensajeriaRouter)
+
+// 🔹 Gastos: cada ruta valida sesión y rol dentro de su router
+app.use('/api/gastos', gastosRouter)
+
+// 🔹 App Nodex Tramitadores: login propio; cada ruta valida la sesión del tramitador
+app.use('/api/app-tramitadores', appTramitadoresRouter)
+
+// 🔹 Pruebas de notificaciones automáticas: solo Admin
 app.use(
   "/api/test/notificaciones",
+  ...soloAdmin,
   notificacionesPruebaRouter
 )
 

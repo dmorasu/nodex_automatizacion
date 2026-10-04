@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 
-import { parseExcel } from '../utils/excelParser'
+import { filasDeLaPeticion } from '../utils/filasMasivas'
 import { validarEstados } from '../utils/validacionesActualizaciones'
 import { procesarEstados } from '../services/estadosActualizaciones'
 import { generarPlantillaEstados } from '../utils/generarPlantillaEstados' // si usas genérico
@@ -12,11 +12,11 @@ import { generarPlantillaEstados } from '../utils/generarPlantillaEstados' // si
 // ============================
 export const validarEstadosController = async (req: Request, res: Response) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'Archivo requerido' })
-    }
-
-    const data = parseExcel(req.file.buffer)
+    const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
+  }
+  const data = filas
     const errores = await validarEstados(data)
 
     return res.json({
@@ -36,11 +36,11 @@ export const validarEstadosController = async (req: Request, res: Response) => {
 // ============================
 export const procesarEstadosController = async (req: Request, res: Response) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'Archivo requerido' })
-    }
-
-    const data = parseExcel(req.file.buffer)
+    const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
+  }
+  const data = filas
 
     // 1) Validar primero
     const errores = await validarEstados(data)

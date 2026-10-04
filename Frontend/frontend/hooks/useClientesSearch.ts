@@ -18,7 +18,7 @@ export function useClientesSearch() {
       try {
         setLoading(true)
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/clientes/search?search=${search}&limit=25`,
+          `/api/backend/clientes/search?search=${search}&limit=25`,
           { signal: controller.signal }
         )
         const data = await res.json()

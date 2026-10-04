@@ -1,0 +1,83 @@
+// =====================================
+// CONSTANTES DEL MÓDULO DE GASTOS
+// Los códigos son fijos (la lógica depende de ellos);
+// los nombres visibles se pueden cambiar en la base de datos.
+// =====================================
+
+export const ROLES = {
+  TESORERIA: 'TESORERIA',
+  // Persona de Tesorería que paga solo las compras de certificados (CTL y Cámara de Comercio)
+  TESORERIA_CERTIFICADOS: 'TESORERIA_CERTIFICADOS',
+  LEGALIZACION: 'LEGALIZACION',
+  CONTABILIDAD: 'CONTABILIDAD',
+  ADMIN: 'ADMIN',
+  // Perfiles del módulo de trámites
+  GESTION_ACTIVOS: 'GESTION_ACTIVOS',
+  TORRE_CONTROL: 'TORRE_CONTROL',
+  // Analista de Torre de control: en el inicio ve solo los trámites asignados a él
+  ANALISTA_TRAMITES: 'ANALISTA_TRAMITES',
+  // Administrador de Torre de control: además reasigna analistas
+  ADMIN_TORRE_CONTROL: 'ADMIN_TORRE_CONTROL'
+} as const
+
+// Estos roles trabajan en Torre de control: tienen sus mismos permisos (se agregan en `autenticacion`)
+export const ROLES_CON_TORRE_CONTROL: string[] = [ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL]
+
+export type CodigoRol = typeof ROLES[keyof typeof ROLES]
+
+export const TIPOS_GASTO = {
+  VEHICULO: 'VEHICULO',
+  INMUEBLE: 'INMUEBLE',
+  OTRO: 'OTRO',
+  // Compras de certificados: las paga Tesorería - Certificados (no salen en "Por pagar" general)
+  CTL: 'CTL',
+  CAMARA_COMERCIO: 'CAMARA_COMERCIO'
+} as const
+
+export const TIPOS_GASTO_CERTIFICADOS: string[] = [TIPOS_GASTO.CTL, TIPOS_GASTO.CAMARA_COMERCIO]
+
+export const ESTADOS_GASTO = {
+  SOLICITADO: 'SOLICITADO',
+  PAGADO: 'PAGADO',
+  FACTURADO: 'FACTURADO',            // Legalización registró la factura real
+  EN_CUENTA_COBRO: 'EN_CUENTA_COBRO',
+  LEGALIZADO: 'LEGALIZADO',
+  CONTABILIZADO: 'CONTABILIZADO',
+  ANULADO: 'ANULADO'
+} as const
+
+export const ESTADOS_CUENTA_COBRO = {
+  BORRADOR: 'BORRADOR',
+  LEGALIZADA: 'LEGALIZADA',
+  CONTABILIZADA: 'CONTABILIZADA',
+  ANULADA: 'ANULADA'
+} as const
+
+export const ESTADOS_REINTEGRO = {
+  PENDIENTE: 'PENDIENTE',
+  REINTEGRADO: 'REINTEGRADO'
+} as const
+
+export const TIPOS_MOVIMIENTO_BOLSA = {
+  RECARGA: 'RECARGA',           // + entra dinero a la bolsa
+  PAGO: 'PAGO',                 // − Tesorería paga un gasto
+  REINTEGRO: 'REINTEGRO',       // + el tramitador devuelve un sobrante (fase 5)
+  LEGALIZACION: 'LEGALIZACION', // + se legaliza una cuenta de cobro (fase 5)
+  REVERSO: 'REVERSO',           // ± se deshace un movimiento
+  AJUSTE: 'AJUSTE'              // ± corrección manual del administrador
+} as const
+
+export type TipoMovimientoBolsa = typeof TIPOS_MOVIMIENTO_BOLSA[keyof typeof TIPOS_MOVIMIENTO_BOLSA]
+
+export const TIPOS_DOCUMENTO = {
+  SOPORTE_PAGO: 'SOPORTE_PAGO',
+  CUENTA_COBRO: 'CUENTA_COBRO',
+  SOPORTE_REINTEGRO: 'SOPORTE_REINTEGRO'
+} as const
+
+export const PARAMETROS = {
+  RETENCION_FUENTE: 'RETENCION_FUENTE',
+  GMF: 'GMF'
+} as const
+
+export type ClaveParametro = typeof PARAMETROS[keyof typeof PARAMETROS]

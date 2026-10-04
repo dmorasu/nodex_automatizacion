@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 
-import { parseExcel } from '../utils/excelParser'
+import { filasDeLaPeticion } from '../utils/filasMasivas'
 import { validarTramitador } from '../utils/validacionesActualizaciones'
 import { procesarTramitador } from '../services/tramitadorActualizaciones'
 import { generarPlantillaTramitador } from '../utils/generarPlantillaTramitador'
@@ -26,11 +26,11 @@ type TramitadorRow = {
 // =========================
 export const validarTramitadorController = async (req: Request, res: Response) => {
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'Archivo requerido' })
+  const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
   }
-
-  const data = parseExcel(req.file.buffer) as TramitadorRow[]
+  const data = filas as TramitadorRow[]
 
   const errores = await validarTramitador(data)
 
@@ -45,11 +45,11 @@ export const validarTramitadorController = async (req: Request, res: Response) =
 // =========================
 export const procesarTramitadorController = async (req: Request, res: Response) => {
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'Archivo requerido' })
+  const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
   }
-
-  const data = parseExcel(req.file.buffer) as TramitadorRow[]
+  const data = filas as TramitadorRow[]
 
   const errores = await validarTramitador(data)
 

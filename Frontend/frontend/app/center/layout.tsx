@@ -2,6 +2,7 @@ import CenterMenu from "@/components/menuCenter/centerMenu";
 import LogoEncabezado from "@/components/ui/LogoEncabezado";
 import ToastNotificaciones from "@/components/ui/notificaciones";
 import { verificacionSesion } from "@/src/auth/dal";
+import { ProveedorPerfil } from "@/src/auth/PerfilContexto";
 import Link from "next/link";
 
 export default async function CenterLayout({
@@ -10,7 +11,7 @@ export default async function CenterLayout({
   children: React.ReactNode;
 }>) {
 
-  const { usuario } = await verificacionSesion();
+  const { usuario, perfil, esAdmin, esAnalista, puedeAsignarAnalistas } = await verificacionSesion();
 
   return (
     <>
@@ -140,6 +141,9 @@ export default async function CenterLayout({
 
             <CenterMenu
               usuario={usuario}
+              perfil={perfil}
+              esAdmin={esAdmin}
+              puedeAsignarAnalistas={puedeAsignarAnalistas}
             />
 
           </div>
@@ -165,7 +169,11 @@ export default async function CenterLayout({
         pb-10
       ">
 
+        <ProveedorPerfil perfil={perfil} permisos={{ esAnalista, puedeAsignarAnalistas }}>
+
         {children}
+
+      </ProveedorPerfil>
 
       </main>
 

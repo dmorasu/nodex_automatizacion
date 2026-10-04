@@ -21,6 +21,7 @@ import TramitesSelect
 import { toDateInput } from "@/src/ultis";
 
 import { Paperclip, X } from "lucide-react";
+import CampoDireccion, { type MunicipioSugerido } from "../direcciones/CampoDireccion";
 import DocumentosSolicitud from "../documentos/DocumentosSolicitud";
 
 
@@ -32,6 +33,10 @@ export default function SolicitudTramitesForm({
 
   const [tipoDocumento, setTipoDocumento] =
     useState("");
+
+  // Municipio que propone la dirección elegida en Google
+  const [municipioSugerido, setMunicipioSugerido] =
+    useState<MunicipioSugerido | null>(null);
 
 const [mostrarDocumentos, setMostrarDocumentos] =
   useState(false);
@@ -157,31 +162,10 @@ const [mostrarDocumentos, setMostrarDocumentos] =
         </label>
 
 
-        <input
-          type="text"
-          id="direccionTramite"
+        <CampoDireccion
           name="direccionTramite"
-          placeholder="Dirección donde se realizará el trámite"
-          defaultValue={
-            solicitud?.direccionTramite
-          }
-          className="
-            w-full
-            h-10
-            px-3
-            text-xs
-            text-slate-700
-            bg-white
-            border
-            border-slate-200
-            rounded-md
-            outline-none
-            transition
-            placeholder:text-slate-300
-            focus:border-sky-400
-            focus:ring-2
-            focus:ring-sky-100
-          "
+          defaultValue={solicitud?.direccionTramite}
+          onMunicipio={setMunicipioSugerido}
         />
 
       </div>
@@ -217,6 +201,7 @@ const [mostrarDocumentos, setMostrarDocumentos] =
           defaultValue={
             solicitud?.municipios?.id
           }
+          seleccionExterna={municipioSugerido}
         />
 
       </div>

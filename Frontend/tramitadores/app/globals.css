@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Siempre claro, aunque el celular esté en modo oscuro (incluye controles nativos) */
+html {
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Nada se sale de lo ancho de la pantalla: sin scroll horizontal.
+   "clip" (y no "hidden") para no romper el encabezado fijo (sticky). */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800;
+  /* Textos largos sin espacios (direcciones, nombres de archivo, observaciones) se parten */
+  overflow-wrap: anywhere;
+}
+
+img,
+video {
+  max-width: 100%;
+}

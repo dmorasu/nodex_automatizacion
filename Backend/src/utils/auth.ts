@@ -1,4 +1,10 @@
 import bcrypt from  'bcrypt'
+import { Sequelize } from 'sequelize'
+
+// Condición para buscar un usuario por correo sin importar mayúsculas/minúsculas
+// (comparación exacta: no usa ILIKE, donde "_" y "%" serían comodines)
+export const correoIgual = (correo: string) =>
+  Sequelize.where(Sequelize.fn('lower', Sequelize.col('correoUsuario')), String(correo).trim().toLowerCase())
 
 
 export const hashcontrasena =async (contrasena:string)=>{

@@ -43,7 +43,7 @@ export default function TramitesSelect({
 
         const res =
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/tramites`
+            `/api/backend/tramites`
           )
 
         if (!res.ok) {

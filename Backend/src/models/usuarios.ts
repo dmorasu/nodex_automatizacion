@@ -9,6 +9,8 @@ import {
 } from "sequelize-typescript";
 
 import SolicitudTramites from "./solicitudTramites";
+import Roles from "./gastos/roles";
+import UsuarioRoles from "./gastos/usuarioRoles";
 
 
 
@@ -48,6 +50,11 @@ class Usuarios extends Model {
     onDelete: "CASCADE"
   })
   declare solicitudTramites: SolicitudTramites;
+
+
+  // Roles del módulo de gastos (tabla gastos.usuario_roles)
+  @BelongsToMany(() => Roles, () => UsuarioRoles)
+  declare roles: Roles[];
 
 
 }

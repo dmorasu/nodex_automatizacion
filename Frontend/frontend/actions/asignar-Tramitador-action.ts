@@ -1,5 +1,6 @@
 "use server"
 
+import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { ErrorResponoseSchema, SuccessSchema } from "@/src/schemas"
 
 type ActionStateType = {
@@ -29,6 +30,7 @@ export default async function AsignarTramitadorSolicitud(
   const req = await fetch(url, {
     method: 'PATCH',
     headers: {
+      ...encabezadosSesion(),
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({

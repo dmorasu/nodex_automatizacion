@@ -6,12 +6,14 @@ export const sendEmail = async (
   to: string,
   subject: string,
   html: string,
-  cc?: string[]
+  cc?: string[],
+  // Los correos de trámites van con copia a la torre de control; los de gastos no
+  ccTorreControl = true
 ) => {
   try {
 
     const correosCC = [
-      'torredecontrol@gomezpinedaabogados.com',
+      ...(ccTorreControl ? ['torredecontrol@gomezpinedaabogados.com'] : []),
       ...(cc || [])
     ]
 
@@ -24,7 +26,8 @@ export const sendEmail = async (
       from: process.env.EMAIL_FROM!,
       subject,
       html,
-      cc: ccUnicos
+      // SendGrid rechaza un cc vacío
+      cc: ccUnicos.length > 0 ? ccUnicos : undefined
     })
 
   } catch (error: any) {

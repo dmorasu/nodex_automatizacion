@@ -40,7 +40,7 @@ export default function OperacionesSelect({
 
         const res =
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/operaciones`
+            `/api/backend/operaciones`
           )
 
         if (!res.ok) {

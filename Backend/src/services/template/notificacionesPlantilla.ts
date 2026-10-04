@@ -1,4 +1,3 @@
-import { SolarPanelIcon } from "lucide-react";
 import SolicitudTramites from "../../models/solicitudTramites";
 
 export type TipoNotificacion =
@@ -449,7 +448,7 @@ export const construirMensaje = (
 
              👥 *Asignación*
 
-             *Programador:* ${solicitud.municipios.responsable || "N/A"}
+             *Programador:* ${data.programador || solicitud.municipios?.responsable || "N/A"}
              *Solicitante:* ${solicitud.usuario.nombreUsuario || "N/A"}
 
           📞 *Soporte*

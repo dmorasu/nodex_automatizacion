@@ -793,9 +793,7 @@ export default function CenterPageClient({
                           ">
 
                             {
-                              solicitud
-                                .tramite
-                                ?.responsable
+                              solicitud.nombreAnalista
                               ?? "Sin analista asignado"
                             }
 

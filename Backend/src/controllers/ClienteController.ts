@@ -1,6 +1,7 @@
 import type {Request,Response} from 'express'
 import Cliente from '../models/clientes'
 import { Op,Sequelize } from 'sequelize'
+import { db } from '../config/db'
 import * as XLSX from 'xlsx'
  
 declare global{
@@ -45,7 +46,8 @@ export class ClienteController{
           }
         },
         order: [
-          [Sequelize.literal(`"nombreCliente" ILIKE '${search}%'`), 'DESC'],
+          // Primero los que empiezan por el texto buscado (escapado para evitar inyección SQL)
+        [Sequelize.literal(`"nombreCliente" ILIKE ${db.escape(`${search}%`)}`), 'DESC'],
           ['nombreCliente', 'ASC']
         ],
         limit

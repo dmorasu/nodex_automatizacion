@@ -78,10 +78,16 @@ new Worker(
 
       solicitudTramiteId,
 
-      mediaUrl
+      mediaUrl,
+
+      // false en los correos del módulo de gastos
+      ccTorreControl = true
 
     } = job.data
 
+
+    // Texto que Twilio confirma como enviado (plantilla ya llenada)
+    let textoEnviado: string | null = null
 
     try {
 
@@ -118,7 +124,9 @@ new Worker(
 
           message,
 
-          cc
+          cc,
+
+          ccTorreControl
 
         )
 
@@ -144,7 +152,7 @@ new Worker(
         // 1. ENVIAR TEMPLATE APROBADO
         // =====================================
 
-        await sendWhatsApp({
+        const enviado = await sendWhatsApp({
 
           to,
 
@@ -157,6 +165,8 @@ new Worker(
             job.data.variables
 
         })
+
+        textoEnviado = enviado?.body?.trim() || null
 
         console.log(
           '✅ TEMPLATE WHATSAPP ENVIADO'
@@ -230,7 +240,12 @@ new Worker(
       // ACTUALIZAR ESTADO
       // =====================================
 
+      // El adjunto (PDF) no viene en el texto de Twilio: se conserva la nota que ya tenía
+      const notaAdjunto = notif.mensaje?.match(/\n\n📎 Adjunto: .+$/)?.[0] ?? ''
+
       await notif.update({
+
+        ...(textoEnviado ? { mensaje: textoEnviado + notaAdjunto } : {}),
 
         estado:
           'ENVIADO',

@@ -1,6 +1,7 @@
 import type {Request,Response} from 'express'
 import Municipio from '../models/municipios'
-import { Op,Sequelize } from 'sequelize'
+import { Op, Sequelize, QueryTypes } from 'sequelize'
+import { db } from '../config/db'
 
 declare global{
     namespace Express{
@@ -11,24 +12,39 @@ declare global{
 }
 
 export class MunicipioController{
+// La tabla Municipios quedó cargada dos veces (una copia sin regional y otra con regional).
+// Mientras se unifican (scripts/unificarMunicipios.ts), el buscador muestra cada municipio una
+// sola vez: la copia con menor id, que es la que usa la mayoría de trámites.
 static search = async (req, res) => {
   try {
     const search = req.query.search?.toString().trim() || '';
-    const limit = Number(req.query.limit) || 20;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
 
     if (search.length < 2) return res.json([]);
 
-    const municipios = await Municipio.findAll({
-      where: {
-        nombreMunicipio: {
-          [Op.iLike]: `%${search}%`
-        }
-      },
-      order: [
-        [Sequelize.literal(`"Municipios"."nombreMunicipio" ILIKE '${search}%'`), 'DESC'],
-        ['nombreMunicipio', 'ASC']
-      ],
-      limit
+    const municipios = await db.query(`
+      SELECT * FROM (
+        SELECT DISTINCT ON (UPPER(TRIM(m."nombreMunicipio")), UPPER(TRIM(m.departamento)))
+          m.id, m."nombreMunicipio", m.departamento,
+          -- La regional puede estar solo en la otra copia
+          COALESCE(m.regional, (
+            SELECT d.regional FROM "Municipios" d
+            WHERE UPPER(TRIM(d."nombreMunicipio")) = UPPER(TRIM(m."nombreMunicipio"))
+              AND UPPER(TRIM(d.departamento)) = UPPER(TRIM(m.departamento))
+              AND d.regional IS NOT NULL
+            LIMIT 1
+          )) AS regional,
+          m.responsable, m."analistaId", m.latitud, m.longitud
+        FROM "Municipios" m
+        WHERE m."nombreMunicipio" ILIKE :contiene
+        ORDER BY UPPER(TRIM(m."nombreMunicipio")), UPPER(TRIM(m.departamento)), m.id
+      ) unicos
+      -- Primero los que empiezan por el texto buscado
+      ORDER BY ("nombreMunicipio" ILIKE :empieza) DESC, "nombreMunicipio", departamento
+      LIMIT :limit
+    `, {
+      type: QueryTypes.SELECT,
+      replacements: { contiene: `%${search}%`, empieza: `${search}%`, limit }
     });
 
     res.json(municipios);
@@ -39,7 +55,6 @@ static search = async (req, res) => {
   }
 };
 
-    
     static getAll =async(req:Request, res:Response)=>{
         try {
                 const municipio=await Municipio.findAll({

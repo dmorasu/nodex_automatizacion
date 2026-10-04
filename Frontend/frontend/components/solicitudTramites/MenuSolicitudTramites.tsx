@@ -21,6 +21,7 @@ import {
 import {
   SolicitudTramites
 } from "@/src/schemas"
+import { usePerfil } from "@/src/auth/PerfilContexto"
 
 
 export default function SolicitudTramiteMenu({
@@ -28,6 +29,8 @@ export default function SolicitudTramiteMenu({
 }: {
   solicitudId: SolicitudTramites["id"]
 }) {
+
+  const perfil = usePerfil()
 
 
   return (
@@ -288,6 +291,7 @@ export default function SolicitudTramiteMenu({
           {/* TORRE DE CONTROL                              */}
           {/* ============================================= */}
 
+          {perfil === "TORRE_CONTROL" && (
           <MenuItem>
 
             {({ focus }) => (
@@ -342,6 +346,7 @@ export default function SolicitudTramiteMenu({
             )}
 
           </MenuItem>
+          )}
 
 
         </MenuItems>

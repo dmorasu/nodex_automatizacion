@@ -10,6 +10,7 @@ import {
 } from "@/src/schemas"
 
 import Link from "next/link"
+import { notFound } from "next/navigation"
 
 import {
   ArrowLeft,
@@ -19,8 +20,10 @@ import {
 
 
 
+// Con el token: el backend responde 404 si Gestión de activos abre un trámite ajeno
 const getSolicitudTramites = async (
-  solicitudTramiteId: string
+  solicitudTramiteId: string,
+  token: string
 ) => {
 
   const url =
@@ -30,9 +33,12 @@ const getSolicitudTramites = async (
     await fetch(
       url,
       {
-        cache: "no-store"
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` }
       }
     )
+
+  if (req.status === 404) notFound()
 
   const json =
     await req.json()
@@ -63,14 +69,15 @@ export default async function EditarSolicitudTramitePage({
     params.id
 
 
-  const solicitud =
-    await getSolicitudTramites(id)
-
-
   const {
-    usuario
+    usuario,
+    token
   } =
     await verificacionSesion()
+
+
+  const solicitud =
+    await getSolicitudTramites(id, token)
 
 
 

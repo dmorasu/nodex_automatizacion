@@ -1,7 +1,7 @@
 import type { Request,Response } from "express"
 
 import Usuarios from "../models/usuarios";
-import { checkContrasena, hashcontrasena } from "../utils/auth";
+import { checkContrasena, correoIgual, hashcontrasena } from "../utils/auth";
 import { generateJWT } from "../utils/jwt";
 
 
@@ -12,7 +12,8 @@ export class AuthController{
 
         const {correoUsuario}=req.body
 
-        const usuarioExists= await Usuarios.findOne({where:{correoUsuario}})
+        // El correo se compara sin importar mayúsculas/minúsculas
+        const usuarioExists= await Usuarios.findOne({where: correoIgual(correoUsuario)})
         if (usuarioExists){
             const error = new Error('El usuario ya existe')
             return res.status(409).json({error:error.message})
@@ -37,7 +38,8 @@ export class AuthController{
 
         const {correoUsuario,contrasena}=req.body
 
-        const usuarioExists= await Usuarios.findOne({where:{correoUsuario}})
+        // El correo se compara sin importar mayúsculas/minúsculas
+        const usuarioExists= await Usuarios.findOne({where: correoIgual(correoUsuario)})
         if (!usuarioExists){
             const error = new Error('Usuario no encontrado')
             return res.status(409).json({error:error.message})

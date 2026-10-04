@@ -1,3 +1,4 @@
+import { encabezadosSesion } from "@/src/lib/sesionApi"
 import Link from "next/link"
 import { formatoFecha } from "@/src/ultis"
 import { SolicitudesAPIRespuestaSchema } from "@/src/schemas"
@@ -10,7 +11,7 @@ export const metadata = {
 
 async function getSolicitudes() {
   const url = `${process.env.API_URL}/solicitudTramites`
-  const res = await fetch(url, { cache: "no-store" })
+  const res = await fetch(url, { cache: "no-store", headers: encabezadosSesion() })
   if (!res.ok) throw new Error("Error al cargar solicitudes")
   const data = await res.json()
   return SolicitudesAPIRespuestaSchema.parse(data)

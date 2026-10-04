@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Siempre claro, aunque el navegador esté en modo oscuro (incluye controles nativos) */
+html {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800;
+}
+
+/* Entrada escalonada de las tarjetas del inicio (el retraso va en style="animation-delay") */
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.aparecer {
+  animation: aparecer 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Brillo suave del punto "en vivo" */
+@keyframes latido {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.8); }
+}
+
+.latido {
+  animation: latido 2s ease-in-out infinite;
+}
+
+/* Quien pidió menos movimiento en su sistema no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+  .aparecer, .latido { animation: none; }
+  .transition, .transition-all, .transition-transform { transition: none !important; }
+}

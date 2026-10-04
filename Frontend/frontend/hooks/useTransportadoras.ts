@@ -7,7 +7,7 @@ export function useTransportadoras() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/transportadoras`)
+    fetch(`/api/backend/transportadoras`)
       .then(res => res.json())
       .then(setData)
       .finally(() => setLoading(false))

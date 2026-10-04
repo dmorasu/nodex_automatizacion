@@ -17,7 +17,7 @@ export default function CargaMasivaSolicitudes() {
     const formData = new FormData()
     formData.append('file',file)
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/solicitudTramites/carga-masiva`,{
+    const res = await fetch(`/api/backend/solicitudTramites/carga-masiva`,{
       method:'POST',
       body: formData
     })

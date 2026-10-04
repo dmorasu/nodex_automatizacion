@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { param, validationResult, body } from "express-validator";
 import SolicitudTramites from "../models/solicitudTramites";
+import DocumentoSolicitud from "../models/documentosSolicitud";
+import { soloTramitesPropios } from "./auth";
 
 export const validateSolicitudTramiteExits = async (
   req: Request,
@@ -28,7 +30,8 @@ export const validateSolicitudTramiteExits = async (
     // 4️⃣ Buscar en DB
     const solicitudTramites = await SolicitudTramites.findByPk(idNumber);
 
-    if (!solicitudTramites) {
+    // Gestión de activos solo accede a los trámites que creó (a los demás, como si no existieran)
+    if (!solicitudTramites || (soloTramitesPropios(req) && solicitudTramites.usuarioId !== req.usuario.id)) {
       return res.status(404).json({
         error: "La solicitud buscada no se encuentra en la base de datos",
       });
@@ -84,3 +87,56 @@ export const validateSolicitudTramitesId = async (
 
   next();
 };
+
+
+// =====================================================
+// ACCESO DE GESTIÓN DE ACTIVOS A RECURSOS DEL TRÁMITE
+// Gestión de activos solo accede a lo de los trámites que creó.
+// Se responde 404 (como si no existiera) para no revelar trámites ajenos.
+// =====================================================
+
+const puedeAccederTramite = async (req: Request, tramiteId: unknown) => {
+  if (!soloTramitesPropios(req)) return true
+
+  const tramite = await SolicitudTramites.findByPk(Number(tramiteId), { attributes: ["id", "usuarioId"] })
+  return !!tramite && tramite.usuarioId === req.usuario.id
+}
+
+const responderNoEncontrado = (res: Response) =>
+  res.status(404).json({ error: "La solicitud buscada no se encuentra en la base de datos" })
+
+// Trámite indicado en la URL (ej: /documentos/solicitud/:solicitudTramiteId)
+export const verificarTramiteEnParametro = (nombre: string) =>
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!(await puedeAccederTramite(req, req.params[nombre]))) return responderNoEncontrado(res)
+      next()
+    } catch {
+      res.status(500).json({ error: "Hubo un error" })
+    }
+  }
+
+// Trámite indicado en el cuerpo (ej: subir documentos; va después de multer)
+export const verificarTramiteEnCuerpo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (req.body?.solicitudTramiteId && !(await puedeAccederTramite(req, req.body.solicitudTramiteId))) {
+      return responderNoEncontrado(res)
+    }
+    next()
+  } catch {
+    res.status(500).json({ error: "Hubo un error" })
+  }
+}
+
+// Documento por id (ver, descargar, eliminar): se verifica el trámite al que pertenece
+export const verificarTramiteDeDocumento = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (soloTramitesPropios(req)) {
+      const documento = await DocumentoSolicitud.findByPk(Number(req.params.id), { attributes: ["id", "solicitudTramiteId"] })
+      if (!documento || !(await puedeAccederTramite(req, documento.solicitudTramiteId))) return responderNoEncontrado(res)
+    }
+    next()
+  } catch {
+    res.status(500).json({ error: "Hubo un error" })
+  }
+}

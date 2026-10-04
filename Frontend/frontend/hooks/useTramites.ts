@@ -7,7 +7,7 @@ export function useTramites() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/tramites`)
+    fetch(`/api/backend/tramites`)
       .then(res => res.json())
       .then(setData)
       .finally(() => setLoading(false))

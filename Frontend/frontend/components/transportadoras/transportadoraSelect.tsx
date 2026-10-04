@@ -45,7 +45,7 @@ export default function TransportadorasSelect({
 
         const res =
           await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/transportadora`
+            `/api/backend/transportadora`
           )
 
         if (!res.ok) {

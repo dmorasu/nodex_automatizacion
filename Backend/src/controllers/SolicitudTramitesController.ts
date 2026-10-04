@@ -19,6 +19,12 @@ import Transportadora from '../models/trasnportadora'
 import { crearNotificacion } from '../services/notificacionesServices'
 import SubEstadosSolicitud from "../models/subEstadosSolicitud"
 import SubEstados from "../models/subEstados"
+import TiposRechazo from "../models/tiposRechazos"
+import { esAnalistaTramites, puedeAsignarAnalistas, soloTramitesPropios } from '../middleware/auth'
+import { ATRIBUTO_NOMBRE_ANALISTA } from '../services/analistasTramites'
+import { obtenerTablero } from '../services/tableroTramites'
+import { generarExcelTablero } from '../services/exportarTablero'
+import { ubicarEnSegundoPlano, ubicarManual } from '../services/mensajeria/ubicacion'
 
 
 
@@ -31,6 +37,49 @@ declare global{
     }
 }
 
+
+// Coordenadas que manda el formulario cuando se eligió un lugar de Google (autocompletado o
+// enlace pegado). Sin ellas, la dirección se ubica en segundo plano.
+const guardarUbicacionDelFormulario = async (solicitudId: number, body: any) => {
+  const latitud = Number(body?.latitud)
+  const longitud = Number(body?.longitud)
+  if (body?.latitud != null && body?.longitud != null && Number.isFinite(latitud) && Number.isFinite(longitud)) {
+    try {
+      await ubicarManual(solicitudId, { latitud, longitud }, 'GOOGLE')
+      return
+    } catch (error) {
+      console.warn(`⚠️ No se guardó la ubicación del trámite ${solicitudId}:`, (error as Error).message)
+    }
+  }
+  ubicarEnSegundoPlano(solicitudId)
+}
+
+// Filtros del tablero desde la URL. El analista siempre queda limitado a sus trámites.
+const filtrosTablero = (req: Request) => {
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) // YYYY-MM-DD
+  const fecha = (valor: unknown) => /^\d{4}-\d{2}-\d{2}$/.test(String(valor ?? '')) ? String(valor) : null
+  const id = (valor: unknown) => Number(valor) > 0 ? Number(valor) : undefined
+
+  // Período por defecto: últimos 30 días
+  const hasta = fecha(req.query.hasta) ?? hoy
+  const desde = fecha(req.query.desde) ?? new Date(Date.parse(`${hasta}T00:00:00Z`) - 29 * 86400000).toISOString().slice(0, 10)
+
+  const analistaId = esAnalistaTramites(req)
+    ? req.usuario.id
+    : req.query.analistaId === 'sin' ? 'sin' as const : id(req.query.analistaId)
+
+  return {
+    hoy,
+    filtros: {
+      desde,
+      hasta,
+      analistaId,
+      tramitadorId: id(req.query.tramitadorId),
+      operacionId: id(req.query.operacionId),
+      tramiteId: id(req.query.tramiteId)
+    }
+  }
+}
 
 export class SolicitudTramitesController{
 
@@ -47,6 +96,17 @@ static obtenerSolicitudes = async (req: Request, res: Response) => {
     const fechaFin = req.query.fechaFin as string
 
     const where:any = {}
+
+    // Gestión de activos solo ve los trámites que creó
+    if (soloTramitesPropios(req)) where.usuarioId = req.usuario.id
+
+    // El analista ve en el inicio solo sus trámites; al buscar, encuentra cualquiera
+    if (esAnalistaTramites(req) && !search) where.analistaAsignado = req.usuario.id
+
+    // Filtro por analista (id o "sin" = sin analista)
+    const analistaId = (req.query.analistaId as string)?.trim()
+    if (analistaId === 'sin') where.analistaAsignado = null
+    else if (Number(analistaId) > 0) where.analistaAsignado = Number(analistaId)
 
     // 🔹 ID Solicitud o Identificación Cliente
     if (search) {
@@ -77,6 +137,7 @@ static obtenerSolicitudes = async (req: Request, res: Response) => {
 
     const { count, rows } = await SolicitudTramites.findAndCountAll({
       where,
+      attributes: { include: [ATRIBUTO_NOMBRE_ANALISTA] },
       include: [
         {
           model: Clientes,
@@ -252,8 +313,14 @@ static getAll = async (req: Request, res: Response) => {
     // CREAR SOLICITUD
     // ==========================================
 
+    // El analista lo toma del municipio (hook del modelo); solo quien reasigna puede elegirlo
+    const { analistaAsignado, ...datos } = req.body
     const solicitudTramites =
-      await SolicitudTramites.create(req.body);
+      await SolicitudTramites.create(puedeAsignarAnalistas(req) && analistaAsignado ? { ...datos, analistaAsignado } : datos);
+
+    // Ubicación para las rutas de mensajeros: la del lugar elegido en el autocompletado,
+    // o se busca la dirección con Google en segundo plano
+    await guardarUbicacionDelFormulario(solicitudTramites.id, req.body);
 
 
     // ==========================================
@@ -288,6 +355,7 @@ static getAll = async (req: Request, res: Response) => {
     const solicitudTramites = await SolicitudTramites.findByPk(
       req.solicitudTramites.id,
       {
+        attributes: { include: [ATRIBUTO_NOMBRE_ANALISTA] },
         include: [
           Clientes,
           {
@@ -306,12 +374,17 @@ static getAll = async (req: Request, res: Response) => {
           },
 
           {
+            // Historial de estados (el orden lo pone el frontend: aquí no aplica sin `separate`)
             model: EstadosTramites,
-            include: [{
-              model: Estados,
-              attributes: ["nombreEstado"]
-            }],
-            order: [["createdAt", "DESC"]]
+            include: [
+              { model: Estados, attributes: ["nombreEstado"] },
+              { model: TiposRechazo, attributes: ["nombre"] }
+            ]
+          },
+          {
+            model: Estados,
+            as: "estadoActual",
+            attributes: ["id", "nombreEstado"]
           },
 
           // 🔹 Relaciones 1–1 ya corregidas
@@ -361,9 +434,13 @@ static getAll = async (req: Request, res: Response) => {
 
 
      static updateById = async (req:Request, res:Response)=>{
-        // La placa y la matrícula inmobiliaria no se pueden modificar al editar
-        const { placa, matriculaInmobiliaria, ...datos } = req.body
+        // La placa, la matrícula inmobiliaria y el creador no se pueden modificar al editar
+        // usuarioId es quien creó el trámite: no cambia al editar
+        // El analista se cambia solo por PATCH /:id/analista (Administrador de Torre de control)
+        const { placa, matriculaInmobiliaria, usuarioId, analistaAsignado, ...datos } = req.body
         await req.solicitudTramites.update(datos)
+        // Lugar elegido en el autocompletado; si no, si cambió la dirección se vuelve a ubicar
+        await guardarUbicacionDelFormulario(req.solicitudTramites.id, req.body)
         res.json('Solicitud Actualizada')
     }
 
@@ -410,6 +487,7 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
       tramiteId,
       tramitadorId,
       operacionesId,
+      analistaId,
       placa,
       fechaFinalizacionDesde,
       fechaFinalizacionHasta,
@@ -422,18 +500,23 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
     const where: any = {}
     const whereProgramacion: any = {}
 
+    // Gestión de activos solo ve los trámites que creó
+    if (soloTramitesPropios(req)) where.usuarioId = req.usuario.id
+
     // ==================================================
     // 🔍 BÚSQUEDA POR ID SOLICITUD O IDENTIFICACIÓN CLIENTE
     // ==================================================
     if (search) {
+      // El texto se escapa (antes iba directo al SQL: inyección SQL).
+      // Solo se compara contra el id si es un número, para no generar error en PostgreSQL.
       where[Op.or] = [
-        { id: search },
+        ...(/^\d+$/.test(String(search)) ? [{ id: Number(search) }] : []),
         {
           clienteId: {
             [Op.in]: literal(`(
               SELECT c.id
               FROM "Clientes" c
-              WHERE c."identificacionCliente" = '${search}'
+              WHERE c."identificacionCliente" = ${db.escape(String(search))}
             )`)
           }
         }
@@ -450,6 +533,13 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
     if (tramitadorId) {
       where.tramitadorId = tramitadorId
     }
+
+    // Analista: id o "sin" = sin analista
+    if (analistaId === 'sin') where.analistaAsignado = null
+    else if (Number(analistaId) > 0) where.analistaAsignado = Number(analistaId)
+
+    // El analista ve solo sus trámites; al buscar por número o identificación, encuentra cualquiera
+    if (esAnalistaTramites(req) && !search) where.analistaAsignado = req.usuario.id
 
     // ==================================================
     // 🔹 FILTRO POR FECHA FINALIZACIÓN SERVICIO
@@ -525,6 +615,7 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
     // ==================================================
     const { rows, count } = await SolicitudTramites.findAndCountAll({
       where,
+      attributes: { include: [ATRIBUTO_NOMBRE_ANALISTA] },
 
       include: [
         { model: Clientes, required: false },
@@ -591,97 +682,36 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
   }
 }
 
-static torreControl = async (req:Request,res:Response)=>{
-
-try{
-
-const page = Number(req.query.page) || 1
-const limit = 20
-const offset = (page-1)*limit
-
-const semaforo = req.query.semaforo
-const search = req.query.search
-
-let where = []
-
-if(semaforo){
- where.push(`semaforo='${semaforo}'`)
+// Tablero de gestión (Torre de control). El analista ve solo sus trámites; el Administrador
+// de Torre de control y Admin ven todos y pueden filtrar por analista.
+static tablero = async (req: Request, res: Response) => {
+  try {
+    const { filtros, hoy } = filtrosTablero(req)
+    if (filtros.desde > filtros.hasta) return res.status(400).json({ error: 'La fecha inicial no puede ser mayor que la final' })
+    res.json(await obtenerTablero(filtros, hoy))
+  } catch (error) {
+    console.error('TABLERO TRÁMITES:', error)
+    res.status(500).json({ error: 'No se pudo cargar el tablero' })
+  }
 }
 
-if(search){
- where.push(`
- (
- id::text ILIKE '%${search}%'
- OR estado ILIKE '%${search}%'
- )
- `)
-}
+// El mismo tablero en Excel, con las listas completas
+static exportarTablero = async (req: Request, res: Response) => {
+  try {
+    const { filtros, hoy } = filtrosTablero(req)
+    if (filtros.desde > filtros.hasta) return res.status(400).json({ error: 'La fecha inicial no puede ser mayor que la final' })
 
-const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : ""
+    const tablero = await obtenerTablero(filtros, hoy, { sinLimite: true })
+    const alcance = esAnalistaTramites(req) ? `Trámites de ${req.usuario.nombreUsuario}` : 'Todos los trámites (según filtros)'
+    const archivo = generarExcelTablero(tablero, alcance)
 
-const data = await db.query(`
-SELECT *
-FROM vw_torre_control
-${whereClause}
-ORDER BY "createdAt" DESC
-LIMIT ${limit}
-OFFSET ${offset}
-`,{
- type:QueryTypes.SELECT
-})
-
-type CountResult = { count:number }
-
-const count = await db.query<CountResult>(`
-SELECT COUNT(*)::int as count
-FROM vw_torre_control
-${whereClause}
-`,{
- type:QueryTypes.SELECT
-})
-
-res.json({
- data,
- total: count[0].count,
- page,
- totalPages: Math.ceil(count[0].count/limit)
-})
-
-}catch(error){
-
-console.error(error)
-res.status(500).json({error:"error torre control"})
-
-}
-
-
-
-}
-static panelControl = async (req: Request, res: Response) => {
-
- try {
-
- const result = await db.query(`
-  SELECT
-  COUNT(*) FILTER (WHERE semaforo = 'VENCIDO') as vencidos,
-  COUNT(*) FILTER (WHERE semaforo = 'VENCE_HOY') as vencen_hoy,
-  COUNT(*) FILTER (WHERE semaforo = 'PROXIMO_A_VENCER') as proximos,
-  COUNT(*) FILTER (WHERE semaforo = 'AL_DIA') as al_dia,
-  COUNT(*) FILTER (WHERE semaforo = 'CUMPLIDO') as cumplidos
-  FROM vw_torre_control
- `,{
-  type: QueryTypes.SELECT
- })
-
- res.json(result[0])
-
- } catch(error){
-
- console.error(error)
- res.status(500).json({error:"Error panel control"})
-
- }
-
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="tablero-tramites-${hoy}.xlsx"`)
+    res.send(archivo)
+  } catch (error) {
+    console.error('EXPORTAR TABLERO TRÁMITES:', error)
+    res.status(500).json({ error: 'No se pudo generar el Excel del tablero' })
+  }
 }
 }
 

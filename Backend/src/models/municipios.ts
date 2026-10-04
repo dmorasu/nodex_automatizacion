@@ -37,6 +37,13 @@ class Municipios extends Model{
     })
     declare responsable:string
 
+    // Analista por defecto (id de Usuarios) que toman los trámites nuevos de este municipio.
+    // Reemplaza a `responsable` (texto), que se conserva por las notificaciones existentes.
+    @Column({
+        type: DataType.INTEGER
+    })
+    declare analistaId:number | null
+
     @HasMany(()=>SolicitudTramites,{
         onUpdate:'CASCADE',
         onDelete:'CASCADE'

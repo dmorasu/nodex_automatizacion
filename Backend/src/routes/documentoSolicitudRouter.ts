@@ -10,6 +10,12 @@ import {
   autenticacion
 } from "../middleware/auth";
 
+import {
+  verificarTramiteDeDocumento,
+  verificarTramiteEnCuerpo,
+  verificarTramiteEnParametro
+} from "../middleware/solicitudTramites";
+
 
 const router = Router();
 
@@ -18,6 +24,7 @@ router.post(
   "/",
   autenticacion,
   uploadDocumento.array("documentos", 10),
+  verificarTramiteEnCuerpo,
   DocumentoSolicitudController.subirDocumentos
 );
 
@@ -25,6 +32,7 @@ router.post(
 router.get(
   "/solicitud/:solicitudTramiteId",
   autenticacion,
+  verificarTramiteEnParametro("solicitudTramiteId"),
   DocumentoSolicitudController.listarDocumentos
 );
 
@@ -32,17 +40,20 @@ router.get(
 router.get(
   "/:id/ver",
   autenticacion,
+  verificarTramiteDeDocumento,
   DocumentoSolicitudController.verDocumento
 );
 
 router.get(
   "/:id/descargar",
   autenticacion,
+  verificarTramiteDeDocumento,
   DocumentoSolicitudController.descargarDocumento
 );
 router.delete(
   "/:id",
   autenticacion,
+  verificarTramiteDeDocumento,
   DocumentoSolicitudController.eliminarDocumento
 );
 

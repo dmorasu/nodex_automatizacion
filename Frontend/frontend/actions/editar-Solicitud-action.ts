@@ -1,5 +1,6 @@
 "use server"
 
+import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { CrearSolicitudSchema, ErrorResponoseSchema, SolicitudTramites, SuccessSchema ,EditarSolicitudSchema} from "@/src/schemas"
 import { error } from "console"
 import { revalidatePath } from "next/cache"
@@ -11,6 +12,15 @@ type ActiosStateType={
     success:string
 }
 
+
+// latitud/longitud del formulario: solo si vienen las dos y son números
+const coordenadas = (formData: FormData) => {
+    const latitud = Number(formData.get("latitud"))
+    const longitud = Number(formData.get("longitud"))
+    return formData.get("latitud") && formData.get("longitud") && Number.isFinite(latitud) && Number.isFinite(longitud)
+        ? { latitud, longitud }
+        : {}
+}
 
 export async function EditarSolicitudTramite(solicitudTramiteId: SolicitudTramites['id'], prevState:ActiosStateType, formData:FormData) {
   
@@ -39,12 +49,15 @@ export async function EditarSolicitudTramite(solicitudTramiteId: SolicitudTramit
    const url=`${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}`
    const req = await fetch(url,{
     method:'PUT',
-    headers:{
+    headers: {
+      ...encabezadosSesion(),
         'Content-Type':'application/json'
     },
     body:JSON.stringify({
               detalleSolicitud:solicitudTramiteData.detalleSolicitud,
               direccionTramite:solicitudTramiteData.direccionTramite,
+              // Ubicación del lugar elegido en el autocompletado de Google (si se eligió)
+              ...coordenadas(formData),
               municipiosId:solicitudTramiteData.municipiosId,
               clienteId :solicitudTramiteData.clienteId,
               operacionesId:solicitudTramiteData.operacionesId,

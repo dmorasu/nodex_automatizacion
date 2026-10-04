@@ -4,6 +4,15 @@ import { CrearSolicitudSchema } from "@/src/schemas"
 import { cookies } from "next/headers"
 
 
+// latitud/longitud del formulario: solo si vienen las dos y son números
+const coordenadas = (formData: FormData) => {
+    const latitud = Number(formData.get("latitud"))
+    const longitud = Number(formData.get("longitud"))
+    return formData.get("latitud") && formData.get("longitud") && Number.isFinite(latitud) && Number.isFinite(longitud)
+        ? { latitud, longitud }
+        : {}
+}
+
 type ActionStateType = {
     errors: string[],
     success: string,
@@ -122,6 +131,9 @@ export async function crearSolicitud(
 
                         direccionTramite:
                             solicitud.data.direccionTramite,
+
+                        // Ubicación del lugar elegido en el autocompletado de Google (si se eligió)
+                        ...coordenadas(formData),
 
                         municipiosId:
                             solicitud.data.municipiosId,

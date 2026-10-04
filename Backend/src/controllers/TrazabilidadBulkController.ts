@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 
-import { parseExcel } from '../utils/excelParser'
+import { filasDeLaPeticion } from '../utils/filasMasivas'
 import { validarTrazabilidad } from '../utils/validacionesActualizaciones'
 import { procesarTrazabilidad } from '../services/trazabilidadActualizaciones'
 import { generarPlantillaTrazabilidad } from '../utils/generarPlantillaTrazabilidad'
@@ -13,6 +13,7 @@ import { crearNotificacion } from '../services/notificacionesServices'
 type TrazabilidadRow = {
   solicitudTramiteId: number
   observacionTrazabilidad: string
+  nombreUsuario?: string | null
 }
 
 // =========================
@@ -20,11 +21,13 @@ type TrazabilidadRow = {
 // =========================
 export const validarTrazabilidadController = async (req: Request, res: Response) => {
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'Archivo requerido' })
+  const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
   }
-
-  const data = parseExcel(req.file.buffer) as TrazabilidadRow[]
+  const data = filas as TrazabilidadRow[]
+  // Sin nombre de usuario (gestión en pantalla) queda el de quien hace el cargue
+  data.forEach(row => { if (!row.nombreUsuario) row.nombreUsuario = req.usuario.nombreUsuario })
 
   const errores = await validarTrazabilidad(data)
 
@@ -39,11 +42,13 @@ export const validarTrazabilidadController = async (req: Request, res: Response)
 // =========================
 export const procesarTrazabilidadController = async (req: Request, res: Response) => {
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'Archivo requerido' })
+  const filas = filasDeLaPeticion(req)
+  if (typeof filas === 'string') {
+    return res.status(400).json({ error: filas })
   }
-
-  const data = parseExcel(req.file.buffer) as TrazabilidadRow[]
+  const data = filas as TrazabilidadRow[]
+  // Sin nombre de usuario (gestión en pantalla) queda el de quien hace el cargue
+  data.forEach(row => { if (!row.nombreUsuario) row.nombreUsuario = req.usuario.nombreUsuario })
 
   const errores = await validarTrazabilidad(data)
 

@@ -3,6 +3,8 @@ import path from "path";
 
 import DocumentoSolicitud from "../models/documentosSolicitud";
 import SolicitudTramites from "../models/solicitudTramites";
+import Usuarios from "../models/usuarios";
+import Tramitador from "../models/tramitador";
 
 import {
   subirArchivo,
@@ -782,8 +784,18 @@ export class DocumentoSolicitudController {
 
             "usuarioId",
 
+            "tramitadorId",
+
+            "tipoDocumento",
+
             "createdAt"
 
+          ],
+
+          // Quién lo subió: usuario de Nodex Trámites o tramitador (app)
+          include: [
+            { model: Usuarios, attributes: ["nombreUsuario"] },
+            { model: Tramitador, attributes: ["nombreTramitador"] }
           ]
 
         });

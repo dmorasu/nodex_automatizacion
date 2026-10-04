@@ -6,7 +6,8 @@ import {
   ForeignKey,
   BelongsTo,
   HasMany,
-  HasOne
+  HasOne,
+  BeforeCreate
 } from "sequelize-typescript";
 
 import Usuarios from "./usuarios";
@@ -61,6 +62,40 @@ class SolicitudTramites extends Model {
 
   @Column({ type: DataType.TEXT })
   declare descripcionTramite: string;
+
+  // Analista encargado del trámite (id de Usuarios). Al crear toma el analista por defecto
+  // del municipio; el Administrador de Torre de control lo puede cambiar.
+  // Va sin @BelongsTo a propósito: una segunda asociación con Usuarios obligaría a poner
+  // `as` en todos los include de Usuarios que ya existen. El nombre se lee con
+  // ATRIBUTO_NOMBRE_ANALISTA (services/analistasTramites.ts).
+  @Column({ type: DataType.INTEGER })
+  declare analistaAsignado: number | null;
+
+  // ── Ubicación de la dirección (rutas de mensajeros) ──
+  @Column({ type: DataType.DOUBLE })
+  declare latitud: number | null;
+
+  @Column({ type: DataType.DOUBLE })
+  declare longitud: number | null;
+
+  // GOOGLE (convertida automáticamente) o MANUAL (punto puesto en el mapa)
+  @Column({ type: DataType.STRING(20) })
+  declare ubicacionFuente: string | null;
+
+  // false si Google solo la ubicó de forma aproximada (barrio, calle o centro del municipio)
+  @Column({ type: DataType.BOOLEAN })
+  declare ubicacionPrecisa: boolean | null;
+
+  // Texto que se convirtió: si la dirección cambia, se vuelve a ubicar
+  @Column({ type: DataType.TEXT })
+  declare ubicacionDireccion: string | null;
+
+  @BeforeCreate
+  static async asignarAnalistaDelMunicipio(solicitud: SolicitudTramites) {
+    if (solicitud.analistaAsignado || !solicitud.municipiosId) return
+    const municipio = await Municipios.findByPk(solicitud.municipiosId, { attributes: ['id', 'analistaId'] })
+    solicitud.analistaAsignado = municipio?.analistaId ?? null
+  }
 
   // ===== Relaciones Base =====
 

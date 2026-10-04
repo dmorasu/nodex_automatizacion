@@ -23,6 +23,7 @@ import { registrarFactura } from '../../services/gastos/facturas'
 import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../services/gastos/estadosGasto'
 import { ESTADOS_GASTO, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
+import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados } from './utilidades'
 import SolicitudTramites from '../../models/solicitudTramites'
 import { soloTramitesPropios } from '../../middleware/auth'
@@ -359,6 +360,10 @@ export class SolicitudesGastoController {
   static create = async (req: Request, res: Response) => {
     try {
       const gasto = await crearGasto(req.body, req.usuario.id)
+
+      // Fuera de la transacción: un fallo en el correo no revierte el gasto
+      void notificarGastosCreados([gasto.id])
+
       res.status(201).json({ id: gasto.id, codigo: gasto.codigo })
     } catch (error) {
       responderError(res, error)

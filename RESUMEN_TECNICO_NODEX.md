@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-03_
+_Actualizado: 2026-10-04_
 
 ## Arquitectura
 
@@ -11,7 +11,8 @@ _Actualizado: 2026-10-03_
 | Nodex Gastos | `Frontend/gastos` | 3001 | Next 14, color emerald. Usa `fetchApi`, zod en `src/schemas/gastos.ts` y server actions que devuelven `{ok, datos \| errores}` |
 | Nodex Tramitadores | `Frontend/tramitadores` | 3002 | App web instalable (PWA), pensada para celular, color indigo. Cookie `TOKEN_TRAMITADOR` y API `/api/app-tramitadores` |
 
-**Arranque del backend:** `authenticate` → `ajustarEsquemaTramitadores()` (antes de sync) → `db.sync()` → `ajustarEsquemaGastos()` → `seedGastos()`.
+**Arranque del backend:** `authenticate` → `ajustarEsquemaTramitadores()` y `ajustarEsquemaTramites()` (antes de sync) → `db.sync()` → `ajustarEsquemaMensajeria()` → `ajustarEsquemaGastos()` → `seedGastos()`.
+- Si cualquier paso falla, `connectDB()` (`server.ts`) solo imprime "Fallo la Conexion a la base de Datos" y **el servidor sigue arriba**: los pasos siguientes no corren. Revisar siempre el log de arranque.
 - Los ajustes de esquema son `ALTER` idempotentes.
 - `seedGastos` inserta catálogos y roles si no existen.
 
@@ -152,6 +153,43 @@ _Actualizado: 2026-10-03_
 - **Municipios duplicados:** la tabla tiene cada municipio dos veces (una copia sin `regional`, otra con `regional`; 2.244 filas, 1.124 municipios; 1.120 parejas idénticas salvo la regional). El buscador (`MunicipioController.search`) ya devuelve una sola (la de menor id, completando la regional). Para limpiar los datos: `src/scripts/unificarMunicipios.ts` (sin `--aplicar` solo informa; con `--aplicar` completa la que queda, mueve los trámites y borra las copias, en una transacción). En desarrollo: 1.120 copias y 194 trámites a mover. **Pendiente de autorización para ejecutar.**
 - **Pendiente para activar Google:** variable `GOOGLE_MAPS_API_KEY` en el backend con Geocoding API, Routes API y **Places API (New)** habilitadas (clave restringida a la IP del servidor). Crear las sedes, marcar los 4 mensajeros con su sede y darles acceso a la app.
 
+### Notificaciones por correo de Gastos y rediseño de correos (2026-10-04)
+- **Gasto creado → Tesorería:** `notificarGastosCreados(ids)` en `services/gastos/notificacionesGastos.ts`. Un solo correo a `CORREO_TESORERIA` con todos los gastos (en el cargue masivo, uno por cargue). Lo llaman `SolicitudesGastoController.create` y `CargueMasivoGastosController.cargar` **después** de la transacción (`cargarGastos` ahora devuelve también `ids`). Tipo `GASTO_CREADO`.
+- **Gasto pagado:** `notificarGastosPagados(ids)` (desde `PagosController.pagar`) agrupa por destinatario:
+  - Creador del gasto (`GASTO_PAGADO`, ya existía).
+  - Analista asignado al trámite del gasto (`SolicitudTramites.analistaAsignado` → `Usuarios.correoUsuario`), con copia a la torre de control (`GASTO_PAGADO_ANALISTA`).
+  - Gastos sin trámite, sin analista o con analista sin correo → directo a `CORREO_TORRE_CONTROL` (`GASTO_PAGADO_TORRE_CONTROL`).
+  - Un fallo en los correos no revierte el gasto ni el pago (todo va en `try/catch`).
+- **Trámite desistido → quien lo creó:** tipo nuevo `DESISTIDO_SOLICITANTE` (correo, está en `TIPOS_EMAIL`). Lo envía `cambiarEstadoTramite` (`services/estadoTramite.ts`) a `solicitud.usuario`, con copia a la torre de control como los demás correos de trámites. Datos: tipo de trámite, cliente, municipio, operación, corresponsal, programador (analista), fecha y última trazabilidad. El WhatsApp `DESISTIDO` al tramitador sigue igual.
+- **Trámite finalizado con factura → Legalización:** `notificarFacturasParaLegalizacion(solicitudTramiteId)`, llamada al final de `cambiarEstadoTramite` cuando el estado es Finalizado (individual, Excel y pantalla). Un correo por trámite a `CORREO_LEGALIZACION` (legalizaciongastos@), tipo `GASTO_FACTURA_LEGALIZACION`.
+  - **Solo se envía si** el trámite tiene gastos **reembolsables** con un soporte FACTURA del tramitador no rechazado (PENDIENTE o APROBADO) y sin `FacturasGasto` registrada. Si no hay ninguno, no se envía nada.
+  - Muestra cada gasto con valor pagado, tramitador, beneficiario, bolsa y estado de la factura del tramitador ("Pendiente de revisión" / "Aprobada").
+  - No exige el reporte "Realizado" del tramitador.
+- **Reintegro del tramitador → Tesorería:** `notificarReintegroTramitador(soporteId)`, llamada en `subirSoporte` (`services/tramitadores/soportesTramitador.ts`) cuando el soporte es REINTEGRO. Cubre las dos vías de la app: el gasto y los documentos del trámite (Boleta de reintegro). Correo a `CORREO_TESORERIA`, tipo `GASTO_REINTEGRO_TRAMITADOR`, con valor del reintegro, trámite, tramitador, beneficiario, bolsa y observación.
+- **Base común de correos:** `services/template/correoBase.ts` (`correoBase`, `ficha`, `gridDetalles`, `nota`, `resumen`, `html`). Tarjeta blanca de 600 px sobre slate-50, franja con degradado del módulo, etiqueta de estado (tonos info/éxito/alerta/peligro/neutro), detalles en dos columnas que ocultan los vacíos. Solo tablas y estilos en línea (Gmail, Outlook, celular); fuerza modo claro; sin imágenes externas.
+  - Colores por módulo en `MARCAS`: Gastos `#34d399 → #059669 → #0f766e`; Trámites `#38bdf8 → #0284c7 → #0369a1` (se quitó `#1d4ed8`, que se veía morado).
+  - Gastos: `services/gastos/plantillaCorreo.ts` (`correoGastos`: resumen con total + una ficha por gasto).
+  - Trámites: `services/template/notificacionesPlantilla.ts` rehecho para FINALIZADO, PROGRAMACION, EN_ESPERA_POR_NOVEDAD, TRAZABILIDAD, LOGISTICA y DESISTIDO_SOLICITANTE. Asuntos y textos de WhatsApp sin cambios. Ahora se escapa todo el texto del usuario (antes solo la trazabilidad).
+  - Botón "Abrir Nodex…" solo si existe `URL_NODEX_GASTOS` / `URL_NODEX_TRAMITES`.
+- **Correos fijos en `.env`** (si faltan, se usa el valor de siempre; se leen al enviar, no al cargar el módulo):
+  - `CORREO_TESORERIA` (grupotesoreria@), `CORREO_LEGALIZACION` (legalizaciongastos@), `CORREO_TORRE_CONTROL` (torredecontrol@; también la copia de `emailServices.ts`), `CORREO_NOVEDADES_VEHICULOS` (novedadesvehiculos@, `notificacionesServices.ts`).
+  - Ya no queda ningún correo escrito a mano en `src`.
+- **Probado:** compila (`tsc --noEmit`) y se revisaron vistas previas renderizadas. **No se ha enviado un correo real** todavía. Las consultas de Legalización y reintegro no se pudieron probar contra la base (`10.0.4.4` no respondía).
+- **Corrección (2026-10-04):** el correo de programación individual mostraba "Tipo de diligencia: N/A" porque `ProgramacionController` enviaba `tipoTramite` y la plantilla lee `tipo`. Ahora envía `tipo` (como la programación masiva).
+
+### Corrección: índices de `mensajeria_paradas` (2026-10-04)
+- El arranque fallaba en `db.sync()` con `column "solicitudTramiteId" does not exist`: el modelo tiene `underscored: true` y `@Index` en la propiedad le pasa a Postgres el nombre del atributo, no el de la columna (`solicitud_tramite_id`).
+- Los índices `mensajeria_paradas_tramite_fecha` (único) y `mensajeria_paradas_fecha_tramitador` pasaron a `@Table({ indexes })` con los nombres reales de columna (`models/mensajeria/paradaMensajeria.ts`). Ya se crearon en la base de desarrollo.
+- El error existía también en Windows (misma base, mismas versiones de librerías) pero no se veía porque `connectDB()` no detiene el servidor; por eso `ajustarEsquemaMensajeria()`, `ajustarEsquemaGastos()` y `seedGastos()` no estaban corriendo. **Regla:** con `underscored: true`, definir índices en `@Table({ indexes })` con nombres de columna.
+
+### Entorno de desarrollo en Mac (2026-10-04)
+- Rama de trabajo: `desarrollo` (local, sigue a `origin/desarrollo`).
+- Node.js LTS (v24) en `~/.local/node` y Redis 8 compilado en `~/redis`, ambos sin permisos de administrador; el `PATH` está en `~/.zshrc`.
+- Redis no arranca solo al reiniciar: `~/redis/bin/redis-server --daemonize yes --dir ~/redis --logfile ~/redis/redis.log`; comprobar con `redis-cli ping`.
+- Redis lo usa BullMQ (cola `notifications`). El worker **no** lo arranca `index.ts`: `npx ts-node src/workers/notificacionesWorker.ts` en otra terminal.
+- `.env` creados en `Backend/` y en las tres apps de `Frontend/` (`API_URL=http://localhost:4000/api`; Trámites además `GASTOS_URL=http://localhost:3001`).
+- **`node_modules` está versionado en git** (~20.000 archivos, aunque `.gitignore` lo excluye). Los de Windows fallan en Mac (`Permission denied`), así que se reinstalaron: `git status` muestra miles de cambios ahí que **no deben subirse**.
+
 ### 3. Nodex Gastos: pantallas
 - **Legalización:**
   - Gastos sin factura: PAGADO, reembolsable y sin soporte del tramitador; muestra el estado del trámite.
@@ -182,8 +220,10 @@ Todo lo de esta sesión se probó contra la base de **desarrollo**. Para producc
    (Mismo caso para los ajustes previos: columnas de retención en `gastos_solicitudes` y `tramitadorId`/`tipoDocumento` en `DocumentosSolicitud`.)
 
 **Desplegar**
-4. Backend, **worker de notificaciones** (proceso aparte, cambió) y Nodex Trámites (y Nodex Gastos / Tramitadores con los cambios previos). En Nodex Trámites correr `npm install` (Leaflet y react-leaflet para los mapas).
+4. Backend, **worker de notificaciones** (proceso aparte, cambió; necesita Redis) y Nodex Trámites (y Nodex Gastos / Tramitadores con los cambios previos). En Nodex Trámites correr `npm install` (Leaflet y react-leaflet para los mapas).
    - Variable nueva (opcional pero recomendada): `GOOGLE_MAPS_API_KEY` en el backend (Geocoding API + Routes API). Sin ella, rutas en modo manual.
+   - Variables de correo en el `.env` del backend: `CORREO_TESORERIA`, `CORREO_LEGALIZACION`, `CORREO_TORRE_CONTROL`, `CORREO_NOVEDADES_VEHICULOS` y, si se quiere el botón en los correos, `URL_NODEX_GASTOS` y `URL_NODEX_TRAMITES`.
+   - Confirmar en el log que aparece "Conexion Exitosa" y no "Fallo la Conexion…" (crea los índices de `mensajeria_paradas`).
 5. Revisar el log de arranque: columnas de analistas, retención y roles creados (`ANALISTA_TRAMITES`, `ADMIN_TORRE_CONTROL`, `TESORERIA_CERTIFICADOS`).
 
 **Después de desplegar**
@@ -193,6 +233,7 @@ Todo lo de esta sesión se probó contra la base de **desarrollo**. Para producc
 8. Estado actual de los trámites (el Excel de estados no lo actualizaba; primero sin `--aplicar`):
    `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/sincronizarEstadoActual.ts [--aplicar]`
 9. Avisar a Torre de control: el cargue de estados por Excel ahora notifica (Desistido por WhatsApp; Novedad y Finalizado por correo), y el "Programador" de las notificaciones es el analista asignado.
+10. Avisar a Tesorería, Legalización, analistas y torre de control de los correos nuevos: gasto creado y reintegro del tramitador (grupotesoreria@), trámite finalizado con factura (legalizaciongastos@), gasto pagado (analista con copia a torredecontrol@) y trámite desistido (a quien lo creó).
 
 ## Decisiones tomadas
 - **Comentarios del tramitador** en una tabla propia, no en la Trazabilidad, porque la trazabilidad alimenta las notificaciones al cliente.
@@ -204,13 +245,16 @@ Todo lo de esta sesión se probó contra la base de **desarrollo**. Para producc
 - **CTL y Cámara de Comercio** son dos tipos de gasto distintos; en CTL la placa y la matrícula son opcionales.
 
 ## Pendientes y riesgos
-1. **Arranque del backend sin confirmar.** Un script aislado con ts-node en modo completo falló con `Property 'usuario' does not exist on Request`; se declara en `src/types/express.d.ts`. Hay que confirmar que `npm run dev` levanta bien.
+1. **Arranque del backend:** confirmado el 2026-10-04 (`REST API en el puerto 4000` + `Conexion Exitosa`) tras corregir los índices de `mensajeria_paradas`. Sigue el riesgo de que `connectDB()` esconda errores; se propuso detener el servidor si falla (sin confirmar).
 2. **Pruebas de certificados incompletas.** No hay gastos SOLICITADO en la base, así que no se probó el rechazo del pago. Un script que llamó a `seedGastos()` se colgó; los datos sí quedaron insertados.
 3. **GAS-2026-000012** tiene la factura registrada, pero su soporte del tramitador sigue PENDIENTE: hay que aprobarlo.
 4. **GAS-000008 y GAS-000009** (no reembolsables, PAGADO): sus trámites no tienen tramitador, así que nadie puede subirles la factura desde la app.
 5. **Cargue masivo de gastos:** deduce el tipo por placa o matrícula y no permite CTL ni Cámara de Comercio. Falta una columna "Tipo".
 6. **Reintegros de no reembolsables:** hoy se ven en Legalización; falta confirmar si deben ir a Contabilidad.
-7. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción) y la variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` en el `.env` de Nodex Trámites.
+7. **Correos nuevos sin prueba real:** crear y pagar un gasto de un trámite con analista, desistir un trámite, finalizar un trámite cuyo gasto tenga factura del tramitador y subir un reintegro desde la app, para verificar la entrega por SendGrid.
+   - **Por confirmar con el usuario:** si Contabilidad debe recibir un aviso igual por los gastos no reembolsables con factura, y si el correo a Legalización debe exigir además el reporte "Realizado".
+8. **`node_modules` en git:** sacarlo del repositorio (`git rm -r --cached`) para que no se mezclen dependencias de Windows y Mac. Pendiente de autorización.
+9. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción) y la variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` en el `.env` de Nodex Trámites.
 
 ## Próximos pasos sugeridos
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.

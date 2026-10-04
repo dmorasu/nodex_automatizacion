@@ -1,4 +1,4 @@
-import { Table, Column, DataType, Model, AllowNull, Default, ForeignKey, BelongsTo, Index } from 'sequelize-typescript'
+import { Table, Column, DataType, Model, AllowNull, Default, ForeignKey, BelongsTo } from 'sequelize-typescript'
 import SolicitudTramites from '../solicitudTramites'
 import Tramitador from '../tramitador'
 
@@ -13,12 +13,17 @@ export const ESTADOS_PARADA = {
 // ruta y la confirmación de la visita (estado, foto y ubicación GPS).
 @Table({
   tableName: 'mensajeria_paradas',
-  underscored: true
+  underscored: true,
+  // Los índices van aquí con el nombre real de la columna: con underscored, @Index en la
+  // propiedad usa el nombre del atributo (solicitudTramiteId) y Postgres no lo encuentra.
+  indexes: [
+    { name: 'mensajeria_paradas_tramite_fecha', unique: true, fields: ['solicitud_tramite_id', 'fecha'] },
+    { name: 'mensajeria_paradas_fecha_tramitador', fields: ['fecha', 'tramitador_id'] }
+  ]
 })
 class ParadaMensajeria extends Model {
 
   @ForeignKey(() => SolicitudTramites)
-  @Index({ name: 'mensajeria_paradas_tramite_fecha', unique: true })
   @AllowNull(false)
   @Column({ type: DataType.INTEGER })
   declare solicitudTramiteId: number
@@ -26,14 +31,11 @@ class ParadaMensajeria extends Model {
   @BelongsTo(() => SolicitudTramites, { onDelete: 'CASCADE' })
   declare solicitudTramite: SolicitudTramites
 
-  @Index({ name: 'mensajeria_paradas_tramite_fecha', unique: true })
-  @Index('mensajeria_paradas_fecha_tramitador')
   @AllowNull(false)
   @Column({ type: DataType.DATEONLY })
   declare fecha: string
 
   @ForeignKey(() => Tramitador)
-  @Index('mensajeria_paradas_fecha_tramitador')
   @AllowNull(false)
   @Column({ type: DataType.INTEGER })
   declare tramitadorId: number

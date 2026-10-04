@@ -16,7 +16,8 @@ import {
 
 const LINK_TORRE_CONTROL = 'https://wa.me/573166507738'
 
-const CC_NOVEDADES_VEHICULOS = 'novedadesvehiculos@gomezpinedaabogados.com'
+// Copia de las novedades de la operación de vehículos (.env). Se lee al enviar para no depender del orden de carga de dotenv
+const correoNovedadesVehiculos = () => process.env.CORREO_NOVEDADES_VEHICULOS || 'novedadesvehiculos@gomezpinedaabogados.com'
 const OPERACION_VEHICULOS_ID = 9
 
 const MAX_LARGO_DETALLE = 200
@@ -35,7 +36,8 @@ const TIPOS_EMAIL: TipoNotificacion[] = [
   'EN_ESPERA_POR_NOVEDAD',
   'PROGRAMACION',
   'TRAZABILIDAD',
-  'LOGISTICA'
+  'LOGISTICA',
+  'DESISTIDO_SOLICITANTE'
 ]
 
 
@@ -280,7 +282,7 @@ const enviarEmail = async (
     tipo === 'EN_ESPERA_POR_NOVEDAD' &&
     Number(solicitud.operacionesId) === OPERACION_VEHICULOS_ID
   ) {
-    cc.push(CC_NOVEDADES_VEHICULOS)
+    cc.push(correoNovedadesVehiculos())
   }
 
   const notificacionId = await registrarNotificacion(

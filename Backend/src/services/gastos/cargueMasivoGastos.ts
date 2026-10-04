@@ -299,14 +299,14 @@ export const cargarGastos = async (buffer: Buffer, usuarioId: number, soloPropio
 
   if (errores.length) return { ok: false as const, total, errores }
 
-  const codigos = await db.transaction(async transaction => {
-    const creados: string[] = []
+  const creados = await db.transaction(async transaction => {
+    const creados: { id: number, codigo: string }[] = []
     for (const { datos } of gastos) {
       const gasto = await crearGastoEnTransaccion(datos, usuarioId, transaction)
-      creados.push(gasto.codigo)
+      creados.push({ id: gasto.id, codigo: gasto.codigo })
     }
     return creados
   })
 
-  return { ok: true as const, total, codigos }
+  return { ok: true as const, total, ids: creados.map(g => g.id), codigos: creados.map(g => g.codigo) }
 }

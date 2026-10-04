@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import multer from 'multer'
 import { cargarGastos, generarPlantilla, validarCargue } from '../../services/gastos/cargueMasivoGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
+import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
 import { soloTramitesPropios } from '../../middleware/auth'
 import { responderError } from './utilidades'
 
@@ -62,6 +63,9 @@ export class CargueMasivoGastosController {
           errores: resultado.errores
         })
       }
+
+      // Un solo correo a Tesorería con todos los gastos cargados
+      void notificarGastosCreados(resultado.ids)
 
       res.status(201).json({ total: resultado.total, codigos: resultado.codigos })
     } catch (error) {

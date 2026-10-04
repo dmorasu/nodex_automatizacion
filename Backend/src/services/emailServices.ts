@@ -13,7 +13,7 @@ export const sendEmail = async (
   try {
 
     const correosCC = [
-      ...(ccTorreControl ? ['torredecontrol@gomezpinedaabogados.com'] : []),
+      ...(ccTorreControl ? [process.env.CORREO_TORRE_CONTROL || 'torredecontrol@gomezpinedaabogados.com'] : []),
       ...(cc || [])
     ]
 

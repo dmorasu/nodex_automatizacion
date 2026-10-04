@@ -13,13 +13,15 @@ import Tramite from '../models/tramite'
 import Clientes from '../models/clientes'
 import { crearNotificacion } from './notificacionesServices'
 import { fechaColombia } from '../utils/fechaColombia'
+import { notificarFacturasParaLegalizacion } from './gastos/notificacionesGastos'
 
 // =====================================
 // CAMBIO DE ESTADO DE UN TRÁMITE
 // Una sola lógica para el cambio individual, el cargue por Excel y la gestión masiva en pantalla:
 //   · registra el estado y actualiza el estado actual de la solicitud
 //   · Finalizado: marca la fecha de finalización en la programación
-//   · notifica: Desistido (WhatsApp al tramitador), En espera por novedad y Finalizado (correo)
+//   · notifica: Desistido (WhatsApp al tramitador y correo a quien creó el trámite),
+//     En espera por novedad y Finalizado (correo)
 // =====================================
 
 const ESTADO_EN_ESPERA_POR_NOVEDAD = 3
@@ -83,7 +85,8 @@ export const cambiarEstadoTramite = async ({ solicitudTramiteId, estadoId, tipoR
       })
     }
 
-    const necesitaContexto = (estadoNumero === ESTADO_EN_ESPERA_POR_NOVEDAD || esFinalizado) && solicitud.usuario
+    const esDesistido = estadoNumero === ESTADO_DESISTIDO
+    const necesitaContexto = (estadoNumero === ESTADO_EN_ESPERA_POR_NOVEDAD || esFinalizado || esDesistido) && solicitud.usuario
     if (necesitaContexto) {
       const [estadoConRechazo, ultimaTrazabilidad] = await Promise.all([
         EstadosTramites.findByPk(registro.id, { include: [TiposRechazo] }),
@@ -109,6 +112,24 @@ export const cambiarEstadoTramite = async ({ solicitudTramiteId, estadoId, tipoR
         })
       }
 
+      if (esDesistido) {
+        await crearNotificacion({
+          solicitud,
+          tipo: 'DESISTIDO_SOLICITANTE',
+          destinatario: solicitud.usuario,
+          data: {
+            nombre: solicitud.usuario.nombreUsuario,
+            tipo: solicitud.tramite?.nombreTramite,
+            cliente: solicitud.clientes?.nombreCliente,
+            municipio: solicitud.municipios?.nombreMunicipio,
+            operacion: solicitud.operaciones?.nombreOperacion,
+            tramitador: solicitud.tramitador?.nombreTramitador,
+            fecha: fechaColombia(),
+            motivo: ultimaTrazabilidad?.observacionTrazabilidad
+          }
+        })
+      }
+
       if (esFinalizado) {
         await crearNotificacion({
           solicitud,
@@ -130,6 +151,9 @@ export const cambiarEstadoTramite = async ({ solicitudTramiteId, estadoId, tipoR
   } catch (error) {
     console.error(`⚠️ Estado guardado, pero falló una notificación (solicitud ${solicitudTramiteId}):`, error)
   }
+
+  // Gastos del trámite con factura del tramitador → Legalización (no depende de que el trámite tenga creador)
+  if (esFinalizado) await notificarFacturasParaLegalizacion(solicitudTramiteId)
 
   return { esFinalizado }
 }

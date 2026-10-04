@@ -136,7 +136,8 @@ export class ProgramacionController {
           nombre: solicitud.usuario.nombreUsuario||
             'N/A',
 
-          tipoTramite: solicitud.tramite.nombreTramite ||
+          // La plantilla del correo lee `tipo` (igual que la programación masiva)
+          tipo: solicitud.tramite?.nombreTramite ||
             'N/A',
 
           fecha: programacion.fechaProbableEntrega

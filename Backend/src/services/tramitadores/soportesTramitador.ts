@@ -16,6 +16,7 @@ import ArchivoSoporte from '../../models/tramitadores/archivoSoporte'
 import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { ESTADOS_GASTO, ESTADOS_REINTEGRO, TIPOS_DOCUMENTO } from '../gastos/constantes'
+import { notificarReintegroTramitador } from '../gastos/notificacionesGastos'
 import { codigoEstadoGasto } from '../gastos/estadosGasto'
 import { marcarReintegradoEn } from '../gastos/reintegros'
 import { ErrorGastos as ErrorNegocio } from '../gastos/errores'
@@ -217,6 +218,9 @@ export const subirSoporte = async (
   archivos: Express.Multer.File[]
 ) => {
   const soporte = await crearSoporte(tramitadorId, solicitudGastoId, datos, archivos)
+
+  // Fuera de la transacción: un fallo en el correo no revierte el soporte
+  if (datos.tipo === TIPOS_SOPORTE.REINTEGRO) void notificarReintegroTramitador(soporte.id)
 
   if (soporte.solicitudTramiteId) {
     try {

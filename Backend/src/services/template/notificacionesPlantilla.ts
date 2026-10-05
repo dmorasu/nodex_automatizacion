@@ -1,4 +1,3 @@
-import { SolarPanelIcon } from "lucide-react";
 import SolicitudTramites from "../../models/solicitudTramites";
 
 export type TipoNotificacion =
@@ -827,7 +826,7 @@ Para cualquier inquietud, comunícate con la Central Torre de Control:
 
         ${detailsBox(`
 
-          ${infoCard("📋", "Tipo de diligencia", data.tipo || "N/A")}
+          ${infoCard("📋", "Tipo de diligencia", data.tipo || data.tipoTramite || solicitud.tramite?.nombreTramite || "N/A")}
 
           ${infoCard("📅", "Fecha programada", data.fecha || "Pendiente")}
 

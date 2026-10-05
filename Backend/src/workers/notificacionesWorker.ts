@@ -83,6 +83,9 @@ new Worker(
     } = job.data
 
 
+    // Texto que Twilio confirma como enviado (plantilla ya llenada)
+    let textoEnviado: string | null = null
+
     try {
 
       // =====================================
@@ -144,7 +147,7 @@ new Worker(
         // 1. ENVIAR TEMPLATE APROBADO
         // =====================================
 
-        await sendWhatsApp({
+        const enviado = await sendWhatsApp({
 
           to,
 
@@ -157,6 +160,8 @@ new Worker(
             job.data.variables
 
         })
+
+        textoEnviado = enviado?.body?.trim() || null
 
         console.log(
           '✅ TEMPLATE WHATSAPP ENVIADO'
@@ -230,7 +235,13 @@ new Worker(
       // ACTUALIZAR ESTADO
       // =====================================
 
+      // El PDF adjunto no viene en el texto de Twilio: se conserva la nota que ya tenía
+      const notaAdjunto = notif.mensaje?.match(/\n\n📎 Adjunto: .+$/)?.[0] ?? ''
+
       await notif.update({
+
+        // Lo que de verdad recibió el tramitador
+        ...(textoEnviado ? { mensaje: textoEnviado + notaAdjunto } : {}),
 
         estado:
           'ENVIADO',

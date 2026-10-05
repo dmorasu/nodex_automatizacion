@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { CheckCircle2, Link2, Loader2, MapPin } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Link2, Loader2, MapPin } from "lucide-react"
 
 export type MunicipioSugerido = { id: number, nombreMunicipio: string, departamento: string }
 
@@ -27,6 +27,7 @@ export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
   const [sugerencias, setSugerencias] = useState<Sugerencia[]>([])
   const [abierto, setAbierto] = useState(false)
   const [cargando, setCargando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [ubicacion, setUbicacion] = useState<{ latitud: number, longitud: number, nombre: string | null } | null>(null)
   const sesion = useRef(nuevaSesion())
   const elegido = useRef(false)
@@ -73,9 +74,13 @@ export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
 
   const elegir = async (s: Sugerencia) => {
     setCargando(true)
+    setError(null)
     try {
       const r = await fetch(`/api/backend/direcciones/lugares/${encodeURIComponent(s.placeId)}?sesion=${sesion.current}`)
       if (r.ok) aplicar(await r.json())
+      else setError("No se pudo tomar la ubicación de ese lugar. Elija otra opción o pegue el enlace de Google Maps.")
+    } catch {
+      setError("No se pudo consultar el lugar. Revise la conexión e intente de nuevo.")
     } finally {
       setCargando(false)
     }
@@ -92,7 +97,10 @@ export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
       })
       const json = await r.json().catch(() => ({}))
       if (r.ok) aplicar(json)
-      else setTexto(url) // se deja el texto para que lo corrija
+      else {
+        setTexto(url) // se deja el texto para que lo corrija
+        setError(json.error ?? "No se pudo leer la ubicación del enlace.")
+      }
     } finally {
       setCargando(false)
     }
@@ -111,6 +119,7 @@ export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
             const valor = e.target.value
             elegido.current = false
             setUbicacion(null) // si cambia el texto, la ubicación elegida ya no aplica
+            setError(null)
             setTexto(valor)
             if (disponible && esEnlaceMaps(valor)) usarEnlace(valor)
           }}
@@ -133,6 +142,12 @@ export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
             <CheckCircle2 size={12} /> Ubicación tomada de Google Maps{ubicacion.nombre ? ` · ${ubicacion.nombre}` : ""}
           </p>
         </>
+      )}
+
+      {error && (
+        <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-700">
+          <AlertTriangle size={12} className="shrink-0" /> {error}
+        </p>
       )}
 
       {abierto && sugerencias.length > 0 && (

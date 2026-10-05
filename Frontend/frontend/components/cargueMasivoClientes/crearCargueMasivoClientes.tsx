@@ -29,11 +29,11 @@ export default function CrearClientesMasivosForm() {
        toast.success(state.success,{
          autoClose:1200,
          onClose:()=>{
-            router.push('/center')
+            router.push('/center/dashboard')
             router.refresh()
          },
          onClick:()=>{
-            router.push('/center')
+            router.push('/center/dashboard')
             router.refresh()
          }
 

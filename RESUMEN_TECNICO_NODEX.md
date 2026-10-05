@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-04_
+_Actualizado: 2026-10-05_
 
 ## Arquitectura
 
@@ -122,6 +122,8 @@ _Actualizado: 2026-10-04_
 - **Estados unificados:** `services/estadoTramite.ts` (`cambiarEstadoTramite`) lo usan el cambio individual (`EstadosTramitesController.create`), el Excel y la pantalla: actualiza `estadoActualTramite`, fecha de finalización y notifica Desistido/Novedad/Finalizado. Antes el Excel de estados no actualizaba el estado actual y solo notificaba Finalizado.
 - En pantalla, "Cambiar estado" acepta una observación que se guarda primero como trazabilidad (la notificación de novedad usa la última).
 - Trazabilidad sin `nombreUsuario` toma el del usuario que hace el cargue.
+- **Varias acciones en un solo guardado (2026-10-05):** el paso 2 permite marcar varias acciones (estado, trazabilidad, programación, logística, tramitador). La tabla agrupa columnas por acción; cada fila entra solo en las acciones donde tiene algo que aplicar (`tieneCambios` en `camposAcciones.ts`: estado elegido, observación escrita, tramitador distinto del actual, programación/logística distinta de lo que ya tiene → no reenvía correos de lo que no cambió). Se guarda en `ORDEN_GUARDADO` (tramitador → programación → logística → trazabilidad → estado: el estado al final para que su notificación salga con lo demás guardado); si una acción falla, las siguientes no se aplican y cada fila muestra qué se guardó y qué falló. Si se eligen estado y trazabilidad juntos, el estado no muestra su propia observación (usa la de trazabilidad). Filas con casilla: "Mismo valor" se aplica solo a las marcadas (o a todas si no hay marcadas).
+- **Buscar con filtros (2026-10-05):** en "En pantalla", el paso 1 tiene dos modos: "Por número" (el de siempre) y "Buscar con filtros" (tramitador o "sin tramitador", operación, estado actual —por defecto Abiertos = ni Finalizado ni Desistido—, y rango de fechas de creación / diligencia `Programacion.fechaProbableEntrega` / finalización). Los resultados reemplazan la lista o se agregan. Backend `GET /api/bulk/tramites/buscar` (`routes/gestionMasivaRouter.ts`): exige al menos tramitador, operación o fecha; si pasa de 500 pide acotar; el analista solo encuentra los suyos. Filtra por `estadoActualTramite` (como el tablero), así que en producción depende de correr antes `sincronizarEstadoActual`.
 
 ### Nodex Trámites: detalle del trámite rediseñado (2026-10-03)
 - Mismo esquema que el detalle de Nodex Gastos: encabezado (volver, "Trámite #id" + `EstadoTramite`, tipo · cliente, creado por) con acciones a la derecha; columna principal (pestañas en `DetalleSolicitudTabs.tsx`, información en tarjetas) y columna lateral (Estado con historial, Asignación con `CambiarAnalista`, Programación, Logística).
@@ -151,6 +153,9 @@ _Actualizado: 2026-10-04_
 - **App Tramitadores:** "Mi ruta" (solo mensajeros) con la ruta completa en Google Maps, navegar a cada parada (Google Maps o Waze) y "Confirmar visita" (Entregado/No se pudo, observación, foto comprimida y GPS del celular). Sin mapa embebido a propósito.
 - **Autocompletar dirección al crear/editar trámite:** `components/direcciones/CampoDireccion.tsx` sugiere lugares/direcciones de Google mientras se escribe (Places API New, con token de sesión) o toma la ubicación de un enlace pegado de Google Maps (también `maps.app.goo.gl`, solo se siguen dominios de Google). Llena la dirección, manda `latitud`/`longitud` con el formulario (se guardan con fuente GOOGLE, sin volver a geocodificar) y propone el municipio de Nodex (`buscarMunicipio`: compara nombres sin tildes; "Bogotá" → "BOGOTÁ, D.C."). Backend: `services/mensajeria/lugares.ts` + `routes/direccionesRouter.ts` (`/api/direcciones`, Torre de control y Gestión de activos).
 - **Municipios duplicados:** la tabla tiene cada municipio dos veces (una copia sin `regional`, otra con `regional`; 2.244 filas, 1.124 municipios; 1.120 parejas idénticas salvo la regional). El buscador (`MunicipioController.search`) ya devuelve una sola (la de menor id, completando la regional). Para limpiar los datos: `src/scripts/unificarMunicipios.ts` (sin `--aplicar` solo informa; con `--aplicar` completa la que queda, mueve los trámites y borra las copias, en una transacción). En desarrollo: 1.120 copias y 194 trámites a mover. **Pendiente de autorización para ejecutar.**
+- **Mapa del día con Google (2026-10-05):** `/center/rutas` tiene un solo mapa (`components/rutas/PanelRutas.tsx`) con las rutas de los mensajeros marcados (casillas; "Ver en el mapa" en cada tarjeta deja solo ese), un color por mensajero (`colorMensajero`) y el borde del número según el estado de la parada. Las tarjetas ya no tienen mapa propio (avisan su orden con `onParadas`). La línea va **por las calles**: `POST /mensajeria/trazado` (`services/mensajeria/trazado.ts`, Google Routes con FieldMask solo de polyline/distancia/duración = tarifa Essentials) con caché en memoria de 12 h por puntos; máx. 27 puntos (si hay más, línea recta punteada). Mapa: Google Maps JavaScript (`MapaRutasGoogle.tsx`, `src/lib/googleMaps.ts`, marcadores avanzados) si existe `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` en Nodex Trámites; si no, OpenStreetMap (`MapaRutaLeaflet.tsx`, también con el trazado). Se agregó `@types/google.maps` (dev).
+  - **Costos (precios oficiales 2026):** cada SKU Essentials tiene 10.000 usos gratis al mes; Dynamic Maps (cada carga del mapa) cuesta USD 7 por 1.000 después de eso y Compute Routes Essentials USD 5 por 1.000. Con 4 mensajeros y un mapa por visita a la página, el uso esperado está muy por debajo de lo gratis. Recomendado: poner cuotas diarias en Google Cloud para no pasar del gratis.
+  - **Para activar el mapa de Google:** en Google Cloud habilitar **Maps JavaScript API**, crear una clave de navegador restringida por dominio (HTTP referrer) y solo a esa API, y ponerla en `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` de Nodex Trámites (reiniciar el dev server). Opcional: Map ID propio en `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` (sin él usa `DEMO_MAP_ID`).
 - **Pendiente para activar Google:** variable `GOOGLE_MAPS_API_KEY` en el backend con Geocoding API, Routes API y **Places API (New)** habilitadas (clave restringida a la IP del servidor). Crear las sedes, marcar los 4 mensajeros con su sede y darles acceso a la app.
 
 ### Notificaciones por correo de Gastos y rediseño de correos (2026-10-04)
@@ -186,6 +191,25 @@ _Actualizado: 2026-10-04_
 - **Riesgo:** el programador vive en memoria. Con más de una instancia del backend cada una enviaría los mensajes y el cambio de hora solo se aplicaría en la que atendió la petición. Debe haber una sola instancia (ya era así).
 - **Probado** contra la base de desarrollo: creación de filas, cambio de hora y días, desactivar y validaciones. No se probó "Enviar ahora" (enviaría WhatsApp reales).
 
+### Nodex Trámites: `/center` reemplazado por el Dashboard (2026-10-05)
+- `app/center/page.tsx` solo redirige a `/center/dashboard`; se borró `CenterPageClient.tsx` (listado viejo, el Dashboard ya tiene búsqueda, menú y eliminar, además de filtros).
+- Se quitó la opción "Trámites" del menú (duplicaba el Dashboard) y todos los enlaces/redirecciones a `/center` apuntan a `/center/dashboard`.
+- **Dashboard rediseñado al estilo de Nodex Gastos** (`DashboardSolicitudes.tsx`): encabezado con el total, panel de filtros con etiquetas (los mismos de antes) que se aplican con "Filtrar"/Enter, y tabla (Trámite, Estado con `EstadoTramite`, Cliente, Ubicación, Responsables, Fechas, menú). Los filtros y la página viajan en la URL (se conservan al volver del detalle). Estilos compartidos en `components/ui/estilos.ts` (copia de Gastos en sky). El menú de la fila usa `anchor` de Headless UI para no recortarse dentro de la tabla. `useSolicitudesFiltradas` ahora devuelve `total`.
+- Corrección en `services/mensajeria/lugares.ts`: Google puede mandar componentes de dirección sin `types` (rompía la sugerencia "Data File S.A."); si no se puede proponer el municipio, el lugar se usa igual. `CampoDireccion` muestra un aviso cuando el lugar o el enlace fallan.
+
+### Nodex Trámites: catálogos (2026-10-05)
+- Página `/center/catalogos` ("Catálogos" en el menú; Administrador de Torre de control o Admin, guard `requiereAsignarAnalistas`): pestañas Tipos de trámite (cada uno despliega y administra sus subestados), Operaciones (con centro de costos) y Tipos de rechazo. Crear, renombrar y eliminar; muestra el uso de cada registro. Componente `components/catalogos/AdministrarCatalogos.tsx`.
+- Backend `services/catalogosTramites.ts` + `routes/catalogosTramitesRouter.ts` (`/api/catalogos-tramites`: `GET /`, `POST /:tipo`, `PUT|DELETE /:tipo/:id`, tipo = tramites|operaciones|subestados|rechazos; permiso `puedeAsignarAnalistas`). Evita duplicados sin importar mayúsculas/espacios.
+- **Tramitadores dentro de Catálogos:** las pestañas van en la URL (`/center/catalogos?pestana=tramitadores|tramites|operaciones|rechazos`). Tramitadores la ve todo Torre de control (como antes); las otras tres solo Administrador de Torre de control/Admin. `/center/tramitadores` redirige ahí; las acciones de tramitadores revalidan `/center/catalogos`. `AdministrarCatalogos` recibe la pestaña por prop.
+- **Menú rehecho** (`components/menuCenter/centerMenu.tsx`): opciones en una lista por secciones (Seguimiento, Crear y cargar, Configuración) con la página actual resaltada, iniciales del usuario, scroll si no cabe y "Nuevo trámite". Mismas reglas de visibilidad de antes.
+- **Solo se elimina lo que no se usa.** En la base las llaves tienen `ON DELETE CASCADE`: Operaciones → SolicitudTramites (¡borraría los trámites!), Tramites → SubEstados y SubEstados → SubEstadosSolicitud. TiposRechazo → EstadosTramites es SET NULL. Por eso se quitaron `POST/PUT/DELETE` de `/api/operaciones` y `/api/tramites` (cualquiera con acceso a trámites podía borrar; nadie los usaba desde el frontend); quedan solo los GET.
+
+### API externa: trámites de los mensajeros (2026-10-05)
+- `GET /api/externa/mensajeros/tramites` para otra plataforma. Sin sesión: encabezado `X-API-Key` = `API_KEY_EXTERNA` (.env; sin la variable responde 503). Solo lectura. `routes/apiExternaRouter.ts` + `services/apiExterna/tramitesMensajeros.ts`.
+- Solo trámites de tramitadores con `esMensajero = true`, de cualquier estado. Campos: `tramitadorId`, `nombreTramitador`, `tramiteId`, `fechaInicio` (día de la diligencia, `fechaProbableEntrega` como en rutas), `horaInicio` (`horaCita`, "HH:MM" o null), `fechaFin` (`fechaFinalizacionServicio`, ISO o null), `municipio`, `departamento`, `direccion`, `latitud`, `longitud`, `tipoDiligencia`, `estado` (estado actual; "Sin iniciar" si no tiene).
+- Filtros opcionales: `tramitadorId`, `estadoId`, `desde`/`hasta` (día de la diligencia, YYYY-MM-DD), `pagina`, `tamano` (100 por defecto, máx. 500). Respuesta `{ pagina, tamano, total, paginas, datos }`; errores de filtros → 400 `{ errores }`.
+- Probado contra desarrollo: 903 trámites de mensajeros. **Para producción:** definir `API_KEY_EXTERNA` y entregarla a la otra plataforma por un canal seguro; si el backend queda detrás de Nginx con lista de IPs, permitir la IP de esa plataforma para `/api/externa`.
+
 ### Corrección: índices de `mensajeria_paradas` (2026-10-04)
 - El arranque fallaba en `db.sync()` con `column "solicitudTramiteId" does not exist`: el modelo tiene `underscored: true` y `@Index` en la propiedad le pasa a Postgres el nombre del atributo, no el de la columna (`solicitud_tramite_id`).
 - Los índices `mensajeria_paradas_tramite_fecha` (único) y `mensajeria_paradas_fecha_tramitador` pasaron a `@Table({ indexes })` con los nombres reales de columna (`models/mensajeria/paradaMensajeria.ts`). Ya se crearon en la base de desarrollo.
@@ -212,7 +236,7 @@ _Actualizado: 2026-10-04_
 - **Pestañas:** `components/ui/Pestanas.tsx` sin scroll; los títulos se parten en líneas centradas; se corrigió que se marcaran dos pestañas a la vez.
 
 ## Checklist de paso a producción
-Todo lo de esta sesión se probó contra la base de **desarrollo**. Para producción:
+Todo se probó contra la base de **desarrollo**. Para producción, en este orden:
 
 **Antes de desplegar**
 1. Copia de seguridad de la base de producción.
@@ -227,27 +251,105 @@ Todo lo de esta sesión se probó contra la base de **desarrollo**. Para producc
    CREATE INDEX IF NOT EXISTS "solicitud_tramites_analista_asignado" ON "SolicitudTramites"("analistaAsignado");
    ```
    (Mismo caso para los ajustes previos: columnas de retención en `gastos_solicitudes` y `tramitadorId`/`tipoDocumento` en `DocumentosSolicitud`.)
+4. **Claves de Google separadas y restringidas** (paso a paso en "Seguridad: claves y accesos" más abajo):
+   - Clave del **servidor** (`GOOGLE_MAPS_API_KEY` del backend): restringida a la **IP pública del servidor** y solo a Geocoding API, Routes API y Places API (New).
+   - Clave del **navegador** (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` de Nodex Trámites): restringida al **dominio** de Nodex Trámites y solo a Maps JavaScript API.
+   - **Nunca la misma clave para los dos:** la del navegador la ve cualquiera que abra la página.
+   - Cuotas diarias y alerta de presupuesto en Google Cloud.
+5. **Clave nueva de la API externa:** generar una distinta a la de desarrollo (`node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`) y pedir a la otra plataforma la IP pública desde la que va a consultar.
 
 **Desplegar**
-4. Backend, **worker de notificaciones** (proceso aparte, cambió; necesita Redis) y Nodex Trámites (y Nodex Gastos / Tramitadores con los cambios previos). En Nodex Trámites correr `npm install` (Leaflet y react-leaflet para los mapas).
-   - Variable nueva (opcional pero recomendada): `GOOGLE_MAPS_API_KEY` en el backend (Geocoding API + Routes API). Sin ella, rutas en modo manual.
-   - Variables de correo en el `.env` del backend: `CORREO_TESORERIA`, `CORREO_LEGALIZACION`, `CORREO_TORRE_CONTROL`, `CORREO_NOVEDADES_VEHICULOS` y, si se quiere el botón en los correos, `URL_NODEX_GASTOS` y `URL_NODEX_TRAMITES`.
-   - Confirmar en el log que aparece "Conexion Exitosa" y no "Fallo la Conexion…" (crea los índices de `mensajeria_paradas`).
-5. Revisar el log de arranque: columnas de analistas, retención y roles creados (`ANALISTA_TRAMITES`, `ADMIN_TORRE_CONTROL`, `TESORERIA_CERTIFICADOS`).
+6. Backend, **worker de notificaciones** (proceso aparte, cambió; necesita Redis) y Nodex Trámites (y Nodex Gastos / Tramitadores con los cambios previos).
+   - En Nodex Trámites correr `npm install` **con dependencias de desarrollo** (no `--production`): Leaflet y react-leaflet para los mapas y `@types/google.maps`, que necesita `next build`.
+7. **Variables del backend** (`Backend/.env`):
+   - `GOOGLE_MAPS_API_KEY`: la clave del servidor (paso 4). Sin ella, las rutas funcionan en modo manual y sin trazado por calles.
+   - `API_KEY_EXTERNA`: la clave nueva del paso 5. Sin ella, `/api/externa` responde 503.
+   - Correos: `CORREO_TESORERIA`, `CORREO_LEGALIZACION`, `CORREO_TORRE_CONTROL`, `CORREO_NOVEDADES_VEHICULOS` y, si se quiere el botón en los correos, `URL_NODEX_GASTOS` y `URL_NODEX_TRAMITES`.
+   - **No** poner `NEXT_PUBLIC_...` en el `.env` del backend (no se usa ahí).
+8. **Variables de Nodex Trámites** (`Frontend/frontend/.env`), **antes** de `next build` (las `NEXT_PUBLIC_` quedan fijas en el build; si se cambian hay que volver a compilar):
+   - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: la clave del navegador (paso 4). Sin ella el mapa de rutas usa OpenStreetMap.
+   - `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`: Map ID propio (opcional; sin él usa `DEMO_MAP_ID`).
+   - `NEXT_PUBLIC_URL_APP_TRAMITADORES` (ya pendiente de antes).
+9. Arranque: confirmar en el log "Conexion Exitosa" y no "Fallo la Conexion…" (crea los índices de `mensajeria_paradas`); columnas de analistas y retención, y roles creados (`ANALISTA_TRAMITES`, `ADMIN_TORRE_CONTROL`, `TESORERIA_CERTIFICADOS`). Deben salir también "⏰ Diligencias de hoy…" y "⏰ Diligencias vencidas…".
+10. **Una sola instancia del backend** (PM2 sin modo cluster): el programador de WhatsApp y la caché del trazado de rutas viven en memoria.
 
 **Después de desplegar**
-6. Asignar roles en Usuarios: Analista de trámites, Administrador Torre de control, Tesorería - Certificados.
-   - Revisar en el log del arranque las líneas "⏰ Diligencias de hoy…" y "⏰ Diligencias vencidas…", y que Torre de control vea "Notificaciones automáticas" en el menú.
-7. Mensajes de WhatsApp ya guardados (primero sin `--aplicar`):
-   `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/corregirMensajesWhatsapp.ts [--aplicar]`
-8. Estado actual de los trámites (el Excel de estados no lo actualizaba; primero sin `--aplicar`):
-   `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/sincronizarEstadoActual.ts [--aplicar]`
-9. Avisar a Torre de control: el cargue de estados por Excel ahora notifica (Desistido por WhatsApp; Novedad y Finalizado por correo), y el "Programador" de las notificaciones es el analista asignado.
-10. Avisar a Tesorería, Legalización, analistas y torre de control de los correos nuevos: gasto creado y reintegro del tramitador (grupotesoreria@), trámite finalizado con factura (legalizaciongastos@), gasto pagado (analista con copia a torredecontrol@) y trámite desistido (a quien lo creó).
+11. Asignar roles en Usuarios: Analista de trámites, Administrador Torre de control, Tesorería - Certificados.
+12. Mensajes de WhatsApp ya guardados (primero sin `--aplicar`):
+    `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/corregirMensajesWhatsapp.ts [--aplicar]`
+13. Estado actual de los trámites (el Excel de estados no lo actualizaba; primero sin `--aplicar`). **Necesario también para** el filtro "Estado" de la búsqueda de gestión masiva, el tablero y la API externa:
+    `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/sincronizarEstadoActual.ts [--aplicar]`
+14. **Verificar permisos con un usuario de cada perfil:**
+    - Gestión de activos: no ve Gestión masiva (ni en el menú ni el botón del Dashboard), ni Reportados como realizados, ni Catálogos; en el detalle del trámite ve el reporte de "realizado" pero no el botón de revisar.
+    - Analista: en el Dashboard ve solo sus trámites y encuentra cualquiera buscando por número o identificación (con la etiqueta "No asignado a ti").
+    - Torre de control: ve Catálogos solo con la pestaña Tramitadores. Admin / Administrador de Torre de control: las cuatro pestañas.
+15. **Verificar Google:** abrir Rutas de mensajeros con un día que tenga diligencias; el mapa debe ser de Google y las líneas ir por las calles. Si sale un recuadro rojo, ver la consola (F12): `RefererNotAllowedMapError` = falta el dominio en la clave del navegador; `ApiNotActivatedMapError` = falta habilitar Maps JavaScript API. Probar también el autocompletado de dirección al crear un trámite (usa la clave del servidor: si falla con "REQUEST_DENIED", la IP del servidor no está en la lista de la clave).
+16. **Verificar la API externa** desde el servidor de la otra plataforma (paso a paso abajo) y entregar la clave por un canal seguro (no correo ni chat).
+17. Avisar a Torre de control: el cargue de estados por Excel ahora notifica (Desistido por WhatsApp; Novedad y Finalizado por correo), y el "Programador" de las notificaciones es el analista asignado. Además: gestión masiva con varias acciones a la vez y búsqueda por filtros, Catálogos (tipos de trámite, subestados, operaciones, rechazos y tramitadores) y el menú nuevo.
+18. Avisar a Tesorería, Legalización, analistas y torre de control de los correos nuevos: gasto creado y reintegro del tramitador (grupotesoreria@), trámite finalizado con factura (legalizaciongastos@), gasto pagado (analista con copia a torredecontrol@) y trámite desistido (a quien lo creó).
+19. **No borrar operaciones, tipos de trámite ni subestados directamente en la base:** las llaves tienen `ON DELETE CASCADE` (borrar una operación borra sus trámites). Hacerlo solo desde Catálogos, que bloquea lo que está en uso.
+
+### Seguridad: claves y accesos (paso a paso)
+
+**A. Averiguar la IP pública de salida del servidor**
+Es la IP con la que el backend llega a Google (puede ser distinta de la IP por la que entran los usuarios). Desde el servidor:
+```bash
+curl -s https://api.ipify.org; echo
+```
+En Azure, la VM debe tener **IP pública estática** (Recurso de IP pública → Configuración → Asignación: Estática). Si la salida es por NAT Gateway o Firewall, la IP es la de ese recurso. Si la IP cambia, Google rechaza las consultas del backend.
+
+**B. Clave del servidor (backend) restringida por IP**
+1. [Google Cloud Console](https://console.cloud.google.com/) → elegir el proyecto → **APIs y servicios → Biblioteca**: verificar habilitadas **Geocoding API**, **Routes API** y **Places API (New)**.
+2. **APIs y servicios → Credenciales → Crear credenciales → Clave de API**. Renombrarla, por ejemplo "Nodex backend (producción)".
+3. En **Restricciones de aplicaciones** elegir **Direcciones IP** y agregar la IP del paso A (una por línea; se puede agregar también la IP de desarrollo de la oficina si se quiere usar la misma clave allí — mejor una clave aparte para desarrollo).
+4. En **Restricciones de API** elegir **Restringir clave** y marcar solo Geocoding API, Routes API y Places API (New).
+5. Guardar (puede tardar hasta 5 minutos en aplicar) y ponerla en `GOOGLE_MAPS_API_KEY` del backend.
+6. Probar desde el servidor (debe responder `"status" : "OK"`; si responde `REQUEST_DENIED` con "This IP … is not authorized", la IP no coincide):
+   ```bash
+   curl -s "https://maps.googleapis.com/maps/api/geocode/json?address=Medellin&key=LA_CLAVE" | head -5
+   ```
+
+**C. Clave del navegador (Nodex Trámites) restringida por dominio**
+1. Habilitar **Maps JavaScript API** en el mismo proyecto.
+2. Crear otra clave ("Nodex Trámites mapa (producción)").
+3. **Restricciones de aplicaciones → Sitios web (referentes HTTP)** y agregar el dominio de Nodex Trámites, por ejemplo `https://tramites.midominio.com/*` (y `http://localhost:3000/*` solo en la clave de desarrollo).
+4. **Restricciones de API → Restringir clave**: solo **Maps JavaScript API**.
+5. Ponerla en `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` de Nodex Trámites y compilar.
+6. Opcional: **Google Maps Platform → Administración de mapas → Crear ID de mapa** (tipo JavaScript, vectorial) y ponerlo en `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`.
+
+**D. Cuotas y presupuesto (evita cobros sorpresa)**
+1. **Facturación → Presupuestos y alertas → Crear presupuesto** (por ejemplo USD 10) con alertas al 50 %, 90 % y 100 % al correo de sistemas.
+2. **APIs y servicios → (cada API) → Cuotas y límites del sistema**: poner un tope diario por debajo del cupo gratis (10.000/mes ≈ 300/día), por ejemplo:
+   - Maps JavaScript API (cargas del mapa): 300 por día.
+   - Routes API (trazado y optimización): 300 por día.
+   - Geocoding API y Places API (New): 300 por día.
+   Si se llega al tope, Google rechaza las consultas de ese día (el mapa cae a líneas rectas y la ubicación queda manual) en lugar de cobrar.
+3. Cada mes revisar **Google Maps Platform → Métricas** para ver el uso real y ajustar.
+
+**E. API externa (`/api/externa`) solo desde la IP de la otra plataforma**
+La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP de la plataforma que la consume:
+1. Pedirle a esa plataforma su **IP pública de salida** (la obtienen igual que en el paso A).
+2. Si el backend queda detrás de Nginx (arquitectura propuesta), agregar en el `server` del backend:
+   ```nginx
+   location /api/externa/ {
+       allow 203.0.113.10;   # IP de la otra plataforma
+       deny all;
+       limit_req zone=externa burst=20 nodelay;   # opcional: límite de peticiones
+       proxy_pass http://127.0.0.1:4000;
+   }
+   ```
+   (y en el bloque `http`: `limit_req_zone $binary_remote_addr zone=externa:1m rate=5r/s;`). Recargar con `sudo nginx -t && sudo systemctl reload nginx`.
+3. Si no hay Nginx, hacer lo mismo en el **Grupo de seguridad de red (NSG)** de Azure: regla de entrada al puerto del backend permitida solo desde esa IP (esto cierra todo el puerto, no solo `/api/externa`, así que solo sirve si el backend no recibe otras conexiones directas).
+4. Probar desde el servidor de la otra plataforma (debe responder 200; desde otra IP, 403 de Nginx):
+   ```bash
+   curl -s -H "X-API-Key: LA_CLAVE" "https://api.midominio.com/api/externa/mensajeros/tramites?tamano=2"
+   ```
+5. Si la clave se filtra: generar otra, cambiar `API_KEY_EXTERNA`, reiniciar el backend y entregarla de nuevo.
 
 ## Decisiones tomadas
 - **Comentarios del tramitador** en una tabla propia, no en la Trazabilidad, porque la trazabilidad alimenta las notificaciones al cliente.
-- **"Realizado"** es un reporte; no cambia el estado oficial. Gestión de Activos o Torre de Control lo revisan.
+- **"Realizado"** es un reporte; no cambia el estado oficial. Solo Torre de Control lo revisa (2026-10-05): la bandeja `/center/reportesRealizado` tiene guard de perfil, no sale en el menú de Gestión de activos y `GET|POST /seguimiento-tramitador/reportes-realizado*` exigen `TORRE_CONTROL`. En el detalle del trámite Gestión de activos ve el reporte pero no el botón de revisar.
+- **Gestión masiva:** solo Torre de Control (menú, página, backend y ahora también el botón del Dashboard).
 - **Archivos del tramitador:** quedan aparte hasta que se aprueban; al aprobarse se copian a `gastos_documentos`.
 - **Reintegro aprobado** = `marcarReintegradoEn` (el dinero vuelve a la bolsa).
 - **Tramitador del gasto:** `COALESCE(gasto.tramitador_id, tramite.tramitadorId)`.
@@ -264,7 +366,8 @@ Todo lo de esta sesión se probó contra la base de **desarrollo**. Para producc
 7. **Correos nuevos sin prueba real:** crear y pagar un gasto de un trámite con analista, desistir un trámite, finalizar un trámite cuyo gasto tenga factura del tramitador y subir un reintegro desde la app, para verificar la entrega por SendGrid.
    - **Por confirmar con el usuario:** si Contabilidad debe recibir un aviso igual por los gastos no reembolsables con factura, y si el correo a Legalización debe exigir además el reporte "Realizado".
 8. **`node_modules` en git:** sacarlo del repositorio (`git rm -r --cached`) para que no se mezclen dependencias de Windows y Mac. Pendiente de autorización.
-9. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción) y la variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` en el `.env` de Nodex Trámites.
+9. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción). La variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` quedó en el checklist (paso 8).
+10. **Claves de Google en desarrollo:** hoy el backend y Nodex Trámites usan la misma clave (sin restricciones). En producción deben ser dos claves restringidas (checklist, paso 4 y sección de seguridad).
 
 ## Próximos pasos sugeridos
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.

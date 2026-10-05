@@ -173,7 +173,7 @@ export default function EditarSolicitudTramiteForm({
 
 
       router.push(
-        "/center"
+        "/center/dashboard"
       )
 
       router.refresh()

@@ -1,12 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import clsx from "clsx"
-import { ArrowDown, ArrowUp, Camera, ExternalLink, Loader2, MapPin, MapPinOff, Navigation, Sparkles } from "lucide-react"
+import { ArrowDown, ArrowUp, Camera, ExternalLink, Loader2, Map as IconoMapa, MapPin, MapPinOff, Navigation, Sparkles } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import {
   COLOR_ESTADO,
@@ -18,17 +17,20 @@ import {
 } from "@/src/rutas"
 import ModalUbicacion from "./ModalUbicacion"
 
-const Mapa = dynamic(() => import("./MapaRutaLeaflet"), {
-  ssr: false,
-  loading: () => <div className="flex h-full items-center justify-center rounded-lg bg-slate-50 text-xs text-slate-400">Cargando mapa…</div>
-})
-
 const claseBoton = "inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
 
 const hora = (iso: string) => new Date(iso).toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit" })
 
-// Ruta del día de un mensajero: mapa + lista ordenable + lo que confirmó en campo
-export default function RutaMensajeroCard({ ruta, fecha, googleDisponible }: { ruta: RutaMensajero, fecha: string, googleDisponible: boolean }) {
+// Ruta del día de un mensajero: lista ordenable + lo que confirmó en campo. El mapa es el
+// del día (PanelRutas): la tarjeta le avisa el orden con `onParadas`.
+export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color, onParadas, onVerEnMapa }: {
+  ruta: RutaMensajero
+  fecha: string
+  googleDisponible: boolean
+  color: string
+  onParadas: (paradas: Parada[]) => void
+  onVerEnMapa: () => void
+}) {
   const router = useRouter()
   const [paradas, setParadas] = useState<Parada[]>(ruta.paradas)
   const [guardando, setGuardando] = useState(false)
@@ -36,6 +38,9 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible }: { r
   const [ubicando, setUbicando] = useState<Parada | null>(null)
 
   useEffect(() => setParadas(ruta.paradas), [ruta.paradas])
+  // El mapa del día se redibuja con el orden nuevo
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => onParadas(paradas), [paradas])
 
   const { mensajero, sede, resumen } = ruta
   const enlaces = enlacesGoogleMaps(sede, paradas.filter(p => p.estado === "PENDIENTE"))
@@ -77,7 +82,10 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible }: { r
       {/* ENCABEZADO */}
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <div>
-          <h2 className="text-sm font-semibold text-slate-700">{mensajero.nombre}</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+            {mensajero.nombre}
+          </h2>
           <p className="mt-0.5 text-xs text-slate-400">
             {sede ? `Sale de ${sede.nombre}` : "Sin sede asignada"} · {resumen.total} parada(s)
             {resumen.total > 0 && ` · ${resumen.entregadas} entregada(s)`}
@@ -86,6 +94,9 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible }: { r
         </div>
         {paradas.length > 0 && (
           <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onVerEnMapa} className={claseBoton}>
+              <IconoMapa size={13} /> Ver en el mapa
+            </button>
             <button type="button" onClick={optimizar} disabled={optimizando || guardando} className={claseBoton}
               title={googleDisponible ? "Orden óptimo por calles con Google" : "Orden por cercanía (sin Google)"}>
               {optimizando ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
@@ -104,13 +115,9 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible }: { r
       {paradas.length === 0 ? (
         <p className="px-5 py-8 text-center text-xs text-slate-400">Sin diligencias programadas para este día.</p>
       ) : (
-        <div className="grid gap-5 p-5 lg:grid-cols-[1fr_420px]">
-          <div className="relative z-0 h-[420px]">
-            <Mapa sede={sede} paradas={paradas} />
-          </div>
-
+        <div className="p-5">
           {/* LISTA EN ORDEN */}
-          <ol className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+          <ol className="grid max-h-[480px] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
             {paradas.map((p, i) => {
               const distancia = p.latitudConfirmacion !== null && p.longitudConfirmacion !== null && p.latitud !== null && p.longitud !== null
                 ? distanciaMetros({ latitud: p.latitud, longitud: p.longitud }, { latitud: p.latitudConfirmacion, longitud: p.longitudConfirmacion })
@@ -118,7 +125,8 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible }: { r
               return (
                 <li key={p.id} className="rounded-lg border border-slate-200 px-3 py-2.5 text-xs">
                   <div className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white" style={{ backgroundColor: COLOR_ESTADO[p.estado] }}>
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                      style={{ backgroundColor: color, border: `3px solid ${p.estado === "PENDIENTE" ? "#fff" : COLOR_ESTADO[p.estado]}`, boxShadow: "0 0 0 1px #e2e8f0" }}>
                       {p.orden}
                     </span>
                     <div className="min-w-0 flex-1">

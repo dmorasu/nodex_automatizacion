@@ -1,13 +1,11 @@
 import {Router}  from 'express'
 
-import { handleInputErrors } from '../middleware/validation'
-
 import { OperacionesController } from '../controllers/OperacionesController'
 
-import { validateOperacionesExits,validateOperacionesInput} from '../middleware/operaciones'
+import { validateOperacionesExits } from '../middleware/operaciones'
 
-
-
+// Solo consulta. Crear, editar y borrar: /api/catalogos-tramites (con permiso y sin borrar
+// operaciones en uso: la relación con los trámites tiene onDelete CASCADE)
 const router =Router()
 
 router.param('operacionesId',validateOperacionesExits)
@@ -15,22 +13,8 @@ router.param('operacionesId',validateOperacionesExits)
 
 router.get('/',OperacionesController.getAll)
 
-router.post('/',
-   validateOperacionesInput,
-    handleInputErrors,
-    OperacionesController.create
-)
-
 router.get('/:operacionesId',
     OperacionesController.getById
-)
-
-router.put('/:operacionesId', 
-    OperacionesController.updateById
-)
-
-router.delete('/:operacionesId', 
-    OperacionesController.deleteById
 )
 
 

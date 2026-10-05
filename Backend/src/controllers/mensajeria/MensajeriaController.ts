@@ -6,6 +6,7 @@ import ParadaMensajeria from '../../models/mensajeria/paradaMensajeria'
 import { obtenerArchivo } from '../../services/azureFileStorage'
 import { ErrorUbicacion, geocodificar, googleDisponible, ubicarManual, ubicarTramite } from '../../services/mensajeria/ubicacion'
 import { hoyBogota, optimizarRuta, reordenarParadas, rutasDelDia } from '../../services/mensajeria/rutas'
+import { MAXIMO_PUNTOS_TRAZADO, trazarRuta } from '../../services/mensajeria/trazado'
 
 const responder = (res: Response, error: unknown) => {
   if (error instanceof ErrorUbicacion) return res.status(error.status).json({ error: error.message })
@@ -96,6 +97,24 @@ export class MensajeriaController {
       const fecha = fechaValida(req.body.fecha)
       if (!fecha) throw new ErrorUbicacion('Fecha no válida')
       res.json(await optimizarRuta(fecha, Number(req.params.tramitadorId)))
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // Línea de la ruta por las calles para el mapa: puntos en orden (sede → paradas → sede)
+  static trazado = async (req: Request, res: Response) => {
+    try {
+      const puntos = Array.isArray(req.body?.puntos) ? req.body.puntos : []
+      const validos = puntos.map((p: { latitud?: unknown, longitud?: unknown }) => ({ latitud: Number(p?.latitud), longitud: Number(p?.longitud) }))
+      if (validos.length < 2 || validos.length > MAXIMO_PUNTOS_TRAZADO) {
+        throw new ErrorUbicacion(`Envíe entre 2 y ${MAXIMO_PUNTOS_TRAZADO} puntos`)
+      }
+      if (validos.some((p: { latitud: number, longitud: number }) =>
+        !Number.isFinite(p.latitud) || !Number.isFinite(p.longitud) || Math.abs(p.latitud) > 90 || Math.abs(p.longitud) > 180)) {
+        throw new ErrorUbicacion('Hay coordenadas no válidas')
+      }
+      res.json(await trazarRuta(validos))
     } catch (error) {
       responder(res, error)
     }

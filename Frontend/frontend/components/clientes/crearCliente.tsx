@@ -50,12 +50,12 @@ export default function CrearClientesForm() {
           autoClose: 1200,
 
           onClose: () => {
-            router.push("/center")
+            router.push("/center/dashboard")
             router.refresh()
           },
 
           onClick: () => {
-            router.push("/center")
+            router.push("/center/dashboard")
             router.refresh()
           }
         }

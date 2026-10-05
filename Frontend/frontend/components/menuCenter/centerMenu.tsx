@@ -1,41 +1,44 @@
 "use client"
 
 import { Fragment } from "react"
-
-import {
-  Popover,
-  PopoverButton,
-  PopoverPanel,
-  Transition,
-} from "@headlessui/react"
-
-import {
-  Menu,
-  LayoutDashboard,
-  Radar,
-  ClipboardList,
-  Users,
-  Upload,
-  UserRoundPlus,
-  Settings2,
-  LogOut,
-  ChevronRight,
-  HardHat,
-  ShieldCheck,
-  CircleCheckBig,
-  UserCog,
-  Route,
-  BellRing,
-} from "lucide-react"
-
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+import clsx from "clsx"
+import { Popover, PopoverButton, PopoverPanel, Transition } from "@headlessui/react"
+import {
+  BellRing,
+  CircleCheckBig,
+  FilePlus2,
+  FileSpreadsheet,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Radar,
+  Receipt,
+  Route,
+  Settings2,
+  ShieldCheck,
+  Tags,
+  Upload,
+  UserCog,
+  UserRoundPlus,
+  Users,
+  type LucideIcon
+} from "lucide-react"
 
 import { Usuario } from "@/src/schemas"
 import { NOMBRES_PERFIL, type PerfilTramites } from "@/src/auth/perfiles"
-
 import { cerrarSesion } from "@/actions/cerrarSesion"
 
+type Opcion = { href: string, nombre: string, icono: LucideIcon, visible: boolean }
+type Seccion = { titulo: string, opciones: Opcion[] }
 
+// "Diego Alejandro Mora" → "DA"
+const iniciales = (nombre: string) =>
+  nombre.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "?"
+
+// Menú principal de Nodex Trámites, agrupado por secciones. Cada opción se muestra según
+// el perfil y los permisos (las páginas y el backend vuelven a revisarlos).
 export default function CenterMenu({
   usuario,
   perfil,
@@ -49,840 +52,139 @@ export default function CenterMenu({
   puedeAsignarAnalistas: boolean
   puedeConfigurarNotificaciones: boolean
 }) {
+  const ruta = usePathname()
 
-  // Gestión de activos no ve Torre de control ni Gestión masiva; Torre de control ve todo
+  // Gestión de activos no ve el tablero, los reportados como realizados, las rutas, la gestión masiva ni los catálogos
   const esTorreControl = perfil === "TORRE_CONTROL"
 
+  const secciones: Seccion[] = [
+    {
+      titulo: "Seguimiento",
+      opciones: [
+        { href: "/center/dashboard", nombre: "Dashboard", icono: LayoutDashboard, visible: true },
+        { href: "/center/torreControl", nombre: "Tablero de gestión", icono: Radar, visible: esTorreControl },
+        { href: "/center/reportesRealizado", nombre: "Reportados como realizados", icono: CircleCheckBig, visible: esTorreControl },
+        { href: "/center/rutas", nombre: "Rutas de mensajeros", icono: Route, visible: esTorreControl }
+      ]
+    },
+    {
+      titulo: "Crear y cargar",
+      opciones: [
+        { href: "/center/solicitudTramites/nueva", nombre: "Nuevo trámite", icono: FilePlus2, visible: true },
+        { href: "/center/clientes/nuevo", nombre: "Nuevo cliente", icono: UserRoundPlus, visible: true },
+        { href: "/center/cargueMasiva", nombre: "Cargue masivo de trámites", icono: Upload, visible: true },
+        { href: "/center/cargueMasivoClientes", nombre: "Cargue masivo de clientes", icono: FileSpreadsheet, visible: true },
+        { href: "/center/cargueMasivoGastos", nombre: "Cargue masivo de gastos", icono: Receipt, visible: perfil === "GESTION_ACTIVOS" || esAdmin },
+        { href: "/center/gestionMasiva", nombre: "Gestión masiva", icono: Settings2, visible: esTorreControl }
+      ]
+    },
+    {
+      titulo: "Configuración",
+      opciones: [
+        { href: "/center/catalogos", nombre: "Catálogos y tramitadores", icono: Tags, visible: esTorreControl },
+        { href: "/center/analistas", nombre: "Asignación de analistas", icono: UserCog, visible: puedeAsignarAnalistas },
+        { href: "/center/notificaciones", nombre: "Notificaciones automáticas", icono: BellRing, visible: puedeConfigurarNotificaciones },
+        { href: "/center/admin", nombre: "Administración", icono: ShieldCheck, visible: esAdmin }
+      ]
+    }
+  ]
+
+  // La opción activa es la de la ruta más larga que coincide (ej: /center/dashboard)
+  const activa = secciones
+    .flatMap(s => s.opciones)
+    .filter(o => o.visible && (ruta === o.href || ruta.startsWith(`${o.href}/`)))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
+
   return (
-
     <Popover className="relative">
-
       {({ close }) => (
-
         <>
-
-          {/* ================================================= */}
-          {/* BOTÓN DEL MENÚ                                    */}
-          {/* ================================================= */}
-
           <PopoverButton
-            className="
-              group
-              flex
-              items-center
-              justify-center
-              w-10
-              h-10
-              rounded-lg
-              bg-white
-              border
-              border-slate-200
-              text-slate-500
-              shadow-sm
-              transition-all
-              duration-200
-              hover:bg-slate-50
-              hover:border-slate-300
-              hover:text-slate-700
-              focus:outline-none
-              focus:ring-2
-              focus:ring-sky-100
-            "
+            className="group flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-100 data-[open]:border-sky-300 data-[open]:text-sky-600"
+            aria-label="Abrir menú"
           >
-
-            <Menu
-              size={21}
-              strokeWidth={1.8}
-              className="
-                transition-transform
-                duration-200
-                group-hover:scale-105
-              "
-            />
-
+            <Menu size={21} strokeWidth={1.8} />
           </PopoverButton>
-
-
-
-          {/* ================================================= */}
-          {/* MENÚ                                               */}
-          {/* ================================================= */}
 
           <Transition
             as={Fragment}
-
-            enter="
-              transition
-              ease-out
-              duration-200
-            "
-
-            enterFrom="
-              opacity-0
-              translate-y-2
-              scale-95
-            "
-
-            enterTo="
-              opacity-100
-              translate-y-0
-              scale-100
-            "
-
-            leave="
-              transition
-              ease-in
-              duration-150
-            "
-
-            leaveFrom="
-              opacity-100
-              translate-y-0
-              scale-100
-            "
-
-            leaveTo="
-              opacity-0
-              translate-y-2
-              scale-95
-            "
+            enter="transition ease-out duration-150"
+            enterFrom="opacity-0 translate-y-1 scale-95"
+            enterTo="opacity-100 translate-y-0 scale-100"
+            leave="transition ease-in duration-100"
+            leaveFrom="opacity-100 translate-y-0 scale-100"
+            leaveTo="opacity-0 translate-y-1 scale-95"
           >
+            <PopoverPanel className="absolute right-0 z-50 mt-3 w-[min(20rem,calc(100vw-2rem))] origin-top-right">
+              <div className="flex max-h-[calc(100vh-6rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
 
-            <PopoverPanel
-              className="
-                absolute
-                right-0
-                z-50
-                mt-3
-                w-72
-                origin-top-right
-              "
-            >
-
-              <div className="
-                overflow-hidden
-                rounded-xl
-                bg-white
-                border
-                border-slate-200
-                shadow-xl
-              ">
-
-
-                {/* ========================================= */}
-                {/* USUARIO                                    */}
-                {/* ========================================= */}
-
-                <div className="
-                  px-4
-                  py-4
-                  bg-slate-50
-                  border-b
-                  border-slate-200
-                ">
-
-                  <div className="
-                    flex
-                    items-center
-                    gap-3
-                  ">
-
-
-                    {/* AVATAR */}
-
-                    <div className="
-                      flex
-                      items-center
-                      justify-center
-                      w-10
-                      h-10
-                      rounded-lg
-                      bg-sky-50
-                      border
-                      border-sky-100
-                      shrink-0
-                    ">
-
-                      <Users
-                        size={19}
-                        className="text-sky-500"
-                      />
-
-                    </div>
-
-
-                    {/* NOMBRE */}
-
-                    <div className="min-w-0">
-
-                      <p className="
-                        text-xs
-                        text-slate-500
-                        mb-0.5
-                      ">
-                        Hola
-                      </p>
-
-                      <p className="
-                        text-sm
-                        font-semibold
-                        text-slate-800
-                        truncate
-                      ">
-
-                        {usuario.nombreUsuario}
-
-                      </p>
-
-                      <p className="text-[11px] font-medium text-sky-600">
-                        {NOMBRES_PERFIL[perfil]}
-                      </p>
-
-                    </div>
-
+                {/* USUARIO */}
+                <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-600 text-sm font-semibold text-white">
+                    {iniciales(usuario.nombreUsuario)}
                   </div>
-
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-800">{usuario.nombreUsuario}</p>
+                    <p className="truncate text-[11px] text-slate-500">{usuario.correoUsuario}</p>
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-px text-[10px] font-semibold text-sky-700">
+                      <Users size={10} /> {NOMBRES_PERFIL[perfil]}
+                    </span>
+                  </div>
                 </div>
 
-
-
-                {/* ========================================= */}
-                {/* NAVEGACIÓN                                 */}
-                {/* ========================================= */}
-
-                <div className="p-2">
-
-
-                  {/* DASHBOARD */}
-
-                  <Link
-                    href="/center/dashboard"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-slate-50
-                      hover:text-sky-600
-                    "
-                  >
-
-                    <LayoutDashboard
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-sky-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Dashboard
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-sky-400
-                      "
-                    />
-
-                  </Link>
-
-
-
-                  {/* TORRE DE CONTROL */}
-
-                  {esTorreControl && (
-                  <Link
-                    href="/center/torreControl"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-emerald-50
-                      hover:text-emerald-600
-                    "
-                  >
-
-                    <Radar
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-emerald-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Tablero de gestión
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-emerald-400
-                      "
-                    />
-
-                  </Link>
-                  )}
-
-
-
-                  {/* TRÁMITES */}
-
-                  <Link
-                    href="/center"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-sky-50
-                      hover:text-sky-600
-                    "
-                  >
-
-                    <ClipboardList
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-sky-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Trámites
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-sky-400
-                      "
-                    />
-
-                  </Link>
-
-
-
-                  {/* REPORTADOS COMO REALIZADOS (app de tramitadores) */}
-
-                  <Link
-                    href="/center/reportesRealizado"
-                    onClick={() => close()}
-                    className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
-                  >
-                    <CircleCheckBig size={18} className="text-slate-400 group-hover:text-sky-500" />
-                    <span className="flex-1 text-sm font-medium">Reportados como realizados</span>
-                    <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
-                  </Link>
-
-
-
-                  {/* RUTAS DE MENSAJEROS (Torre de control) */}
-
-                  {esTorreControl && (
-                    <Link
-                      href="/center/rutas"
-                      onClick={() => close()}
-                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
-                    >
-                      <Route size={18} className="text-slate-400 group-hover:text-sky-500" />
-                      <span className="flex-1 text-sm font-medium">Rutas de mensajeros</span>
-                      <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
-                    </Link>
-                  )}
-
-
-
-                  {/* ANALISTAS (Administrador de Torre de control) */}
-
-                  {puedeAsignarAnalistas && (
-                    <Link
-                      href="/center/analistas"
-                      onClick={() => close()}
-                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
-                    >
-                      <UserCog size={18} className="text-slate-400 group-hover:text-sky-500" />
-                      <span className="flex-1 text-sm font-medium">Asignación de analistas</span>
-                      <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
-                    </Link>
-                  )}
-
-
-
-                  {/* NOTIFICACIONES AUTOMÁTICAS (Admin y Torre de control) */}
-
-                  {puedeConfigurarNotificaciones && (
-                    <Link
-                      href="/center/notificaciones"
-                      onClick={() => close()}
-                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
-                    >
-                      <BellRing size={18} className="text-slate-400 group-hover:text-sky-500" />
-                      <span className="flex-1 text-sm font-medium">Notificaciones automáticas</span>
-                      <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
-                    </Link>
-                  )}
-
-
-
-                  {/* CLIENTES */}
-
-                  <Link
-                    href="/center/clientes/nuevo"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-indigo-50
-                      hover:text-indigo-600
-                    "
-                  >
-
-                    <Users
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-indigo-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Clientes
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-indigo-400
-                      "
-                    />
-
-                  </Link>
-
-                  {/* TRAMITADORES (Torre de control) */}
-
-                  {esTorreControl && (
-                  <Link
-                    href="/center/tramitadores"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-indigo-50
-                      hover:text-indigo-600
-                    "
-                  >
-
-                    <HardHat
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-indigo-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Tramitadores
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-indigo-400
-                      "
-                    />
-
-                  </Link>
-                  )}
-
-
-
-                  {/* ======================================= */}
-                  {/* SEPARADOR                                */}
-                  {/* ======================================= */}
-
-                  <div className="
-                    my-2
-                    border-t
-                    border-slate-100
-                  " />
-
-
-
-                  {/* CARGUE MASIVO TRÁMITES */}
-
-                  <Link
-                    href="/center/cargueMasiva"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-teal-50
-                      hover:text-teal-600
-                    "
-                  >
-
-                    <Upload
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-teal-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Cargue Masivo Trámites
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-teal-400
-                      "
-                    />
-
-                  </Link>
-
-
-
-                  {/* CARGUE MASIVO CLIENTES */}
-
-                  <Link
-                    href="/center/cargueMasivoClientes"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-teal-50
-                      hover:text-teal-600
-                    "
-                  >
-
-                    <UserRoundPlus
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-teal-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Cargue Masivo Clientes
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-teal-400
-                      "
-                    />
-
-                  </Link>
-
-                  {/* CARGUE MASIVO DE GASTOS (Gestión de activos) */}
-
-                  {(perfil === "GESTION_ACTIVOS" || esAdmin) && (
-                  <Link
-                    href="/center/cargueMasivoGastos"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-teal-50
-                      hover:text-teal-600
-                    "
-                  >
-
-                    <UserRoundPlus
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-teal-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Cargue masivo de gastos
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-teal-400
-                      "
-                    />
-
-                  </Link>
-                  )}
-
-
-
-                  {/* GESTIÓN MASIVA */}
-
-                  {esTorreControl && (
-                  <Link
-                    href="/center/gestionMasiva"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-violet-50
-                      hover:text-violet-600
-                    "
-                  >
-
-                    <Settings2
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-violet-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Gestión Masiva Nodex
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-violet-400
-                      "
-                    />
-
-                  </Link>
-                  )}
-
-                </div>
-
-
-
-                {/* ADMINISTRACIÓN (solo Admin) */}
-
-                {esAdmin && (
-                  <div className="border-t border-slate-200 p-2">
-                  <Link
-                    href="/center/admin"
-                    onClick={() => close()}
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-600
-                      transition
-                      hover:bg-indigo-50
-                      hover:text-indigo-600
-                    "
-                  >
-
-                    <ShieldCheck
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-indigo-500
-                      "
-                    />
-
-                    <span className="
-                      flex-1
-                      text-sm
-                      font-medium
-                    ">
-                      Administración
-                    </span>
-
-                    <ChevronRight
-                      size={15}
-                      className="
-                        text-slate-300
-                        group-hover:text-indigo-400
-                      "
-                    />
-
-                  </Link>
-                  </div>
-                )}
-
-
-
-                {/* ========================================= */}
-                {/* CERRAR SESIÓN                             */}
-                {/* ========================================= */}
-
-                <div className="
-                  border-t
-                  border-slate-200
-                  p-2
-                ">
-
+                {/* NAVEGACIÓN */}
+                <nav className="flex-1 overflow-y-auto p-2" aria-label="Menú principal">
+                  {secciones.map(seccion => {
+                    const opciones = seccion.opciones.filter(o => o.visible)
+                    if (opciones.length === 0) return null
+                    return (
+                      <div key={seccion.titulo} className="mb-1 last:mb-0">
+                        <p className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                          {seccion.titulo}
+                        </p>
+                        {opciones.map(({ href, nombre, icono: Icono }) => {
+                          const esActiva = activa === href
+                          return (
+                            <Link
+                              key={href}
+                              href={href}
+                              onClick={() => close()}
+                              aria-current={esActiva ? "page" : undefined}
+                              className={clsx(
+                                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
+                                esActiva ? "bg-sky-50 font-semibold text-sky-700" : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                              )}
+                            >
+                              <Icono size={17} className={clsx("shrink-0", esActiva ? "text-sky-600" : "text-slate-400 group-hover:text-sky-500")} />
+                              <span className="flex-1 truncate">{nombre}</span>
+                              {esActiva && <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </nav>
+
+                {/* CERRAR SESIÓN */}
+                <div className="border-t border-slate-200 p-2">
                   <button
                     type="button"
-                    className="
-                      group
-                      flex
-                      items-center
-                      gap-3
-                      w-full
-                      px-3
-                      py-2.5
-                      rounded-lg
-                      text-slate-500
-                      transition
-                      hover:bg-red-50
-                      hover:text-red-600
-                    "
                     onClick={async () => {
-
                       close()
-
                       await cerrarSesion()
-
                     }}
+                    className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                   >
-
-                    <LogOut
-                      size={18}
-                      className="
-                        text-slate-400
-                        group-hover:text-red-500
-                      "
-                    />
-
-                    <span className="
-                      text-sm
-                      font-medium
-                    ">
-                      Cerrar Sesión
-                    </span>
-
+                    <LogOut size={17} className="text-slate-400 group-hover:text-red-500" />
+                    Cerrar sesión
                   </button>
-
                 </div>
-
-
               </div>
-
             </PopoverPanel>
-
           </Transition>
-
         </>
-
       )}
-
     </Popover>
-
   )
 }

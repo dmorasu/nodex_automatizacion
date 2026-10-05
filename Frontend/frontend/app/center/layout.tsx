@@ -170,7 +170,7 @@ export default async function CenterLayout({
         pb-10
       ">
 
-        <ProveedorPerfil perfil={perfil} permisos={{ esAnalista, puedeAsignarAnalistas }}>
+        <ProveedorPerfil perfil={perfil} permisos={{ esAnalista, puedeAsignarAnalistas, usuarioId: usuario.id }}>
 
         {children}
 

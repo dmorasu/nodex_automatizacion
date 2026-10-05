@@ -203,7 +203,7 @@ export default async function EditarSolicitudTramitePage({
         {/* =============================================== */}
 
         <Link
-          href="/center"
+          href="/center/dashboard"
           className="
             h-9
             px-4

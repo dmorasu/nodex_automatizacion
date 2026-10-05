@@ -18,6 +18,7 @@ interface Filtros {
 export function useSolicitudesFiltradas(filtros: Filtros) {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -42,12 +43,14 @@ export function useSolicitudesFiltradas(filtros: Filtros) {
       .then(res => res.json())
       .then(res => {
         setData(Array.isArray(res.data) ? res.data : [])
+        setTotal(res.total ?? 0)
         setTotalPages(res.totalPages ?? 1)
         setCurrentPage(res.currentPage ?? 1)
       })
       .catch(error => {
         console.error('Error cargando solicitudes:', error)
         setData([])
+        setTotal(0)
       })
       .finally(() => setLoading(false))
 
@@ -56,6 +59,7 @@ export function useSolicitudesFiltradas(filtros: Filtros) {
   return {
     data,
     loading,
+    total,
     totalPages,
     currentPage
   }

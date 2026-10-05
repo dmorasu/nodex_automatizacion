@@ -14,6 +14,7 @@ router.get('/rutas', MensajeriaController.rutas)
 router.put('/rutas/:tramitadorId/orden', MensajeriaController.reordenar)
 router.post('/rutas/:tramitadorId/optimizar', MensajeriaController.optimizar)
 router.post('/ubicar-pendientes', MensajeriaController.ubicarPendientes)
+router.post('/trazado', MensajeriaController.trazado)
 
 router.post('/tramites/:id/ubicar', MensajeriaController.ubicar)
 router.put('/tramites/:id/ubicacion', MensajeriaController.ubicarManual)

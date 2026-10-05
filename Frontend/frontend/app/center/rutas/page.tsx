@@ -2,16 +2,16 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { Route } from "lucide-react"
 import { verificacionSesion } from "@/src/auth/dal"
-import { COLOR_ESTADO, NOMBRE_ESTADO_PARADA, type RutasDelDia, type Sede } from "@/src/rutas"
+import type { RutasDelDia, Sede } from "@/src/rutas"
 import BarraRutas from "@/components/rutas/BarraRutas"
 import GestionSedes from "@/components/rutas/GestionSedes"
-import RutaMensajeroCard from "@/components/rutas/RutaMensajeroCard"
+import PanelRutas from "@/components/rutas/PanelRutas"
 
 export const metadata: Metadata = {
   title: "Nodex - Rutas de mensajeros",
 }
 
-// Rutas del día de los mensajeros: mapa por mensajero, orden editable y optimizable,
+// Rutas del día de los mensajeros: un mapa con las rutas elegidas, orden editable y optimizable,
 // y lo que confirmaron en campo desde su app
 export default async function RutasPage({ searchParams }: { searchParams: { fecha?: string, sedeId?: string } }) {
   const { token } = await verificacionSesion()
@@ -65,31 +65,15 @@ export default async function RutasPage({ searchParams }: { searchParams: { fech
         </p>
       )}
 
-      {/* Leyenda de estados (colores con su nombre) */}
-      <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500">
-        {Object.entries(NOMBRE_ESTADO_PARADA).map(([estado, nombre]) => (
-          <span key={estado} className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: COLOR_ESTADO[estado as keyof typeof COLOR_ESTADO] }} aria-hidden="true" />
-            {nombre}
-          </span>
-        ))}
-        <span className="inline-flex items-center gap-1.5">
-          <span className="flex h-3.5 w-3.5 items-center justify-center rounded bg-slate-900 text-[8px] font-bold text-white" aria-hidden="true">S</span>
-          Sede
-        </span>
-      </div>
-
       {!rutas ? (
         <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">No se pudieron cargar las rutas.</p>
       ) : rutas.rutas.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-xs text-slate-500">
           No hay mensajeros{searchParams.sedeId ? " en esta sede" : ""}. Marque tramitadores como mensajeros y asígneles una sede en{" "}
-          <Link href="/center/tramitadores" className="font-semibold text-sky-600 hover:underline">Tramitadores</Link>.
+          <Link href="/center/catalogos?pestana=tramitadores" className="font-semibold text-sky-600 hover:underline">Tramitadores</Link>.
         </div>
       ) : (
-        rutas.rutas.map(ruta => (
-          <RutaMensajeroCard key={`${ruta.mensajero.id}-${fecha}`} ruta={ruta} fecha={fecha} googleDisponible={rutas.googleDisponible} />
-        ))
+        <PanelRutas key={fecha} rutas={rutas.rutas} fecha={fecha} googleDisponible={rutas.googleDisponible} />
       )}
     </div>
   )

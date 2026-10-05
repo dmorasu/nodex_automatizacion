@@ -6,6 +6,7 @@ import { CircleCheckBig, HardHat, Loader2, MessagesSquare, Send, User } from "lu
 import { comentarAlTramitador } from "@/actions/seguimiento-tramitador-action"
 import type { Seguimiento } from "@/src/seguimientoTramitador"
 import RevisarReporte from "./RevisarReporte"
+import { usePerfil } from "@/src/auth/PerfilContexto"
 
 const formatoFechaHora = (fecha: string) =>
   new Date(fecha).toLocaleString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium", timeStyle: "short" })
@@ -23,6 +24,8 @@ export default function SeguimientoTramitador({
 }) {
   const [comentario, setComentario] = useState("")
   const [enviando, startEnviar] = useTransition()
+  // Revisar el reporte de "realizado" es de Torre de control (Gestión de activos solo lo ve)
+  const esTorreControl = usePerfil() === "TORRE_CONTROL"
 
   const enviar = () => {
     if (!comentario.trim()) return toast.error("Escriba el comentario")
@@ -69,7 +72,9 @@ export default function SeguimientoTramitador({
 
                 <p className="mt-2 whitespace-pre-line text-gray-700">{r.observacion}</p>
 
-                {r.estado === "PENDIENTE" ? (
+                {r.estado === "PENDIENTE" && !esTorreControl ? (
+                  <p className="mt-2 text-[11px] text-amber-800">Pendiente de revisión por Torre de control.</p>
+                ) : r.estado === "PENDIENTE" ? (
                   <div className="mt-3">
                     <p className="mb-2 text-[11px] text-amber-800">
                       El estado del trámite no cambia solo: revíselo y, si corresponde, actualice el estado a Finalizado.

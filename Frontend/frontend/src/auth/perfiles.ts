@@ -15,7 +15,8 @@ export const NOMBRES_PERFIL: Record<PerfilTramites, string> = {
 // (el backend ya devuelve TORRE_CONTROL en sus roles). Además:
 //   · Analista: el inicio muestra solo sus trámites (al buscar encuentra cualquiera)
 //   · Administrador de Torre de control (y Admin): reasigna analistas
-export type PermisosAnalistas = { esAnalista: boolean, puedeAsignarAnalistas: boolean }
+// `usuarioId` permite al analista distinguir sus trámites de los que encuentra buscando
+export type PermisosAnalistas = { esAnalista: boolean, puedeAsignarAnalistas: boolean, usuarioId?: number }
 
 export const permisosAnalistas = (roles: string[]): PermisosAnalistas => {
   const puedeAsignarAnalistas = roles.includes("ADMIN_TORRE_CONTROL") || roles.includes("ADMIN")

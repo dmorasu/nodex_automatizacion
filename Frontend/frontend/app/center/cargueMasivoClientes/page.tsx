@@ -109,7 +109,7 @@ export default function CargueMasivoClientesPage() {
         {/* ================================================= */}
 
         <Link
-          href="/center"
+          href="/center/dashboard"
           className="
             inline-flex
             items-center

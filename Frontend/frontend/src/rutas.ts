@@ -101,3 +101,49 @@ export const distanciaMetros = (a: { latitud: number, longitud: number }, b: { l
     + Math.cos(rad(a.latitud)) * Math.cos(rad(b.latitud)) * Math.sin(rad(b.longitud - a.longitud) / 2) ** 2
   return Math.round(2 * 6371000 * Math.asin(Math.sqrt(h)))
 }
+
+// ── Mapa con varias rutas ──
+
+// Un color por mensajero (distintos de los colores de estado, que van en el borde del marcador)
+const COLORES_MENSAJERO = ["#2563eb", "#d97706", "#7c3aed", "#db2777", "#0d9488", "#ea580c", "#4f46e5", "#65a30d"]
+export const colorMensajero = (indice: number) => COLORES_MENSAJERO[indice % COLORES_MENSAJERO.length]
+
+export type PuntoMapa = [number, number] // [latitud, longitud]
+
+// Ruta lista para dibujar: `trazado` es la línea por las calles (Google); si no hay, se unen
+// las paradas con líneas rectas punteadas
+export type RutaEnMapa = {
+  id: number
+  nombre: string
+  color: string
+  sede: Sede | null
+  paradas: Parada[]
+  trazado: PuntoMapa[] | null
+}
+
+// Puntos de la ruta en orden: sede → paradas con ubicación → sede
+export const puntosRuta = (sede: Sede | null, paradas: Parada[]): PuntoMapa[] => {
+  const inicio: PuntoMapa[] = sede && conUbicacion(sede) ? [[sede.latitud, sede.longitud]] : []
+  return [...inicio, ...paradas.filter(conUbicacion).map(p => [p.latitud, p.longitud] as PuntoMapa), ...inicio]
+}
+
+// Decodifica la línea que manda Google ("encoded polyline", precisión 5)
+export const decodificarPolyline = (codigo: string): PuntoMapa[] => {
+  const puntos: PuntoMapa[] = []
+  let indice = 0, latitud = 0, longitud = 0
+  const siguiente = () => {
+    let resultado = 0, desplazamiento = 0, byte
+    do {
+      byte = codigo.charCodeAt(indice++) - 63
+      resultado |= (byte & 0x1f) << desplazamiento
+      desplazamiento += 5
+    } while (byte >= 0x20)
+    return resultado & 1 ? ~(resultado >> 1) : resultado >> 1
+  }
+  while (indice < codigo.length) {
+    latitud += siguiente()
+    longitud += siguiente()
+    puntos.push([latitud / 1e5, longitud / 1e5])
+  }
+  return puntos
+}

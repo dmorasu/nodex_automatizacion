@@ -17,7 +17,8 @@ export type LugarElegido = {
   municipio: { id: number, nombreMunicipio: string, departamento: string } | null
 }
 
-type Componente = { longText?: string, long_name?: string, types: string[] }
+// Google a veces manda componentes sin `types` (ej: "Data File S.A.", Sabaneta)
+type Componente = { longText?: string, long_name?: string, types?: string[] }
 
 const clave = () => {
   if (!googleDisponible()) throw new ErrorUbicacion('El autocompletado de direcciones no está configurado', 503)
@@ -41,10 +42,20 @@ const municipiosNodex = async () => {
   return datos
 }
 
-// Municipio de Nodex a partir de lo que dice Google (municipio y departamento)
+// Municipio de Nodex a partir de lo que dice Google (municipio y departamento). Es solo una
+// propuesta: si falla, el lugar se usa igual y el municipio se elige a mano.
 export const buscarMunicipio = async (componentes: Componente[]) => {
+  try {
+    return await municipioDeComponentes(componentes)
+  } catch (error) {
+    console.error('DIRECCIONES: no se pudo proponer el municipio', error)
+    return null
+  }
+}
+
+const municipioDeComponentes = async (componentes: Componente[]) => {
   const texto = (tipo: string) => {
-    const c = componentes.find(x => x.types.includes(tipo))
+    const c = componentes.find(x => x.types?.includes(tipo))
     return c ? normalizar(c.longText ?? c.long_name ?? '') : ''
   }
   const municipio = texto('locality') || texto('administrative_area_level_2')

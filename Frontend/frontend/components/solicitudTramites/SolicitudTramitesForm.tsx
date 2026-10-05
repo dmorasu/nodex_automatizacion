@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import clsx from "clsx";
 import { SolicitudTramites } from "@/src/schemas";
 
 import ClientesComboBox
@@ -25,6 +26,10 @@ import CampoDireccion, { type MunicipioSugerido } from "../direcciones/CampoDire
 import DocumentosSolicitud from "../documentos/DocumentosSolicitud";
 
 
+
+// Largo máximo del detalle (lo valida también el backend)
+const MAXIMO_DETALLE = 200;
+
 export default function SolicitudTramitesForm({
   solicitud
 }: {
@@ -35,6 +40,10 @@ export default function SolicitudTramitesForm({
     useState("");
 
   // Municipio que propone la dirección elegida en Google
+  // Contador del detalle (máximo 200 caracteres, igual que el backend)
+  const [largoDetalle, setLargoDetalle] =
+    useState(solicitud?.detalleSolicitud?.length ?? 0);
+
   const [municipioSugerido, setMunicipioSugerido] =
     useState<MunicipioSugerido | null>(null);
 
@@ -110,11 +119,13 @@ const [mostrarDocumentos, setMostrarDocumentos] =
           id="detalleSolicitud"
           name="detalleSolicitud"
           rows={4}
-          maxLength={200}
+          maxLength={MAXIMO_DETALLE}
           placeholder="Describa el detalle de la solicitud (máximo 200 caracteres)"
           defaultValue={
             solicitud?.detalleSolicitud
           }
+          onChange={e => setLargoDetalle(e.target.value.length)}
+          aria-describedby="contadorDetalle"
           className="
             w-full
             px-3
@@ -134,6 +145,29 @@ const [mostrarDocumentos, setMostrarDocumentos] =
             focus:ring-sky-100
           "
         />
+
+        <div
+          id="contadorDetalle"
+          aria-live="polite"
+          className="flex items-center justify-between gap-2 text-[11px]"
+        >
+          <span className={clsx(
+            largoDetalle >= MAXIMO_DETALLE ? "text-red-600" : "text-amber-700",
+            largoDetalle < MAXIMO_DETALLE - 20 && "invisible"
+          )}>
+            {largoDetalle >= MAXIMO_DETALLE
+              ? "Llegó al máximo de caracteres"
+              : `Quedan ${MAXIMO_DETALLE - largoDetalle} caracteres`}
+          </span>
+          <span className={clsx(
+            "tabular-nums",
+            largoDetalle >= MAXIMO_DETALLE ? "font-semibold text-red-600"
+              : largoDetalle >= MAXIMO_DETALLE - 20 ? "font-semibold text-amber-700"
+                : "text-slate-400"
+          )}>
+            {largoDetalle}/{MAXIMO_DETALLE}
+          </span>
+        </div>
 
       </div>
 

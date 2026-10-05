@@ -134,12 +134,12 @@ export default function SolicitudTramiteMenu({
         "
       >
 
+        {/* `anchor` lo dibuja fuera de la tabla (con scroll horizontal) para que no se recorte */}
         <MenuItems
+          anchor="bottom end"
           className="
-            absolute
-            right-0
             z-50
-            mt-2
+            [--anchor-gap:6px]
 
             w-48
 

@@ -32,7 +32,7 @@ export async function guardarTramitador(datos: DatosTramitador, id?: number): Pr
     return { ok: false, errores: errores.length ? errores : ["No se pudo guardar el tramitador"] }
   }
 
-  revalidatePath("/center/tramitadores")
+  revalidatePath("/center/catalogos")
   return { ok: true }
 }
 
@@ -55,7 +55,7 @@ export async function crearAccesoApp(id: number): Promise<{ ok: true, datos: Acc
 
   if (!req.ok) return { ok: false, errores: await leerErrores(req, "No se pudo crear el acceso") }
 
-  revalidatePath("/center/tramitadores")
+  revalidatePath("/center/catalogos")
   return { ok: true, datos: await req.json() }
 }
 
@@ -69,6 +69,6 @@ export async function quitarAccesoApp(id: number): Promise<Resultado> {
 
   if (!req.ok) return { ok: false, errores: await leerErrores(req, "No se pudo quitar el acceso") }
 
-  revalidatePath("/center/tramitadores")
+  revalidatePath("/center/catalogos")
   return { ok: true }
 }

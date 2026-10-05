@@ -41,6 +41,8 @@ import { ajustarEsquemaGastos } from "./seeds/ajustesEsquemaGastos"
 import { ajustarEsquemaTramitadores } from "./seeds/ajustesEsquemaTramitadores"
 import { ajustarEsquemaMensajeria, ajustarEsquemaTramites } from "./seeds/ajustesEsquemaTramites"
 import gestionMasivaRouter from "./routes/gestionMasivaRouter"
+import catalogosTramitesRouter from "./routes/catalogosTramitesRouter"
+import apiExternaRouter from "./routes/apiExternaRouter"
 import mensajeriaRouter from "./routes/mensajeriaRouter"
 import direccionesRouter from "./routes/direccionesRouter"
 import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
@@ -110,6 +112,9 @@ const soloAdmin = [autenticacion, requiereRol('ADMIN')]
 // 🔹 Públicas: login y registro (una cuenta nueva no tiene perfil hasta que se le asigne)
 app.use('/api/auth', authRouter)
 
+// 🔹 API para otras plataformas: sin sesión, con API key (X-API-Key = API_KEY_EXTERNA)
+app.use('/api/externa', apiExternaRouter)
+
 // 🔹 Usuarios: solo Admin
 app.use('/api/usuarios', ...soloAdmin, usuarioRouter)
 
@@ -128,6 +133,8 @@ app.use("/api/solicitudes", ...accesoTramites, evaluacionRoutes)
 app.use("/api/transportadora", ...accesoTramites, transportadoraRouter)
 app.use("/api/tiposRechazo", ...accesoTramites, tiposRechazoRoutes);
 app.use('/api/subEstados', ...accesoTramites, subEstadosRouter)
+// Crear, editar y borrar catálogos: Administrador de Torre de control o Admin (se revisa en el router)
+app.use('/api/catalogos-tramites', ...soloTorreControl, catalogosTramitesRouter)
 app.use('/api/documentos', ...accesoTramites, documentoSolicitudRouter)
 app.use('/api/notificaciones', ...accesoTramites, notificacionesRouter)
 app.use('/api/seguimiento-tramitador', ...accesoTramites, seguimientoTramitadorRouter)

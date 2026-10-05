@@ -8,7 +8,7 @@ export async function cerrarSesion() {
   cookies().delete("TOKEN")
 
   // 🔹 Invalida cualquier ruta que haya usado sesión previa
-  revalidatePath("/center")
+  revalidatePath("/center/dashboard")
 
   redirect("/auth/login")
 }

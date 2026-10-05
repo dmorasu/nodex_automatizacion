@@ -1,28 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { FormEvent } from "react"
 import Link from "next/link"
-
-import {
-  Search,
-  Filter,
-  Trash2,
-  Plus,
-  Radar,
-  Database,
-  ChevronLeft,
-  ChevronRight,
-  CalendarDays,
-  MapPin,
-  User,
-  BriefcaseBusiness,
-  PlayCircle,
-  Clock3,
-  CircleCheck,
-  CheckCircle2,
-  Ban,
-  CircleDashed
-} from "lucide-react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import clsx from "clsx"
+import { ChevronLeft, ChevronRight, Database, Filter, Plus, Search, X } from "lucide-react"
 
 import { useTramites } from "@/hooks/useTramites"
 import { useTramitadores } from "@/hooks/useTramitadores"
@@ -30,1847 +12,358 @@ import { useOperaciones } from "@/hooks/useOperaciones"
 import { useEstados } from "@/hooks/useEstadosSelect"
 import { useSolicitudesFiltradas } from "@/hooks/useSolicitudesFiltradas"
 import { useAnalistas } from "@/hooks/useAnalistas"
-import { usePermisosAnalistas } from "@/src/auth/PerfilContexto"
+import { usePerfil, usePermisosAnalistas } from "@/src/auth/PerfilContexto"
 
-import SolicitudTramiteMenu
-  from "@/components/solicitudTramites/MenuSolicitudTramites"
+import SolicitudTramiteMenu from "@/components/solicitudTramites/MenuSolicitudTramites"
+import EstadoTramite from "@/components/solicitudTramites/EstadoTramite"
+import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/components/ui/estilos"
 
-import EliminarSolicitudTramiteModal
-  from "@/components/solicitudTramites/EliminarSolicitudTramiteModal"
+// Filtros que viajan en la URL: al volver del detalle de un trámite siguen aplicados
+const FILTROS = [
+  "search", "placa", "estadoId", "tramiteId", "analistaId", "tramitadorId", "operacionesId",
+  "fechaFinalizacionDesde", "fechaFinalizacionHasta"
+] as const
 
-import {
-  formatoFechaFinaizacion,
-  formatoFechaSinZona
-} from "@/src/ultis"
+const TAMANO_PAGINA = 10 // el backend devuelve 10 por página
 
+const claseFiltro = `${claseInput} h-9`
+const claseEtiqueta = "block mb-1 text-[11px] font-medium text-slate-500"
 
+// "2026-10-05T14:00:00Z" → "5 oct 2026". `sinZona` para fechas guardadas sin hora (no se corren un día)
+const fechaCorta = (iso?: string | null, sinZona?: boolean) => {
+  if (!iso) return null
+  const fecha = sinZona ? new Date(`${iso.split("T")[0]}T12:00:00`) : new Date(iso)
+  if (isNaN(fecha.getTime())) return null
+  return fecha.toLocaleDateString("es-CO", {
+    ...(sinZona ? {} : { timeZone: "America/Bogota" }),
+    day: "numeric", month: "short", year: "numeric"
+  }).replace(/\./g, "")
+}
+
+// Listado de solicitudes de trámite con filtros (Dashboard de Nodex Trámites)
 export default function DashboardPageClient() {
+  const router = useRouter()
+  const ruta = usePathname()
+  const parametros = useSearchParams()
 
-  // =====================================================
-  // FILTROS
-  // =====================================================
+  const filtros = Object.fromEntries(FILTROS.map(f => [f, parametros.get(f) ?? ""])) as Record<typeof FILTROS[number], string>
+  const pagina = Math.max(1, Number(parametros.get("page")) || 1)
+  const cantidadFiltros = FILTROS.filter(f => filtros[f]).length
 
-  const [search, setSearch] =
-    useState("")
+  const { data: tramites } = useTramites()
+  const { data: tramitadores } = useTramitadores()
+  const { data: operaciones } = useOperaciones()
+  const { data: estados } = useEstados()
+  const { data: analistas } = useAnalistas()
+  const { esAnalista, usuarioId } = usePermisosAnalistas()
+  const perfil = usePerfil()
 
-  const [estadoId, setEstadoId] =
-    useState("")
+  // El analista ve solo sus trámites asignados; al buscar por número o identificación el
+  // backend le devuelve cualquiera (la regla vive en SolicitudTramitesController)
+  const analistaBuscando = esAnalista && Boolean(filtros.search)
 
-  const [tramiteId, setTramiteId] =
-    useState("")
+  const { data: solicitudes, loading, total, totalPages } =
+    useSolicitudesFiltradas({ ...filtros, page: pagina })
 
-  const [tramitadorId, setTramitadorId] =
-    useState("")
-
-  const [operacionesId, setOperacionesId] =
-    useState("")
-
-  // Analista asignado (id o "sin"). El analista no lo ve: el backend le muestra solo los suyos
-  const [analistaId, setAnalistaId] =
-    useState("")
-
-  const [placa, setPlaca] =
-    useState("")
-
-  const [fechaFinalizacionDesde, setFechaFinalizacionDesde] =
-    useState("")
-
-  const [fechaFinalizacionHasta, setFechaFinalizacionHasta] =
-    useState("")
-
-  const [page, setPage] =
-    useState(1)
-
-
-  // =====================================================
-  // DATOS
-  // =====================================================
-
-  const { data: tramites } =
-    useTramites()
-
-  const { data: tramitadores } =
-    useTramitadores()
-
-  const { data: operaciones } =
-    useOperaciones()
-
-  const { data: estados } =
-    useEstados()
-
-  const { data: analistas } =
-    useAnalistas()
-
-  const { esAnalista } =
-    usePermisosAnalistas()
-
-
-  const {
-    data: solicitudes,
-    loading,
-    totalPages,
-    currentPage
-  } = useSolicitudesFiltradas({
-    search,
-    estadoId,
-    tramiteId,
-    tramitadorId,
-    analistaId,
-    operacionesId,
-    placa,
-    fechaFinalizacionDesde,
-    fechaFinalizacionHasta,
-    page
-  })
-
-
-  // =====================================================
-  // FILTROS
-  // =====================================================
-
-  const aplicarFiltros = () => {
-    setPage(1)
+  const irA = (valores: Partial<Record<string, string>>) => {
+    const query = new URLSearchParams(
+      Object.entries(valores).filter(([, v]) => v) as [string, string][]
+    ).toString()
+    router.push(query ? `${ruta}?${query}` : ruta, { scroll: false })
   }
 
-
-  const borrarFiltros = () => {
-
-    setSearch("")
-    setEstadoId("")
-    setTramiteId("")
-    setTramitadorId("")
-    setAnalistaId("")
-    setOperacionesId("")
-    setPlaca("")
-    setFechaFinalizacionDesde("")
-    setFechaFinalizacionHasta("")
-    setPage(1)
-
+  // Aplicar filtros: vuelve a la primera página
+  const filtrar = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const datos = new FormData(e.currentTarget)
+    irA(Object.fromEntries(FILTROS.map(f => [f, String(datos.get(f) ?? "").trim()])))
   }
 
+  const irAPagina = (p: number) => irA({ ...filtros, page: p > 1 ? String(p) : "" })
 
-  // =====================================================
-  // ESTADO VISUAL
-  // =====================================================
-
-  const getEstadoVisual = (
-    nombreEstado: string
-  ) => {
-
-    const nombre =
-      nombreEstado
-        .toLowerCase()
-        .trim()
-
-
-    if (nombre === "finalizado") {
-
-      return {
-        icon: CheckCircle2,
-        container:
-          "bg-emerald-50 border-emerald-100",
-        iconColor:
-          "text-emerald-500",
-        textColor:
-          "text-emerald-700"
-      }
-
-    }
-
-
-    if (nombre === "desistido") {
-
-      return {
-        icon: Ban,
-        container:
-          "bg-red-50 border-red-100",
-        iconColor:
-          "text-red-500",
-        textColor:
-          "text-red-700"
-      }
-
-    }
-
-
-    if (
-      nombre ===
-      "novedad subsanada continuar trámite"
-    ) {
-
-      return {
-        icon: CircleCheck,
-        container:
-          "bg-violet-50 border-violet-100",
-        iconColor:
-          "text-violet-500",
-        textColor:
-          "text-violet-700"
-      }
-
-    }
-
-
-    if (
-      nombre ===
-      "en espera por novedad"
-    ) {
-
-      return {
-        icon: Clock3,
-        container:
-          "bg-amber-50 border-amber-100",
-        iconColor:
-          "text-amber-500",
-        textColor:
-          "text-amber-700"
-      }
-
-    }
-
-
-    if (nombre === "en curso") {
-
-      return {
-        icon: PlayCircle,
-        container:
-          "bg-sky-50 border-sky-100",
-        iconColor:
-          "text-sky-500",
-        textColor:
-          "text-sky-700"
-      }
-
-    }
-
-
-    return {
-      icon: CircleDashed,
-      container:
-        "bg-slate-50 border-slate-200",
-      iconColor:
-        "text-slate-400",
-      textColor:
-        "text-slate-600"
-    }
-
-  }
-
+  const desde = total === 0 ? 0 : (pagina - 1) * TAMANO_PAGINA + 1
+  const hasta = Math.min(pagina * TAMANO_PAGINA, total)
 
   return (
+    <div className="space-y-5">
 
-    <div className="
-      w-full
-      space-y-6
-    ">
-
-
-      {/* ================================================= */}
-      {/* ENCABEZADO                                       */}
-      {/* ================================================= */}
-
-      <div className="
-        flex
-        flex-col
-        sm:flex-row
-        sm:items-center
-        sm:justify-between
-        gap-4
-      ">
-
+      {/* ENCABEZADO */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-
-          <div className="
-            flex
-            items-center
-            gap-2
-          ">
-
-            <div className="
-              flex
-              items-center
-              justify-center
-              w-9
-              h-9
-              rounded-lg
-              bg-sky-50
-              border
-              border-sky-100
-            ">
-
-              <Radar
-                size={19}
-                className="text-sky-500"
-              />
-
-            </div>
-
-
-            <h1 className="
-              text-xl
-              font-semibold
-              text-slate-800
-            ">
-              Torre de Control
-            </h1>
-
-          </div>
-
-
-          <p className="
-            mt-1
-            ml-11
-            text-xs
-            text-slate-400
-          ">
-            {esAnalista
-              ? "Tus trámites asignados. Busca por número o identificación para encontrar cualquier trámite."
-              : "Gestión y seguimiento de las solicitudes de trámite."}
+          <h1 className="text-xl font-semibold text-slate-800">
+            {esAnalista ? "Mis trámites" : "Trámites"}
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">
+            {loading && solicitudes.length === 0
+              ? "Cargando..."
+              : `${total.toLocaleString("es-CO")} ${
+                  analistaBuscando ? "resultado(s) de la búsqueda en todos los trámites"
+                  : esAnalista ? "trámite(s) asignado(s) a ti"
+                  : "trámite(s) encontrado(s)"
+                }${cantidadFiltros ? ` con ${cantidadFiltros} filtro(s)` : ""}`}
           </p>
-
-        </div>
-
-
-
-        {/* ================================================= */}
-        {/* ACCIONES                                         */}
-        {/* ================================================= */}
-
-        <div className="
-          flex
-          items-center
-          gap-2
-        ">
-
-          <Link
-            href="/center/solicitudTramites/nueva"
-            className="
-              inline-flex
-              items-center
-              gap-2
-              h-9
-              px-3
-              rounded-md
-              bg-sky-500
-              text-white
-              text-xs
-              font-medium
-              transition
-              hover:bg-sky-600
-              focus:outline-none
-              focus:ring-2
-              focus:ring-sky-200
-            "
-          >
-
-            <Plus size={15} />
-
-            Nuevo trámite
-
-          </Link>
-
-
-          <Link
-            href="/center/gestionMasiva"
-            className="
-              inline-flex
-              items-center
-              gap-2
-              h-9
-              px-3
-              rounded-md
-              border
-              border-slate-200
-              bg-white
-              text-slate-600
-              text-xs
-              font-medium
-              transition
-              hover:bg-slate-50
-              hover:border-slate-300
-            "
-          >
-
-            <Database size={15} />
-
-            Gestión masiva
-
-          </Link>
-
-        </div>
-
-      </div>
-
-
-
-      {/* ================================================= */}
-      {/* BUSCADOR                                         */}
-      {/* ================================================= */}
-
-      <div className="
-        bg-white
-        border
-        border-slate-200
-        rounded-xl
-        p-4
-      ">
-
-        <div className="
-          flex
-          flex-col
-          md:flex-row
-          gap-3
-        ">
-
-
-          <div className="
-            relative
-            flex-1
-          ">
-
-            <Search
-              size={16}
-              className="
-                absolute
-                left-3
-                top-1/2
-                -translate-y-1/2
-                text-slate-400
-              "
-            />
-
-
-            <input
-              type="text"
-              placeholder="Buscar por ID o identificación"
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-
-              className="
-                w-full
-                h-10
-                pl-9
-                pr-3
-                rounded-md
-                border
-                border-slate-200
-                bg-slate-50
-                text-xs
-                text-slate-700
-                placeholder:text-slate-400
-                outline-none
-                transition
-                focus:bg-white
-                focus:border-sky-400
-                focus:ring-2
-                focus:ring-sky-100
-              "
-            />
-
-          </div>
-
-
-          <button
-            type="button"
-            onClick={aplicarFiltros}
-            className="
-              inline-flex
-              items-center
-              justify-center
-              gap-2
-              h-10
-              px-4
-              rounded-md
-              bg-sky-500
-              text-white
-              text-xs
-              font-medium
-              transition
-              hover:bg-sky-600
-              focus:outline-none
-              focus:ring-2
-              focus:ring-sky-200
-            "
-          >
-
-            <Search size={15} />
-
-            Buscar
-
-          </button>
-
-        </div>
-
-      </div>
-
-
-
-      {/* ================================================= */}
-      {/* FILTROS                                          */}
-      {/* ================================================= */}
-
-      <div className="
-        bg-white
-        border
-        border-slate-200
-        rounded-xl
-        p-4
-      ">
-
-
-        <div className="
-          flex
-          items-center
-          justify-between
-          mb-4
-        ">
-
-
-          <div className="
-            flex
-            items-center
-            gap-2
-          ">
-
-            <Filter
-              size={16}
-              className="text-sky-500"
-            />
-
-            <h2 className="
-              text-sm
-              font-semibold
-              text-slate-700
-            ">
-              Filtros
-            </h2>
-
-          </div>
-
-
-          <button
-            type="button"
-            onClick={borrarFiltros}
-            className="
-              inline-flex
-              items-center
-              gap-1.5
-              text-xs
-              text-slate-400
-              hover:text-red-500
-              transition
-            "
-          >
-
-            <Trash2 size={14} />
-
-            Limpiar filtros
-
-          </button>
-
-        </div>
-
-
-
-        {/* ================================================= */}
-        {/* FILTROS PRINCIPALES                             */}
-        {/* ================================================= */}
-
-        <div className="
-          grid
-          grid-cols-1
-          sm:grid-cols-2
-          lg:grid-cols-5
-          gap-3
-        ">
-
-
-          {/* PLACA */}
-
-          <div className="relative">
-
-            <MapPin
-              size={14}
-              className="
-                absolute
-                left-3
-                top-1/2
-                -translate-y-1/2
-                text-slate-400
-                pointer-events-none
-              "
-            />
-
-            <input
-              type="text"
-              placeholder="Placa"
-              value={placa}
-              onChange={(e) =>
-                setPlaca(e.target.value)
-              }
-
-              className="
-                w-full
-                h-10
-                pl-9
-                pr-3
-                rounded-md
-                border
-                border-slate-200
-                bg-slate-50
-                text-xs
-                text-slate-700
-                outline-none
-                focus:bg-white
-                focus:border-sky-400
-                focus:ring-2
-                focus:ring-sky-100
-              "
-            />
-
-          </div>
-
-
-
-          {/* ESTADO */}
-
-          <select
-            value={estadoId}
-            onChange={(e) =>
-              setEstadoId(e.target.value)
-            }
-
-            className="
-              h-10
-              px-3
-              rounded-md
-              border
-              border-slate-200
-              bg-slate-50
-              text-xs
-              text-slate-600
-              outline-none
-              cursor-pointer
-              focus:bg-white
-              focus:border-sky-400
-              focus:ring-2
-              focus:ring-sky-100
-            "
-          >
-
-            <option value="">
-              Estado
-            </option>
-
-            {estados.map((estado) => (
-
-              <option
-                key={estado.id}
-                value={estado.id}
-              >
-                {estado.nombreEstado}
-              </option>
-
-            ))}
-
-          </select>
-
-
-
-          {/* TRÁMITE */}
-
-          <select
-            value={tramiteId}
-            onChange={(e) =>
-              setTramiteId(e.target.value)
-            }
-
-            className="
-              h-10
-              px-3
-              rounded-md
-              border
-              border-slate-200
-              bg-slate-50
-              text-xs
-              text-slate-600
-              outline-none
-              cursor-pointer
-              focus:bg-white
-              focus:border-sky-400
-              focus:ring-2
-              focus:ring-sky-100
-            "
-          >
-
-            <option value="">
-              Trámite
-            </option>
-
-            {tramites.map((tramite) => (
-
-              <option
-                key={tramite.id}
-                value={tramite.id}
-              >
-                {tramite.nombreTramite}
-              </option>
-
-            ))}
-
-          </select>
-
-
-
-          {/* ANALISTA (no aplica al analista: ve solo los suyos) */}
-
-          {!esAnalista && (
-            <select
-              value={analistaId}
-              onChange={(e) => {
-                setAnalistaId(e.target.value)
-                setPage(1)
-              }}
-              className="h-10 px-3 rounded-md border border-slate-200 bg-slate-50 text-xs text-slate-600 outline-none cursor-pointer focus:bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              aria-label="Analista"
-            >
-              <option value="">Analista</option>
-              <option value="sin">Sin analista</option>
-              {analistas.map(analista => (
-                <option key={analista.id} value={analista.id}>{analista.nombreUsuario}</option>
-              ))}
-            </select>
-          )}
-
-
-
-          {/* TRAMITADOR */}
-
-          <select
-            value={tramitadorId}
-            onChange={(e) =>
-              setTramitadorId(e.target.value)
-            }
-
-            className="
-              h-10
-              px-3
-              rounded-md
-              border
-              border-slate-200
-              bg-slate-50
-              text-xs
-              text-slate-600
-              outline-none
-              cursor-pointer
-              focus:bg-white
-              focus:border-sky-400
-              focus:ring-2
-              focus:ring-sky-100
-            "
-          >
-
-            <option value="">
-              Tramitador
-            </option>
-
-            {tramitadores.map((tramitador) => (
-
-              <option
-                key={tramitador.id}
-                value={tramitador.id}
-              >
-                {tramitador.nombreTramitador}
-              </option>
-
-            ))}
-
-          </select>
-
-
-
-          {/* OPERACIÓN */}
-
-          <select
-            value={operacionesId}
-            onChange={(e) =>
-              setOperacionesId(e.target.value)
-            }
-
-            className="
-              h-10
-              px-3
-              rounded-md
-              border
-              border-slate-200
-              bg-slate-50
-              text-xs
-              text-slate-600
-              outline-none
-              cursor-pointer
-              focus:bg-white
-              focus:border-sky-400
-              focus:ring-2
-              focus:ring-sky-100
-            "
-          >
-
-            <option value="">
-              Operación
-            </option>
-
-            {operaciones.map((operacion) => (
-
-              <option
-                key={operacion.id}
-                value={operacion.id}
-              >
-                {operacion.nombreOperacion}
-              </option>
-
-            ))}
-
-          </select>
-
-        </div>
-
-
-
-        {/* ================================================= */}
-        {/* FECHAS                                           */}
-        {/* ================================================= */}
-
-        <div className="
-          mt-4
-          pt-4
-          border-t
-          border-slate-100
-        ">
-
-          <div className="
-            flex
-            items-center
-            gap-2
-            mb-3
-          ">
-
-            <CalendarDays
-              size={15}
-              className="text-slate-400"
-            />
-
-            <span className="
-              text-xs
-              font-medium
-              text-slate-600
-            ">
-              Fecha de finalización del servicio
-            </span>
-
-          </div>
-
-
-          <div className="
-            grid
-            grid-cols-1
-            sm:grid-cols-2
-            gap-3
-            max-w-xl
-          ">
-
-
-            <div>
-
-              <label className="
-                block
-                mb-1
-                text-[11px]
-                text-slate-400
-              ">
-                Desde
-              </label>
-
-              <input
-                type="date"
-                value={fechaFinalizacionDesde}
-                onChange={(e) =>
-                  setFechaFinalizacionDesde(
-                    e.target.value
-                  )
-                }
-
-                className="
-                  w-full
-                  h-10
-                  px-3
-                  rounded-md
-                  border
-                  border-slate-200
-                  bg-slate-50
-                  text-xs
-                  text-slate-600
-                  outline-none
-                  focus:bg-white
-                  focus:border-sky-400
-                  focus:ring-2
-                  focus:ring-sky-100
-                "
-              />
-
-            </div>
-
-
-            <div>
-
-              <label className="
-                block
-                mb-1
-                text-[11px]
-                text-slate-400
-              ">
-                Hasta
-              </label>
-
-              <input
-                type="date"
-                value={fechaFinalizacionHasta}
-                onChange={(e) =>
-                  setFechaFinalizacionHasta(
-                    e.target.value
-                  )
-                }
-
-                className="
-                  w-full
-                  h-10
-                  px-3
-                  rounded-md
-                  border
-                  border-slate-200
-                  bg-slate-50
-                  text-xs
-                  text-slate-600
-                  outline-none
-                  focus:bg-white
-                  focus:border-sky-400
-                  focus:ring-2
-                  focus:ring-sky-100
-                "
-              />
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-
-        {/* ================================================= */}
-        {/* BOTONES FILTROS                                  */}
-        {/* ================================================= */}
-
-        <div className="
-          flex
-          justify-end
-          gap-2
-          mt-4
-          pt-4
-          border-t
-          border-slate-100
-        ">
-
-          <button
-            type="button"
-            onClick={borrarFiltros}
-            className="
-              inline-flex
-              items-center
-              gap-2
-              h-9
-              px-3
-              rounded-md
-              border
-              border-slate-200
-              bg-white
-              text-slate-500
-              text-xs
-              font-medium
-              transition
-              hover:bg-slate-50
-              hover:text-slate-700
-            "
-          >
-
-            <Trash2 size={14} />
-
-            Limpiar
-
-          </button>
-
-
-          <button
-            type="button"
-            onClick={aplicarFiltros}
-            className="
-              inline-flex
-              items-center
-              gap-2
-              h-9
-              px-4
-              rounded-md
-              bg-sky-500
-              text-white
-              text-xs
-              font-medium
-              transition
-              hover:bg-sky-600
-              focus:outline-none
-              focus:ring-2
-              focus:ring-sky-200
-            "
-          >
-
-            <Filter size={14} />
-
-            Aplicar filtros
-
-          </button>
-
-        </div>
-
-      </div>
-
-
-
-      {/* ================================================= */}
-      {/* RESULTADOS                                       */}
-      {/* ================================================= */}
-
-      {loading ? (
-
-        <div className="
-          flex
-          items-center
-          justify-center
-          py-16
-        ">
-
-          <p className="
-            text-xs
-            text-slate-400
-          ">
-            Cargando solicitudes...
-          </p>
-
-        </div>
-
-      ) : solicitudes.length > 0 ? (
-
-        <div className="
-          space-y-3
-        ">
-
-
-          {/* ================================================= */}
-          {/* INFORMACIÓN RESULTADOS                           */}
-          {/* ================================================= */}
-
-          <div className="
-            flex
-            items-center
-            justify-between
-            px-1
-          ">
-
-            <p className="
-              text-xs
-              text-slate-400
-            ">
-              Solicitudes encontradas
+          {esAnalista && (
+            <p className="mt-0.5 text-[11px] text-slate-400">
+              {analistaBuscando
+                ? "La búsqueda incluye trámites de otros analistas. Quítala para ver solo los tuyos."
+                : "Solo se listan tus trámites asignados. Busca por número o identificación para encontrar cualquier trámite."}
             </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {/* Gestión masiva: solo Torre de control (Gestión de activos no la ve) */}
+          {perfil === "TORRE_CONTROL" && (
+            <Link href="/center/gestionMasiva" className={claseBotonSecundario}>
+              <Database size={15} /> Gestión masiva
+            </Link>
+          )}
+          <Link href="/center/solicitudTramites/nueva" className={claseBotonPrimario}>
+            <Plus size={15} /> Nuevo trámite
+          </Link>
+        </div>
+      </div>
 
+      {/* FILTROS (la `key` reinicia los campos al limpiar o al navegar) */}
+      <form
+        key={parametros.toString()}
+        onSubmit={filtrar}
+        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block sm:col-span-2">
+            <span className={claseEtiqueta}>Buscar</span>
+            <div className="relative">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+              <input name="search" defaultValue={filtros.search} placeholder={esAnalista
+                ? "N° de trámite o identificación (busca en todos los trámites)"
+                : "N° de trámite o identificación del cliente"} className={`${claseFiltro} pl-9`} />
+            </div>
+          </label>
+          <label className="block">
+            <span className={claseEtiqueta}>Placa</span>
+            <input name="placa" defaultValue={filtros.placa} placeholder="Ej: ABC123" className={`${claseFiltro} uppercase placeholder:normal-case`} />
+          </label>
+          <label className="block">
+            <span className={claseEtiqueta}>Estado</span>
+            <select name="estadoId" defaultValue={filtros.estadoId} className={claseFiltro}>
+              <option value="">Todos</option>
+              {estados.map(e => <option key={e.id} value={e.id}>{e.nombreEstado}</option>)}
+            </select>
+          </label>
 
-            <span className="
-              text-xs
-              text-slate-400
-            ">
+          <label className="block">
+            <span className={claseEtiqueta}>Tipo de trámite</span>
+            <select name="tramiteId" defaultValue={filtros.tramiteId} className={claseFiltro}>
+              <option value="">Todos</option>
+              {tramites.map(t => <option key={t.id} value={t.id}>{t.nombreTramite}</option>)}
+            </select>
+          </label>
+          {/* El analista no filtra por analista: el backend le muestra solo los suyos */}
+          {!esAnalista && (
+            <label className="block">
+              <span className={claseEtiqueta}>Analista</span>
+              <select name="analistaId" defaultValue={filtros.analistaId} className={claseFiltro}>
+                <option value="">Todos</option>
+                <option value="sin">Sin analista</option>
+                {analistas.map(a => <option key={a.id} value={a.id}>{a.nombreUsuario}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="block">
+            <span className={claseEtiqueta}>Tramitador</span>
+            <select name="tramitadorId" defaultValue={filtros.tramitadorId} className={claseFiltro}>
+              <option value="">Todos</option>
+              {tramitadores.map(t => <option key={t.id} value={t.id}>{t.nombreTramitador}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className={claseEtiqueta}>Operación</span>
+            <select name="operacionesId" defaultValue={filtros.operacionesId} className={claseFiltro}>
+              <option value="">Todas</option>
+              {operaciones.map(o => <option key={o.id} value={o.id}>{o.nombreOperacion}</option>)}
+            </select>
+          </label>
 
-              Página{" "}
-
-              <span className="
-                font-semibold
-                text-slate-600
-              ">
-                {currentPage}
-              </span>
-
-              {" "}de{" "}
-
-              <span className="
-                font-semibold
-                text-slate-600
-              ">
-                {totalPages}
-              </span>
-
-            </span>
-
+          <label className="block">
+            <span className={claseEtiqueta}>Finalizado desde</span>
+            <input type="date" name="fechaFinalizacionDesde" defaultValue={filtros.fechaFinalizacionDesde} className={claseFiltro} />
+          </label>
+          <label className="block">
+            <span className={claseEtiqueta}>Finalizado hasta</span>
+            <input type="date" name="fechaFinalizacionHasta" defaultValue={filtros.fechaFinalizacionHasta} className={claseFiltro} />
+          </label>
+          <div className={clsx("flex items-end gap-2", esAnalista ? "sm:col-span-2 lg:col-span-1" : "sm:col-span-2")}>
+            <button type="submit" className={`${claseBotonPrimario} h-9 flex-1`}>
+              <Filter size={14} /> Filtrar
+            </button>
+            {cantidadFiltros > 0 && (
+              <button type="button" onClick={() => irA({})} className={`${claseBotonSecundario} h-9`}>
+                <X size={14} /> Limpiar
+              </button>
+            )}
           </div>
+        </div>
+      </form>
 
+      {/* TABLA */}
+      <div className={clsx(
+        "overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm transition-opacity",
+        loading && solicitudes.length > 0 && "opacity-60"
+      )}>
+        <table className="w-full min-w-[960px] text-left text-xs">
+          <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-3 py-3 font-semibold">Trámite</th>
+              <th className="px-3 py-3 font-semibold">Estado</th>
+              <th className="px-3 py-3 font-semibold">Cliente</th>
+              <th className="px-3 py-3 font-semibold">Ubicación</th>
+              <th className="px-3 py-3 font-semibold">Responsables</th>
+              <th className="px-3 py-3 font-semibold">Fechas</th>
+              <th className="w-10 px-3 py-3"><span className="sr-only">Opciones</span></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
 
+            {loading && solicitudes.length === 0 && Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i}>
+                <td colSpan={7} className="px-3 py-4">
+                  <div className="h-10 animate-pulse rounded-md bg-slate-100" />
+                </td>
+              </tr>
+            ))}
 
-          {/* ================================================= */}
-          {/* SOLICITUDES                                      */}
-          {/* ================================================= */}
-
-          <div className="
-            space-y-3
-          ">
-
-
-            {solicitudes.map((solicitud) => {
-
-              const nombreEstado =
-                solicitud
-                  .estadosTramites?.[0]
-                  ?.estado
-                  ?.nombreEstado ??
-                "Sin Iniciar"
-
-
-              const estadoVisual =
-                getEstadoVisual(
-                  nombreEstado
-                )
-
-
-              const EstadoIcon =
-                estadoVisual.icon
-
+            {solicitudes.map(s => {
+              const estado: string | undefined = s.estadosTramites?.[0]?.estado?.nombreEstado
+              const finalizado = fechaCorta(s.programacion?.fechaFinalizacionServicio)
+              const entrega = fechaCorta(s.fechaEntregaResultado, true)
+              const identificador = s.placa || s.matriculaInmobiliaria
 
               return (
+                <tr key={s.id} className="align-top transition hover:bg-slate-50/70">
 
-                <div
-                  key={solicitud.id}
-                  className="
-                    bg-white
-                    border
-                    border-slate-200
-                    rounded-xl
-                    p-4
-                    sm:p-5
-                    transition-all
-                    hover:border-slate-300
-                    hover:shadow-sm
-                  "
-                >
-
-                  <div className="
-                    flex
-                    flex-col
-                    lg:flex-row
-                    lg:items-start
-                    lg:justify-between
-                    gap-5
-                  ">
-
-
-                    {/* ===================================== */}
-                    {/* INFORMACIÓN                            */}
-                    {/* ===================================== */}
-
-                    <div className="
-                      min-w-0
-                      flex-1
-                    ">
-
-
-                      {/* SOLICITUD */}
-
-                      <Link
-                        href={`/center/solicitudTramites/${solicitud.id}`}
-                        className="
-                          inline-flex
-                          items-center
-                          gap-1.5
-                          text-sm
-                          font-semibold
-                          text-slate-800
-                          hover:text-sky-600
-                          transition
-                        "
-                      >
-
-                        Solicitud de Trámite
-
-                        <span className="
-                          text-sky-500
-                        ">
-                          #{solicitud.id}
-                        </span>
-
-                      </Link>
-
-
-
-                      {/* CLIENTE */}
-
-                      <div className="
-                        flex
-                        items-center
-                        gap-2
-                        mt-3
-                      ">
-
-                        <User
-                          size={14}
-                          className="
-                            text-slate-400
-                            shrink-0
-                          "
-                        />
-
-                        <span className="
-                          text-xs
-                          text-slate-500
-                        ">
-
-                          Cliente:
-
-                          <span className="
-                            ml-1
-                            font-medium
-                            text-slate-700
-                          ">
-
-                            {
-                              solicitud
-                                .clientes
-                                ?.nombreCliente
-                            }
-
-                          </span>
-
-                        </span>
-
-                      </div>
-
-
-
-                      {/* MUNICIPIO / DIRECCIÓN */}
-
-                      <div className="
-                        flex
-                        flex-wrap
-                        items-center
-                        gap-x-5
-                        gap-y-2
-                        mt-2
-                      ">
-
-                        <span className="
-                          inline-flex
-                          items-center
-                          gap-1.5
-                          text-xs
-                          text-slate-500
-                        ">
-
-                          <MapPin
-                            size={13}
-                          />
-
-                          {
-                            solicitud
-                              .municipios
-                              ?.nombreMunicipio
-                          }
-
-                        </span>
-
-
-                        <span className="
-                          text-xs
-                          text-slate-500
-                        ">
-
-                          {
-                            solicitud
-                              .direccionTramite
-                          }
-
-                        </span>
-
-                      </div>
-
-
-
-                      {/* DETALLE */}
-
-                      <p className="
-                        mt-3
-                        max-w-3xl
-                        text-xs
-                        leading-5
-                        text-slate-500
-                      ">
-
-                        {
-                          solicitud
-                            .detalleSolicitud
-                        }
-
+                  <td className="px-3 py-3">
+                    <Link href={`/center/solicitudTramites/${s.id}`} className="font-semibold text-sky-700 hover:underline">
+                      #{s.id}
+                    </Link>
+                    {esAnalista && s.analistaAsignado !== usuarioId && (
+                      <span className="ml-1.5 rounded-full border border-slate-200 bg-slate-50 px-1.5 py-px text-[10px] font-medium text-slate-500">
+                        No asignado a ti
+                      </span>
+                    )}
+                    <p className="max-w-[240px] text-[11px] font-medium text-slate-600">{s.tramite?.nombreTramite ?? "—"}</p>
+                    {identificador && (
+                      <span className="mt-1 inline-block rounded border border-slate-200 bg-slate-50 px-1.5 py-px font-mono text-[10px] uppercase text-slate-600">
+                        {identificador}
+                      </span>
+                    )}
+                    {s.detalleSolicitud && (
+                      <p className="mt-1 max-w-[240px] truncate text-[11px] text-slate-400" title={s.detalleSolicitud}>
+                        {s.detalleSolicitud}
                       </p>
-
-
-
-                      {/* ================================================= */}
-                      {/* METADATOS                                        */}
-                      {/* ================================================= */}
-
-                      <div className="
-                        grid
-                        grid-cols-1
-                        sm:grid-cols-2
-                        xl:grid-cols-5
-                        gap-x-6
-                        gap-y-3
-                        mt-4
-                        pt-3
-                        border-t
-                        border-slate-100
-                      ">
-
-
-                        {/* OPERACIÓN */}
-
-                        <div className="
-                          flex
-                          items-center
-                          gap-2
-                        ">
-
-                          <BriefcaseBusiness
-                            size={13}
-                            className="
-                              text-slate-400
-                              shrink-0
-                            "
-                          />
-
-                          <div>
-
-                            <span className="
-                              block
-                              text-[11px]
-                              text-slate-400
-                            ">
-                              Operación
-                            </span>
-
-                            <span className="
-                              text-xs
-                              text-slate-600
-                            ">
-
-                              {
-                                solicitud
-                                  .operaciones
-                                  ?.nombreOperacion
-                              }
-
-                            </span>
-
-                          </div>
-
-                        </div>
-
-
-
-                        {/* ASIGNADO */}
-
-                        <div>
-
-                          <span className="
-                            block
-                            text-[11px]
-                            text-slate-400
-                          ">
-                            Asignado a
-                          </span>
-
-                          <p className="
-                            text-xs
-                            text-slate-600
-                          ">
-
-                            {
-                              solicitud.nombreAnalista ??
-                              "Sin analista asignado"
-                            }
-
-                          </p>
-
-                        </div>
-                        {/* ASIGNADO */}
-
-                        <div>
-
-                          <span className="
-                            block
-                            text-[11px]
-                            text-slate-400
-                          ">
-                            Creado por:
-                          </span>
-
-                          <p className="
-                            text-xs
-                            text-slate-600
-                          ">
-
-                            {
-                              solicitud
-                                .usuario
-                                ?.nombreUsuario ??
-                              "creado automaticamente"
-                            }
-
-                          </p>
-
-                        </div>
-
-
-                        {/* FECHA CREACIÓN */}
-
-                        <div>
-
-                          <span className="
-                            block
-                            text-[11px]
-                            text-slate-400
-                          ">
-                            Fecha de creación
-                          </span>
-
-                          <p className="
-                            text-xs
-                            text-slate-600
-                          ">
-
-                            {
-                              formatoFechaFinaizacion(
-                                solicitud.createdAt
-                              )
-                            }
-
-                          </p>
-
-                        </div>
-
-
-
-                        {/* ENTREGA */}
-
-                        <div>
-
-                          <span className="
-                            block
-                            text-[11px]
-                            text-slate-400
-                          ">
-                            Entrega de resultado
-                          </span>
-
-                          <p className="
-                            text-xs
-                            text-slate-600
-                          ">
-
-                            {
-                              formatoFechaSinZona(
-                                solicitud
-                                  .fechaEntregaResultado
-                              )
-                            }
-
-                          </p>
-
-                        </div>
-
-                      </div>
-
-
-
-                      {/* FECHA FINALIZACIÓN */}
-
-                      <div className="
-                        flex
-                        flex-wrap
-                        items-center
-                        gap-2
-                        mt-3
-                      ">
-
-                        <CalendarDays
-                          size={13}
-                          className="
-                            text-slate-400
-                          "
-                        />
-
-                        <span className="
-                          text-[11px]
-                          text-slate-400
-                        ">
-                          Finalización del servicio:
-                        </span>
-
-                        <span className="
-                          text-xs
-                          font-medium
-                          text-slate-600
-                        ">
-
-                          {
-                            formatoFechaFinaizacion(
-                              solicitud
-                                .programacion
-                                ?.fechaFinalizacionServicio ??
-                              ""
-                            )
-                          }
-
-                        </span>
-
-                      </div>
-
-                    </div>
-
-
-
-                    {/* ================================================= */}
-                    {/* ESTADO + MENÚ                                    */}
-                    {/* ================================================= */}
-
-                    <div className="
-                      flex
-                      lg:flex-col
-                      items-center
-                      lg:items-end
-                      justify-between
-                      lg:justify-start
-                      gap-4
-                      shrink-0
-                    ">
-
-
-                      {/* ESTADO */}
-
-                      <div
-                        className={`
-                          inline-flex
-                          items-center
-                          gap-2
-                          px-3
-                          py-2
-                          rounded-lg
-                          border
-                          ${estadoVisual.container}
-                        `}
-                      >
-
-                        <EstadoIcon
-                          size={15}
-                          className={
-                            estadoVisual.iconColor
-                          }
-                        />
-
-
-                        <span className={`
-                          text-xs
-                          font-medium
-                          ${estadoVisual.textColor}
-                        `}>
-
-                          {nombreEstado}
-
-                        </span>
-
-                      </div>
-
-
-
-                      {/* MENÚ */}
-
-                      <SolicitudTramiteMenu
-                        solicitudId={
-                          solicitud.id
-                        }
-                      />
-
-                    </div>
-
-                  </div>
-
-                </div>
-
+                    )}
+                  </td>
+
+                  <td className="px-3 py-3">
+                    <EstadoTramite nombre={estado} />
+                  </td>
+
+                  <td className="px-3 py-3">
+                    <p className="max-w-[200px] text-slate-700">{s.clientes?.nombreCliente ?? "—"}</p>
+                    {s.clientes?.identificacionCliente && (
+                      <p className="text-[11px] tabular-nums text-slate-400">{s.clientes.identificacionCliente}</p>
+                    )}
+                    {s.operaciones?.nombreOperacion && (
+                      <p className="text-[11px] text-slate-400">{s.operaciones.nombreOperacion}</p>
+                    )}
+                  </td>
+
+                  <td className="px-3 py-3">
+                    <p className="text-slate-700">{s.municipios?.nombreMunicipio ?? "—"}</p>
+                    {s.direccionTramite && (
+                      <p className="max-w-[200px] truncate text-[11px] text-slate-400" title={s.direccionTramite}>
+                        {s.direccionTramite}
+                      </p>
+                    )}
+                  </td>
+
+                  <td className="px-3 py-3 text-[11px]">
+                    <p>
+                      <span className="text-slate-400">Analista: </span>
+                      {s.nombreAnalista
+                        ? <span className="text-slate-700">{s.nombreAnalista}</span>
+                        : <span className="font-medium text-amber-600">Sin asignar</span>}
+                    </p>
+                    <p className="mt-0.5">
+                      <span className="text-slate-400">Tramitador: </span>
+                      {s.tramitador?.nombreTramitador
+                        ? <span className="text-slate-700">{s.tramitador.nombreTramitador}</span>
+                        : <span className="font-medium text-amber-600">Sin asignar</span>}
+                    </p>
+                  </td>
+
+                  <td className="whitespace-nowrap px-3 py-3 text-[11px] text-slate-500">
+                    <p>
+                      Creado {fechaCorta(s.createdAt) ?? "—"}
+                      <span className="text-slate-400"> · {s.usuario?.nombreUsuario ?? "automático"}</span>
+                    </p>
+                    {entrega && <p>Entrega {entrega}</p>}
+                    {finalizado
+                      ? <p className="font-medium text-emerald-700">Finalizado {finalizado}</p>
+                      : <p className="text-slate-400">Sin finalizar</p>}
+                  </td>
+
+                  <td className="px-3 py-3 text-right">
+                    <SolicitudTramiteMenu solicitudId={s.id} />
+                  </td>
+                </tr>
               )
-
             })}
+          </tbody>
+        </table>
 
-          </div>
-
-
-
-          {/* ================================================= */}
-          {/* PAGINACIÓN                                       */}
-          {/* ================================================= */}
-
-          <div className="
-            flex
-            flex-col
-            sm:flex-row
-            sm:items-center
-            sm:justify-between
-            gap-3
-            pt-3
-          ">
-
-
-            {/* INFORMACIÓN */}
-
-            <div className="
-              text-xs
-              text-slate-400
-            ">
-
-              Página{" "}
-
-              <span className="
-                font-semibold
-                text-slate-700
-              ">
-                {currentPage}
-              </span>
-
-              {" "}de{" "}
-
-              <span className="
-                font-semibold
-                text-slate-700
-              ">
-                {totalPages}
-              </span>
-
-            </div>
-
-
-
-            {/* CONTROLES */}
-
-            <div className="
-              flex
-              items-center
-              gap-1
-            ">
-
-
-              {/* ANTERIOR */}
-
-              <button
-                type="button"
-                disabled={
-                  currentPage === 1
-                }
-
-                onClick={() =>
-                  setPage(
-                    p => p - 1
-                  )
-                }
-
-                className="
-                  flex
-                  items-center
-                  justify-center
-                  w-8
-                  h-8
-                  rounded-md
-                  border
-                  border-slate-200
-                  bg-white
-                  text-slate-500
-                  transition
-
-                  hover:bg-slate-50
-                  hover:text-sky-500
-
-                  disabled:opacity-30
-                  disabled:cursor-not-allowed
-
-                  focus:outline-none
-                  focus:ring-2
-                  focus:ring-sky-100
-                "
-
-                aria-label="
-                  Página anterior
-                "
-              >
-
-                <ChevronLeft
-                  size={15}
-                />
-
+        {!loading && solicitudes.length === 0 && (
+          <div className="py-14 text-center">
+            <p className="text-sm text-slate-500">Ningún trámite coincide con los filtros.</p>
+            {cantidadFiltros > 0 && (
+              <button type="button" onClick={() => irA({})} className="mt-2 text-xs font-semibold text-sky-700 hover:underline">
+                Limpiar filtros
               </button>
-
-
-
-              {/* PÁGINA ACTUAL */}
-
-              <div className="
-                flex
-                items-center
-                justify-center
-                min-w-8
-                h-8
-                px-2
-                rounded-md
-                bg-sky-500
-                text-white
-                text-xs
-                font-semibold
-              ">
-
-                {currentPage}
-
-              </div>
-
-
-
-              {/* SIGUIENTE */}
-
-              <button
-                type="button"
-                disabled={
-                  currentPage === totalPages
-                }
-
-                onClick={() =>
-                  setPage(
-                    p => p + 1
-                  )
-                }
-
-                className="
-                  flex
-                  items-center
-                  justify-center
-                  w-8
-                  h-8
-                  rounded-md
-                  border
-                  border-slate-200
-                  bg-white
-                  text-slate-500
-                  transition
-
-                  hover:bg-slate-50
-                  hover:text-sky-500
-
-                  disabled:opacity-30
-                  disabled:cursor-not-allowed
-
-                  focus:outline-none
-                  focus:ring-2
-                  focus:ring-sky-100
-                "
-
-                aria-label="
-                  Página siguiente
-                "
-              >
-
-                <ChevronRight
-                  size={15}
-                />
-
-              </button>
-
-            </div>
-
+            )}
           </div>
+        )}
+      </div>
 
-        </div>
-
-      ) : (
-
-        /* ================================================= */
-        /* SIN RESULTADOS                                    */
-        /* ================================================= */
-
-        <div className="
-          flex
-          flex-col
-          items-center
-          justify-center
-          py-16
-          bg-white
-          border
-          border-slate-200
-          rounded-xl
-        ">
-
-          <div className="
-            flex
-            items-center
-            justify-center
-            w-10
-            h-10
-            rounded-lg
-            bg-slate-50
-            border
-            border-slate-200
-          ">
-
-            <Search
-              size={18}
-              className="
-                text-slate-400
-              "
-            />
-
+      {/* PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+          <span>
+            Mostrando <span className="font-semibold text-slate-700">{desde}–{hasta}</span> de{" "}
+            <span className="font-semibold text-slate-700">{total.toLocaleString("es-CO")}</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <span>Página {pagina} de {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => irAPagina(pagina - 1)}
+              disabled={pagina <= 1 || loading}
+              aria-label="Página anterior"
+              className={`${claseBotonSecundario} h-8 px-2`}
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => irAPagina(pagina + 1)}
+              disabled={pagina >= totalPages || loading}
+              aria-label="Página siguiente"
+              className={`${claseBotonSecundario} h-8 px-2`}
+            >
+              <ChevronRight size={15} />
+            </button>
           </div>
-
-
-          <p className="
-            mt-3
-            text-sm
-            font-medium
-            text-slate-600
-          ">
-            No se encontraron solicitudes
-          </p>
-
-
-          <p className="
-            mt-1
-            text-xs
-            text-slate-400
-          ">
-            Intente modificar los criterios de búsqueda.
-          </p>
-
         </div>
-
       )}
 
     </div>
-
   )
 }

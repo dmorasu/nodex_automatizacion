@@ -153,7 +153,7 @@ export default function CrearClientesPage() {
           {/* =============================================== */}
 
           <Link
-            href="/center"
+            href="/center/dashboard"
             className="
               inline-flex
               items-center

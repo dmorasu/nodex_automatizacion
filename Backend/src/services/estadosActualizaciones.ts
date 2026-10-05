@@ -123,6 +123,44 @@ export const procesarEstados = async (data: any[]) => {
           }
         }
 
+        // =========================
+        // DESISTIDO → correo al creador del trámite
+        // =========================
+        if (Number(row.estadoId) === 5) {
+
+          const solicitud = await SolicitudTramites.findByPk(
+            row.solicitudTramiteId,
+            {
+              include: [Usuarios, Tramitador, Municipios, Tramite],
+              transaction: t
+            }
+          )
+
+          if (solicitud?.usuario) {
+
+            const ultimaTrazabilidad = await Trazabilidad.findOne({
+              where: { solicitudTramiteId: solicitud.id },
+              order: [['createdAt', 'DESC']],
+              transaction: t
+            })
+
+            await crearNotificacion({
+              solicitud,
+              tipo: 'DESISTIDO_SOLICITANTE',
+              destinatario: solicitud.usuario,
+              data: {
+                nombre: solicitud.usuario.nombreUsuario,
+                tipo: solicitud.tramite?.nombreTramite || 'N/A',
+                motivo: ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observaciones',
+                fecha: fechaColombia(),
+                tramitador: solicitud.tramitador?.nombreTramitador || 'N/A',
+                municipio: solicitud.municipios?.nombreMunicipio || 'N/A',
+                programador: solicitud.municipios?.responsable || 'N/A'
+              }
+            })
+          }
+        }
+
       } catch (error: any) {
 
         errores.push({

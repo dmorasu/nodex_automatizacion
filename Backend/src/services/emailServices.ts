@@ -15,16 +15,18 @@ export const sendEmail = async (
       ...(cc || [])
     ]
 
+    // Sin repetidos y sin el destinatario principal: SendGrid rechaza el envío si el mismo
+    // correo está en "para" y en "copia" (ej: cuando el trámite lo creó Torre de control)
     const ccUnicos = [
-      ...new Set(correosCC)
-    ]
+      ...new Set(correosCC.map(correo => correo.trim().toLowerCase()))
+    ].filter(correo => correo !== to.trim().toLowerCase())
 
     await sgMail.send({
       to,
       from: process.env.EMAIL_FROM!,
       subject,
       html,
-      cc: ccUnicos
+      ...(ccUnicos.length > 0 && { cc: ccUnicos })
     })
 
   } catch (error: any) {

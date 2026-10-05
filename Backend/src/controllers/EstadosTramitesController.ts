@@ -480,6 +480,39 @@ if (
         )
       }
 
+      // ========================================
+      // NOTIFICACIÓN:
+      // DESISTIDO → correo al creador del trámite
+      // (el tramitador ya recibió su WhatsApp arriba)
+      // ========================================
+
+      if (
+        Number(estadosTramites.estadoId) === 5 &&
+        solicitud.usuario
+      ) {
+
+        await crearNotificacion({
+          solicitud,
+          tipo: "DESISTIDO_SOLICITANTE",
+          destinatario: solicitud.usuario,
+          data: {
+            nombre: solicitud.usuario.nombreUsuario,
+            tipo: solicitud.tramite?.nombreTramite || "N/A",
+            // La última trazabilidad explica por qué se desistió
+            motivo: ultimaTrazabilidad?.observacionTrazabilidad || "Sin observaciones",
+            tipoRechazo: estadoConRechazo?.tipoRechazo?.nombre || null,
+            fecha: fechaColombia(),
+            tramitador: solicitud.tramitador?.nombreTramitador || "N/A",
+            municipio: solicitud.municipios?.nombreMunicipio || "N/A",
+            programador: solicitud.municipios?.responsable || "N/A"
+          }
+        })
+
+        console.log(
+          "✅ NOTIFICACIÓN DESISTIDO AL CREADOR CREADA"
+        )
+      }
+
       console.log("========================================")
       console.log("🎉 PROCESO TERMINADO CORRECTAMENTE")
       console.log("========================================")

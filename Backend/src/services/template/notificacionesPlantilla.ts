@@ -9,7 +9,9 @@ export type TipoNotificacion =
   | "LOGISTICA"
   | "DILIGENCIA_HOY"
   | "DILIGENCIA_VENCIDA"
-  | "DESISTIDO";
+  | "DESISTIDO"
+  // Correo al creador del trámite cuando se marca Desistido
+  | "DESISTIDO_SOLICITANTE";
 
 type TemplateData = {
   nombre?: string;
@@ -708,6 +710,67 @@ Para cualquier inquietud, comunícate con la Central Torre de Control:
           subtitle: `Consecutivo #${solicitud.id}`,
           status: "FINALIZADO",
           statusType: "green",
+        },
+      ),
+    };
+  }
+
+  // =====================================
+  // DESISTIDO (correo al creador del trámite)
+  // =====================================
+
+  if (tipo === "DESISTIDO_SOLICITANTE") {
+    return {
+      subject:
+        `🚫 Su Trámite #${solicitud.id} - ` +
+        `${solicitud.placa ?? ""} ` +
+        `${solicitud.matriculaInmobiliaria ?? ""} ` +
+        `fue marcado como desistido`,
+
+      text: "",
+
+      html: layout(
+        `
+        <p
+          style="
+            font-size:15px;
+            line-height:1.7;
+            color:#475569;
+            margin:0;
+          "
+        >
+          Hola <strong>${data.nombre || ""}</strong>, te informamos que el
+          trámite <strong>#${solicitud.id}</strong> fue marcado como
+          <strong>desistido</strong>. La gestión programada no continuará.
+        </p>
+
+        ${detailsBox(`
+
+          ${infoCard("📋", "Tipo de diligencia", data.tipo || "N/A")}
+
+          ${infoCard("📝", "Motivo", data.motivo || "Sin observaciones")}
+
+          ${data.tipoRechazo ? infoCard("⚠️", "Tipo de rechazo", data.tipoRechazo) : ""}
+
+          ${infoCard("🚗", "Placa / matrícula", solicitud.placa || solicitud.matriculaInmobiliaria || "N/A")}
+
+          ${infoCard("📅", "Fecha", data.fecha || "N/A")}
+
+          ${infoCard("🧑‍💼", "Corresponsal", data.tramitador || "N/A")}
+
+          ${infoCard("📍", "Municipio", data.municipio || "N/A")}
+
+          ${infoCard("👤", "Programador", data.programador || "N/A")}
+
+        `)}
+
+        `,
+
+        {
+          title: "Trámite desistido",
+          subtitle: `Consecutivo #${solicitud.id}`,
+          status: "DESISTIDO",
+          statusType: "red",
         },
       ),
     };

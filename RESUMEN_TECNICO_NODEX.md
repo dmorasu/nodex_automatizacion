@@ -177,6 +177,15 @@ _Actualizado: 2026-10-04_
 - **Probado:** compila (`tsc --noEmit`) y se revisaron vistas previas renderizadas. **No se ha enviado un correo real** todavía. Las consultas de Legalización y reintegro no se pudieron probar contra la base (`10.0.4.4` no respondía).
 - **Corrección (2026-10-04):** el correo de programación individual mostraba "Tipo de diligencia: N/A" porque `ProgramacionController` enviaba `tipoTramite` y la plantilla lee `tipo`. Ahora envía `tipo` (como la programación masiva).
 
+### Notificaciones automáticas de WhatsApp configurables (2026-10-05)
+- Las dos tareas de cron (diligencias de hoy 08:00 y vencidas 13:00, todos los días) ya no están fijas en el código: se borró `Schedulers/notificacionesDiligenciasScheduler.ts`.
+- **Datos:** tabla `notificaciones_programadas` (modelo `models/notificacionProgramada.ts`, la crea `sync()`): una fila por `clave` (`DILIGENCIA_HOY`, `DILIGENCIA_VENCIDA`) con `hora` ("HH:MM", Colombia), `dias` (0 = domingo … 6, como cron), `activa`, quién hizo el último cambio y la última ejecución (origen PROGRAMADA/MANUAL, quién y resultado: encontradas, enviadas, sin teléfono, errores).
+- **Servicio** `services/notificacionesProgramadas.ts`: `iniciarNotificacionesProgramadas()` se llama **después** de `connectDB()` (`server.ts`), crea las filas que falten con los valores de siempre y programa cada tarea con `node-cron` (zona `America/Bogota`). Si la tabla no responde, programa los valores por defecto. Al guardar un cambio la tarea se destruye y se reprograma en caliente, sin reiniciar. Un envío manual y uno programado de la misma tarea no corren a la vez.
+- **API** `/api/notificaciones-programadas` (`GET /`, `PUT /:clave` con `{hora, dias, activa}`, `POST /:clave/enviar-ahora`). Permiso `puedeConfigurarNotificaciones` (`middleware/auth.ts`): Admin, Administrador de Torre de control y Torre de control; **el analista no**, aunque reciba Torre de control implícito.
+- **Nodex Trámites:** página `/center/notificaciones` ("Notificaciones automáticas" en el menú) con `components/notificaciones/TarjetaNotificacionProgramada.tsx`: interruptor, hora, días (atajos "Lunes a viernes" / "Todos"), próximo envío, último envío y botón "Enviar ahora" (pide confirmación; envía aunque esté desactivada). Guard `requiereConfigurarNotificaciones` en `src/auth/dal.ts`.
+- **Riesgo:** el programador vive en memoria. Con más de una instancia del backend cada una enviaría los mensajes y el cambio de hora solo se aplicaría en la que atendió la petición. Debe haber una sola instancia (ya era así).
+- **Probado** contra la base de desarrollo: creación de filas, cambio de hora y días, desactivar y validaciones. No se probó "Enviar ahora" (enviaría WhatsApp reales).
+
 ### Corrección: índices de `mensajeria_paradas` (2026-10-04)
 - El arranque fallaba en `db.sync()` con `column "solicitudTramiteId" does not exist`: el modelo tiene `underscored: true` y `@Index` en la propiedad le pasa a Postgres el nombre del atributo, no el de la columna (`solicitud_tramite_id`).
 - Los índices `mensajeria_paradas_tramite_fecha` (único) y `mensajeria_paradas_fecha_tramitador` pasaron a `@Table({ indexes })` con los nombres reales de columna (`models/mensajeria/paradaMensajeria.ts`). Ya se crearon en la base de desarrollo.
@@ -228,6 +237,7 @@ Todo lo de esta sesión se probó contra la base de **desarrollo**. Para producc
 
 **Después de desplegar**
 6. Asignar roles en Usuarios: Analista de trámites, Administrador Torre de control, Tesorería - Certificados.
+   - Revisar en el log del arranque las líneas "⏰ Diligencias de hoy…" y "⏰ Diligencias vencidas…", y que Torre de control vea "Notificaciones automáticas" en el menú.
 7. Mensajes de WhatsApp ya guardados (primero sin `--aplicar`):
    `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/corregirMensajesWhatsapp.ts [--aplicar]`
 8. Estado actual de los trámites (el Excel de estados no lo actualizaba; primero sin `--aplicar`):

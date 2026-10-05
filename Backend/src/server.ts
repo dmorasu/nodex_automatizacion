@@ -7,11 +7,6 @@ import cookieParser from 'cookie-parser'
 import { db } from './config/db'
 
 
-// Schedulers
-
-
-
-import "./Schedulers/notificacionesDiligenciasScheduler" 
 // Routers existentes
 import usuarioRouter from "./routes/usuarioRouter"
 import entidadRouter from "./routes/entidadRouter"
@@ -48,6 +43,8 @@ import { ajustarEsquemaMensajeria, ajustarEsquemaTramites } from "./seeds/ajuste
 import gestionMasivaRouter from "./routes/gestionMasivaRouter"
 import mensajeriaRouter from "./routes/mensajeriaRouter"
 import direccionesRouter from "./routes/direccionesRouter"
+import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
+import { iniciarNotificacionesProgramadas } from "./services/notificacionesProgramadas"
 import { autenticacion } from "./middleware/auth"
 import { requiereRol } from "./middleware/gastos/requiereRol"
 
@@ -70,7 +67,9 @@ async function connectDB() {
     }
 }
 
-connectDB()
+// Las notificaciones de WhatsApp (diligencias de hoy y vencidas) leen su hora de la base,
+// por eso se programan después de sync(). Si la base falló, usan los valores por defecto.
+connectDB().then(iniciarNotificacionesProgramadas)
 
 const app = express()
 
@@ -132,6 +131,10 @@ app.use('/api/subEstados', ...accesoTramites, subEstadosRouter)
 app.use('/api/documentos', ...accesoTramites, documentoSolicitudRouter)
 app.use('/api/notificaciones', ...accesoTramites, notificacionesRouter)
 app.use('/api/seguimiento-tramitador', ...accesoTramites, seguimientoTramitadorRouter)
+
+// 🔹 Notificaciones automáticas de WhatsApp: Admin y Torre de control (sin analistas);
+// el permiso se revisa dentro del router
+app.use('/api/notificaciones-programadas', autenticacion, notificacionesProgramadasRouter)
 
 // 🔹 Gestión masiva: solo Torre de control
 app.use('/api/bulk/logistica', ...soloTorreControl, logisticaBulkRouter)

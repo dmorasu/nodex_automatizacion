@@ -3,7 +3,7 @@ import { cache } from "react"
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
 import { UserSchema } from "../schemas"
-import { perfilDesdeRoles, permisosAnalistas, type PerfilTramites } from "./perfiles"
+import { perfilDesdeRoles, permisosAnalistas, puedeConfigurarNotificaciones, type PerfilTramites } from "./perfiles"
 
 // Sesión del usuario con su perfil de trámites. `cache` evita repetir las
 // consultas cuando el layout y la página la piden en la misma petición.
@@ -43,6 +43,7 @@ export const verificacionSesion = cache(async () => {
     // Admin además ve Administración (usuarios, perfiles y contraseñas)
     esAdmin: roles.includes("ADMIN"),
     ...permisosAnalistas(roles),
+    puedeConfigurarNotificaciones: puedeConfigurarNotificaciones(roles),
     token,
     isAuth: true
   }
@@ -59,6 +60,13 @@ export const requiereAdmin = async () => {
 export const requiereAsignarAnalistas = async () => {
   const sesion = await verificacionSesion()
   if (!sesion.puedeAsignarAnalistas) redirect('/center/dashboard')
+  return sesion
+}
+
+// Para la configuración de notificaciones automáticas (Admin y Torre de control)
+export const requiereConfigurarNotificaciones = async () => {
+  const sesion = await verificacionSesion()
+  if (!sesion.puedeConfigurarNotificaciones) redirect('/center/dashboard')
   return sesion
 }
 

@@ -25,6 +25,7 @@ import {
   CircleCheckBig,
   UserCog,
   Route,
+  BellRing,
 } from "lucide-react"
 
 import Link from "next/link"
@@ -40,11 +41,13 @@ export default function CenterMenu({
   perfil,
   esAdmin,
   puedeAsignarAnalistas,
+  puedeConfigurarNotificaciones,
 }: {
   usuario: Usuario
   perfil: PerfilTramites
   esAdmin: boolean
   puedeAsignarAnalistas: boolean
+  puedeConfigurarNotificaciones: boolean
 }) {
 
   // Gestión de activos no ve Torre de control ni Gestión masiva; Torre de control ve todo
@@ -436,6 +439,22 @@ export default function CenterMenu({
                     >
                       <UserCog size={18} className="text-slate-400 group-hover:text-sky-500" />
                       <span className="flex-1 text-sm font-medium">Asignación de analistas</span>
+                      <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
+                    </Link>
+                  )}
+
+
+
+                  {/* NOTIFICACIONES AUTOMÁTICAS (Admin y Torre de control) */}
+
+                  {puedeConfigurarNotificaciones && (
+                    <Link
+                      href="/center/notificaciones"
+                      onClick={() => close()}
+                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 transition hover:bg-sky-50 hover:text-sky-600"
+                    >
+                      <BellRing size={18} className="text-slate-400 group-hover:text-sky-500" />
+                      <span className="flex-1 text-sm font-medium">Notificaciones automáticas</span>
                       <ChevronRight size={15} className="text-slate-300 group-hover:text-sky-400" />
                     </Link>
                   )}

@@ -25,6 +25,12 @@ export const permisosAnalistas = (roles: string[]): PermisosAnalistas => {
   }
 }
 
+// Notificaciones automáticas de WhatsApp (hora, días, activar y enviar ahora): Admin y
+// Torre de control. El analista no, aunque trabaje con los permisos de Torre de control.
+export const puedeConfigurarNotificaciones = (roles: string[]) =>
+  permisosAnalistas(roles).puedeAsignarAnalistas ||
+  (roles.includes("TORRE_CONTROL") && !roles.includes("ANALISTA_TRAMITES"))
+
 // Si el usuario tiene los dos perfiles, prevalece Torre de control (el más amplio)
 export const perfilDesdeRoles = (roles: string[]): PerfilTramites | null => {
   if (["TORRE_CONTROL", "ADMIN", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL"].some(rol => roles.includes(rol))) return "TORRE_CONTROL"

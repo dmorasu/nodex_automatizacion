@@ -107,3 +107,10 @@ export const puedeAsignarAnalistas = (req: Request) => {
   const roles = req.roles ?? []
   return roles.includes(ROLES.ADMIN_TORRE_CONTROL) || roles.includes(ROLES.ADMIN)
 }
+
+// Notificaciones automáticas de WhatsApp: Admin y Torre de control. El analista no, aunque
+// trabaje con los permisos de Torre de control.
+export const puedeConfigurarNotificaciones = (req: Request) => {
+  const roles = req.roles ?? []
+  return puedeAsignarAnalistas(req) || (roles.includes(ROLES.TORRE_CONTROL) && !roles.includes(ROLES.ANALISTA_TRAMITES))
+}

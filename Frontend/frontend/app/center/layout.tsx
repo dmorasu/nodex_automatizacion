@@ -11,7 +11,7 @@ export default async function CenterLayout({
   children: React.ReactNode;
 }>) {
 
-  const { usuario, perfil, esAdmin, esAnalista, puedeAsignarAnalistas } = await verificacionSesion();
+  const { usuario, perfil, esAdmin, esAnalista, puedeAsignarAnalistas, puedeConfigurarNotificaciones } = await verificacionSesion();
 
   return (
     <>
@@ -144,6 +144,7 @@ export default async function CenterLayout({
               perfil={perfil}
               esAdmin={esAdmin}
               puedeAsignarAnalistas={puedeAsignarAnalistas}
+              puedeConfigurarNotificaciones={puedeConfigurarNotificaciones}
             />
 
           </div>

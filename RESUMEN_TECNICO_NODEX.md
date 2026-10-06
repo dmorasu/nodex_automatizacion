@@ -262,6 +262,42 @@ _Actualizado: 2026-10-06_
 - **Inicio:** rediseñado con tarjetas animadas y pendientes en vivo por rol. Las clases `aparecer` y `latido` están en `globals.css`.
 - **Pestañas:** `components/ui/Pestanas.tsx` sin scroll; los títulos se parten en líneas centradas; se corrigió que se marcaran dos pestañas a la vez.
 
+## Despliegue de ensayo en nodexgpa.co (2026-10-06)
+Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, puertos 4000 y 3000), con una **copia de la base de producción**. Comandos completos en `deploy/GUIA_DESPLIEGUE_ENSAYO.md`; archivos listos en `deploy/` (`ecosystem.ensayo.config.js` para PM2 y `nginx-nodexgpa.conf`).
+
+| App | Puerto (solo 127.0.0.1) | Dirección |
+|---|---|---|
+| API | 9000 | https://api.nodexgpa.co |
+| Nodex Trámites | 9001 | https://tramites.nodexgpa.co |
+| Nodex Gastos | 9002 | https://gastos.nodexgpa.co |
+| Nodex Tramitadores | 9003 | https://tramitadores.nodexgpa.co |
+| Worker de notificaciones | — | — |
+
+**Cómo convive con producción sin cruzarse**
+- **Puertos 9000–9003** escuchando solo en 127.0.0.1 (`HOST=127.0.0.1` en la API; `-H 127.0.0.1` en las apps Next). Al público se llega por Nginx con HTTPS; no abrir 9000–9003 en Azure ni en `ufw`.
+- **Redis:** producción usa la base 0; el ensayo `REDIS_DB=1` (`config/redis.ts` lee `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB` y carga el `.env` por su cuenta). Antes la cola `notifications` era la misma y un worker podía tomar los trabajos del otro.
+- **Modo ensayo** (`MODO_ENSAYO=si`, `utils/modoEnsayo.ts`): no programa los WhatsApp automáticos; `whatsappService` no llama a Twilio; `emailServices` manda todo **solo** a `CORREO_ENSAYO` (asunto `[ENSAYO · para …]`, sin copias; sin `CORREO_ENSAYO` no sale nada); el worker marca la notificación como `ERROR` "No enviado: modo ensayo", nunca `ENVIADO`. **Quitar al pasar a producción.**
+- **Azure Files:** recurso compartido aparte (`AZURE_FILE_SHARE_NAME=nodex-ensayo`) para no sobrescribir ni borrar archivos de producción; los documentos viejos no abren en el ensayo.
+- Procesos PM2 con prefijo `nodex-ensayo-` (se detienen con `pm2 stop /^nodex-ensayo-/` sin tocar producción).
+
+**Paso a paso**
+1. **Revisar el servidor:** `node -v` (≥ 18.17), `pm2 list`, puertos 80/443/9000–9003 libres, `redis-cli ping`.
+2. **DNS:** registros A `tramites`, `gastos`, `tramitadores` y `api` → IP pública estática del servidor. NSG de Azure con 80 y 443 abiertos.
+3. **Base de ensayo:** `createdb -O USUARIO_APP nodex_ensayo`, `pg_dump -Fc` de producción y `pg_restore --no-owner --role=USUARIO_APP` (las tablas quedan del usuario de la app para que los `ALTER TABLE` del arranque funcionen).
+   - **Antes del primer arranque, asignación de analistas:** verificar que los ids 24, 45 y 55 sean Maria Orlinda, Jenny Velosa y Johan Diaz, y que `TRIM(Municipios.responsable)` diga exactamente esos nombres (corregir con `UPDATE` si no). El relleno de `analistaId` corre **una sola vez**.
+4. **Código:** `git clone -b desarrollo` en `/opt/nodex-ensayo` (las `node_modules` de Windows que trae el repositorio las reemplaza `npm ci`).
+5. **`.env`** (no están en git; se crean a mano en el servidor):
+   - Backend: `PORT=9000`, `HOST=127.0.0.1`, `NODE_ENV=production`, `JWT_SECRET` nuevo, `DB_NAME=nodex_ensayo`, `REDIS_DB=1`, `MODO_ENSAYO=si`, `CORREO_ENSAYO`, `AZURE_FILE_SHARE_NAME=nodex-ensayo`, correos de áreas, `URL_NODEX_GASTOS` y `URL_NODEX_TRAMITES` (botón "Abrir Nodex" en los correos; opcionales), Google y `API_KEY_EXTERNA` nueva.
+   - Frontends: `API_URL=http://127.0.0.1:9000/api`; en Trámites además `GASTOS_URL`, `NEXT_PUBLIC_URL_APP_TRAMITADORES` y las claves de Google del navegador, **antes** de compilar.
+   - Aunque un `.env` diga `PORT=4000`, PM2 arranca la API con `PORT=9000` (dotenv no reemplaza variables ya definidas).
+6. **Instalar y compilar:** `npm ci && npm run build` en Backend y en las tres apps (sin `--production`). La API corre desde `dist/` (probado: los modelos cargan bien con `declaration: true`).
+7. **Arrancar:** `pm2 start deploy/ecosystem.ensayo.config.js`; en el log de `nodex-ensayo-api`: "REST API en el puerto 9000", "Conexion Exitosa" y "🧪 MODO ENSAYO…". Luego `pm2 save`.
+8. **Nginx y HTTPS:** copiar `deploy/nginx-nodexgpa.conf` a `sites-available`, `nginx -t`, recargar y `certbot --nginx` con los 4 subdominios. `ufw allow 'Nginx Full'`.
+9. **Después del arranque:** `node dist/scripts/sincronizarEstadoActual.js` (sin y con `--aplicar`); asignar perfiles (Analista, Administrador Torre de control, Tesorería - Certificados, Dirección de Negocio); revisar la asignación de analistas.
+10. **Pruebas:** login en las 3 apps con cada perfil; pago en tres pasos y pago directo de certificados; trámites (desistir, finalizar, programar); correos llegando solo a `CORREO_ENSAYO` y WhatsApp "NO enviado" en `pm2 logs nodex-ensayo-worker`; app de tramitadores desde un celular.
+
+**Para volver el ensayo producción:** quitar `MODO_ENSAYO` y `CORREO_ENSAYO`, apuntar `DB_NAME` y `AZURE_FILE_SHARE_NAME` a los definitivos, `REDIS_DB` libre de otros entornos, y repetir el checklist de abajo.
+
 ## Checklist de paso a producción
 Todo se probó contra la base de **desarrollo**. Para producción, en este orden:
 

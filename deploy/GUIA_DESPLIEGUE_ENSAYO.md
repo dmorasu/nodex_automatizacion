@@ -8,7 +8,7 @@ desde la carpeta **`/home/desarrolloti/nodex5.0`**.
 
 | App | Puerto (solo 127.0.0.1) | Dirección pública |
 |---|---|---|
-| API (backend) | 9000 | https://api.nodexgpa.com |
+| API (backend) | 9000 | https://api.nodexgpa.com (solo `/api/externa`; lo demás da 404: las apps la llaman por dentro) |
 | Nodex Trámites | 9001 | https://tramites.nodexgpa.com |
 | Nodex Gastos | 9002 | https://gastos.nodexgpa.com |
 | Nodex Tramitadores | 9003 | https://tramitadores.nodexgpa.com |

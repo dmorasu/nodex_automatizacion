@@ -242,7 +242,7 @@ export default function AddExpenseForm({
 
 
               {tiposRechazo?.map(
-                (tipo: any) => (
+                (tipo) => (
 
                   <option
                     key={tipo.id}

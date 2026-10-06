@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 export function useTiposRechazo() {
 
-  const [data, setData] = useState<any[]>([])
+  const [data, setData] = useState<{ id: number, nombre: string }[]>([])
 
   useEffect(() => {
     fetch(`/api/backend/tiposRechazo`)

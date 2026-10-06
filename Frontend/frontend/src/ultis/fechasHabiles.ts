@@ -7,7 +7,7 @@ export function sumarDiasHabilesColombia(
   diasHabiles: number
 ): Date {
 
-  let fecha = new Date(fechaInicial)
+  const fecha = new Date(fechaInicial)
   let contador = 0
 
   while (contador < diasHabiles) {

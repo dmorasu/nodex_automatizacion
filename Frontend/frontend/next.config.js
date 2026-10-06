@@ -1,11 +1,6 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-}
+// `next build` revisa los tipos y el lint: si hay errores, no compila (así no llegan a producción).
+// Antes se ignoraban con eslint.ignoreDuringBuilds y typescript.ignoreBuildErrors.
+const nextConfig = {}
 
 module.exports = nextConfig

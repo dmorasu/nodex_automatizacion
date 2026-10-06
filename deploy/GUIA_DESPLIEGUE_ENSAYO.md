@@ -89,7 +89,7 @@ sudo mkdir -p /opt/nodex-ensayo && sudo chown $USER: /opt/nodex-ensayo
 git clone -b desarrollo https://github.com/dmorasu/nodex_automatizacion.git /opt/nodex-ensayo
 cd /opt/nodex-ensayo
 ```
-> El repositorio trae carpetas `node_modules` hechas en Windows: `npm ci` las borra y reinstala.
+> El repositorio ya no trae `node_modules` (se sacaron el 2026-10-06): `npm ci` las instala en el paso 6.
 
 ## 5. Variables de entorno
 

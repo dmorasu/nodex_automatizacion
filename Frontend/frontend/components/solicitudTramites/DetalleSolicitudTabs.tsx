@@ -23,8 +23,25 @@ import Dato from "@/components/ui/Dato"
 import { formatoFechaFinaizacion } from "@/src/ultis";
 
 
+// Lo que usan las pestañas del detalle (viene de GET /solicitudTramites/:id)
+type RegistroTrazabilidad = { id: number, observacionTrazabilidad: string | null, nombreUsuario?: string | null, createdAt: string }
+type SolicitudDetalle = {
+  placa?: string | null
+  matriculaInmobiliaria?: string | null
+  detalleSolicitud?: string | null
+  direccionTramite?: string | null
+  documentosAportados?: string | null
+  tramite?: { nombreTramite?: string | null } | null
+  entidad?: { nombreEntidad?: string | null } | null
+  operaciones?: { nombreOperacion?: string | null, centroDeCostos?: string | null } | null
+  clientes?: { nombreCliente?: string | null, identificacionCliente?: string | null } | null
+  municipios?: { nombreMunicipio?: string | null } | null
+  tramitador?: { nombreTramitador?: string | null } | null
+  trazabilidad?: RegistroTrazabilidad[]
+}
+
 interface Props {
-  solicitudTramite: any;
+  solicitudTramite: SolicitudDetalle;
   solicitudTramiteId: number;
   apiUrl: string;
   // Pestaña Gastos (Nodex Gastos)
@@ -54,7 +71,7 @@ export default function DetalleSolicitudTabs({
   const [tabActiva, setTabActiva] = useState<ClavePestana>("informacion");
 
   const reportePendiente = seguimiento.reportes.some(r => r.estado === "PENDIENTE");
-  const trazabilidad: any[] = solicitudTramite.trazabilidad ?? [];
+  const trazabilidad = solicitudTramite.trazabilidad ?? [];
 
   const pestanas: { clave: ClavePestana, nombre: string, Icono: LucideIcon, insignia?: React.ReactNode }[] = [
     { clave: "informacion", nombre: "Información", Icono: Info },
@@ -157,7 +174,7 @@ export default function DetalleSolicitudTabs({
         <Seccion titulo="Trazabilidad" descripcion="Registro de actividades y observaciones de la solicitud">
           {trazabilidad.length > 0 ? (
             <ol className="relative space-y-5 border-l border-slate-200 pl-5">
-              {trazabilidad.map((registro: any) => (
+              {trazabilidad.map(registro => (
                 <li key={registro.id} className="relative">
                   <span className="absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-sky-400 ring-1 ring-sky-200" aria-hidden="true" />
                   <p className="whitespace-pre-line text-xs leading-5 text-slate-700">{registro.observacionTrazabilidad}</p>

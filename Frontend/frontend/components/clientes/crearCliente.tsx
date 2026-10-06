@@ -10,7 +10,6 @@ import ClientesForm from "./ClientesForm"
 
 import {
   UserPlus,
-  Loader2,
 } from "lucide-react"
 
 

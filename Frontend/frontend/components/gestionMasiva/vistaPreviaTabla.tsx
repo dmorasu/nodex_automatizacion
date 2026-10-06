@@ -5,7 +5,7 @@ type ErrorExcel = {
   error: string
 }
 
-type RowData = Record<string, any>
+type RowData = Record<string, unknown>
 
 type PreviewTableProps = {
   data: RowData[]

@@ -18,7 +18,7 @@ export default function UploadPanel({ tipo }: UploadPanelProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
-  const [data, setData] = useState<Record<string, any>[]>([])
+  const [data, setData] = useState<Record<string, unknown>[]>([])
   const [errores, setErrores] = useState<ErrorExcel[]>([])
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState<string | null>(null)
@@ -48,7 +48,7 @@ export default function UploadPanel({ tipo }: UploadPanelProps) {
     const workbook = XLSX.read(arrayBuffer)
 
     const sheet = workbook.Sheets['DATA']
-    const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet)
+    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet)
 
     setData(json)
     setErrores([])

@@ -16,7 +16,6 @@ import {
 } from "@headlessui/react"
 
 import AddEstadosForm from "../estados/AddEstadosForm"
-import EditEstadosForm from "../estados/EditEstadosForm"
 import AddTrazabilidadForm from "../trazabilidad/AddTrazabilidadForm"
 import AddCuentaCobroForm from "../cuentacobro/AddCuentaCobroForm"
 import AddLogisticaForm from "../logistica/AddLogisticaForm"

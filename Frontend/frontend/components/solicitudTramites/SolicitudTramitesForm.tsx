@@ -21,9 +21,8 @@ import TramitesSelect
 
 import { toDateInput } from "@/src/ultis";
 
-import { Paperclip, X } from "lucide-react";
+import { Paperclip } from "lucide-react";
 import CampoDireccion, { type MunicipioSugerido } from "../direcciones/CampoDireccion";
-import DocumentosSolicitud from "../documentos/DocumentosSolicitud";
 
 
 
@@ -47,7 +46,8 @@ export default function SolicitudTramitesForm({
   const [municipioSugerido, setMunicipioSugerido] =
     useState<MunicipioSugerido | null>(null);
 
-const [mostrarDocumentos, setMostrarDocumentos] =
+// TODO: el valor no se usa (el panel de documentos no se muestra en el formulario)
+const [, setMostrarDocumentos] =
   useState(false);
   return (
 

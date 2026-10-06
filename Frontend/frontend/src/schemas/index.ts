@@ -1,5 +1,4 @@
-import { array, nullable, z, ZodString } from 'zod'
-import { id } from 'zod/v4/locales'
+import { z } from 'zod'
 
 export const RegistroSchema = z.object({
         correoUsuario: z.string().

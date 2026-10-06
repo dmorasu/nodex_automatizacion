@@ -23,6 +23,7 @@ _Actualizado: 2026-10-06_
 - **Estados del gasto:** cambian con `cambiarEstadoGasto` (deja trazabilidad).
 - **Errores de negocio:** `ErrorGastos(msg, status)` y `responderError`.
 - **Listados con includes:** en `order`, usar `{ model, as }`. Con límite y `hasMany`, usar `separate: true` o filtrar en el include. Un `$nested$` en el `where` superior falla.
+- **El build revisa tipos y lint (2026-10-06):** en Nodex Trámites se quitaron `eslint.ignoreDuringBuilds` y `typescript.ignoreBuildErrors` de `next.config.js` (las otras dos apps nunca los tuvieron). Un error de tipos o de lint frena `next build`; antes de subir, correr `npx tsc --noEmit` y `npx next lint` (los avisos no frenan). Quedaron 0 errores y 5 avisos. Se borró código muerto (`app/center/prueba.tsx`, `PaginaTedTable`, `seleccionarMunicipios`, `CargaMasivaSolicitudes`, `EliminarSolicitudTramiteModal` y `ConfirmarContraseña`).
 - **No compilar con el servidor corriendo:** no ejecutar `next build` mientras el servidor de esa app esté encendido (daña `.next`; se arregla con Ctrl+C, borrar `.next` y `npm run dev`). Validar con `npx tsc --noEmit`.
 - **No arrancar el backend completo:** carga el programador de notificaciones de WhatsApp. Probar los servicios con scripts aislados: `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/_x.ts`, y borrar el script después.
 - **Pruebas sin efectos:** no ejecutar pagos reales. Para Azure, reemplazar con un stub `require('./services/azureFileStorage').subirArchivo = async()=>{}`.
@@ -221,7 +222,7 @@ _Actualizado: 2026-10-06_
 - Redis no arranca solo al reiniciar: `~/redis/bin/redis-server --daemonize yes --dir ~/redis --logfile ~/redis/redis.log`; comprobar con `redis-cli ping`.
 - Redis lo usa BullMQ (cola `notifications`). El worker **no** lo arranca `index.ts`: `npx ts-node src/workers/notificacionesWorker.ts` en otra terminal.
 - `.env` creados en `Backend/` y en las tres apps de `Frontend/` (`API_URL=http://localhost:4000/api`; Trámites además `GASTOS_URL=http://localhost:3001`).
-- **`node_modules` está versionado en git** (~20.000 archivos, aunque `.gitignore` lo excluye). Los de Windows fallan en Mac (`Permission denied`), así que se reinstalaron: `git status` muestra miles de cambios ahí que **no deben subirse**.
+- **`node_modules` ya no está en git** (se sacaron 20.157 archivos de `Backend/node_modules` el 2026-10-06; el `.gitignore` los excluye). Cada equipo los instala con `npm ci`.
 
 ### Nodex Gastos: pago en tres pasos con aprobación de Dirección de Negocio (2026-10-06)
 - **Flujo (gastos generales):**
@@ -285,7 +286,7 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 2. **DNS:** registros A `tramites`, `gastos`, `tramitadores` y `api` → IP pública estática del servidor. NSG de Azure con 80 y 443 abiertos.
 3. **Base de ensayo:** `createdb -O USUARIO_APP nodex_ensayo`, `pg_dump -Fc` de producción y `pg_restore --no-owner --role=USUARIO_APP` (las tablas quedan del usuario de la app para que los `ALTER TABLE` del arranque funcionen).
    - **Antes del primer arranque, asignación de analistas:** verificar que los ids 24, 45 y 55 sean Maria Orlinda, Jenny Velosa y Johan Diaz, y que `TRIM(Municipios.responsable)` diga exactamente esos nombres (corregir con `UPDATE` si no). El relleno de `analistaId` corre **una sola vez**.
-4. **Código:** `git clone -b desarrollo` en `/opt/nodex-ensayo` (las `node_modules` de Windows que trae el repositorio las reemplaza `npm ci`).
+4. **Código:** `git clone -b desarrollo` en `/opt/nodex-ensayo` (el repositorio ya no trae `node_modules`: los instala `npm ci`).
 5. **`.env`** (no están en git; se crean a mano en el servidor):
    - Backend: `PORT=9000`, `HOST=127.0.0.1`, `NODE_ENV=production`, `JWT_SECRET` nuevo, `DB_NAME=nodex_ensayo`, `REDIS_DB=1`, `MODO_ENSAYO=si`, `CORREO_ENSAYO`, `AZURE_FILE_SHARE_NAME=nodex-ensayo`, correos de áreas, `URL_NODEX_GASTOS` y `URL_NODEX_TRAMITES` (botón "Abrir Nodex" en los correos; opcionales), Google y `API_KEY_EXTERNA` nueva.
    - Frontends: `API_URL=http://127.0.0.1:9000/api`; en Trámites además `GASTOS_URL`, `NEXT_PUBLIC_URL_APP_TRAMITADORES` y las claves de Google del navegador, **antes** de compilar.
@@ -440,7 +441,7 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
 7. **Correos nuevos sin prueba real:** crear y pagar un gasto de un trámite con analista, desistir un trámite, finalizar un trámite cuyo gasto tenga factura del tramitador y subir un reintegro desde la app, para verificar la entrega por SendGrid.
    - **Por confirmar con el usuario:** si Contabilidad debe recibir un aviso igual por los gastos no reembolsables con factura, y si el correo a Legalización debe exigir además el reporte "Realizado".
 8. **Pago en tres pasos sin prueba completa:** crear un gasto de prueba, programarlo, aprobarlo con un usuario Dirección de Negocio, adjuntar soporte y confirmar; revisar la bolsa, los correos y la lista de egresos de Contabilidad. En desarrollo descuenta una bolsa (devolver con un ajuste).
-9. **`node_modules` en git:** sacarlo del repositorio (`git rm -r --cached`) para que no se mezclen dependencias de Windows y Mac. Pendiente de autorización.
+9. **`node_modules` en git:** resuelto el 2026-10-06 (`git rm -r --cached Backend/node_modules`). Al hacer `git pull` en otro equipo que todavía los tenga versionados, git los borrará del disco: correr `npm ci` en `Backend` después del pull.
 10. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción). La variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` quedó en el checklist (paso 8).
 11. **Claves de Google en desarrollo:** hoy el backend y Nodex Trámites usan la misma clave (sin restricciones). En producción deben ser dos claves restringidas (checklist, paso 4 y sección de seguridad).
 

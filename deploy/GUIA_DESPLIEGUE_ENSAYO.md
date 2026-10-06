@@ -240,6 +240,10 @@ node dist/scripts/sincronizarEstadoActual.js --aplicar
 5. Trámites: desistir, finalizar y programar un trámite; revisar los correos.
 6. App de tramitadores desde un celular (https://tramitadores.nodexgpa.com).
 
+## Pasar a producción
+
+Ver [GUIA_PASO_A_PRODUCCION.md](GUIA_PASO_A_PRODUCCION.md): apuntar esta misma instalación a la base `nodex`, quitar el modo ensayo y apagar la 4.5.
+
 ## Actualizar el ensayo con cambios nuevos
 
 ```bash

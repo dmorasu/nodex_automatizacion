@@ -300,6 +300,7 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 **Para volver el ensayo producción:** quitar `MODO_ENSAYO` y `CORREO_ENSAYO`, apuntar `DB_NAME` y `AZURE_FILE_SHARE_NAME` a los definitivos, `REDIS_DB` libre de otros entornos, y repetir el checklist de abajo.
 
 ## Checklist de paso a producción
+> El procedimiento del día del cambio (del ensayo `nodex5.0` a la base `nodex`, con respaldo, perfiles, scripts y plan B) está en `deploy/GUIA_PASO_A_PRODUCCION.md`.
 Todo se probó contra la base de **desarrollo**. Para producción, en este orden:
 
 **Antes de desplegar**

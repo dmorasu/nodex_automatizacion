@@ -212,6 +212,12 @@ sudo ufw status            # 9000-9003 NO deben aparecer abiertos
 
 ## 9. Después del primer arranque
 
+**Primer acceso (descubierto en el ensayo, 2026-10-06):** la producción actual (4.5) no tiene perfiles: al primer arranque se crean los roles en `gastos_roles`, pero **nadie los tiene asignados** y todos los usuarios caen en "Sin acceso". Hay que darle ADMIN a quien administre (por SQL, una sola vez) y desde **Administración** asignar el perfil de cada usuario:
+```bash
+sudo -u postgres psql -d BASE -c "INSERT INTO gastos_usuario_roles (usuario_id, rol_id, created_at, updated_at) SELECT u.id, r.id, NOW(), NOW() FROM \"Usuarios\" u JOIN gastos_roles r ON r.codigo = 'ADMIN' WHERE LOWER(u.\"correoUsuario\") = 'dmorasu@gmail.com' ON CONFLICT (usuario_id, rol_id) DO NOTHING;"
+```
+
+
 ```bash
 cd /home/desarrolloti/nodex5.0/Backend
 # Estado actual de los trámites (primero sin --aplicar para ver qué cambia)

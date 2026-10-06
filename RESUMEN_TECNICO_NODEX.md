@@ -346,7 +346,7 @@ Todo se probó contra la base de **desarrollo**. Para producción, en este orden
 10. **Una sola instancia del backend** (PM2 sin modo cluster): el programador de WhatsApp y la caché del trazado de rutas viven en memoria.
 
 **Después de desplegar**
-11. Asignar roles en Usuarios: Analista de trámites, Administrador Torre de control, Tesorería - Certificados y **Dirección de Negocio** (con su correo: le llegan los lotes por aprobar).
+11. **Primero darle ADMIN a quien administre** (la versión 4.5 no tiene perfiles: tras el arranque nadie tiene rol y todos ven "Sin acceso"; SQL en la guía de despliegue, paso 9). Luego, desde Administración, asignar roles en Usuarios: Analista de trámites, Administrador Torre de control, Tesorería - Certificados y **Dirección de Negocio** (con su correo: le llegan los lotes por aprobar).
     - **Antes de desplegar el pago en tres pasos**, que Tesorería pague lo que tenga en curso: después, todo gasto general debe pasar por la aprobación de Dirección.
 12. Mensajes de WhatsApp ya guardados (primero sin `--aplicar`):
     `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/corregirMensajesWhatsapp.ts [--aplicar]`

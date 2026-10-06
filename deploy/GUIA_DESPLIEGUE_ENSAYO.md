@@ -1,14 +1,17 @@
-# Despliegue de ensayo de Nodex en nodexgpa.co
+# Despliegue de ensayo de Nodex en nodexgpa.com
 
-Servidor Ubuntu con PM2, donde ya corre la producción actual (puertos 4000 y 3000).
-El ensayo usa **otra base de datos** (copia de producción), **otra base de Redis** y los puertos **9000–9003**.
+Servidor Ubuntu `SRVWEBNOX02` (IP pública `20.186.19.92`, privada `10.0.4.4`) con PM2, donde ya corre la producción actual
+(`/home/desarrolloti/nodex4.0`, procesos `apiNodex4.5`, `Nodex4.5` y `worker4.5`, puertos 4000 y 3000, base `nodex`)
+y otras apps (Vehículos, Inmuebles: puertos 3001, 3002, 5000, 5001, 6001). Nada de eso se toca.
+El ensayo usa la base **`nodex_pruebas`** (copia de producción), **otra base de Redis** (la 1) y los puertos **9000–9003**,
+desde la carpeta **`/home/desarrolloti/nodex5.0`**.
 
 | App | Puerto (solo 127.0.0.1) | Dirección pública |
 |---|---|---|
-| API (backend) | 9000 | https://api.nodexgpa.co |
-| Nodex Trámites | 9001 | https://tramites.nodexgpa.co |
-| Nodex Gastos | 9002 | https://gastos.nodexgpa.co |
-| Nodex Tramitadores | 9003 | https://tramitadores.nodexgpa.co |
+| API (backend) | 9000 | https://api.nodexgpa.com |
+| Nodex Trámites | 9001 | https://tramites.nodexgpa.com |
+| Nodex Gastos | 9002 | https://gastos.nodexgpa.com |
+| Nodex Tramitadores | 9003 | https://tramitadores.nodexgpa.com |
 | Worker de notificaciones | — | — |
 
 > **Modo ensayo (`MODO_ENSAYO=si`)**: la base es una copia con teléfonos y correos reales. Con este modo
@@ -31,7 +34,7 @@ psql --version
 
 ## 2. DNS del dominio (hacerlo primero: tarda en propagar)
 
-En el proveedor de nodexgpa.co, crear 4 registros **A** a la **IP pública del servidor**:
+En el proveedor de nodexgpa.com, crear 4 registros **A** a la **IP pública del servidor**:
 
 | Nombre | Tipo | Valor |
 |---|---|---|
@@ -42,22 +45,27 @@ En el proveedor de nodexgpa.co, crear 4 registros **A** a la **IP pública del s
 
 Comprobar (debe responder la IP):
 ```bash
-dig +short tramites.nodexgpa.co
+dig +short tramites.nodexgpa.com
 ```
 En Azure: la VM con **IP pública estática** y el grupo de seguridad (NSG) con entrada **80 y 443** abiertos.
 **No** abrir 9000–9003.
 
 ## 3. Base de datos de ensayo (copia de producción)
 
+Postgres corre en este mismo servidor (IP privada `10.0.4.4`). Producción usa la base `nodex`;
+el ensayo usa **`nodex_pruebas`**, recreada como copia de `nodex` y a nombre de `desarrolloti`
+(así el backend puede hacer los `ALTER TABLE` de los ajustes de esquema al arrancar).
+Hecho el 2026-10-06. Para volver a refrescarla (cerrar antes cualquier pgAdmin conectado):
+
 ```bash
-# Reemplazar NOMBRE_BD_PROD y USUARIO_APP por los reales (ver Backend/.env de producción)
-sudo -u postgres createdb -O USUARIO_APP nodex_ensayo
-sudo -u postgres pg_dump -Fc NOMBRE_BD_PROD > /tmp/nodex_prod.dump
-sudo -u postgres pg_restore -d nodex_ensayo --no-owner --role=USUARIO_APP /tmp/nodex_prod.dump
-rm /tmp/nodex_prod.dump
+cd /tmp && FECHA=$(date +%Y%m%d)
+sudo -u postgres pg_dump -Fc nodex_pruebas > /tmp/nodex_pruebas_respaldo_$FECHA.dump   # respaldo
+sudo -u postgres pg_dump -Fc nodex > /tmp/nodex_prod_$FECHA.dump                      # solo lee producción
+sudo -u postgres dropdb nodex_pruebas
+sudo -u postgres createdb -O desarrolloti nodex_pruebas
+sudo -u postgres pg_restore -d nodex_pruebas --no-owner --role=desarrolloti /tmp/nodex_prod_$FECHA.dump
+sudo mkdir -p /var/backups/nodex && sudo mv /tmp/nodex_*_$FECHA.dump /var/backups/nodex/
 ```
-`--no-owner --role=USUARIO_APP` deja las tablas a nombre del usuario de la app: así el backend puede
-hacer los `ALTER TABLE` de los ajustes de esquema al arrancar.
 
 ### 3.1 Asignación de analistas (ANTES del primer arranque)
 
@@ -65,7 +73,7 @@ Al primer arranque, `ajustesEsquemaTramites.ts` crea `Municipios.analistaId` y l
 con: `'Maria Orlinda' → 24`, `'Jenny Velosa' → 45`, `'Johan Diaz' → 55`. Revisar en la copia:
 
 ```bash
-sudo -u postgres psql -d nodex_ensayo
+sudo -u postgres psql -d nodex_pruebas
 ```
 ```sql
 -- 1) Los ids deben ser de esas tres personas
@@ -85,9 +93,9 @@ Nodex Trámites → Asignación de analistas.
 ## 4. Código
 
 ```bash
-sudo mkdir -p /opt/nodex-ensayo && sudo chown $USER: /opt/nodex-ensayo
-git clone -b desarrollo https://github.com/dmorasu/nodex_automatizacion.git /opt/nodex-ensayo
-cd /opt/nodex-ensayo
+# La carpeta ya existe y es de desarrolloti (debe estar vacía para clonar)
+git clone -b desarrollo https://github.com/dmorasu/nodex_automatizacion.git /home/desarrolloti/nodex5.0
+cd /home/desarrolloti/nodex5.0
 ```
 > El repositorio ya no trae `node_modules` (se sacaron el 2026-10-06): `npm ci` las instala en el paso 6.
 
@@ -101,10 +109,10 @@ NODE_ENV=production
 JWT_SECRET=<uno NUEVO, distinto al de producción>
 
 # Base de ensayo
-DB_HOST=127.0.0.1
+DB_HOST=10.0.4.4
 DB_PORT=5432
-DB_NAME=nodex_ensayo
-DB_USER=USUARIO_APP
+DB_NAME=nodex_pruebas
+DB_USER=desarrolloti
 DB_PASSWORD=<la del usuario>
 
 # Redis: producción usa la base 0; el ensayo la 1 (cada worker solo ve sus trabajos)
@@ -132,8 +140,8 @@ CORREO_TESORERIA=grupotesoreria@gomezpinedaabogados.com
 CORREO_LEGALIZACION=legalizaciongastos@gomezpinedaabogados.com
 CORREO_TORRE_CONTROL=torredecontrol@gomezpinedaabogados.com
 CORREO_NOVEDADES_VEHICULOS=novedadesvehiculos@gomezpinedaabogados.com
-URL_NODEX_GASTOS=https://gastos.nodexgpa.co
-URL_NODEX_TRAMITES=https://tramites.nodexgpa.co
+URL_NODEX_GASTOS=https://gastos.nodexgpa.com
+URL_NODEX_TRAMITES=https://tramites.nodexgpa.com
 
 GOOGLE_MAPS_API_KEY=<clave del servidor>
 API_KEY_EXTERNA=<una nueva>
@@ -146,8 +154,8 @@ almacenamiento → Recursos compartidos de archivos → + Recurso compartido).
 `Frontend/frontend/.env`
 ```ini
 API_URL=http://127.0.0.1:9000/api
-GASTOS_URL=https://gastos.nodexgpa.co
-NEXT_PUBLIC_URL_APP_TRAMITADORES=https://tramitadores.nodexgpa.co
+GASTOS_URL=https://gastos.nodexgpa.com
+NEXT_PUBLIC_URL_APP_TRAMITADORES=https://tramitadores.nodexgpa.com
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<clave del navegador>
 NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=
 ```
@@ -159,17 +167,17 @@ API_URL=http://127.0.0.1:9000/api
 ## 6. Instalar y compilar
 
 ```bash
-cd /opt/nodex-ensayo/Backend && npm ci && npm run build
-cd /opt/nodex-ensayo/Frontend/frontend && npm ci && npm run build
-cd /opt/nodex-ensayo/Frontend/gastos && npm ci && npm run build
-cd /opt/nodex-ensayo/Frontend/tramitadores && npm ci && npm run build
+cd /home/desarrolloti/nodex5.0/Backend && npm ci && npm run build
+cd /home/desarrolloti/nodex5.0/Frontend/frontend && npm ci && npm run build
+cd /home/desarrolloti/nodex5.0/Frontend/gastos && npm ci && npm run build
+cd /home/desarrolloti/nodex5.0/Frontend/tramitadores && npm ci && npm run build
 ```
 Usar `npm ci` **sin** `--production`: el build necesita las dependencias de desarrollo.
 
 ## 7. Arrancar con PM2
 
 ```bash
-cd /opt/nodex-ensayo
+cd /home/desarrolloti/nodex5.0
 pm2 start deploy/ecosystem.ensayo.config.js
 pm2 logs nodex-ensayo-api --lines 40
 ```
@@ -191,10 +199,10 @@ pm2 save                                   # recordar los procesos tras un reini
 
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx      # si no están
-sudo cp /opt/nodex-ensayo/deploy/nginx-nodexgpa.conf /etc/nginx/sites-available/nodexgpa
+sudo cp /home/desarrolloti/nodex5.0/deploy/nginx-nodexgpa.conf /etc/nginx/sites-available/nodexgpa
 sudo ln -s /etc/nginx/sites-available/nodexgpa /etc/nginx/sites-enabled/nodexgpa
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d tramites.nodexgpa.co -d gastos.nodexgpa.co -d tramitadores.nodexgpa.co -d api.nodexgpa.co
+sudo certbot --nginx -d tramites.nodexgpa.com -d gastos.nodexgpa.com -d tramitadores.nodexgpa.com -d api.nodexgpa.com
 ```
 Firewall (si `ufw` está activo):
 ```bash
@@ -205,7 +213,7 @@ sudo ufw status            # 9000-9003 NO deben aparecer abiertos
 ## 9. Después del primer arranque
 
 ```bash
-cd /opt/nodex-ensayo/Backend
+cd /home/desarrolloti/nodex5.0/Backend
 # Estado actual de los trámites (primero sin --aplicar para ver qué cambia)
 node dist/scripts/sincronizarEstadoActual.js
 node dist/scripts/sincronizarEstadoActual.js --aplicar
@@ -224,12 +232,12 @@ node dist/scripts/sincronizarEstadoActual.js --aplicar
 4. Correos: todos deben llegar **solo** a `CORREO_ENSAYO`, con el asunto `[ENSAYO · para …]`.
    En `pm2 logs nodex-ensayo-worker` los WhatsApp salen como "NO enviado".
 5. Trámites: desistir, finalizar y programar un trámite; revisar los correos.
-6. App de tramitadores desde un celular (https://tramitadores.nodexgpa.co).
+6. App de tramitadores desde un celular (https://tramitadores.nodexgpa.com).
 
 ## Actualizar el ensayo con cambios nuevos
 
 ```bash
-cd /opt/nodex-ensayo && git pull
+cd /home/desarrolloti/nodex5.0 && git pull
 cd Backend && npm ci && npm run build && cd ..
 # solo las apps que cambiaron:
 cd Frontend/gastos && npm ci && npm run build && cd ../..

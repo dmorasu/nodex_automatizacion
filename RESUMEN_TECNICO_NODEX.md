@@ -263,15 +263,15 @@ _Actualizado: 2026-10-06_
 - **Inicio:** rediseñado con tarjetas animadas y pendientes en vivo por rol. Las clases `aparecer` y `latido` están en `globals.css`.
 - **Pestañas:** `components/ui/Pestanas.tsx` sin scroll; los títulos se parten en líneas centradas; se corrigió que se marcaran dos pestañas a la vez.
 
-## Despliegue de ensayo en nodexgpa.co (2026-10-06)
+## Despliegue de ensayo en nodexgpa.com (2026-10-06)
 Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, puertos 4000 y 3000), con una **copia de la base de producción**. Comandos completos en `deploy/GUIA_DESPLIEGUE_ENSAYO.md`; archivos listos en `deploy/` (`ecosystem.ensayo.config.js` para PM2 y `nginx-nodexgpa.conf`).
 
 | App | Puerto (solo 127.0.0.1) | Dirección |
 |---|---|---|
-| API | 9000 | https://api.nodexgpa.co |
-| Nodex Trámites | 9001 | https://tramites.nodexgpa.co |
-| Nodex Gastos | 9002 | https://gastos.nodexgpa.co |
-| Nodex Tramitadores | 9003 | https://tramitadores.nodexgpa.co |
+| API | 9000 | https://api.nodexgpa.com |
+| Nodex Trámites | 9001 | https://tramites.nodexgpa.com |
+| Nodex Gastos | 9002 | https://gastos.nodexgpa.com |
+| Nodex Tramitadores | 9003 | https://tramitadores.nodexgpa.com |
 | Worker de notificaciones | — | — |
 
 **Cómo convive con producción sin cruzarse**
@@ -284,11 +284,11 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 **Paso a paso**
 1. **Revisar el servidor:** `node -v` (≥ 18.17), `pm2 list`, puertos 80/443/9000–9003 libres, `redis-cli ping`.
 2. **DNS:** registros A `tramites`, `gastos`, `tramitadores` y `api` → IP pública estática del servidor. NSG de Azure con 80 y 443 abiertos.
-3. **Base de ensayo:** `createdb -O USUARIO_APP nodex_ensayo`, `pg_dump -Fc` de producción y `pg_restore --no-owner --role=USUARIO_APP` (las tablas quedan del usuario de la app para que los `ALTER TABLE` del arranque funcionen).
+3. **Base de ensayo:** `nodex_pruebas` en el mismo Postgres (`10.0.4.4`), recreada el 2026-10-06 como copia de `nodex` (producción) a nombre de `desarrolloti` (`pg_restore --no-owner --role=desarrolloti`), para que los `ALTER TABLE` del arranque funcionen.
    - **Antes del primer arranque, asignación de analistas:** verificar que los ids 24, 45 y 55 sean Maria Orlinda, Jenny Velosa y Johan Diaz, y que `TRIM(Municipios.responsable)` diga exactamente esos nombres (corregir con `UPDATE` si no). El relleno de `analistaId` corre **una sola vez**.
-4. **Código:** `git clone -b desarrollo` en `/opt/nodex-ensayo` (el repositorio ya no trae `node_modules`: los instala `npm ci`).
+4. **Código:** `git clone -b desarrollo` en `/home/desarrolloti/nodex5.0` (el repositorio ya no trae `node_modules`: los instala `npm ci`).
 5. **`.env`** (no están en git; se crean a mano en el servidor):
-   - Backend: `PORT=9000`, `HOST=127.0.0.1`, `NODE_ENV=production`, `JWT_SECRET` nuevo, `DB_NAME=nodex_ensayo`, `REDIS_DB=1`, `MODO_ENSAYO=si`, `CORREO_ENSAYO`, `AZURE_FILE_SHARE_NAME=nodex-ensayo`, correos de áreas, `URL_NODEX_GASTOS` y `URL_NODEX_TRAMITES` (botón "Abrir Nodex" en los correos; opcionales), Google y `API_KEY_EXTERNA` nueva.
+   - Backend: `PORT=9000`, `HOST=127.0.0.1`, `NODE_ENV=production`, `JWT_SECRET` nuevo, `DB_HOST=10.0.4.4`, `DB_NAME=nodex_pruebas`, `DB_USER=desarrolloti`, `REDIS_DB=1`, `MODO_ENSAYO=si`, `CORREO_ENSAYO`, `AZURE_FILE_SHARE_NAME=nodex-ensayo`, correos de áreas, `URL_NODEX_GASTOS` y `URL_NODEX_TRAMITES` (botón "Abrir Nodex" en los correos; opcionales), Google y `API_KEY_EXTERNA` nueva.
    - Frontends: `API_URL=http://127.0.0.1:9000/api`; en Trámites además `GASTOS_URL`, `NEXT_PUBLIC_URL_APP_TRAMITADORES` y las claves de Google del navegador, **antes** de compilar.
    - Aunque un `.env` diga `PORT=4000`, PM2 arranca la API con `PORT=9000` (dotenv no reemplaza variables ya definidas).
 6. **Instalar y compilar:** `npm ci && npm run build` en Backend y en las tres apps (sin `--production`). La API corre desde `dist/` (probado: los modelos cargan bien con `declaration: true`).

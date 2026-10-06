@@ -79,8 +79,41 @@ const retencionAlCrearGasto = async () => {
   }
 }
 
+// 2026-10-06 · Pago en tres pasos: Tesorería programa → Dirección de Negocio aprueba →
+// Tesorería adjunta el soporte del banco y confirma. Los lotes que ya existían quedan PAGADO.
+const pagoProgramado = async () => {
+  const lotes = await columnasDe('gastos_lotes_pago')
+  if (lotes) {
+    const nuevas: [string, string][] = [
+      ['estado', `VARCHAR(20) NOT NULL DEFAULT 'PAGADO'`],
+      ['aprobado_por', 'INTEGER REFERENCES "Usuarios" (id)'],
+      ['fecha_aprobacion', 'TIMESTAMP WITH TIME ZONE'],
+      ['confirmado_por', 'INTEGER REFERENCES "Usuarios" (id)'],
+      ['fecha_confirmacion', 'TIMESTAMP WITH TIME ZONE']
+    ]
+    for (const [columna, tipo] of nuevas) {
+      if (!lotes[columna]) await db.query(`ALTER TABLE gastos_lotes_pago ADD COLUMN ${columna} ${tipo}`)
+    }
+  }
+
+  const gastos = await columnasDe('gastos_solicitudes')
+  if (gastos && !gastos.valor_programado) {
+    await db.query(`ALTER TABLE gastos_solicitudes ADD COLUMN valor_programado DECIMAL(15, 2)`)
+  }
+
+  // Los estados nuevos van entre Solicitado y Pagado: se reordenan los existentes
+  const orden: [string, number][] = [
+    ['SOLICITADO', 1], ['PROGRAMADO', 2], ['APROBADO_PAGO', 3], ['PAGADO', 4], ['FACTURADO', 5],
+    ['EN_CUENTA_COBRO', 6], ['LEGALIZADO', 7], ['CONTABILIZADO', 8]
+  ]
+  for (const [codigo, posicion] of orden) {
+    await db.query(`UPDATE gastos_estados_gasto SET orden = :posicion WHERE codigo = :codigo AND orden <> :posicion`, { replacements: { codigo, posicion } })
+  }
+}
+
 export const ajustarEsquemaGastos = async () => {
   await retencionPasaALaFactura()
   await contabilizacionDeGastos()
   await retencionAlCrearGasto()
+  await pagoProgramado()
 }

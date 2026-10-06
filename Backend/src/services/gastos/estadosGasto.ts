@@ -9,7 +9,9 @@ export type CodigoEstadoGasto = typeof ESTADOS_GASTO[keyof typeof ESTADOS_GASTO]
 
 // Qué estados pueden seguir a cada estado. Cualquier otro cambio se rechaza.
 const TRANSICIONES: Record<CodigoEstadoGasto, CodigoEstadoGasto[]> = {
-  SOLICITADO: ['PAGADO', 'ANULADO'],
+  SOLICITADO: ['PROGRAMADO', 'PAGADO', 'ANULADO'],   // PAGADO directo = compras de certificados
+  PROGRAMADO: ['APROBADO_PAGO', 'SOLICITADO'],     // SOLICITADO = rechazado o quitado del lote
+  APROBADO_PAGO: ['PAGADO', 'SOLICITADO'],
   PAGADO: ['FACTURADO'],
   FACTURADO: ['EN_CUENTA_COBRO', 'LEGALIZADO'],   // LEGALIZADO directo = no reembolsable
   EN_CUENTA_COBRO: ['FACTURADO', 'LEGALIZADO'],   // FACTURADO = se sacó de la cuenta de cobro

@@ -70,7 +70,7 @@ export default async function BandejaPorPagar({
         </p>
       )}
 
-      <BandejaPagos gastos={registros} bolsas={bolsas} />
+      <BandejaPagos gastos={registros} bolsas={bolsas} directo={certificados === "si"} />
     </div>
   )
 }

@@ -21,7 +21,7 @@ import FacturasGasto from '../../models/gastos/facturasGasto'
 import { actualizarGasto, anularGasto, crearGasto } from '../../services/gastos/solicitudesGasto'
 import { registrarFactura } from '../../services/gastos/facturas'
 import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../services/gastos/estadosGasto'
-import { ESTADOS_GASTO, ROLES } from '../../services/gastos/constantes'
+import { ESTADOS_GASTO, ESTADOS_SIN_PAGO, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados } from './utilidades'
@@ -111,10 +111,10 @@ const condicionesListado = async (req: Request) => {
   else if (q.certificados === 'no') condiciones.push({ tipoGastoId: { [Op.notIn]: tiposCertificados } })
 
   if (q.estado) condiciones.push({ estadoId: await idEstadoGasto(q.estado as CodigoEstadoGasto) })
-  // Ya pagados: cualquier estado después de Solicitado (sin anulados)
+  // Ya pagados: cualquier estado desde Pagado (sin programados, aprobados sin confirmar ni anulados)
   if (q.pagados === 'si') {
     condiciones.push({
-      estadoId: { [Op.notIn]: [await idEstadoGasto(ESTADOS_GASTO.SOLICITADO), await idEstadoGasto(ESTADOS_GASTO.ANULADO)] }
+      estadoId: { [Op.notIn]: await Promise.all(ESTADOS_SIN_PAGO.map(codigo => idEstadoGasto(codigo as CodigoEstadoGasto))) }
     })
   }
 

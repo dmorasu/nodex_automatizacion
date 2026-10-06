@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-05_
+_Actualizado: 2026-10-06_
 
 ## Arquitectura
 
@@ -223,6 +223,33 @@ _Actualizado: 2026-10-05_
 - `.env` creados en `Backend/` y en las tres apps de `Frontend/` (`API_URL=http://localhost:4000/api`; Trámites además `GASTOS_URL=http://localhost:3001`).
 - **`node_modules` está versionado en git** (~20.000 archivos, aunque `.gitignore` lo excluye). Los de Windows fallan en Mac (`Permission denied`), así que se reinstalaron: `git status` muestra miles de cambios ahí que **no deben subirse**.
 
+### Nodex Gastos: pago en tres pasos con aprobación de Dirección de Negocio (2026-10-06)
+- **Flujo (gastos generales):**
+  1. **Tesorería programa** (`POST /gastos/lotes`, `programarPago`): crea el lote `PROGRAMADO` con bolsa, fecha programada y `valorProgramado` por gasto; los gastos pasan a `PROGRAMADO`. **No descuenta la bolsa**, pero valida el disponible = saldo − total de lotes `PROGRAMADO`/`APROBADO` de esa bolsa.
+  2. **Dirección de Negocio aprueba o rechaza** en Nodex (`POST /lotes/:id/aprobar` con `gastoIds` opcional = todos; `POST /lotes/:id/rechazar` con `gastoIds` y `motivo`). Aprobado → gasto `APROBADO_PAGO`; rechazado → vuelve a `SOLICITADO` (sale del lote, `valorProgramado` = null). Con todos los gastos restantes aprobados el lote pasa a `APROBADO` (`aprobadoPor`, `fechaAprobacion`); sin gastos, `RECHAZADO`. Después la Dirección aprueba en la plataforma del banco.
+  3. **Tesorería confirma** (`POST /lotes/:id/confirmar` con `fechaPago` real): exige el lote `APROBADO` y **al menos un soporte del banco** adjunto al lote (`POST /lotes/:id/documentos`). Descuenta la bolsa (`registrarMovimientos`), gastos → `PAGADO` (`valorRealmentePagado` = `valorProgramado`, `fechaPago`, `bolsaId`), lote `PAGADO` (`confirmadoPor`, `fechaConfirmacion`).
+  - Tesorería puede **quitar gastos** de un lote `PROGRAMADO` o `APROBADO` con motivo (`POST /lotes/:id/quitar`); vuelven a `SOLICITADO`.
+- **Compras de certificados (CTL y Cámara de Comercio): pago directo, sin Dirección.** `POST /gastos/pagos` (`pagarDirecto`) crea el lote ya `PAGADO`, descuenta la bolsa y el soporte es opcional, como antes. `verificarFlujo` en `PagosController` impide programar certificados o pagar directo gastos generales.
+- **Datos:** `gastos_lotes_pago` + `estado` (PROGRAMADO/APROBADO/PAGADO/RECHAZADO; los 12 lotes previos quedaron `PAGADO` por el DEFAULT), `aprobado_por`, `fecha_aprobacion`, `confirmado_por`, `fecha_confirmacion`; `gastos_solicitudes` + `valor_programado`. Estados de gasto nuevos `PROGRAMADO` ("Programado para pago") y `APROBADO_PAGO` ("Aprobado para pago"), reordenados (orden 1–8). Rol nuevo `DIRECCION_NEGOCIO`. Todo en `pagoProgramado()` (`ajustesEsquemaGastos.ts`) y el seed.
+- **Transiciones** (`estadosGasto.ts`): SOLICITADO → PROGRAMADO | PAGADO (solo certificados) | ANULADO; PROGRAMADO → APROBADO_PAGO | SOLICITADO; APROBADO_PAGO → PAGADO | SOLICITADO.
+- **"Pagado" ya no es "todo menos SOLICITADO/ANULADO":** `ESTADOS_SIN_PAGO` (constantes) se usa en el filtro `pagados=si`, el tablero (pagado; "Por pagar" incluye programado y aprobado) y reintegros por tramitador. `GET /lotes?egreso=` (Contabilidad) devuelve solo lotes `PAGADO`; `GET /lotes?estado=A,B` filtra por estado.
+- **Permisos:** Dirección de Negocio ve todos los gastos y sus documentos (`ROLES_GASTOS` en `utilidades.ts`) y los lotes (`verLotes`).
+- **Correos** (`notificacionesGastos.ts`):
+  - Lote programado → todos los usuarios con perfil `DIRECCION_NEGOCIO` (`LOTE_PROGRAMADO`).
+  - Lote aprobado completo → Tesorería (`LOTE_APROBADO`); gastos rechazados → Tesorería con el motivo (`LOTE_GASTOS_RECHAZADOS`).
+  - **Gasto pagado** (creador, analista con copia a torre de control, torre de control): sale **solo al confirmar** (o en el pago directo). Dice "Tesorería confirmó el pago", quién aprobó en la Dirección y que el soporte del banco está en el detalle del gasto; fichas con "Lote de pago" y "Aprobado por" ("Pago directo (certificados)" si no hubo aprobación).
+- **Frontend Gastos:**
+  - Tesorería: "Por pagar" → botón **Programar pago** (`ModalPago` sin soporte, con "Valor a pagar" y fecha programada); en Certificados sigue **Pagar seleccionados** (`ModalPago directo`, con soporte). Pestaña nueva **Programados** (lotes PROGRAMADO/APROBADO, solo Tesorería general); "Pagos realizados" = lotes PAGADO.
+  - Módulo nuevo **Aprobación de pagos** (`/direccion`, pestañas Por aprobar / Historial, detalle en `/direccion/lotes/[id]`).
+  - `DetalleLote` según estado y modo (`tesoreria` | `direccion` | `contabilidad`): `GastosLote.tsx` (selección, aprobar todos/seleccionados, rechazar o quitar con motivo) y `ConfirmarPagoLote.tsx` (soporte + fecha real; el botón se activa solo con soporte). `ListadoLotes.tsx` reutilizable para las cuatro listas.
+  - Inicio: Tesorería "por programar" y "aprobados por confirmar"; Dirección "por aprobar". Colores de los estados nuevos en `EstadoGasto.tsx`.
+- **Probado en desarrollo:** esquema, estados, rol y rechazo de acciones sobre lotes ya pagados; correo de pagado con datos reales (sin enviar). **Falta la prueba completa** programar → aprobar → confirmar (no hay gastos SOLICITADO en desarrollo; descuenta una bolsa).
+
+### Administración de usuarios en Nodex Trámites (2026-10-05)
+- `/center/admin`: lista paginada (15 por página) con búsqueda y filtros por **perfil** (incluye "Sin acceso a trámites" y "Sin ningún perfil") y por **área**. Los perfiles del formulario de nuevo usuario van en cuadrícula por grupo.
+- **Administrador de Torre de control** entra a Administración (`requiereAdministrarUsuarios`, menú) y solo maneja perfiles de trámites (`ROLES_TRAMITES` en constantes). El backend (`RolesGastosController`) responde 403 si intenta asignar o quitar perfiles de Gastos/Administración, o editar o cambiar la contraseña de usuarios que los tengan. Al guardar perfiles de un usuario de Gastos conserva sus perfiles de Gastos.
+- Grupo Gastos de la tabla con `TESORERIA_CERTIFICADOS` y `DIRECCION_NEGOCIO`.
+
 ### 3. Nodex Gastos: pantallas
 - **Legalización:**
   - Gastos sin factura: PAGADO, reembolsable y sin soporte del tramitador; muestra el estado del trámite.
@@ -250,7 +277,15 @@ Todo se probó contra la base de **desarrollo**. Para producción, en este orden
    ALTER TABLE "SolicitudTramites" ADD COLUMN "analistaAsignado" INTEGER REFERENCES "Usuarios"(id) ON UPDATE CASCADE ON DELETE SET NULL;
    CREATE INDEX IF NOT EXISTS "solicitud_tramites_analista_asignado" ON "SolicitudTramites"("analistaAsignado");
    ```
-   (Mismo caso para los ajustes previos: columnas de retención en `gastos_solicitudes` y `tramitadorId`/`tipoDocumento` en `DocumentosSolicitud`.)
+   (Mismo caso para los ajustes previos: columnas de retención en `gastos_solicitudes` y `tramitadorId`/`tipoDocumento` en `DocumentosSolicitud`; y para el pago en tres pasos:)
+   ```sql
+   ALTER TABLE gastos_lotes_pago ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'PAGADO';
+   ALTER TABLE gastos_lotes_pago ADD COLUMN aprobado_por INTEGER REFERENCES "Usuarios"(id);
+   ALTER TABLE gastos_lotes_pago ADD COLUMN fecha_aprobacion TIMESTAMP WITH TIME ZONE;
+   ALTER TABLE gastos_lotes_pago ADD COLUMN confirmado_por INTEGER REFERENCES "Usuarios"(id);
+   ALTER TABLE gastos_lotes_pago ADD COLUMN fecha_confirmacion TIMESTAMP WITH TIME ZONE;
+   ALTER TABLE gastos_solicitudes ADD COLUMN valor_programado DECIMAL(15, 2);
+   ```
 4. **Claves de Google separadas y restringidas** (paso a paso en "Seguridad: claves y accesos" más abajo):
    - Clave del **servidor** (`GOOGLE_MAPS_API_KEY` del backend): restringida a la **IP pública del servidor** y solo a Geocoding API, Routes API y Places API (New).
    - Clave del **navegador** (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` de Nodex Trámites): restringida al **dominio** de Nodex Trámites y solo a Maps JavaScript API.
@@ -270,11 +305,12 @@ Todo se probó contra la base de **desarrollo**. Para producción, en este orden
    - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: la clave del navegador (paso 4). Sin ella el mapa de rutas usa OpenStreetMap.
    - `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`: Map ID propio (opcional; sin él usa `DEMO_MAP_ID`).
    - `NEXT_PUBLIC_URL_APP_TRAMITADORES` (ya pendiente de antes).
-9. Arranque: confirmar en el log "Conexion Exitosa" y no "Fallo la Conexion…" (crea los índices de `mensajeria_paradas`); columnas de analistas y retención, y roles creados (`ANALISTA_TRAMITES`, `ADMIN_TORRE_CONTROL`, `TESORERIA_CERTIFICADOS`). Deben salir también "⏰ Diligencias de hoy…" y "⏰ Diligencias vencidas…".
+9. Arranque: confirmar en el log "Conexion Exitosa" y no "Fallo la Conexion…" (crea los índices de `mensajeria_paradas`); columnas de analistas y retención, y roles creados (`ANALISTA_TRAMITES`, `ADMIN_TORRE_CONTROL`, `TESORERIA_CERTIFICADOS`, `DIRECCION_NEGOCIO`); estados de gasto `PROGRAMADO` y `APROBADO_PAGO`. Deben salir también "⏰ Diligencias de hoy…" y "⏰ Diligencias vencidas…".
 10. **Una sola instancia del backend** (PM2 sin modo cluster): el programador de WhatsApp y la caché del trazado de rutas viven en memoria.
 
 **Después de desplegar**
-11. Asignar roles en Usuarios: Analista de trámites, Administrador Torre de control, Tesorería - Certificados.
+11. Asignar roles en Usuarios: Analista de trámites, Administrador Torre de control, Tesorería - Certificados y **Dirección de Negocio** (con su correo: le llegan los lotes por aprobar).
+    - **Antes de desplegar el pago en tres pasos**, que Tesorería pague lo que tenga en curso: después, todo gasto general debe pasar por la aprobación de Dirección.
 12. Mensajes de WhatsApp ya guardados (primero sin `--aplicar`):
     `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/scripts/corregirMensajesWhatsapp.ts [--aplicar]`
 13. Estado actual de los trámites (el Excel de estados no lo actualizaba; primero sin `--aplicar`). **Necesario también para** el filtro "Estado" de la búsqueda de gestión masiva, el tablero y la API externa:
@@ -286,7 +322,7 @@ Todo se probó contra la base de **desarrollo**. Para producción, en este orden
 15. **Verificar Google:** abrir Rutas de mensajeros con un día que tenga diligencias; el mapa debe ser de Google y las líneas ir por las calles. Si sale un recuadro rojo, ver la consola (F12): `RefererNotAllowedMapError` = falta el dominio en la clave del navegador; `ApiNotActivatedMapError` = falta habilitar Maps JavaScript API. Probar también el autocompletado de dirección al crear un trámite (usa la clave del servidor: si falla con "REQUEST_DENIED", la IP del servidor no está en la lista de la clave).
 16. **Verificar la API externa** desde el servidor de la otra plataforma (paso a paso abajo) y entregar la clave por un canal seguro (no correo ni chat).
 17. Avisar a Torre de control: el cargue de estados por Excel ahora notifica (Desistido por WhatsApp; Novedad y Finalizado por correo), y el "Programador" de las notificaciones es el analista asignado. Además: gestión masiva con varias acciones a la vez y búsqueda por filtros, Catálogos (tipos de trámite, subestados, operaciones, rechazos y tramitadores) y el menú nuevo.
-18. Avisar a Tesorería, Legalización, analistas y torre de control de los correos nuevos: gasto creado y reintegro del tramitador (grupotesoreria@), trámite finalizado con factura (legalizaciongastos@), gasto pagado (analista con copia a torredecontrol@) y trámite desistido (a quien lo creó).
+18. Explicar a Tesorería y a Dirección de Negocio el pago en tres pasos (programar → aprobar en Nodex y en el banco → adjuntar soporte y confirmar) y que los certificados se siguen pagando directo. Avisar a Tesorería, Legalización, analistas y torre de control de los correos nuevos: gasto creado y reintegro del tramitador (grupotesoreria@), trámite finalizado con factura (legalizaciongastos@), gasto pagado (analista con copia a torredecontrol@) y trámite desistido (a quien lo creó).
 19. **No borrar operaciones, tipos de trámite ni subestados directamente en la base:** las llaves tienen `ON DELETE CASCADE` (borrar una operación borra sus trámites). Hacerlo solo desde Catálogos, que bloquea lo que está en uso.
 
 ### Seguridad: claves y accesos (paso a paso)
@@ -355,6 +391,8 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
 - **Tramitador del gasto:** `COALESCE(gasto.tramitador_id, tramite.tramitadorId)`.
 - **"Boleta de reintegro" e "Ingreso"** se crearon como dos tipos separados (el pedido fue ambiguo).
 - **CTL y Cámara de Comercio** son dos tipos de gasto distintos; en CTL la placa y la matrícula son opcionales.
+- **Pago en tres pasos (2026-10-06, decidido por el usuario):** la Dirección de Negocio aprueba también en Nodex (perfil propio); un gasto no aprobado vuelve a Por pagar (no se anula); la bolsa se descuenta al confirmar el pago, no al programar; el soporte del banco es obligatorio para confirmar; los certificados no pasan por la Dirección.
+- **Correo "por aprobar"** va a todos los usuarios con perfil Dirección de Negocio (no a un correo fijo del `.env`).
 
 ## Pendientes y riesgos
 1. **Arranque del backend:** confirmado el 2026-10-04 (`REST API en el puerto 4000` + `Conexion Exitosa`) tras corregir los índices de `mensajeria_paradas`. Sigue el riesgo de que `connectDB()` esconda errores; se propuso detener el servidor si falla (sin confirmar).
@@ -365,9 +403,10 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
 6. **Reintegros de no reembolsables:** hoy se ven en Legalización; falta confirmar si deben ir a Contabilidad.
 7. **Correos nuevos sin prueba real:** crear y pagar un gasto de un trámite con analista, desistir un trámite, finalizar un trámite cuyo gasto tenga factura del tramitador y subir un reintegro desde la app, para verificar la entrega por SendGrid.
    - **Por confirmar con el usuario:** si Contabilidad debe recibir un aviso igual por los gastos no reembolsables con factura, y si el correo a Legalización debe exigir además el reporte "Realizado".
-8. **`node_modules` en git:** sacarlo del repositorio (`git rm -r --cached`) para que no se mezclen dependencias de Windows y Mac. Pendiente de autorización.
-9. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción). La variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` quedó en el checklist (paso 8).
-10. **Claves de Google en desarrollo:** hoy el backend y Nodex Trámites usan la misma clave (sin restricciones). En producción deben ser dos claves restringidas (checklist, paso 4 y sección de seguridad).
+8. **Pago en tres pasos sin prueba completa:** crear un gasto de prueba, programarlo, aprobarlo con un usuario Dirección de Negocio, adjuntar soporte y confirmar; revisar la bolsa, los correos y la lista de egresos de Contabilidad. En desarrollo descuenta una bolsa (devolver con un ajuste).
+9. **`node_modules` en git:** sacarlo del repositorio (`git rm -r --cached`) para que no se mezclen dependencias de Windows y Mac. Pendiente de autorización.
+10. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción). La variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` quedó en el checklist (paso 8).
+11. **Claves de Google en desarrollo:** hoy el backend y Nodex Trámites usan la misma clave (sin restricciones). En producción deben ser dos claves restringidas (checklist, paso 4 y sección de seguridad).
 
 ## Próximos pasos sugeridos
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.

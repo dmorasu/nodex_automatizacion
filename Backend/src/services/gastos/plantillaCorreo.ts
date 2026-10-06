@@ -12,6 +12,9 @@ export type { Detalle } from '../template/correoBase'
 
 export const ESTADOS_CORREO = {
   POR_PAGAR: { texto: 'Por pagar', tono: 'alerta' as Tono },
+  POR_APROBAR: { texto: 'Por aprobar', tono: 'alerta' as Tono },
+  APROBADO: { texto: 'Aprobado', tono: 'exito' as Tono },
+  RECHAZADO: { texto: 'Rechazado', tono: 'peligro' as Tono },
   PAGADO: { texto: 'Pagado', tono: 'exito' as Tono },
   POR_LEGALIZAR: { texto: 'Por legalizar', tono: 'info' as Tono },
   REINTEGRO: { texto: 'Reintegro', tono: 'info' as Tono }

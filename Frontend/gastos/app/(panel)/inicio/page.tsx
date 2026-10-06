@@ -9,6 +9,7 @@ import {
   Receipt,
   Settings2,
   Users,
+  BadgeCheck,
   type LucideIcon
 } from "lucide-react"
 import { obtenerSesion } from "@/src/auth/dal"
@@ -19,6 +20,7 @@ import { fetchApi } from "@/src/lib/api"
 const ASPECTO: Record<string, { Icono: LucideIcon, fondo: string, sombra: string, borde: string, halo: string }> = {
   "/solicitudes": { Icono: Receipt, fondo: "from-emerald-400 to-teal-600", sombra: "shadow-emerald-500/30", borde: "hover:border-emerald-300", halo: "bg-emerald-400" },
   "/tesoreria": { Icono: Landmark, fondo: "from-sky-400 to-blue-600", sombra: "shadow-sky-500/30", borde: "hover:border-sky-300", halo: "bg-sky-400" },
+  "/direccion": { Icono: BadgeCheck, fondo: "from-teal-400 to-emerald-600", sombra: "shadow-teal-500/30", borde: "hover:border-teal-300", halo: "bg-teal-400" },
   "/legalizacion": { Icono: FileCheck2, fondo: "from-violet-400 to-purple-600", sombra: "shadow-violet-500/30", borde: "hover:border-violet-300", halo: "bg-violet-400" },
   "/contabilidad": { Icono: Calculator, fondo: "from-amber-400 to-orange-500", sombra: "shadow-amber-500/30", borde: "hover:border-amber-300", halo: "bg-amber-400" },
   "/tablero": { Icono: BarChart3, fondo: "from-indigo-400 to-indigo-600", sombra: "shadow-indigo-500/30", borde: "hover:border-indigo-300", halo: "bg-indigo-400" },
@@ -52,7 +54,13 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
     ["/solicitudes", "por pagar", contar({ alcance: "mios", estado: "SOLICITADO" })]
   ]
   if (puede(ROLES.TESORERIA)) {
-    consultas.push(["/tesoreria", "por pagar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "no" })])
+    consultas.push(
+      ["/tesoreria", "por programar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "no" })],
+      ["/tesoreria", "aprobados por confirmar", contar({ alcance: "todos", estado: "APROBADO_PAGO", certificados: "no" })]
+    )
+  }
+  if (puede(ROLES.DIRECCION_NEGOCIO)) {
+    consultas.push(["/direccion", "por aprobar", contar({ alcance: "todos", estado: "PROGRAMADO" })])
   }
   if (puede(ROLES.TESORERIA_CERTIFICADOS)) {
     consultas.push(["/tesoreria", "certificados por pagar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "si" })])

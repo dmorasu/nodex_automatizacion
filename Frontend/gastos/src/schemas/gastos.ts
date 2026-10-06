@@ -255,8 +255,16 @@ export const MovimientosBolsaSchema = z.object({
   registros: z.array(MovimientoBolsaSchema)
 })
 
+export const ESTADOS_LOTE: Record<string, string> = {
+  PROGRAMADO: "Por aprobar",
+  APROBADO: "Aprobado · falta confirmar",
+  PAGADO: "Pagado",
+  RECHAZADO: "Rechazado"
+}
+
 export const LoteListadoSchema = z.object({
   id: z.number(),
+  estado: z.string(),
   fechaPago: z.string(),
   numeroEgreso: textoNulo,
   total: z.string(),
@@ -277,12 +285,18 @@ export const ListadoLotesSchema = z.object({
 
 export const LoteDetalleSchema = LoteListadoSchema.omit({ cantidadGastos: true }).extend({
   observacion: textoNulo,
+  fechaAprobacion: textoNulo,
+  fechaConfirmacion: textoNulo,
+  aprobador: UsuarioCortoSchema,
+  confirmador: UsuarioCortoSchema,
   gastos: z.array(z.object({
     id: z.number(),
     codigo: z.string(),
     conceptoPago: z.string(),
     valorSolicitadoPago: z.string(),
+    valorProgramado: dinero,
     valorRealmentePagado: dinero,
+    estado: z.object({ codigo: z.string(), nombre: z.string() }),
     beneficiario: z.object({ id: z.number(), identificacion: z.string(), nombre: z.string() }),
     creador: UsuarioCortoSchema
   })),

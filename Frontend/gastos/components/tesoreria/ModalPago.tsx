@@ -3,8 +3,8 @@
 import { useMemo, useState, useTransition } from "react"
 import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { AlertTriangle, Loader2, Wallet } from "lucide-react"
-import { pagarGastos } from "@/actions/gastos/tesoreria"
+import { AlertTriangle, CalendarClock, Loader2, Wallet } from "lucide-react"
+import { pagarCertificados, programarPago } from "@/actions/gastos/tesoreria"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { Bolsa, GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
@@ -13,14 +13,18 @@ const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "Am
 
 const aCentavos = (valor: string | number) => Math.round(Number(valor) * 100)
 
+// Gastos generales: se PROGRAMA el pago (Dirección de Negocio aprueba y luego Tesorería confirma).
+// Compras de certificados (`directo`): se pagan en un solo paso, como siempre.
 export default function ModalPago({
   gastos,
   bolsas,
+  directo = false,
   onCerrar,
   onPagado
 }: {
   gastos: GastoListado[]
   bolsas: Bolsa[]
+  directo?: boolean
   onCerrar: () => void
   onPagado: () => void
 }) {
@@ -32,7 +36,7 @@ export default function ModalPago({
   const [fechaPago, setFechaPago] = useState(hoyEnBogota)
   const [observacion, setObservacion] = useState("")
   const [archivos, setArchivos] = useState<File[]>([])
-  // Valor pagado por gasto; por defecto el valor solicitado (se puede cambiar)
+  // Valor a pagar por gasto; por defecto el valor solicitado (se puede cambiar)
   const [valores, setValores] = useState<Record<number, string>>(
     () => Object.fromEntries(gastos.map(g => [g.id, String(Number(g.valorSolicitadoPago))]))
   )
@@ -48,32 +52,45 @@ export default function ModalPago({
   const valoresInvalidos = gastos.some(g => !(Number(valores[g.id]) > 0))
   const cambianDeBolsa = bolsaId ? gastos.filter(g => g.bolsa?.id !== bolsaId) : []
 
-  const pagar = () => {
+  const programar = () => {
     if (!bolsaId) return toast.error("Seleccione la bolsa")
-    if (!fechaPago) return toast.error("Indique la fecha de pago")
-    if (valoresInvalidos) return toast.error("Todos los valores pagados deben ser mayores a cero")
+    if (!fechaPago) return toast.error(directo ? "Indique la fecha de pago" : "Indique la fecha programada")
+    if (valoresInvalidos) return toast.error("Todos los valores a pagar deben ser mayores a cero")
 
-    let soporte: FormData | null = null
-    if (archivos.length > 0) {
-      soporte = new FormData()
+    if (directo) {
+      const soporte = archivos.length ? new FormData() : null
       archivos.forEach(archivo => soporte!.append("archivos", archivo))
+      return startPagar(async () => {
+        const resultado = await pagarCertificados({
+          bolsaId,
+          fechaPago,
+          observacion,
+          gastos: gastos.map(g => ({ id: g.id, valorRealmentePagado: Number(valores[g.id]) }))
+        }, soporte)
+        if (!resultado.ok) {
+          resultado.errores.forEach(error => toast.error(error))
+          return
+        }
+        toast.success(`${gastos.length} gasto(s) pagado(s) · lote #${resultado.datos.loteId}`)
+        if (resultado.advertencia) toast.warning(resultado.advertencia, { autoClose: false })
+        onPagado()
+      })
     }
 
     startPagar(async () => {
-      const resultado = await pagarGastos({
+      const resultado = await programarPago({
         bolsaId,
         fechaPago,
         observacion,
-        gastos: gastos.map(g => ({ id: g.id, valorRealmentePagado: Number(valores[g.id]) }))
-      }, soporte)
+        gastos: gastos.map(g => ({ id: g.id, valorProgramado: Number(valores[g.id]) }))
+      })
 
       if (!resultado.ok) {
         resultado.errores.forEach(error => toast.error(error))
         return
       }
 
-      toast.success(`${gastos.length} gasto(s) pagado(s) · lote #${resultado.datos.loteId}`)
-      if (resultado.advertencia) toast.warning(resultado.advertencia, { autoClose: false })
+      toast.success(`${gastos.length} gasto(s) programado(s) · lote #${resultado.datos.loteId}. Queda pendiente la aprobación de Dirección de Negocio.`)
       onPagado()
     })
   }
@@ -88,10 +105,12 @@ export default function ModalPago({
 
             <div className="px-6 py-4 border-b border-slate-100">
               <DialogTitle className="text-sm font-semibold text-slate-800">
-                Pagar {gastos.length} gasto(s)
+                {directo ? `Pagar ${gastos.length} gasto(s)` : `Programar el pago de ${gastos.length} gasto(s)`}
               </DialogTitle>
               <p className="mt-0.5 text-xs text-slate-400">
-                Se crea un lote de pago, se descuenta la bolsa y se avisa por correo a quien creó cada gasto.
+                {directo
+                  ? "Compras de certificados: se paga en un solo paso, se descuenta la bolsa y se avisa por correo."
+                  : "Se crea un lote que Dirección de Negocio debe aprobar. La bolsa se descuenta cuando confirme el pago con el soporte del banco."}
               </p>
             </div>
 
@@ -112,7 +131,7 @@ export default function ModalPago({
                   </select>
                 </label>
                 <label className="block">
-                  <span className={claseLabel}>Fecha de pago <span className="text-red-400">*</span></span>
+                  <span className={claseLabel}>{directo ? "Fecha de pago" : "Fecha programada"} <span className="text-red-400">*</span></span>
                   <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)} className={claseInput} />
                 </label>
               </div>
@@ -122,7 +141,7 @@ export default function ModalPago({
                   <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                   <p>
                     {cambianDeBolsa.map(g => g.codigo).join(", ")} {cambianDeBolsa.length === 1 ? "está asociado" : "están asociados"} a
-                    otra bolsa y {cambianDeBolsa.length === 1 ? "quedará" : "quedarán"} en <b>{bolsa?.nombre}</b> al pagar.
+                    otra bolsa y {cambianDeBolsa.length === 1 ? "quedará" : "quedarán"} en <b>{bolsa?.nombre}</b> al confirmar el pago.
                   </p>
                 </div>
               )}
@@ -135,7 +154,7 @@ export default function ModalPago({
                       <th className="px-3 py-2 font-semibold">Gasto</th>
                       <th className="px-3 py-2 font-semibold">Beneficiario</th>
                       <th className="px-3 py-2 font-semibold text-right">Valor solicitado</th>
-                      <th className="px-3 py-2 font-semibold text-right w-40">Valor pagado</th>
+                      <th className="px-3 py-2 font-semibold text-right w-40">Valor a pagar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -155,7 +174,7 @@ export default function ModalPago({
                             value={valores[g.id]}
                             onChange={e => setValores(actuales => ({ ...actuales, [g.id]: e.target.value }))}
                             className={`${claseInput} h-8 text-right`}
-                            aria-label={`Valor pagado ${g.codigo}`}
+                            aria-label={`Valor a pagar ${g.codigo}`}
                           />
                         </td>
                       </tr>
@@ -167,7 +186,7 @@ export default function ModalPago({
               {/* Resumen */}
               <div className="grid gap-3 sm:grid-cols-3 rounded-md bg-slate-50 px-4 py-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-slate-400">Total del pago</p>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400">Total programado</p>
                   <p className="text-base font-semibold text-slate-800">{formatoMoneda(totalCentavos / 100)}</p>
                 </div>
                 <div>
@@ -187,18 +206,25 @@ export default function ModalPago({
                   La bolsa no tiene saldo suficiente. Recárguela en la pestaña Bolsas o reduzca la selección.
                 </p>
               )}
+              {!directo && (
+                <p className="text-[11px] text-slate-400">
+                  Al guardar también se descuenta de lo disponible lo que ya esté programado o aprobado en esta bolsa y aún no se haya pagado.
+                </p>
+              )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className={claseLabel}>Soporte de pago (PDF, JPG o PNG)</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={e => setArchivos(Array.from(e.target.files ?? []))}
-                    className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-600 hover:file:bg-slate-200"
-                  />
-                </label>
+              <div className={`grid gap-4 ${directo ? "sm:grid-cols-2" : ""}`}>
+                {directo && (
+                  <label className="block">
+                    <span className={claseLabel}>Soporte de pago (PDF, JPG o PNG)</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={e => setArchivos(Array.from(e.target.files ?? []))}
+                      className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-600 hover:file:bg-slate-200"
+                    />
+                  </label>
+                )}
                 <label className="block">
                   <span className={claseLabel}>Observación</span>
                   <textarea value={observacion} onChange={e => setObservacion(e.target.value)} rows={2} maxLength={1000} className={claseTextarea} />
@@ -210,12 +236,12 @@ export default function ModalPago({
               <button type="button" onClick={onCerrar} disabled={pagando} className={claseBotonSecundario}>Cancelar</button>
               <button
                 type="button"
-                onClick={pagar}
+                onClick={programar}
                 disabled={pagando || !bolsaId || saldoInsuficiente || valoresInvalidos}
                 className={claseBotonPrimario}
               >
-                {pagando ? <Loader2 size={15} className="animate-spin" /> : <Wallet size={15} />}
-                Confirmar pago de {formatoMoneda(totalCentavos / 100)}
+                {pagando ? <Loader2 size={15} className="animate-spin" /> : directo ? <Wallet size={15} /> : <CalendarClock size={15} />}
+                {directo ? "Confirmar pago de" : "Programar pago de"} {formatoMoneda(totalCentavos / 100)}
               </button>
             </div>
 

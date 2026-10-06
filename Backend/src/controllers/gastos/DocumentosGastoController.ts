@@ -8,7 +8,7 @@ import CuentasCobro from '../../models/gastos/cuentasCobro'
 import Reintegros from '../../models/gastos/reintegros'
 import { subirArchivo, obtenerArchivo, eliminarArchivo } from '../../services/azureFileStorage'
 import { codigoEstadoGasto } from '../../services/gastos/estadosGasto'
-import { ESTADOS_GASTO, TIPOS_DOCUMENTO } from '../../services/gastos/constantes'
+import { ESTADOS_GASTO, TIPOS_DOCUMENTO, ESTADOS_LOTE } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { obtenerGastoConAcceso } from './SolicitudesGastoController'
 import { esAdmin, puedeVerTodos, responderError } from './utilidades'
@@ -141,6 +141,7 @@ export class DocumentosGastoController {
     try {
       const lote = await LotesPago.findByPk(Number(req.params.id))
       if (!lote) throw new ErrorGastos('El lote de pago no existe', 404)
+      if (lote.estado === ESTADOS_LOTE.RECHAZADO) throw new ErrorGastos('El lote fue rechazado: no recibe soportes')
 
       const tipoDocumento = await TiposDocumentoGasto.findOne({ where: { codigo: TIPOS_DOCUMENTO.SOPORTE_PAGO } })
       if (!tipoDocumento) throw new ErrorGastos('No existe el tipo de documento Soporte de pago', 500)

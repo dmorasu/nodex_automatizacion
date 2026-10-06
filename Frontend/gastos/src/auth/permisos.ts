@@ -10,6 +10,8 @@ export const ROLES = {
   TESORERIA_CERTIFICADOS: "TESORERIA_CERTIFICADOS",
   LEGALIZACION: "LEGALIZACION",
   CONTABILIDAD: "CONTABILIDAD",
+  // Aprueba los pagos que programa Tesorería
+  DIRECCION_NEGOCIO: "DIRECCION_NEGOCIO",
   ADMIN: "ADMIN"
 } as const
 
@@ -20,6 +22,7 @@ export const NOMBRES_ROL: Record<string, string> = {
   TESORERIA_CERTIFICADOS: "Tesorería - Certificados",
   LEGALIZACION: "Legalización",
   CONTABILIDAD: "Contabilidad",
+  DIRECCION_NEGOCIO: "Dirección de Negocio",
   ADMIN: "Administrador",
   GESTION_ACTIVOS: "Gestión de activos (trámites)",
   TORRE_CONTROL: "Torre de control (trámites)",
@@ -29,7 +32,7 @@ export const NOMBRES_ROL: Record<string, string> = {
 
 // Roles del módulo de gastos: con alguno se ven todos los gastos
 export const tieneRolDeGastos = (roles: string[]) =>
-  roles.some(rol => ["TESORERIA", "TESORERIA_CERTIFICADOS", "LEGALIZACION", "CONTABILIDAD", "ADMIN"].includes(rol))
+  roles.some(rol => ["TESORERIA", "TESORERIA_CERTIFICADOS", "LEGALIZACION", "CONTABILIDAD", "DIRECCION_NEGOCIO", "ADMIN"].includes(rol))
 
 // Tesorería - Certificados sin otro rol de gastos: solo ve y paga las compras de certificados
 export const soloCertificados = (roles: string[]) =>
@@ -56,6 +59,12 @@ export const MODULOS: Modulo[] = [
     nombre: "Tesorería",
     descripcion: "Paga gastos y administra las bolsas",
     roles: [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS]
+  },
+  {
+    href: "/direccion",
+    nombre: "Aprobación de pagos",
+    descripcion: "Aprueba o rechaza los pagos que programa Tesorería",
+    roles: [ROLES.DIRECCION_NEGOCIO]
   },
   {
     href: "/legalizacion",

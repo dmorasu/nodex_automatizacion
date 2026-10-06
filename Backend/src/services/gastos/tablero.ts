@@ -46,10 +46,11 @@ export const obtenerTablero = async (filtros: FiltrosTablero) => {
     db.query<Record<string, unknown>>(`
       SELECT
         b.id, b.nombre, b.linea_negocio AS "lineaNegocio", b.activo, b.saldo_actual AS saldo,
-        COALESCE(SUM(g.valor_solicitado_pago) FILTER (WHERE e.codigo = 'SOLICITADO'), 0) AS "porPagar",
-        COUNT(g.id) FILTER (WHERE e.codigo = 'SOLICITADO') AS "gastosPorPagar",
-        COALESCE(SUM(g.valor_realmente_pagado) FILTER (WHERE e.codigo NOT IN ('SOLICITADO', 'ANULADO') AND ${FILTRO_FECHA}), 0) AS pagado,
-        COUNT(g.id) FILTER (WHERE e.codigo NOT IN ('SOLICITADO', 'ANULADO') AND ${FILTRO_FECHA}) AS "gastosPagados",
+        -- Por pagar incluye lo programado y lo aprobado que aún no se confirma
+        COALESCE(SUM(g.valor_solicitado_pago) FILTER (WHERE e.codigo IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO')), 0) AS "porPagar",
+        COUNT(g.id) FILTER (WHERE e.codigo IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO')) AS "gastosPorPagar",
+        COALESCE(SUM(g.valor_realmente_pagado) FILTER (WHERE e.codigo NOT IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO', 'ANULADO') AND ${FILTRO_FECHA}), 0) AS pagado,
+        COUNT(g.id) FILTER (WHERE e.codigo NOT IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO', 'ANULADO') AND ${FILTRO_FECHA}) AS "gastosPagados",
         COALESCE(SUM(g.valor_realmente_pagado) FILTER (WHERE e.codigo = 'PAGADO' AND ${FILTRO_FECHA}), 0) AS "sinFactura",
         COALESCE(SUM(f.valor_legalizado) FILTER (WHERE e.codigo = 'FACTURADO' AND ${FILTRO_FECHA}), 0) AS "facturadoSinCuenta",
         COALESCE(SUM(f.valor_legalizado) FILTER (WHERE e.codigo = 'EN_CUENTA_COBRO' AND ${FILTRO_FECHA}), 0) AS "enCuentaCobro",

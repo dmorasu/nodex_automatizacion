@@ -1,5 +1,6 @@
 import twilio from "twilio"
 import dotenv from "dotenv"
+import { modoEnsayo } from "../utils/modoEnsayo"
 
 dotenv.config()
 
@@ -23,6 +24,12 @@ export const sendWhatsApp = async ({
   variables,
   mediaUrl
 }: WhatsAppParams) => {
+
+  // Modo ensayo: ningún WhatsApp sale a Twilio (la base de ensayo tiene teléfonos reales)
+  if (modoEnsayo()) {
+    console.log(`🧪 MODO ENSAYO: WhatsApp NO enviado a ${to}${templateSid ? ` (plantilla ${templateSid})` : ""}`)
+    return { sid: "ENSAYO", status: "no-enviado", errorCode: null, body: `[ENSAYO] WhatsApp no enviado a ${to}` }
+  }
 
   console.log("📲 Enviando WhatsApp a:", to)
 

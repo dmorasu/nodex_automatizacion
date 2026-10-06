@@ -16,6 +16,7 @@ import {
 } from '../services/whatsappService'
 
 import Notificacion from '../models/notificaciones'
+import { modoEnsayo } from '../utils/modoEnsayo'
 
 
 new Worker(
@@ -242,6 +243,13 @@ new Worker(
 
       // El adjunto (PDF) no viene en el texto de Twilio: se conserva la nota que ya tenía
       const notaAdjunto = notif.mensaje?.match(/\n\n📎 Adjunto: .+$/)?.[0] ?? ''
+
+      // En modo ensayo nada sale al destinatario real: no se marca como enviado
+      if (modoEnsayo()) {
+        await notif.update({ estado: 'ERROR', error: 'No enviado: modo ensayo (WhatsApp bloqueado; correo solo a CORREO_ENSAYO)' })
+        console.log('🧪 MODO ENSAYO: notificación marcada como no enviada')
+        return
+      }
 
       await notif.update({
 

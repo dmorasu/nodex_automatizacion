@@ -168,7 +168,12 @@ class SolicitudesGasto extends Model {
 
   // ── Tesorería (null hasta el pago) ─────────
 
-  // Por defecto el valor solicitado; Tesorería lo puede cambiar al pagar
+  // Valor que Tesorería programó para pago (por defecto el solicitado). Pasa a
+  // valorRealmentePagado al confirmar el pago; vuelve a null si el gasto sale del lote.
+  @Column({ type: DataType.DECIMAL(15, 2) })
+  declare valorProgramado: string | null
+
+  // Se llena al confirmar el pago con el valor programado
   @Column({ type: DataType.DECIMAL(15, 2) })
   declare valorRealmentePagado: string
 

@@ -16,7 +16,8 @@ export const responderError = (res: Response, error: unknown) => {
 export const esAdmin = (req: Request) => req.roles?.includes(ROLES.ADMIN) ?? false
 
 // Roles del módulo de gastos (los de trámites, como Gestión de activos, no cuentan)
-const ROLES_GASTOS: string[] = [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.ADMIN]
+// (Dirección de Negocio ve los gastos y sus documentos para aprobar los pagos)
+const ROLES_GASTOS: string[] = [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO, ROLES.ADMIN]
 
 // Con un rol del módulo de gastos se ven todos los gastos; sin él, cada usuario ve solo los suyos
 export const puedeVerTodos = (req: Request) => (req.roles ?? []).some(rol => ROLES_GASTOS.includes(rol))

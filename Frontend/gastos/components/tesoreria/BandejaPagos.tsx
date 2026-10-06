@@ -2,15 +2,16 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Wallet } from "lucide-react"
+import { CalendarClock, Wallet } from "lucide-react"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { Bolsa, GastoListado } from "@/src/schemas/gastos"
 import SeleccionGastos from "../gastos/SeleccionGastos"
 import { claseBotonPrimario } from "../ui/estilos"
 import ModalPago from "./ModalPago"
 
-// Gastos en estado Solicitado con selección para pagarlos de una sola vez
-export default function BandejaPagos({ gastos, bolsas }: { gastos: GastoListado[], bolsas: Bolsa[] }) {
+// Gastos en estado Solicitado con selección. Los generales se programan para aprobación de
+// Dirección de Negocio; las compras de certificados (`directo`) se pagan de una vez.
+export default function BandejaPagos({ gastos, bolsas, directo = false }: { gastos: GastoListado[], bolsas: Bolsa[], directo?: boolean }) {
   const router = useRouter()
   const [aPagar, setAPagar] = useState<{ gastos: GastoListado[], limpiar: () => void } | null>(null)
 
@@ -36,8 +37,8 @@ export default function BandejaPagos({ gastos, bolsas }: { gastos: GastoListado[
             disabled={seleccionados.length === 0}
             className={claseBotonPrimario}
           >
-            <Wallet size={15} />
-            Pagar seleccionados
+            {directo ? <Wallet size={15} /> : <CalendarClock size={15} />}
+            {directo ? "Pagar seleccionados" : "Programar pago"}
           </button>
         )}
       />
@@ -46,6 +47,7 @@ export default function BandejaPagos({ gastos, bolsas }: { gastos: GastoListado[
         <ModalPago
           gastos={aPagar.gastos}
           bolsas={bolsas.filter(b => b.activo)}
+          directo={directo}
           onCerrar={() => setAPagar(null)}
           onPagado={() => {
             aPagar.limpiar()

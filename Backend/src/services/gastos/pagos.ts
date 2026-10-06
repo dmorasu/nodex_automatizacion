@@ -1,45 +1,105 @@
-import { Op } from 'sequelize'
+import { Op, type Transaction } from 'sequelize'
 import { db } from '../../config/db'
 import Bolsas from '../../models/gastos/bolsas'
 import LotesPago from '../../models/gastos/lotesPago'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
+import DocumentosGasto from '../../models/gastos/documentosGasto'
 import { registrarMovimientos } from './bolsas'
 import { cambiarEstadoGasto, codigoEstadoGasto } from './estadosGasto'
-import { ESTADOS_GASTO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
+import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
 import { ErrorGastos } from './errores'
+import { formatoMoneda } from './formato'
 
-export type DatosPago = {
+// =====================================
+// PAGO DE GASTOS EN TRES PASOS
+//  1. Tesorería programa los gastos en un lote (PROGRAMADO). No toca la bolsa.
+//  2. Dirección de Negocio aprueba (APROBADO_PAGO) o rechaza cada gasto; el rechazado vuelve a
+//     SOLICITADO. Con todos aprobados el lote queda APROBADO.
+//  3. Tesorería adjunta el soporte del banco y confirma: se descuenta la bolsa y los gastos
+//     quedan PAGADO.
+// Las compras de certificados (CTL y Cámara de Comercio) no pasan por Dirección de Negocio:
+// Tesorería - Certificados las paga directo (pagarDirecto).
+// =====================================
+
+export type DatosProgramacion = {
   bolsaId: number
-  fechaPago: string            // YYYY-MM-DD
-  numeroEgreso?: string | null
+  fechaPago: string            // fecha programada (YYYY-MM-DD)
   observacion?: string | null
-  // Valor pagado de cada gasto (en el frontend viene precargado con el valor solicitado)
+  // Valor a pagar de cada gasto (en el frontend viene precargado con el valor solicitado)
+  gastos: { id: number, valorProgramado: number }[]
+}
+
+export type DatosPagoDirecto = {
+  bolsaId: number
+  fechaPago: string
+  observacion?: string | null
   gastos: { id: number, valorRealmentePagado: number }[]
 }
 
+export type DatosConfirmacion = {
+  fechaPago: string            // fecha real del pago
+  observacion?: string | null
+}
+
 const redondear = (valor: number) => Math.round(valor * 100) / 100
+const aCentavos = (valor: number | string | null) => Math.round(Number(valor ?? 0) * 100)
 
-// Paga uno o varios gastos en un lote, en una sola transacción:
-// si cualquier gasto falla (estado, saldo, ...) no se paga ninguno.
-export const pagarGastos = (datos: DatosPago, usuarioId: number) =>
+// Lo que ya está programado o aprobado (sin pagar) desde una bolsa
+const comprometidoEnBolsa = async (bolsaId: number, transaction: Transaction) => {
+  const total = await LotesPago.sum('total', {
+    where: { bolsaId, estado: [ESTADOS_LOTE.PROGRAMADO, ESTADOS_LOTE.APROBADO] },
+    transaction
+  })
+  return aCentavos(total ?? 0)
+}
+
+// Bloquea el lote para que dos personas no lo cambien al mismo tiempo
+const loteBloqueado = async (loteId: number, transaction: Transaction) => {
+  const lote = await LotesPago.findByPk(loteId, { transaction, lock: transaction.LOCK.UPDATE })
+  if (!lote) throw new ErrorGastos('El lote de pago no existe', 404)
+  return lote
+}
+
+const gastosDelLote = (loteId: number, transaction: Transaction) =>
+  SolicitudesGasto.findAll({ where: { lotePagoId: loteId }, transaction, lock: transaction.LOCK.UPDATE })
+
+// Recalcula total y estado del lote según los gastos que le quedan
+const actualizarLote = async (lote: LotesPago, usuarioId: number, transaction: Transaction) => {
+  const gastos = await SolicitudesGasto.findAll({ where: { lotePagoId: lote.id }, transaction })
+  const total = gastos.reduce((suma, g) => suma + aCentavos(g.valorProgramado), 0) / 100
+
+  let estado: string = ESTADOS_LOTE.PROGRAMADO
+  if (gastos.length === 0) estado = ESTADOS_LOTE.RECHAZADO
+  else if (await todosEn(gastos, ESTADOS_GASTO.APROBADO_PAGO)) estado = ESTADOS_LOTE.APROBADO
+
+  const recienAprobado = estado === ESTADOS_LOTE.APROBADO && lote.estado !== ESTADOS_LOTE.APROBADO
+  await lote.update({
+    total: String(total),
+    estado,
+    ...(recienAprobado ? { aprobadoPor: usuarioId, fechaAprobacion: new Date() } : {})
+  }, { transaction })
+  return lote
+}
+
+const todosEn = async (gastos: SolicitudesGasto[], estado: string) => {
+  for (const gasto of gastos) {
+    if (await codigoEstadoGasto(gasto.estadoId) !== estado) return false
+  }
+  return true
+}
+
+// ── 1. Programar ──────────────────────────
+
+export const programarPago = (datos: DatosProgramacion, usuarioId: number) =>
   db.transaction(async transaction => {
-
     const ids = datos.gastos.map(g => g.id)
+    if (new Set(ids).size !== ids.length) throw new ErrorGastos('Hay gastos repetidos en la programación')
 
-    if (new Set(ids).size !== ids.length) {
-      throw new ErrorGastos('Hay gastos repetidos en el pago')
-    }
-
-    const bolsa = await Bolsas.findByPk(datos.bolsaId, { transaction })
+    const bolsa = await Bolsas.findByPk(datos.bolsaId, { transaction, lock: transaction.LOCK.UPDATE })
     if (!bolsa?.activo) throw new ErrorGastos('La bolsa no existe o está inactiva')
 
-    // Se bloquean los gastos para que nadie más los pague al mismo tiempo
-    const gastos = await SolicitudesGasto.findAll({
-      where: { id: { [Op.in]: ids } },
-      transaction,
-      lock: transaction.LOCK.UPDATE
-    })
-
+    // Se bloquean los gastos para que nadie más los programe al mismo tiempo
+    const gastos = await SolicitudesGasto.findAll({ where: { id: { [Op.in]: ids } }, transaction, lock: transaction.LOCK.UPDATE })
     if (gastos.length !== ids.length) throw new ErrorGastos('Uno o más gastos no existen')
 
     for (const gasto of gastos) {
@@ -49,19 +109,133 @@ export const pagarGastos = (datos: DatosPago, usuarioId: number) =>
     }
 
     const porId = new Map(gastos.map(g => [g.id, g]))
-    const pagos = datos.gastos.map(pago => ({
-      gasto: porId.get(pago.id)!,
-      valorRealmentePagado: redondear(Number(pago.valorRealmentePagado))
-    }))
+    const programados = datos.gastos.map(g => ({ gasto: porId.get(g.id)!, valor: redondear(Number(g.valorProgramado)) }))
+    const total = redondear(programados.reduce((suma, p) => suma + p.valor, 0))
 
-    const total = redondear(pagos.reduce((suma, p) => suma + p.valorRealmentePagado, 0))
+    // La bolsa se descuenta al confirmar, pero no se programa más de lo que hay disponible
+    const disponible = aCentavos(bolsa.saldoActual) - await comprometidoEnBolsa(bolsa.id, transaction)
+    if (aCentavos(total) > disponible) {
+      throw new ErrorGastos(
+        `Saldo insuficiente en la bolsa ${bolsa.nombre}: disponible ${formatoMoneda(disponible / 100)} ` +
+        `(saldo menos lo ya programado), requerido ${formatoMoneda(total)}`
+      )
+    }
 
     const lote = await LotesPago.create({
       bolsaId: bolsa.id,
+      estado: ESTADOS_LOTE.PROGRAMADO,
       fechaPago: datos.fechaPago,
-      numeroEgreso: datos.numeroEgreso || null,
       total: String(total),
       creadoPor: usuarioId,
+      observacion: datos.observacion || null
+    }, { transaction })
+
+    for (const { gasto, valor } of programados) {
+      await cambiarEstadoGasto(gasto, ESTADOS_GASTO.PROGRAMADO, usuarioId, transaction, {
+        observacion: `Programado para pago en el lote #${lote.id} (${bolsa.nombre}, ${formatoMoneda(valor)})`,
+        cambios: { lotePagoId: lote.id, valorProgramado: String(valor) }
+      })
+    }
+
+    return lote
+  })
+
+// ── 2. Aprobar / rechazar / quitar ────────
+
+// Dirección de Negocio aprueba gastos programados del lote (todos si no se indican)
+export const aprobarGastos = (loteId: number, gastoIds: number[] | null, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const lote = await loteBloqueado(loteId, transaction)
+    if (lote.estado !== ESTADOS_LOTE.PROGRAMADO) throw new ErrorGastos(`El lote #${lote.id} no está pendiente de aprobación`)
+
+    const gastos = await gastosDelLote(lote.id, transaction)
+    const pendientes: SolicitudesGasto[] = []
+    for (const gasto of gastos) {
+      if (await codigoEstadoGasto(gasto.estadoId) === ESTADOS_GASTO.PROGRAMADO) pendientes.push(gasto)
+    }
+
+    const aAprobar = gastoIds ? pendientes.filter(g => gastoIds.includes(g.id)) : pendientes
+    if (gastoIds && aAprobar.length !== new Set(gastoIds).size) {
+      throw new ErrorGastos('Uno o más gastos no están pendientes de aprobación en este lote')
+    }
+    if (!aAprobar.length) throw new ErrorGastos('No hay gastos pendientes de aprobación en este lote')
+
+    for (const gasto of aAprobar) {
+      await cambiarEstadoGasto(gasto, ESTADOS_GASTO.APROBADO_PAGO, usuarioId, transaction, {
+        observacion: `Aprobado por Dirección de Negocio (lote #${lote.id})`
+      })
+    }
+
+    return actualizarLote(lote, usuarioId, transaction)
+  })
+
+// Saca gastos del lote y los devuelve a SOLICITADO (Por pagar), con el motivo.
+// La usan Dirección de Negocio (rechaza) y Tesorería (quita antes de confirmar).
+export const sacarDelLote = (
+  loteId: number,
+  gastoIds: number[],
+  motivo: string,
+  usuarioId: number,
+  quien: 'DIRECCION' | 'TESORERIA'
+) =>
+  db.transaction(async transaction => {
+    const lote = await loteBloqueado(loteId, transaction)
+    const permitidos: string[] = quien === 'DIRECCION'
+      ? [ESTADOS_LOTE.PROGRAMADO]
+      : [ESTADOS_LOTE.PROGRAMADO, ESTADOS_LOTE.APROBADO]
+    if (!permitidos.includes(lote.estado)) throw new ErrorGastos(`El lote #${lote.id} ya no se puede modificar`)
+
+    const gastos = (await gastosDelLote(lote.id, transaction)).filter(g => gastoIds.includes(g.id))
+    if (gastos.length !== new Set(gastoIds).size) throw new ErrorGastos('Uno o más gastos no pertenecen a este lote')
+
+    for (const gasto of gastos) {
+      const estado = await codigoEstadoGasto(gasto.estadoId)
+      // Dirección solo rechaza lo que aún no ha aprobado
+      if (quien === 'DIRECCION' && estado !== ESTADOS_GASTO.PROGRAMADO) {
+        throw new ErrorGastos(`El gasto ${gasto.codigo} ya fue aprobado`)
+      }
+      await cambiarEstadoGasto(gasto, ESTADOS_GASTO.SOLICITADO, usuarioId, transaction, {
+        observacion: `${quien === 'DIRECCION' ? 'Rechazado por Dirección de Negocio' : 'Tesorería lo quitó del pago'} (lote #${lote.id}): ${motivo}`,
+        cambios: { lotePagoId: null as unknown as number, valorProgramado: null }
+      })
+    }
+
+    return actualizarLote(lote, usuarioId, transaction)
+  })
+
+// ── Pago directo (compras de certificados) ──
+
+// Paga en un solo paso: crea el lote ya PAGADO, descuenta la bolsa y los gastos quedan PAGADO.
+// Quién puede usarlo (solo certificados) lo valida el controlador.
+export const pagarDirecto = (datos: DatosPagoDirecto, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const ids = datos.gastos.map(g => g.id)
+    if (new Set(ids).size !== ids.length) throw new ErrorGastos('Hay gastos repetidos en el pago')
+
+    const bolsa = await Bolsas.findByPk(datos.bolsaId, { transaction })
+    if (!bolsa?.activo) throw new ErrorGastos('La bolsa no existe o está inactiva')
+
+    const gastos = await SolicitudesGasto.findAll({ where: { id: { [Op.in]: ids } }, transaction, lock: transaction.LOCK.UPDATE })
+    if (gastos.length !== ids.length) throw new ErrorGastos('Uno o más gastos no existen')
+
+    for (const gasto of gastos) {
+      if (await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.SOLICITADO) {
+        throw new ErrorGastos(`El gasto ${gasto.codigo} ya no está pendiente de pago`)
+      }
+    }
+
+    const porId = new Map(gastos.map(g => [g.id, g]))
+    const pagos = datos.gastos.map(p => ({ gasto: porId.get(p.id)!, valor: redondear(Number(p.valorRealmentePagado)) }))
+    const total = redondear(pagos.reduce((suma, p) => suma + p.valor, 0))
+
+    const lote = await LotesPago.create({
+      bolsaId: bolsa.id,
+      estado: ESTADOS_LOTE.PAGADO,
+      fechaPago: datos.fechaPago,
+      total: String(total),
+      creadoPor: usuarioId,
+      confirmadoPor: usuarioId,
+      fechaConfirmacion: new Date(),
       observacion: datos.observacion || null
     }, { transaction })
 
@@ -70,7 +244,7 @@ export const pagarGastos = (datos: DatosPago, usuarioId: number) =>
       bolsa.id,
       pagos.map(p => ({
         tipo: TIPOS_MOVIMIENTO_BOLSA.PAGO,
-        valor: -p.valorRealmentePagado,
+        valor: -p.valor,
         solicitudGastoId: p.gasto.id,
         lotePagoId: lote.id,
         observacion: `Pago ${p.gasto.codigo}`
@@ -79,20 +253,79 @@ export const pagarGastos = (datos: DatosPago, usuarioId: number) =>
       transaction
     )
 
-    for (const pago of pagos) {
-      const cambioBolsa = pago.gasto.bolsaId && pago.gasto.bolsaId !== bolsa.id
-
-      await cambiarEstadoGasto(pago.gasto, ESTADOS_GASTO.PAGADO, usuarioId, transaction, {
+    for (const { gasto, valor } of pagos) {
+      const cambioBolsa = gasto.bolsaId && gasto.bolsaId !== bolsa.id
+      await cambiarEstadoGasto(gasto, ESTADOS_GASTO.PAGADO, usuarioId, transaction, {
         observacion: `Pagado en el lote #${lote.id}${cambioBolsa ? ` (bolsa cambiada a ${bolsa.nombre})` : ''}`,
         cambios: {
           bolsaId: bolsa.id,
           lotePagoId: lote.id,
           fechaPago: datos.fechaPago,
-          numeroEgreso: datos.numeroEgreso || null,
-          valorRealmentePagado: String(pago.valorRealmentePagado)
+          valorProgramado: String(valor),
+          valorRealmentePagado: String(valor)
         }
       })
     }
 
     return lote
+  })
+
+// ── 3. Confirmar el pago ──────────────────
+
+// Tesorería confirma con el soporte del banco ya adjunto: descuenta la bolsa y paga los gastos
+export const confirmarPago = (loteId: number, datos: DatosConfirmacion, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const lote = await loteBloqueado(loteId, transaction)
+    if (lote.estado !== ESTADOS_LOTE.APROBADO) {
+      throw new ErrorGastos(lote.estado === ESTADOS_LOTE.PROGRAMADO
+        ? `El lote #${lote.id} aún tiene gastos pendientes de aprobación de Dirección de Negocio`
+        : `El lote #${lote.id} no está aprobado para pago`)
+    }
+
+    const soportes = await DocumentosGasto.count({ where: { lotePagoId: lote.id }, transaction })
+    if (!soportes) throw new ErrorGastos('Adjunte el soporte del banco antes de confirmar el pago')
+
+    const bolsa = await Bolsas.findByPk(lote.bolsaId, { transaction })
+    if (!bolsa?.activo) throw new ErrorGastos('La bolsa del lote no existe o está inactiva')
+
+    const gastos = await gastosDelLote(lote.id, transaction)
+    if (!(await todosEn(gastos, ESTADOS_GASTO.APROBADO_PAGO))) {
+      throw new ErrorGastos(`El lote #${lote.id} tiene gastos sin aprobar`)
+    }
+
+    // Descuenta la bolsa (valida saldo suficiente) con un movimiento por gasto
+    await registrarMovimientos(
+      bolsa.id,
+      gastos.map(g => ({
+        tipo: TIPOS_MOVIMIENTO_BOLSA.PAGO,
+        valor: -Number(g.valorProgramado),
+        solicitudGastoId: g.id,
+        lotePagoId: lote.id,
+        observacion: `Pago ${g.codigo}`
+      })),
+      usuarioId,
+      transaction
+    )
+
+    for (const gasto of gastos) {
+      const cambioBolsa = gasto.bolsaId && gasto.bolsaId !== bolsa.id
+      await cambiarEstadoGasto(gasto, ESTADOS_GASTO.PAGADO, usuarioId, transaction, {
+        observacion: `Pagado en el lote #${lote.id}${cambioBolsa ? ` (bolsa cambiada a ${bolsa.nombre})` : ''}`,
+        cambios: {
+          bolsaId: bolsa.id,
+          fechaPago: datos.fechaPago,
+          valorRealmentePagado: gasto.valorProgramado as string
+        }
+      })
+    }
+
+    await lote.update({
+      estado: ESTADOS_LOTE.PAGADO,
+      fechaPago: datos.fechaPago,
+      confirmadoPor: usuarioId,
+      fechaConfirmacion: new Date(),
+      ...(datos.observacion ? { observacion: [lote.observacion, datos.observacion].filter(Boolean).join(' · ') } : {})
+    }, { transaction })
+
+    return { lote, gastoIds: gastos.map(g => g.id) }
   })

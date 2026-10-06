@@ -23,7 +23,7 @@ export type UsuarioAdmin = {
 // Los perfiles se muestran agrupados por módulo
 const GRUPOS = [
   { titulo: "Trámites", codigos: ["GESTION_ACTIVOS", "TORRE_CONTROL", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL"] },
-  { titulo: "Gastos", codigos: ["TESORERIA", "TESORERIA_CERTIFICADOS", "LEGALIZACION", "CONTABILIDAD"] },
+  { titulo: "Gastos", codigos: ["TESORERIA", "TESORERIA_CERTIFICADOS", "DIRECCION_NEGOCIO", "LEGALIZACION", "CONTABILIDAD"] },
   { titulo: "General", codigos: ["ADMIN"] }
 ]
 

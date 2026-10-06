@@ -8,6 +8,11 @@ const ROJO = "bg-red-50 text-red-600 border-red-200"
 // Colores por código de estado (gastos, cuentas de cobro y reintegros)
 const COLORES: Record<string, string> = {
   SOLICITADO: AMARILLO,
+  // Gasto y lote en el pago de tres pasos (programar → aprobar → confirmar)
+  PROGRAMADO: "bg-orange-50 text-orange-700 border-orange-200",
+  APROBADO_PAGO: "bg-teal-50 text-teal-700 border-teal-200",
+  APROBADO: "bg-teal-50 text-teal-700 border-teal-200",
+  RECHAZADO: ROJO,
   PAGADO: "bg-sky-50 text-sky-700 border-sky-200",
   EN_CUENTA_COBRO: "bg-violet-50 text-violet-700 border-violet-200",
   LEGALIZADO: VERDE,

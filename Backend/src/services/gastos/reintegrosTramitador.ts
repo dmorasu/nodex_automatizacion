@@ -23,7 +23,7 @@ const GASTOS_FILTRADOS = `
     COALESCE(g.placa, g.matricula_inmobiliaria) AS referencia,
     ${TRAMITADOR_DEL_GASTO} AS tramitador_id
   FROM gastos_solicitudes g
-  JOIN gastos_estados_gasto e ON e.id = g.estado_id AND e.codigo NOT IN ('SOLICITADO', 'ANULADO')
+  JOIN gastos_estados_gasto e ON e.id = g.estado_id AND e.codigo NOT IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO', 'ANULADO')
   LEFT JOIN "SolicitudTramites" t ON t.id = g.solicitud_tramite_id
   WHERE (CAST(:bolsaId AS INTEGER) IS NULL OR g.bolsa_id = CAST(:bolsaId AS INTEGER))
     AND (CAST(:desde AS DATE) IS NULL OR g.fecha_pago >= CAST(:desde AS DATE))

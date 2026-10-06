@@ -47,6 +47,7 @@ import mensajeriaRouter from "./routes/mensajeriaRouter"
 import direccionesRouter from "./routes/direccionesRouter"
 import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
 import { iniciarNotificacionesProgramadas } from "./services/notificacionesProgramadas"
+import { modoEnsayo } from "./utils/modoEnsayo"
 import { autenticacion } from "./middleware/auth"
 import { requiereRol } from "./middleware/gastos/requiereRol"
 
@@ -71,7 +72,10 @@ async function connectDB() {
 
 // Las notificaciones de WhatsApp (diligencias de hoy y vencidas) leen su hora de la base,
 // por eso se programan después de sync(). Si la base falló, usan los valores por defecto.
-connectDB().then(iniciarNotificacionesProgramadas)
+// En modo ensayo no se programan los WhatsApp automáticos (la base es una copia con datos reales)
+connectDB().then(() => modoEnsayo()
+    ? console.log(colors.yellow.bold('🧪 MODO ENSAYO: notificaciones automáticas NO programadas; WhatsApp bloqueado y correos a CORREO_ENSAYO'))
+    : iniciarNotificacionesProgramadas())
 
 const app = express()
 

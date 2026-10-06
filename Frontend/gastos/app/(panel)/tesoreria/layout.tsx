@@ -12,6 +12,7 @@ export default async function TesoreriaLayout({ children }: { children: React.Re
   const pestanas = [
     ...(general ? [{ href: "/tesoreria", nombre: "Por pagar" }] : []),
     ...(certificados ? [{ href: "/tesoreria/certificados", nombre: "Certificados (CTL y Cámara)" }] : []),
+    ...(general ? [{ href: "/tesoreria/programados", nombre: "Programados" }] : []),
     ...(general ? [{ href: "/tesoreria/bolsas", nombre: "Bolsas" }] : []),
     { href: "/tesoreria/lotes", nombre: "Pagos realizados" },
     ...(general ? [
@@ -25,7 +26,9 @@ export default async function TesoreriaLayout({ children }: { children: React.Re
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Tesorería</h1>
         <p className="mt-1 text-sm text-slate-400">
-          {general ? "Pago de gastos y control de las bolsas." : "Pago de las compras de CTL y certificados de Cámara de Comercio."}
+          {general
+            ? "Programa los pagos, confirma los aprobados por Dirección de Negocio con el soporte del banco y controla las bolsas."
+            : "Pago de las compras de CTL y certificados de Cámara de Comercio."}
         </p>
       </div>
 

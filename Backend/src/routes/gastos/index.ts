@@ -39,7 +39,11 @@ import {
   validarFactura,
   validarReintegrar,
   validarAjuste,
-  validarPago,
+  validarProgramacion,
+  validarPagoDirecto,
+  validarAprobacionLote,
+  validarSalidaLote,
+  validarConfirmacionPago,
   validarRecarga,
   validarAnulacion,
   validarBolsa,
@@ -136,11 +140,18 @@ router.post('/bolsas/:id/recargas', soloTesoreria, validarRecarga, handleInputEr
 router.post('/bolsas/:id/ajustes', soloAdmin, validarAjuste, handleInputErrors, BolsasController.ajustar)
 
 
-// ── Pagos (Tesorería) ───────────────
+// ── Pagos: Tesorería programa → Dirección de Negocio aprueba → Tesorería confirma ──
 // Quién paga qué (general o certificados) se valida en el controlador
-router.post('/pagos', tesoreriaOCertificados, validarPago, handleInputErrors, PagosController.pagar)
+const soloDireccion = requiereRol(ROLES.DIRECCION_NEGOCIO)
+router.post('/lotes', tesoreriaOCertificados, validarProgramacion, handleInputErrors, PagosController.programar)
+// Compras de certificados: pago directo, sin aprobación de Dirección
+router.post('/pagos', tesoreriaOCertificados, validarPagoDirecto, handleInputErrors, PagosController.pagarCertificados)
+router.post('/lotes/:id/aprobar', soloDireccion, validarAprobacionLote, handleInputErrors, PagosController.aprobar)
+router.post('/lotes/:id/rechazar', soloDireccion, validarSalidaLote, handleInputErrors, PagosController.rechazar)
+router.post('/lotes/:id/quitar', tesoreriaOCertificados, validarSalidaLote, handleInputErrors, PagosController.quitar)
+router.post('/lotes/:id/confirmar', tesoreriaOCertificados, validarConfirmacionPago, handleInputErrors, PagosController.confirmar)
 // Contabilidad también consulta los pagos para registrarles el número de egreso
-const verLotes = requiereRol(ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.CONTABILIDAD)
+const verLotes = requiereRol(ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO)
 router.get('/lotes', verLotes, validarListadoLotes, handleInputErrors, PagosController.getLotes)
 router.get('/lotes/:id', verLotes, validarId, handleInputErrors, PagosController.getLote)
 router.post('/lotes/:id/documentos', tesoreriaOCertificados, recibirDocumentos, validarId, handleInputErrors, DocumentosGastoController.subirALote)

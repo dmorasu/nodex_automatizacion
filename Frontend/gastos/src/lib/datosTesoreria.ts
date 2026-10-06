@@ -18,6 +18,8 @@ export type FiltrosLotes = {
   pagina?: number
   // "pendiente" (sin número de egreso) | "registrado" | vacío (todos)
   egreso?: "pendiente" | "registrado"
+  // Estados del lote separados por coma (PROGRAMADO,APROBADO)
+  estado?: string
   busqueda?: string
   bolsaId?: string
   desde?: string

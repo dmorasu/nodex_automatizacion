@@ -11,6 +11,8 @@ export const ROLES = {
   LEGALIZACION: 'LEGALIZACION',
   CONTABILIDAD: 'CONTABILIDAD',
   ADMIN: 'ADMIN',
+  // Aprueba en Nodex los pagos que Tesorería programa (luego los aprueba en la plataforma del banco)
+  DIRECCION_NEGOCIO: 'DIRECCION_NEGOCIO',
   // Perfiles del módulo de trámites
   GESTION_ACTIVOS: 'GESTION_ACTIVOS',
   TORRE_CONTROL: 'TORRE_CONTROL',
@@ -41,12 +43,25 @@ export const TIPOS_GASTO_CERTIFICADOS: string[] = [TIPOS_GASTO.CTL, TIPOS_GASTO.
 
 export const ESTADOS_GASTO = {
   SOLICITADO: 'SOLICITADO',
+  PROGRAMADO: 'PROGRAMADO',          // Tesorería lo programó para pago (en un lote)
+  APROBADO_PAGO: 'APROBADO_PAGO',    // Dirección de Negocio lo aprobó; falta el soporte del banco
   PAGADO: 'PAGADO',
   FACTURADO: 'FACTURADO',            // Legalización registró la factura real
   EN_CUENTA_COBRO: 'EN_CUENTA_COBRO',
   LEGALIZADO: 'LEGALIZADO',
   CONTABILIZADO: 'CONTABILIZADO',
   ANULADO: 'ANULADO'
+} as const
+
+// Estados en los que el gasto todavía no se ha pagado (el valor pagado y la bolsa aún no cuentan)
+export const ESTADOS_SIN_PAGO: string[] = [ESTADOS_GASTO.SOLICITADO, ESTADOS_GASTO.PROGRAMADO, ESTADOS_GASTO.APROBADO_PAGO, ESTADOS_GASTO.ANULADO]
+
+// Lote de pago: Tesorería programa → Dirección de Negocio aprueba → Tesorería adjunta el soporte y confirma
+export const ESTADOS_LOTE = {
+  PROGRAMADO: 'PROGRAMADO',   // tiene gastos pendientes de aprobación
+  APROBADO: 'APROBADO',       // todos sus gastos aprobados; falta confirmar el pago
+  PAGADO: 'PAGADO',           // pago confirmado: bolsa descontada
+  RECHAZADO: 'RECHAZADO'      // se quitaron o rechazaron todos sus gastos
 } as const
 
 export const ESTADOS_CUENTA_COBRO = {

@@ -13,6 +13,7 @@ import {
   BarChart3,
   FileSpreadsheet,
   Users,
+  BadgeCheck,
   type LucideIcon
 } from "lucide-react"
 import type { Modulo } from "@/src/auth/permisos"
@@ -23,6 +24,7 @@ const ICONOS: Record<string, LucideIcon> = {
   "/inicio": Home,
   "/solicitudes": Receipt,
   "/tesoreria": Landmark,
+  "/direccion": BadgeCheck,
   "/legalizacion": FileCheck2,
   "/contabilidad": Calculator,
   "/tablero": BarChart3,

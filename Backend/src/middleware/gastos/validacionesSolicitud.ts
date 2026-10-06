@@ -109,17 +109,48 @@ export const validarAjuste = [
     .isLength({ max: 1000 })
 ]
 
-export const validarPago = [
+// Tesorería programa el pago (aún no descuenta la bolsa)
+export const validarProgramacion = [
   body('bolsaId').isInt({ min: 1 }).withMessage('Debe seleccionar la bolsa').toInt(),
-  body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha de pago no válida'),
-  body('numeroEgreso').optional({ values: 'null' }).isString().trim().isLength({ max: 50 }),
+  body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha programada no válida'),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 }),
   body('gastos')
     .isArray({ min: 1, max: 200 }).withMessage('Debe seleccionar entre 1 y 200 gastos'),
   body('gastos.*.id').isInt({ min: 1 }).withMessage('Gasto no válido').toInt(),
-  body('gastos.*.valorRealmentePagado')
-    .isFloat({ gt: 0 }).withMessage('El valor pagado de cada gasto debe ser mayor a cero')
+  body('gastos.*.valorProgramado')
+    .isFloat({ gt: 0 }).withMessage('El valor a pagar de cada gasto debe ser mayor a cero')
     .toFloat(),
+]
+
+// Pago directo de compras de certificados
+export const validarPagoDirecto = [
+  body('bolsaId').isInt({ min: 1 }).withMessage('Debe seleccionar la bolsa').toInt(),
+  body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha de pago no válida'),
+  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 }),
+  body('gastos').isArray({ min: 1, max: 200 }).withMessage('Debe seleccionar entre 1 y 200 gastos'),
+  body('gastos.*.id').isInt({ min: 1 }).withMessage('Gasto no válido').toInt(),
+  body('gastos.*.valorRealmentePagado').isFloat({ gt: 0 }).withMessage('El valor pagado de cada gasto debe ser mayor a cero').toFloat()
+]
+
+// Gastos del lote a aprobar (opcional: sin lista se aprueban todos los pendientes)
+export const validarAprobacionLote = [
+  validarId,
+  body('gastoIds').optional({ values: 'null' }).isArray({ min: 1, max: 200 }).withMessage('Seleccione los gastos'),
+  body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido').toInt()
+]
+
+// Rechazar (Dirección) o quitar (Tesorería) gastos del lote: siempre con motivo
+export const validarSalidaLote = [
+  validarId,
+  body('gastoIds').isArray({ min: 1, max: 200 }).withMessage('Seleccione los gastos'),
+  body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido').toInt(),
+  body('motivo').isString().trim().isLength({ min: 3, max: 500 }).withMessage('Indique el motivo (mínimo 3 caracteres)')
+]
+
+export const validarConfirmacionPago = [
+  validarId,
+  body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha de pago no válida'),
+  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
 ]
 
 // ── Legalización ──────────────────────────
@@ -208,6 +239,8 @@ export const validarListadoLotes = [
   query('desde').optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida'),
   query('hasta').optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida'),
   query('egreso').optional({ values: 'falsy' }).isIn(['pendiente', 'registrado']),
+  // Uno o varios estados del lote separados por coma (PROGRAMADO,APROBADO)
+  query('estado').optional({ values: 'falsy' }).matches(/^(PROGRAMADO|APROBADO|PAGADO|RECHAZADO)(,(PROGRAMADO|APROBADO|PAGADO|RECHAZADO))*$/).withMessage('Estado no válido'),
   query('pagina').optional().isInt({ min: 1 }).toInt()
 ]
 

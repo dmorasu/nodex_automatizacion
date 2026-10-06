@@ -41,11 +41,13 @@ const FORMAS_PAGO_INICIALES = [
 
 const ESTADOS_GASTO_INICIALES = [
   { codigo: ESTADOS_GASTO.SOLICITADO, nombre: 'Solicitado', orden: 1 },
-  { codigo: ESTADOS_GASTO.PAGADO, nombre: 'Pagado', orden: 2 },
-  { codigo: ESTADOS_GASTO.FACTURADO, nombre: 'Facturado', orden: 3 },
-  { codigo: ESTADOS_GASTO.EN_CUENTA_COBRO, nombre: 'En cuenta de cobro', orden: 4 },
-  { codigo: ESTADOS_GASTO.LEGALIZADO, nombre: 'Legalizado', orden: 5 },
-  { codigo: ESTADOS_GASTO.CONTABILIZADO, nombre: 'Contabilizado', orden: 6 },
+  { codigo: ESTADOS_GASTO.PROGRAMADO, nombre: 'Programado para pago', orden: 2 },
+  { codigo: ESTADOS_GASTO.APROBADO_PAGO, nombre: 'Aprobado para pago', orden: 3 },
+  { codigo: ESTADOS_GASTO.PAGADO, nombre: 'Pagado', orden: 4 },
+  { codigo: ESTADOS_GASTO.FACTURADO, nombre: 'Facturado', orden: 5 },
+  { codigo: ESTADOS_GASTO.EN_CUENTA_COBRO, nombre: 'En cuenta de cobro', orden: 6 },
+  { codigo: ESTADOS_GASTO.LEGALIZADO, nombre: 'Legalizado', orden: 7 },
+  { codigo: ESTADOS_GASTO.CONTABILIZADO, nombre: 'Contabilizado', orden: 8 },
   { codigo: ESTADOS_GASTO.ANULADO, nombre: 'Anulado', orden: 99 }
 ]
 
@@ -75,6 +77,7 @@ const ROLES_INICIALES = [
   { codigo: ROLES.LEGALIZACION, nombre: 'Legalización', descripcion: 'Arma cuentas de cobro, legaliza y registra reintegros' },
   { codigo: ROLES.CONTABILIDAD, nombre: 'Contabilidad', descripcion: 'Contabiliza las cuentas de cobro legalizadas' },
   { codigo: ROLES.ADMIN, nombre: 'Administrador', descripcion: 'Acceso total al módulo de gastos' },
+  { codigo: ROLES.DIRECCION_NEGOCIO, nombre: 'Dirección de Negocio', descripcion: 'Aprueba los pagos que programa Tesorería' },
   { codigo: ROLES.GESTION_ACTIVOS, nombre: 'Gestión de activos', descripcion: 'Trámites: crea y edita sus propios trámites y les crea gastos' },
   { codigo: ROLES.TORRE_CONTROL, nombre: 'Torre de control', descripcion: 'Trámites: acceso completo a la gestión de trámites' },
   { codigo: ROLES.ANALISTA_TRAMITES, nombre: 'Analista de trámites', descripcion: 'Trámites: permisos de Torre de control; en el inicio ve solo sus trámites asignados' },

@@ -8,11 +8,12 @@ import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
 import Bolsas from '../../models/gastos/bolsas'
 import Terceros from '../../models/gastos/terceros'
 import Usuarios from '../../models/usuarios'
-import { pagarGastos } from '../../services/gastos/pagos'
-import { notificarGastosPagados } from '../../services/gastos/notificacionesGastos'
+import EstadosGasto from '../../models/gastos/estadosGasto'
+import { aprobarGastos, confirmarPago, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
+import { notificarGastosPagados, notificarLoteProgramado, notificarRevisionLote } from '../../services/gastos/notificacionesGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
-import { ROLES } from '../../services/gastos/constantes'
+import { ESTADOS_LOTE, ROLES } from '../../services/gastos/constantes'
 
 // Las compras de certificados (CTL y Cámara de Comercio) las paga Tesorería - Certificados;
 // los demás gastos, Tesorería. El administrador paga ambos.
@@ -39,18 +40,105 @@ const LOTES_CON_CERTIFICADOS = (ids: number[]) => literal(`(
   WHERE g.lote_pago_id IS NOT NULL AND g.tipo_gasto_id IN (${ids.map(Number).join(',') || 'NULL'})
 )`)
 
+// Los certificados se pagan directo; los demás gastos se programan para aprobación de Dirección
+const verificarFlujo = async (gastoIds: number[], flujo: 'directo' | 'programado') => {
+  const certificados = await idsTiposCertificados()
+  const gastos = await SolicitudesGasto.findAll({ where: { id: gastoIds }, attributes: ['codigo', 'tipoGastoId'] })
+  const fuera = gastos.filter(g => certificados.includes(g.tipoGastoId) !== (flujo === 'directo'))
+  if (!fuera.length) return
+  const codigos = fuera.map(g => g.codigo).join(', ')
+  throw new ErrorGastos(flujo === 'directo'
+    ? `Solo las compras de certificados se pagan directo; ${codigos} se debe programar para aprobación de Dirección de Negocio`
+    : `Las compras de certificados se pagan directo, sin aprobación de Dirección (${codigos})`)
+}
+
+const idsDelLote = async (loteId: number) =>
+  (await SolicitudesGasto.findAll({ where: { lotePagoId: loteId }, attributes: ['id'] })).map(g => g.id)
+
 export class PagosController {
 
-  // POST /pagos  { bolsaId, fechaPago, numeroEgreso, observacion, gastos: [{ id, valorRealmentePagado }] }
-  static pagar = async (req: Request, res: Response) => {
+  // POST /lotes  { bolsaId, fechaPago, observacion, gastos: [{ id, valorProgramado }] }
+  // Programa el pago: los gastos quedan esperando la aprobación de Dirección de Negocio
+  static programar = async (req: Request, res: Response) => {
     try {
-      await verificarQuienPaga(req, (req.body.gastos as { id: number }[]).map(g => Number(g.id)))
-      const lote = await pagarGastos(req.body, req.usuario.id)
+      const ids = (req.body.gastos as { id: number }[]).map(g => Number(g.id))
+      await verificarQuienPaga(req, ids)
+      await verificarFlujo(ids, 'programado')
+      const lote = await programarPago(req.body, req.usuario.id)
 
-      // Fuera de la transacción: un fallo en el correo no revierte el pago
-      void notificarGastosPagados(req.body.gastos.map((g: { id: number }) => g.id))
+      // Fuera de la transacción: un fallo en el correo no revierte la programación
+      void notificarLoteProgramado(lote.id)
 
       res.status(201).json({ loteId: lote.id, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /pagos  { bolsaId, fechaPago, observacion, gastos: [{ id, valorRealmentePagado }] }
+  // Pago directo, solo para compras de certificados (sin aprobación de Dirección de Negocio)
+  static pagarCertificados = async (req: Request, res: Response) => {
+    try {
+      const ids = (req.body.gastos as { id: number }[]).map(g => Number(g.id))
+      await verificarQuienPaga(req, ids)
+      await verificarFlujo(ids, 'directo')
+      const lote = await pagarDirecto(req.body, req.usuario.id)
+
+      // Fuera de la transacción: un fallo en el correo no revierte el pago
+      void notificarGastosPagados(ids)
+
+      res.status(201).json({ loteId: lote.id, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /lotes/:id/aprobar  { gastoIds? }  (Dirección de Negocio; sin gastoIds aprueba todos)
+  static aprobar = async (req: Request, res: Response) => {
+    try {
+      const lote = await aprobarGastos(Number(req.params.id), req.body.gastoIds ?? null, req.usuario.id)
+      if (lote.estado === ESTADOS_LOTE.APROBADO) void notificarRevisionLote(lote.id, [], null)
+      res.json({ estado: lote.estado, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /lotes/:id/rechazar  { gastoIds, motivo }  (Dirección de Negocio: vuelven a Por pagar)
+  static rechazar = async (req: Request, res: Response) => {
+    try {
+      const loteId = Number(req.params.id)
+      const lote = await sacarDelLote(loteId, req.body.gastoIds, req.body.motivo, req.usuario.id, 'DIRECCION')
+      void notificarRevisionLote(lote.id, req.body.gastoIds, req.body.motivo)
+      res.json({ estado: lote.estado, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /lotes/:id/quitar  { gastoIds, motivo }  (Tesorería, antes de confirmar el pago)
+  static quitar = async (req: Request, res: Response) => {
+    try {
+      const loteId = Number(req.params.id)
+      await verificarQuienPaga(req, await idsDelLote(loteId))
+      const lote = await sacarDelLote(loteId, req.body.gastoIds, req.body.motivo, req.usuario.id, 'TESORERIA')
+      res.json({ estado: lote.estado, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /lotes/:id/confirmar  { fechaPago, observacion }  (Tesorería, con el soporte del banco adjunto)
+  static confirmar = async (req: Request, res: Response) => {
+    try {
+      const loteId = Number(req.params.id)
+      await verificarQuienPaga(req, await idsDelLote(loteId))
+      const { lote, gastoIds } = await confirmarPago(loteId, req.body, req.usuario.id)
+
+      // Fuera de la transacción: un fallo en el correo no revierte el pago
+      void notificarGastosPagados(gastoIds)
+
+      res.json({ loteId: lote.id, total: lote.total })
     } catch (error) {
       responderError(res, error)
     }
@@ -69,7 +157,10 @@ export class PagosController {
 
       const condiciones: WhereOptions[] = []
 
-      // Contabilidad filtra los pagos según tengan o no número de egreso
+      // Contabilidad filtra los pagos según tengan o no número de egreso (solo los ya pagados)
+      if (req.query.egreso) condiciones.push({ estado: ESTADOS_LOTE.PAGADO })
+      if (req.query.estado) condiciones.push({ estado: String(req.query.estado).split(',') })
+
       if (req.query.egreso === 'pendiente') {
         condiciones.push({ [Op.or]: [{ numeroEgreso: null }, { numeroEgreso: '' }] })
       } else if (req.query.egreso === 'registrado') {
@@ -109,7 +200,7 @@ export class PagosController {
 
       const { count, rows } = await LotesPago.findAndCountAll({
         where: { [Op.and]: condiciones },
-        attributes: ['id', 'fechaPago', 'numeroEgreso', 'total', 'createdAt'],
+        attributes: ['id', 'estado', 'fechaPago', 'numeroEgreso', 'total', 'createdAt'],
         include: [
           { model: Bolsas, attributes: ['id', 'nombre'] },
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
@@ -141,12 +232,15 @@ export class PagosController {
         include: [
           { model: Bolsas, attributes: ['id', 'nombre'] },
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
+          { model: Usuarios, as: 'aprobador', attributes: ATRIBUTOS_USUARIO },
+          { model: Usuarios, as: 'confirmador', attributes: ATRIBUTOS_USUARIO },
           {
             model: SolicitudesGasto,
-            attributes: ['id', 'codigo', 'conceptoPago', 'valorSolicitadoPago', 'valorRealmentePagado'],
+            attributes: ['id', 'codigo', 'conceptoPago', 'valorSolicitadoPago', 'valorProgramado', 'valorRealmentePagado'],
             include: [
               { model: Terceros, attributes: ['id', 'identificacion', 'nombre'] },
-              { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO }
+              { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
+              { model: EstadosGasto, attributes: ['codigo', 'nombre'] }
             ]
           },
           {

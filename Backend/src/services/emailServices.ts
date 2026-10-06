@@ -1,4 +1,5 @@
 import sgMail from '@sendgrid/mail'
+import { correoEnsayo, modoEnsayo } from '../utils/modoEnsayo'
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
@@ -11,6 +12,23 @@ export const sendEmail = async (
   ccTorreControl = true
 ) => {
   try {
+
+    // Modo ensayo: todo va solo al correo de pruebas, sin copias; sin él, no sale nada
+    if (modoEnsayo()) {
+      const destino = correoEnsayo()
+      if (!destino) {
+        console.log(`🧪 MODO ENSAYO: correo NO enviado (falta CORREO_ENSAYO) · para ${to} · "${subject}"`)
+        return
+      }
+      console.log(`🧪 MODO ENSAYO: correo para ${to}${cc?.length ? ` (cc ${cc.join(', ')})` : ''} redirigido a ${destino}`)
+      await sgMail.send({
+        to: destino,
+        from: process.env.EMAIL_FROM!,
+        subject: `[ENSAYO · para ${to}] ${subject}`,
+        html
+      })
+      return
+    }
 
     const correosCC = [
       ...(ccTorreControl ? [process.env.CORREO_TORRE_CONTROL || 'torredecontrol@gomezpinedaabogados.com'] : []),

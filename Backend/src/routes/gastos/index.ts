@@ -123,6 +123,8 @@ router.delete('/documentos/:documentoId', DocumentosGastoController.eliminar)
 // ── Bolsas (Tesorería) ──────────────
 const soloTesoreria = requiereRol(ROLES.TESORERIA)
 const soloAdmin = requiereRol(ROLES.ADMIN)
+// Usuarios: Admin todo; Administrador de Torre de control solo perfiles de trámites (lo limita el controlador)
+const administraUsuarios = requiereRol(ROLES.ADMIN_TORRE_CONTROL)
 
 // Tesorería - Certificados también consulta los saldos (paga desde las bolsas)
 const tesoreriaOCertificados = requiereRol(ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS)
@@ -210,13 +212,13 @@ router.get('/reportes/gastos', verTablero, validarFiltrosReporte, handleInputErr
 
 // ── Administración ──────────────────
 
-router.get('/admin/roles', soloAdmin, RolesGastosController.getRoles)
-router.get('/admin/usuarios', soloAdmin, RolesGastosController.getUsuarios)
-router.post('/admin/usuarios', soloAdmin, validarCrearUsuario, handleInputErrors, RolesGastosController.crearUsuario)
-router.put('/admin/usuarios/:usuarioId', soloAdmin, validarActualizarUsuario, handleInputErrors, RolesGastosController.actualizarUsuario)
-router.put('/admin/usuarios/:usuarioId/contrasena', soloAdmin, validarRestablecerContrasena, handleInputErrors, RolesGastosController.restablecerContrasena)
+router.get('/admin/roles', administraUsuarios, RolesGastosController.getRoles)
+router.get('/admin/usuarios', administraUsuarios, RolesGastosController.getUsuarios)
+router.post('/admin/usuarios', administraUsuarios, validarCrearUsuario, handleInputErrors, RolesGastosController.crearUsuario)
+router.put('/admin/usuarios/:usuarioId', administraUsuarios, validarActualizarUsuario, handleInputErrors, RolesGastosController.actualizarUsuario)
+router.put('/admin/usuarios/:usuarioId/contrasena', administraUsuarios, validarRestablecerContrasena, handleInputErrors, RolesGastosController.restablecerContrasena)
 router.put('/admin/usuarios/:usuarioId/roles',
-  soloAdmin,
+  administraUsuarios,
   validarAsignarRoles,
   handleInputErrors,
   RolesGastosController.asignarRoles

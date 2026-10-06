@@ -6,7 +6,28 @@ import Roles from '../../models/gastos/roles'
 import UsuarioRoles from '../../models/gastos/usuarioRoles'
 import { correoIgual, hashcontrasena } from '../../utils/auth'
 import { ErrorGastos } from '../../services/gastos/errores'
-import { responderError } from './utilidades'
+import { esAdmin, responderError } from './utilidades'
+import { ROLES_TRAMITES } from '../../services/gastos/constantes'
+
+// El Administrador de Torre de control (sin ADMIN) solo maneja perfiles de trámites:
+// no asigna ni quita perfiles de Gastos o Administración, y no edita ni cambia la contraseña
+// de usuarios que los tengan (así no puede entrar a Gastos con la cuenta de otro).
+const soloTramites = (req: Request) => !esAdmin(req)
+const fueraDeTramites = (codigos: string[]) => codigos.filter(c => !ROLES_TRAMITES.includes(c))
+
+const codigosDelUsuario = async (usuarioId: number) => {
+  const usuario = await Usuarios.findByPk(usuarioId, {
+    attributes: ['id'],
+    include: [{ model: Roles, attributes: ['codigo'], through: { attributes: [] } }]
+  })
+  return (usuario?.roles ?? []).map(r => r.codigo)
+}
+
+const verificarUsuarioDeTramites = async (req: Request, usuarioId: number) => {
+  if (soloTramites(req) && fueraDeTramites(await codigosDelUsuario(usuarioId)).length) {
+    throw new ErrorGastos('Este usuario tiene perfiles de Gastos o Administración: solo el administrador puede modificarlo', 403)
+  }
+}
 
 export class RolesGastosController {
 
@@ -61,6 +82,10 @@ export class RolesGastosController {
       const correo = String(req.body.correoUsuario).trim().toLowerCase()
       const codigos: string[] = req.body.roles ?? []
 
+      if (soloTramites(req) && fueraDeTramites(codigos).length) {
+        throw new ErrorGastos('Solo puede asignar perfiles de trámites', 403)
+      }
+
       if (await Usuarios.findOne({ where: correoIgual(correo) })) {
         throw new ErrorGastos(`Ya existe un usuario con el correo ${correo}`, 409)
       }
@@ -96,6 +121,7 @@ export class RolesGastosController {
     try {
       const usuario = await Usuarios.findByPk(Number(req.params.usuarioId))
       if (!usuario) throw new ErrorGastos('Usuario no encontrado', 404)
+      await verificarUsuarioDeTramites(req, usuario.id)
 
       const correo = String(req.body.correoUsuario).trim().toLowerCase()
       const repetido = await Usuarios.findOne({
@@ -120,6 +146,7 @@ export class RolesGastosController {
     try {
       const usuario = await Usuarios.findByPk(Number(req.params.usuarioId))
       if (!usuario) throw new ErrorGastos('Usuario no encontrado', 404)
+      await verificarUsuarioDeTramites(req, usuario.id)
 
       await usuario.update({ contrasena: await hashcontrasena(req.body.contrasena) })
 
@@ -148,6 +175,15 @@ export class RolesGastosController {
 
       if (roles.length !== new Set(codigos).size) {
         return res.status(400).json({ error: 'Uno o más roles no existen' })
+      }
+
+      // Sin ADMIN, los perfiles de Gastos y Administración del usuario deben quedar como estaban
+      if (soloTramites(req)) {
+        const antes = fueraDeTramites(await codigosDelUsuario(usuarioId)).sort().join(',')
+        const despues = fueraDeTramites([...new Set(codigos)]).sort().join(',')
+        if (antes !== despues) {
+          return res.status(403).json({ error: 'Solo puede asignar o quitar perfiles de trámites' })
+        }
       }
 
       // Evita que un administrador se quite a sí mismo el rol ADMIN por error

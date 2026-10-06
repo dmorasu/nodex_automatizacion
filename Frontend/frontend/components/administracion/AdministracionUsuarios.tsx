@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react"
 import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { Eye, EyeOff, KeyRound, Loader2, Pencil, Plus, Save, Search, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Eye, EyeOff, KeyRound, Loader2, Pencil, Plus, Save, Search, X } from "lucide-react"
 import {
   actualizarUsuario,
   asignarPerfiles,
@@ -23,9 +23,23 @@ export type UsuarioAdmin = {
 // Los perfiles se muestran agrupados por módulo
 const GRUPOS = [
   { titulo: "Trámites", codigos: ["GESTION_ACTIVOS", "TORRE_CONTROL", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL"] },
-  { titulo: "Gastos", codigos: ["TESORERIA", "LEGALIZACION", "CONTABILIDAD"] },
+  { titulo: "Gastos", codigos: ["TESORERIA", "TESORERIA_CERTIFICADOS", "LEGALIZACION", "CONTABILIDAD"] },
   { titulo: "General", codigos: ["ADMIN"] }
 ]
+
+// Perfiles que dan entrada a Nodex Trámites
+const PERFILES_TRAMITES = ["GESTION_ACTIVOS", "TORRE_CONTROL", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL", "ADMIN"]
+
+const TAMANO_PAGINA = 15
+
+// Filtro por perfil: un código de rol o uno de estos casos especiales
+const SIN_PERFILES = "__sin_perfiles"
+const SIN_TRAMITES = "__sin_tramites"
+const SIN_AREA = "__sin_area"
+
+// Tiene perfiles que solo el Admin puede tocar (Gastos o Administración)
+const tienePerfilesAjenos = (usuario: UsuarioAdmin) =>
+  usuario.roles.some(r => !GRUPOS[0].codigos.includes(r.codigo))
 
 const claseInput = `
   w-full h-10 px-3 rounded-md border border-slate-200 bg-white
@@ -103,7 +117,7 @@ const validarContrasenas = (contrasena: string, confirmacion: string) => {
 
 // ── Crear o editar usuario ─────────────────────────────
 
-function ModalUsuario({ usuario, roles, onCerrar }: { usuario: UsuarioAdmin | null, roles: Rol[], onCerrar: () => void }) {
+function ModalUsuario({ usuario, roles, grupos, onCerrar }: { usuario: UsuarioAdmin | null, roles: Rol[], grupos: typeof GRUPOS, onCerrar: () => void }) {
   const [datos, setDatos] = useState({
     nombreUsuario: usuario?.nombreUsuario ?? "",
     correoUsuario: usuario?.correoUsuario ?? "",
@@ -158,23 +172,35 @@ function ModalUsuario({ usuario, roles, onCerrar }: { usuario: UsuarioAdmin | nu
 
           <div>
             <p className={claseLabel}>Perfiles</p>
-            <div className="space-y-2">
-              {GRUPOS.map(grupo => (
-                <div key={grupo.titulo} className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span className="w-16 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{grupo.titulo}</span>
-                  {roles.filter(r => grupo.codigos.includes(r.codigo)).map(rol => (
-                    <label key={rol.codigo} className="flex items-center gap-1.5 text-xs text-slate-600">
-                      <input
-                        type="checkbox"
-                        checked={perfiles.includes(rol.codigo)}
-                        onChange={() => setPerfiles(p => p.includes(rol.codigo) ? p.filter(c => c !== rol.codigo) : [...p, rol.codigo])}
-                        className="h-4 w-4 accent-sky-500"
-                      />
-                      {rol.nombre}
-                    </label>
-                  ))}
-                </div>
-              ))}
+            <div className="space-y-3">
+              {grupos.map(grupo => {
+                const rolesGrupo = roles.filter(r => grupo.codigos.includes(r.codigo))
+                if (!rolesGrupo.length) return null
+                return (
+                  <fieldset key={grupo.titulo}>
+                    <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{grupo.titulo}</legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {rolesGrupo.map(rol => {
+                        const marcado = perfiles.includes(rol.codigo)
+                        return (
+                          <label
+                            key={rol.codigo}
+                            className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs transition ${marcado ? "border-sky-300 bg-sky-50 text-sky-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={marcado}
+                              onChange={() => setPerfiles(p => p.includes(rol.codigo) ? p.filter(c => c !== rol.codigo) : [...p, rol.codigo])}
+                              className="h-4 w-4 shrink-0 accent-sky-500"
+                            />
+                            {rol.nombre}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+                )
+              })}
             </div>
           </div>
         </>
@@ -219,10 +245,11 @@ function ModalContrasena({ usuario, onCerrar }: { usuario: UsuarioAdmin, onCerra
 
 // ── Fila de usuario con sus perfiles ───────────────────
 
-function FilaUsuario({ usuario, roles, esUsted, onEditar, onContrasena }: {
+function FilaUsuario({ usuario, roles, esUsted, soloTramites, onEditar, onContrasena }: {
   usuario: UsuarioAdmin
   roles: Rol[]
   esUsted: boolean
+  soloTramites: boolean
   onEditar: () => void
   onContrasena: () => void
 }) {
@@ -231,7 +258,9 @@ function FilaUsuario({ usuario, roles, esUsted, onEditar, onContrasena }: {
   const { procesando, ejecutar } = useAccion()
 
   const huboCambios = seleccion.length !== inicial.length || seleccion.some(c => !inicial.includes(c))
-  const sinPerfilTramites = !seleccion.some(c => ["GESTION_ACTIVOS", "TORRE_CONTROL", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL", "ADMIN"].includes(c))
+  const sinPerfilTramites = !seleccion.some(c => PERFILES_TRAMITES.includes(c))
+  // Los perfiles que no se muestran (Gastos/Administración) van igual en `seleccion` y no cambian
+  const bloqueado = soloTramites && tienePerfilesAjenos(usuario)
 
   return (
     <tr className="border-t border-slate-100 align-top">
@@ -263,10 +292,10 @@ function FilaUsuario({ usuario, roles, esUsted, onEditar, onContrasena }: {
           {procesando ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
           Guardar
         </button>
-        <button type="button" onClick={onEditar} className="ml-1 p-1.5 text-slate-400 hover:text-sky-600" aria-label={`Editar ${usuario.nombreUsuario}`} title="Editar datos">
+        <button type="button" onClick={onEditar} disabled={bloqueado} className="ml-1 p-1.5 text-slate-400 hover:text-sky-600 disabled:opacity-30 disabled:hover:text-slate-400" aria-label={`Editar ${usuario.nombreUsuario}`} title={bloqueado ? "Tiene perfiles de Gastos o Administración: solo el administrador puede editarlo" : "Editar datos"}>
           <Pencil size={15} />
         </button>
-        <button type="button" onClick={onContrasena} className="p-1.5 text-slate-400 hover:text-amber-600" aria-label={`Restablecer contraseña de ${usuario.nombreUsuario}`} title="Restablecer contraseña">
+        <button type="button" onClick={onContrasena} disabled={bloqueado} className="p-1.5 text-slate-400 hover:text-amber-600 disabled:opacity-30 disabled:hover:text-slate-400" aria-label={`Restablecer contraseña de ${usuario.nombreUsuario}`} title={bloqueado ? "Tiene perfiles de Gastos o Administración: solo el administrador puede cambiar su contraseña" : "Restablecer contraseña"}>
           <KeyRound size={15} />
         </button>
       </td>
@@ -276,31 +305,79 @@ function FilaUsuario({ usuario, roles, esUsted, onEditar, onContrasena }: {
 
 // ── Pantalla ───────────────────────────────────────────
 
-export default function AdministracionUsuarios({ usuarios, roles, usuarioActualId }: {
+export default function AdministracionUsuarios({ usuarios, roles, usuarioActualId, soloTramites = false }: {
   usuarios: UsuarioAdmin[]
   roles: Rol[]
   usuarioActualId: number
+  // Administrador de Torre de control: solo ve y asigna perfiles de trámites
+  soloTramites?: boolean
 }) {
   const [busqueda, setBusqueda] = useState("")
+  const [perfil, setPerfil] = useState("")
+  const [area, setArea] = useState("")
+  const [pagina, setPagina] = useState(1)
   // undefined = cerrado | null = nuevo
   const [editando, setEditando] = useState<UsuarioAdmin | null | undefined>(undefined)
   const [contrasena, setContrasena] = useState<UsuarioAdmin | null>(null)
 
-  // Columnas en el orden de los grupos
-  const rolesOrdenados = GRUPOS.flatMap(g => g.codigos).map(c => roles.find(r => r.codigo === c)).filter(Boolean) as Rol[]
+  // Columnas en el orden de los grupos (solo Trámites para el Administrador de Torre de control)
+  const grupos = soloTramites ? GRUPOS.slice(0, 1) : GRUPOS
+  const rolesOrdenados = grupos.flatMap(g => g.codigos).map(c => roles.find(r => r.codigo === c)).filter(Boolean) as Rol[]
 
+  // Áreas que existen, sin repetir (sin distinguir mayúsculas ni espacios)
+  const areas = useMemo(() => {
+    const unicas = new Map<string, string>()
+    for (const u of usuarios) {
+      const nombre = u.area?.trim()
+      if (nombre && !unicas.has(nombre.toLowerCase())) unicas.set(nombre.toLowerCase(), nombre)
+    }
+    return [...unicas.values()].sort((a, b) => a.localeCompare(b, "es"))
+  }, [usuarios])
+
+  // El filtro por perfil usa los perfiles guardados (no los marcados sin guardar)
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
-    if (!texto) return usuarios
-    return usuarios.filter(u => [u.nombreUsuario, u.correoUsuario, u.area].some(v => v?.toLowerCase().includes(texto)))
-  }, [usuarios, busqueda])
+    return usuarios.filter(u => {
+      if (texto && ![u.nombreUsuario, u.correoUsuario, u.area].some(v => v?.toLowerCase().includes(texto))) return false
+      const areaUsuario = u.area?.trim().toLowerCase() ?? ""
+      if (area === SIN_AREA ? areaUsuario !== "" : area && areaUsuario !== area.toLowerCase()) return false
+      const codigos = u.roles.map(r => r.codigo)
+      if (perfil === SIN_PERFILES) return codigos.length === 0
+      if (perfil === SIN_TRAMITES) return !codigos.some(c => PERFILES_TRAMITES.includes(c))
+      return !perfil || codigos.includes(perfil)
+    })
+  }, [usuarios, busqueda, perfil, area])
+
+  const paginas = Math.max(1, Math.ceil(filtrados.length / TAMANO_PAGINA))
+  // Si al filtrar quedan menos páginas, se muestra la última que existe
+  const paginaActual = Math.min(pagina, paginas)
+  const visibles = filtrados.slice((paginaActual - 1) * TAMANO_PAGINA, paginaActual * TAMANO_PAGINA)
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
-          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, correo o área" className={`${claseInput} pl-9`} aria-label="Buscar usuario" />
+        <div className="flex w-full max-w-3xl flex-wrap gap-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+            <input value={busqueda} onChange={e => { setBusqueda(e.target.value); setPagina(1) }} placeholder="Buscar por nombre, correo o área" className={`${claseInput} pl-9`} aria-label="Buscar usuario" />
+          </div>
+          <select value={perfil} onChange={e => { setPerfil(e.target.value); setPagina(1) }} className={`${claseInput} w-full sm:w-56`} aria-label="Filtrar por perfil">
+            <option value="">Todos los perfiles</option>
+            {grupos.map(g => (
+              <optgroup key={g.titulo} label={g.titulo}>
+                {rolesOrdenados.filter(r => g.codigos.includes(r.codigo)).map(r => <option key={r.codigo} value={r.codigo}>{r.nombre}</option>)}
+              </optgroup>
+            ))}
+            <optgroup label="Revisión">
+              <option value={SIN_TRAMITES}>Sin acceso a trámites</option>
+              <option value={SIN_PERFILES}>Sin ningún perfil</option>
+            </optgroup>
+          </select>
+          <select value={area} onChange={e => { setArea(e.target.value); setPagina(1) }} className={`${claseInput} w-full sm:w-48`} aria-label="Filtrar por área">
+            <option value="">Todas las áreas</option>
+            {areas.map(a => <option key={a} value={a}>{a}</option>)}
+            <option value={SIN_AREA}>Sin área</option>
+          </select>
         </div>
         <button type="button" onClick={() => setEditando(null)} className={botonPrimario}>
           <Plus size={15} />
@@ -313,7 +390,7 @@ export default function AdministracionUsuarios({ usuarios, roles, usuarioActualI
           <thead className="bg-slate-50">
             <tr className="text-[10px] uppercase tracking-wide text-slate-400">
               <th />
-              {GRUPOS.map(g => (
+              {grupos.map(g => (
                 <th key={g.titulo} colSpan={g.codigos.filter(c => roles.some(r => r.codigo === c)).length} className="px-3 pt-2 text-center font-semibold">
                   {g.titulo}
                 </th>
@@ -327,12 +404,13 @@ export default function AdministracionUsuarios({ usuarios, roles, usuarioActualI
             </tr>
           </thead>
           <tbody>
-            {filtrados.map(u => (
+            {visibles.map(u => (
               <FilaUsuario
                 key={`${u.id}-${u.roles.map(r => r.codigo).join(",")}`}
                 usuario={u}
                 roles={rolesOrdenados}
                 esUsted={u.id === usuarioActualId}
+                soloTramites={soloTramites}
                 onEditar={() => setEditando(u)}
                 onContrasena={() => setContrasena(u)}
               />
@@ -342,8 +420,28 @@ export default function AdministracionUsuarios({ usuarios, roles, usuarioActualI
         {filtrados.length === 0 && <p className="py-12 text-center text-sm text-slate-400">No hay usuarios que coincidan.</p>}
       </div>
 
+      {/* PAGINACIÓN */}
+      <div className="flex items-center justify-between text-xs text-slate-500">
+        <span>
+          {filtrados.length === usuarios.length
+            ? `${usuarios.length.toLocaleString("es-CO")} usuario(s)`
+            : `${filtrados.length.toLocaleString("es-CO")} de ${usuarios.length.toLocaleString("es-CO")} usuario(s)`}
+        </span>
+        {paginas > 1 && (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setPagina(paginaActual - 1)} disabled={paginaActual === 1} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30" aria-label="Página anterior">
+              <ChevronLeft size={15} />
+            </button>
+            <span>Página {paginaActual} de {paginas}</span>
+            <button type="button" onClick={() => setPagina(paginaActual + 1)} disabled={paginaActual === paginas} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30" aria-label="Página siguiente">
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        )}
+      </div>
+
       {editando !== undefined && (
-        <ModalUsuario key={editando?.id ?? "nuevo"} usuario={editando} roles={rolesOrdenados} onCerrar={() => setEditando(undefined)} />
+        <ModalUsuario key={editando?.id ?? "nuevo"} usuario={editando} roles={rolesOrdenados} grupos={grupos} onCerrar={() => setEditando(undefined)} />
       )}
       {contrasena && <ModalContrasena usuario={contrasena} onCerrar={() => setContrasena(null)} />}
     </div>

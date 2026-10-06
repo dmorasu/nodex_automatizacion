@@ -1,7 +1,7 @@
-import { requiereAdmin } from "@/src/auth/dal"
+import { requiereAdministrarUsuarios } from "@/src/auth/dal"
 
-// Administración: solo el rol Admin
-export default async function SoloAdminLayout({ children }: { children: React.ReactNode }) {
-  await requiereAdmin()
+// Administración: Admin, o Administrador de Torre de control (solo perfiles de trámites)
+export default async function AdministracionLayout({ children }: { children: React.ReactNode }) {
+  await requiereAdministrarUsuarios()
   return <>{children}</>
 }

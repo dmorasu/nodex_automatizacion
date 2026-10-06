@@ -42,6 +42,8 @@ export const verificacionSesion = cache(async () => {
     perfil,
     // Admin además ve Administración (usuarios, perfiles y contraseñas)
     esAdmin: roles.includes("ADMIN"),
+    // Administración de usuarios: Admin todo; Administrador de Torre de control solo perfiles de trámites
+    puedeAdministrarUsuarios: roles.includes("ADMIN") || roles.includes("ADMIN_TORRE_CONTROL"),
     ...permisosAnalistas(roles),
     puedeConfigurarNotificaciones: puedeConfigurarNotificaciones(roles),
     token,
@@ -53,6 +55,13 @@ export const verificacionSesion = cache(async () => {
 export const requiereAdmin = async () => {
   const sesion = await verificacionSesion()
   if (!sesion.esAdmin) redirect('/center/dashboard')
+  return sesion
+}
+
+// Para Administración de usuarios (Admin o Administrador de Torre de control)
+export const requiereAdministrarUsuarios = async () => {
+  const sesion = await verificacionSesion()
+  if (!sesion.puedeAdministrarUsuarios) redirect('/center/dashboard')
   return sesion
 }
 

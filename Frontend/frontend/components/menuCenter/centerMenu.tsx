@@ -84,7 +84,8 @@ export default function CenterMenu({
         { href: "/center/catalogos", nombre: "Catálogos y tramitadores", icono: Tags, visible: esTorreControl },
         { href: "/center/analistas", nombre: "Asignación de analistas", icono: UserCog, visible: puedeAsignarAnalistas },
         { href: "/center/notificaciones", nombre: "Notificaciones automáticas", icono: BellRing, visible: puedeConfigurarNotificaciones },
-        { href: "/center/admin", nombre: "Administración", icono: ShieldCheck, visible: esAdmin }
+        // Admin o Administrador de Torre de control (los mismos que asignan analistas)
+        { href: "/center/admin", nombre: "Administración", icono: ShieldCheck, visible: esAdmin || puedeAsignarAnalistas }
       ]
     }
   ]

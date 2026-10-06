@@ -20,6 +20,9 @@ export const ROLES = {
   ADMIN_TORRE_CONTROL: 'ADMIN_TORRE_CONTROL'
 } as const
 
+// Perfiles del módulo de trámites: los únicos que el Administrador de Torre de control puede asignar
+export const ROLES_TRAMITES: string[] = [ROLES.GESTION_ACTIVOS, ROLES.TORRE_CONTROL, ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL]
+
 // Estos roles trabajan en Torre de control: tienen sus mismos permisos (se agregan en `autenticacion`)
 export const ROLES_CON_TORRE_CONTROL: string[] = [ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL]
 

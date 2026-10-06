@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 export default async function AdministracionPage() {
-  const { usuario } = await verificacionSesion()
+  const { usuario, esAdmin } = await verificacionSesion()
 
   const [reqUsuarios, reqRoles] = await Promise.all([
     fetch(`${process.env.API_URL}/gastos/admin/usuarios`, { headers: encabezadosSesion(), cache: "no-store" }),
@@ -28,12 +28,14 @@ export default async function AdministracionPage() {
         <div>
           <h1 className="text-xl font-semibold text-slate-800">Administración</h1>
           <p className="text-xs text-slate-500">
-            Usuarios y perfiles de Nodex Trámites y Nodex Gastos. Sin un perfil de trámites (o Admin) el usuario no puede entrar a trámites.
+            {esAdmin
+              ? "Usuarios y perfiles de Nodex Trámites y Nodex Gastos. Sin un perfil de trámites (o Admin) el usuario no puede entrar a trámites."
+              : "Usuarios y perfiles de Nodex Trámites. Los perfiles de Gastos y Administración los asigna el administrador."}
           </p>
         </div>
       </div>
 
-      <AdministracionUsuarios usuarios={usuarios} roles={roles} usuarioActualId={usuario.id} />
+      <AdministracionUsuarios usuarios={usuarios} roles={roles} usuarioActualId={usuario.id} soloTramites={!esAdmin} />
     </div>
   )
 }

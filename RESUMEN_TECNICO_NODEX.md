@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-06_
+_Actualizado: 2026-10-06 (noche)_
 
 ## Arquitectura
 
@@ -326,7 +326,13 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 **Respaldos automáticos a Azure (no quedan en el servidor):**
 - Contenedor de Blob Storage **`respaldos-nodex`** en la cuenta **`filegpa02`** (privado). Regla de ciclo de vida `respaldos-nodex-30-dias`: pasa a *Cool* a los 7 días y **se borra a los 30**.
 - El servidor sube con un **SAS del contenedor** (Lectura, Agregar, Crear, Escribir, Lista; **sin Eliminar**; vence en 1 año: **renovarlo antes de octubre de 2027**). Guardado en `/root/.respaldo-nodex.env` (`DESTINO_AZURE="https://filegpa02.blob.core.windows.net/respaldos-nodex?sv=..."`, `chmod 600`). **Sin restricción de IP:** con IP pública (`20.186.19.92`) Azure respondía 403 `AuthorizationFailure`, porque el servidor llega a la cuenta por la red interna de Azure.
-- Script `/usr/local/bin/respaldo-nodex.sh` (root): `pg_dump -Fc` de `nodex` y `nodex_pruebas` en una carpeta temporal, `pg_restore -l` para comprobar que se puede leer, subida con **AzCopy** (`/usr/local/bin/azcopy`) a `<base>/<año>/<mes>/<base>_<fecha>.dump` y borrado local. Empieza con `cd /tmp` (postgres no entra a `/root` ni a `/home/desarrolloti`).
+- Script `/usr/local/bin/respaldo-nodex.sh` (root; copia sin secretos en **`deploy/respaldo-nodex.sh`**, con las instrucciones de instalación). Respalda:
+  1. **Todas las bases** de Postgres que no son plantillas (hoy `leasing_inmuebles`, `leasing_vehiculos`, `nodex`, `nodex_do`, `nodex_pruebas`; las nuevas entran solas): `pg_dump -Fc`, `pg_restore -l` para comprobar que se puede leer, subida con **AzCopy** a `<base>/<año>/<mes>/<base>_<fecha>.dump`.
+  2. **Usuarios y permisos** de Postgres (`pg_dumpall --globals-only`, con las contraseñas cifradas) en `postgres_usuarios/`.
+  3. **El código** de Nodex: `git bundle --all` de `/home/desarrolloti/nodex5.0` (todas las ramas e historial) en `codigo/`. Se recupera con `git clone <archivo>.bundle nodex`. El `bundle verify` debe correr dentro del repositorio (`-C "$REPO"`): fuera de él git lo rechaza (así falló la primera prueba).
+  - Si una parte falla, sigue con las demás y termina con `⚠️ RESPALDO INCOMPLETO: <qué falló>` (código de salida 1); si todo sale bien, `✅ Respaldo completo`. Empieza con `cd /tmp` (postgres no entra a `/root` ni a `/home/desarrolloti`). En el servidor no queda ningún archivo.
+  - Primera ejecución completa (2026-10-06): leasing ~52 KB cada una, `nodex` 5,5 MB, `nodex_do` 2,3 MB, `nodex_pruebas` 5,6 MB, usuarios y código.
+- **Revisar cada cierto tiempo:** `grep -E "✅|⚠️" /var/log/respaldo-nodex.log | tail -7` (cada día debe decir "✅ Respaldo completo").
 - Cron `/etc/cron.d/respaldo-nodex`: todos los días a las **2:30 a. m.**; historial en `/var/log/respaldo-nodex.log`.
 - Ver lo que hay en Azure: `cd /tmp; source /root/.respaldo-nodex.env; azcopy list "$DESTINO_AZURE"`.
 - **Restaurar** (por ejemplo para revisar un respaldo en una base aparte):
@@ -491,12 +497,21 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
 9. **`node_modules` en git:** resuelto el 2026-10-06 (`git rm -r --cached Backend/node_modules`). Al hacer `git pull` en otro equipo que todavía los tenga versionados, git los borrará del disco: correr `npm ci` en `Backend` después del pull.
 10. **HTTPS:** resuelto en el ensayo (Let's Encrypt en los 4 subdominios de nodexgpa.com); la cookie `secure` de la app de tramitadores ya funciona. La 4.5 sigue por HTTP en la IP hasta el paso a producción.
 11. **Claves de Google:** en el servidor ya hay dos claves nuevas (servidor restringida a `20.186.19.92`, navegador restringida a `https://tramites.nodexgpa.com/*`). La clave de desarrollo de los `.env` locales sigue sin restricción por IP: restringirla (fase 0.2, paso 4).
-12. **Seguridad del servidor:** Postgres escucha en `0.0.0.0:5432` y la 4.5 en 3000/4000, con `ufw` inactivo; el NSG de Azure ya los tiene cerrados (confirmado 2026-10-06). Respaldos diarios automáticos a Azure resueltos (ver "Servidor: mantenimiento y respaldos").
+12. **Seguridad del servidor:** Postgres escucha en `0.0.0.0:5432` y la 4.5 en 3000/4000, con `ufw` inactivo; el NSG de Azure ya los tiene cerrados (confirmado 2026-10-06). **No abrir el 5432:** es lo que protege hoy la contraseña de la base (ver punto 16). Respaldos diarios automáticos a Azure resueltos (ver "Servidor: mantenimiento y respaldos").
 13. **`API_KEY_EXTERNA` del ensayo es la de desarrollo** (quedó escrita en el chat): generar una nueva antes de entregarla a la otra plataforma. El `JWT_SECRET` del ensayo es el mismo de producción (decisión del usuario): una sesión del ensayo sirve contra la API de producción.
 14. **Redis 6.0.16:** BullMQ recomienda 6.2 o más. Funciona; actualizar con calma porque la producción usa el mismo Redis.
 15. **Avisos de lint en Trámites** (5, no frenan el build) y un botón de documentos en `SolicitudTramitesForm` que cambia un estado que nada muestra (`TODO`).
 
+16. **Repositorio público y claves filtradas (encontrado el 2026-10-06):** `dmorasu/nodex_automatizacion` respondía en la API de GitHub sin credenciales (**público**). El historial tiene `Backend/.env` (commits `3a763b67` del 2025-09-18 y `182627b7` del 2026-06-04) y `Frontend/frontend/.env` (`ffb46e6e`, solo `API_URL`). Del commit `182627b7` seguían vigentes:
+    - **`JWT_SECRET`** (huella `3c1fbf68fbc7effc`, la misma en producción 4.5, ensayo y desarrollo): con ella se podía fabricar una sesión de cualquier usuario. **Cambiada el 2026-10-06** en producción y ensayo (misma clave nueva, huella `5bc922936cdef7d9`) y en el `.env` de desarrollo (huella `21cead99b03a53d1`). Efecto: todos vuelven a iniciar sesión.
+    - **`DB_PASSWORD`** del usuario `desarrolloti` (la usan producción, ensayo y desarrollo; también quedó escrita en el chat): **sin cambiar por decisión del usuario.** La protege que el 5432 está cerrado en el NSG. Para cambiarla: listar los `.env` que usan `desarrolloti` (`grep -rlE desarrolloti /home/desarrolloti --include=".env*" --exclude-dir=node_modules`), `\password desarrolloti` en psql, actualizar cada `.env` (y el de desarrollo y pgAdmin) y reiniciar esas apps. Los respaldos no se afectan (usan el usuario `postgres` del sistema).
+    - `TWILIO_SID` igual (sin el token no sirve); `SENDGRID_API_KEY` y `TWILIO_AUTH_TOKEN` ya eran otras.
+    - **Pendiente:** confirmar que el repositorio quedó **privado** (GitHub → Settings → Danger Zone → Change visibility). Opcional: borrar el `.env` del historial con `git filter-repo` (con el repositorio privado y las claves cambiadas no es urgente).
+17. **Protección del repositorio (recomendado):** reglas de rama en `main` y `desarrollo` sin *force push* ni borrado, verificación en dos pasos en la cuenta y mover el repositorio a una organización de GitHub de la empresa (hoy está en una cuenta personal). Guardar los valores de los `.env` en un gestor de contraseñas: no están en git ni en los respaldos.
+18. **SAS de los respaldos vence en un año** (octubre de 2027): renovarlo antes (contenedor `respaldos-nodex` → Tokens de acceso compartido; Lectura, Agregar, Crear, Escribir, Lista; **sin** Eliminar y **sin** restricción de IP) y actualizar `/root/.respaldo-nodex.env`. Si vence, los respaldos dejan de subirse.
+
 ## Próximos pasos sugeridos
+- **Seguridad:** confirmar el repositorio privado; decidir cuándo cambiar la contraseña de la base; generar la `API_KEY_EXTERNA` definitiva; probar una restauración de un respaldo en una base aparte (`nodex_revision`).
 - **Ensayo (fase 7):** pruebas con un usuario de cada perfil (guía de ensayo, paso 10): pago en tres pasos, certificados, trámites (desistir, finalizar, programar), correos solo a `CORREO_ENSAYO`, WhatsApp "NO enviado", mapa de rutas con Google, autocompletado de dirección, API externa y la app de tramitadores desde un celular.
 - **Paso a producción:** cuando el ensayo pase, seguir `deploy/GUIA_PASO_A_PRODUCCION.md` (anotar antes lo configurado en las pantallas del ensayo que se quiera conservar).
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.

@@ -75,7 +75,7 @@ const correoPagado = (titulo: string, saludo: string, intro: string, gastos: Sol
       ['Bolsa', html(g.bolsa?.nombre)],
       ['Trámite', tramite(g)],
       ['Lote de pago', g.lotePagoId ? `#${g.lotePagoId}` : null],
-      ['Aprobado por', g.lotePago?.aprobador ? html(g.lotePago.aprobador.nombreUsuario) : 'Pago directo (certificados)']
+      ['Aprobado por', g.lotePago?.aprobador ? html(g.lotePago.aprobador.nombreUsuario) : g.anticipoId ? 'Pago directo (anticipo del cliente)' : 'Pago directo (certificados)']
     ]
   })
 

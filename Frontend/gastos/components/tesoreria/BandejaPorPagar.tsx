@@ -9,16 +9,24 @@ import { claseBotonSecundario, claseInput } from "@/components/ui/estilos"
 // Máximo que permite el backend por página
 const MAXIMO_BANDEJA = 100
 
-// Gastos por pagar. Las compras de certificados (CTL y Cámara de Comercio) van en su propia
+// Gastos por pagar, en tres bandejas:
+//  · general: se programan para aprobación de Dirección de Negocio;
+//  · certificados (CTL y Cámara de Comercio) y anticipos (el cliente ya pagó): se pagan directo.
+// Las compras de certificados (CTL y Cámara de Comercio) van en su propia
 // bandeja (Tesorería - Certificados) y no salen en la general.
 export default async function BandejaPorPagar({
-  certificados,
+  tipo,
   searchParams
 }: {
-  certificados: "si" | "no"
+  tipo: "general" | "certificados" | "anticipos"
   searchParams: { bolsaId?: string, busqueda?: string }
 }) {
-  const consulta = new URLSearchParams({ alcance: "todos", estado: "SOLICITADO", certificados, tamano: String(MAXIMO_BANDEJA) })
+  const consulta = new URLSearchParams({
+    alcance: "todos",
+    estado: "SOLICITADO",
+    tamano: String(MAXIMO_BANDEJA),
+    ...(tipo === "anticipos" ? { anticipo: "si" } : { anticipo: "no", certificados: tipo === "certificados" ? "si" : "no" })
+  })
   if (searchParams.bolsaId) consulta.set("bolsaId", searchParams.bolsaId)
   if (searchParams.busqueda) consulta.set("busqueda", searchParams.busqueda)
 
@@ -28,13 +36,14 @@ export default async function BandejaPorPagar({
   ])
 
   const { total, registros } = ListadoGastosSchema.parse(await respuesta.json())
-  const bolsasActivas = bolsas.filter(b => b.activo)
+  // Los gastos de anticipos se pagan de las bolsas de anticipos; los demás, de las generales
+  const bolsasActivas = bolsas.filter(b => b.activo && (b.tipo === "ANTICIPOS") === (tipo === "anticipos"))
 
   return (
     <div className="space-y-4">
 
-      {/* Saldos: solo en la bandeja general; la de certificados no los muestra */}
-      {certificados === "no" && (
+      {/* Saldos: la bandeja de certificados no los muestra */}
+      {tipo !== "certificados" && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {bolsasActivas.map(bolsa => (
             <div key={bolsa.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -70,7 +79,7 @@ export default async function BandejaPorPagar({
         </p>
       )}
 
-      <BandejaPagos gastos={registros} bolsas={bolsas} directo={certificados === "si"} />
+      <BandejaPagos gastos={registros} bolsas={bolsasActivas} directo={tipo !== "general"} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import ListadoLotes, { type FiltrosListadoLotes } from "@/components/tesoreria/ListadoLotes"
 
 // Lotes programados: esperando la aprobación de Dirección de Negocio, o aprobados y
-// pendientes de adjuntar el soporte del banco y confirmar el pago
+// pendientes de adjuntar el soporte del banco y confirmar el pago (uno o varios a la vez)
 export default function ProgramadosPage({ searchParams }: { searchParams: FiltrosListadoLotes }) {
   return (
     <ListadoLotes
@@ -10,6 +10,7 @@ export default function ProgramadosPage({ searchParams }: { searchParams: Filtro
       rutaBase="/tesoreria/programados"
       rutaDetalle="/tesoreria/lotes"
       vacio="No hay pagos programados."
+      confirmables
     />
   )
 }

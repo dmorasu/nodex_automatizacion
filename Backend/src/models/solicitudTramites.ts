@@ -7,8 +7,10 @@ import {
   BelongsTo,
   HasMany,
   HasOne,
-  BeforeCreate
+  BeforeCreate,
+  AfterSave
 } from "sequelize-typescript";
+import type { Transaction } from "sequelize";
 
 import Usuarios from "./usuarios";
 import Tarifa from "./tarifa";
@@ -95,6 +97,27 @@ class SolicitudTramites extends Model {
     if (solicitud.analistaAsignado || !solicitud.municipiosId) return
     const municipio = await Municipios.findByPk(solicitud.municipiosId, { attributes: ['id', 'analistaId'] })
     solicitud.analistaAsignado = municipio?.analistaId ?? null
+  }
+
+  // Aviso push al tramitador cada vez que le asignan el trámite, venga de donde venga
+  // (crear, editar, asignar, Excel o gestión masiva). Si hay transacción, sale al confirmarla.
+  @AfterSave
+  static avisarTramitadorAsignado(solicitud: SolicitudTramites, opciones: { transaction?: Transaction | null }) {
+    if (!solicitud.changed('tramitadorId') || !solicitud.tramitadorId) return
+    // El formulario puede mandar el id como texto ("5"): no es un cambio si es el mismo
+    if (Number(solicitud.previous('tramitadorId')) === Number(solicitud.tramitadorId)) return
+
+    const id = solicitud.id
+    const tramitadorId = Number(solicitud.tramitadorId)
+    // require diferido: el servicio usa otros modelos y arriba se cargaría en círculo
+    const avisar = () => {
+      const { avisarTramiteAsignado } = require('../services/tramitadores/avisosPush') as {
+        avisarTramiteAsignado: (solicitudTramiteId: number, tramitadorId: number) => Promise<void>
+      }
+      void avisarTramiteAsignado(id, tramitadorId)
+    }
+    if (opciones.transaction) opciones.transaction.afterCommit(avisar)
+    else avisar()
   }
 
   // ===== Relaciones Base =====

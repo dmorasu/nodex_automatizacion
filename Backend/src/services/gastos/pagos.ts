@@ -4,9 +4,12 @@ import Bolsas from '../../models/gastos/bolsas'
 import LotesPago from '../../models/gastos/lotesPago'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import DocumentosGasto from '../../models/gastos/documentosGasto'
-import { registrarMovimientos } from './bolsas'
+import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
+import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
+import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
+import { registrarMovimientos, validarBolsaDelGasto } from './bolsas'
 import { cambiarEstadoGasto, codigoEstadoGasto } from './estadosGasto'
-import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
+import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
 
@@ -106,6 +109,7 @@ export const programarPago = (datos: DatosProgramacion, usuarioId: number) =>
       if (await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.SOLICITADO) {
         throw new ErrorGastos(`El gasto ${gasto.codigo} ya no está pendiente de pago`)
       }
+      validarBolsaDelGasto(gasto, bolsa)
     }
 
     const porId = new Map(gastos.map(g => [g.id, g]))
@@ -222,6 +226,7 @@ export const pagarDirecto = (datos: DatosPagoDirecto, usuarioId: number) =>
       if (await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.SOLICITADO) {
         throw new ErrorGastos(`El gasto ${gasto.codigo} ya no está pendiente de pago`)
       }
+      validarBolsaDelGasto(gasto, bolsa)
     }
 
     const porId = new Map(gastos.map(g => [g.id, g]))
@@ -274,7 +279,60 @@ export const pagarDirecto = (datos: DatosPagoDirecto, usuarioId: number) =>
 
 // Tesorería confirma con el soporte del banco ya adjunto: descuenta la bolsa y paga los gastos
 export const confirmarPago = (loteId: number, datos: DatosConfirmacion, usuarioId: number) =>
-  db.transaction(async transaction => {
+  db.transaction(transaction => confirmarPagoEn(transaction, loteId, datos, usuarioId))
+
+// Confirma uno o varios lotes aprobados a la vez (todos o ninguno). Los archivos (el soporte
+// del banco, que puede ser uno solo para todos) se adjuntan a cada lote; si un lote ya tiene
+// su soporte, no hace falta adjuntar.
+export const confirmarPagos = async (
+  loteIds: number[],
+  datos: DatosConfirmacion,
+  archivos: Express.Multer.File[],
+  usuarioId: number
+) => {
+  if (new Set(loteIds).size !== loteIds.length) throw new ErrorGastos('Hay lotes repetidos en la confirmación')
+
+  // Se suben antes de la transacción (Azure no se revierte): si algo falla, se borran
+  const subidos: { rutaDirectorio: string, nombreArchivo: string }[] = []
+  try {
+    return await db.transaction(async transaction => {
+      const tipoDocumento = archivos.length
+        ? await TiposDocumentoGasto.findOne({ where: { codigo: TIPOS_DOCUMENTO.SOPORTE_PAGO }, transaction })
+        : null
+      if (archivos.length && !tipoDocumento) throw new ErrorGastos('No existe el tipo de documento Soporte de pago', 500)
+
+      const gastoIds: number[] = []
+      for (const loteId of loteIds) {
+        if (tipoDocumento) {
+          const rutaDirectorio = `gastos/lotes/lote-${loteId}`
+          for (const archivo of archivos) {
+            const nombreArchivo = nombreSeguro(archivo.originalname)
+            await subirArchivo(rutaDirectorio, nombreArchivo, archivo.buffer)
+            subidos.push({ rutaDirectorio, nombreArchivo })
+            await DocumentosGasto.create({
+              lotePagoId: loteId,
+              tipoDocumentoId: tipoDocumento.id,
+              nombreOriginal: archivo.originalname,
+              nombreArchivo,
+              rutaDirectorio,
+              tipoArchivo: archivo.mimetype,
+              tamano: archivo.size,
+              subidoPor: usuarioId
+            }, { transaction })
+          }
+        }
+        const resultado = await confirmarPagoEn(transaction, loteId, datos, usuarioId)
+        gastoIds.push(...resultado.gastoIds)
+      }
+      return { loteIds, gastoIds }
+    })
+  } catch (error) {
+    await Promise.allSettled(subidos.map(s => eliminarArchivo(s.rutaDirectorio, s.nombreArchivo)))
+    throw error
+  }
+}
+
+const confirmarPagoEn = async (transaction: Transaction, loteId: number, datos: DatosConfirmacion, usuarioId: number) => {
     const lote = await loteBloqueado(loteId, transaction)
     if (lote.estado !== ESTADOS_LOTE.APROBADO) {
       throw new ErrorGastos(lote.estado === ESTADOS_LOTE.PROGRAMADO
@@ -328,4 +386,4 @@ export const confirmarPago = (loteId: number, datos: DatosConfirmacion, usuarioI
     }, { transaction })
 
     return { lote, gastoIds: gastos.map(g => g.id) }
-  })
+}

@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation"
 
+// La raíz entra directo al Dashboard (como Gastos y Tramitadores); sin sesión, el guard de /center manda al login
 export default function Home() {
-  return (
-    <div><h1>Hello Inicio</h1></div>
-  );
+  redirect("/center/dashboard")
 }

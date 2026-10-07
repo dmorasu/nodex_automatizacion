@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Tags,
   Upload,
+  FileUp,
   UserCog,
   UserRoundPlus,
   Users,
@@ -73,6 +74,7 @@ export default function CenterMenu({
         { href: "/center/solicitudTramites/nueva", nombre: "Nuevo trámite", icono: FilePlus2, visible: true },
         { href: "/center/clientes/nuevo", nombre: "Nuevo cliente", icono: UserRoundPlus, visible: true },
         { href: "/center/cargueMasiva", nombre: "Cargue masivo de trámites", icono: Upload, visible: true },
+        { href: "/center/cargueDocumentos", nombre: "Cargue masivo de documentos", icono: FileUp, visible: true },
         { href: "/center/cargueMasivoClientes", nombre: "Cargue masivo de clientes", icono: FileSpreadsheet, visible: true },
         { href: "/center/cargueMasivoGastos", nombre: "Cargue masivo de gastos", icono: Receipt, visible: perfil === "GESTION_ACTIVOS" || esAdmin },
         { href: "/center/gestionMasiva", nombre: "Gestión masiva", icono: Settings2, visible: esTorreControl }

@@ -3,10 +3,11 @@ import NotificacionProgramada from "../models/notificacionProgramada"
 import SolicitudTramites from "../models/solicitudTramites"
 import { obtenerDiligenciasDeHoy, obtenerDiligenciasVencidas } from "./notificacionesDiligenciasServices"
 import { crearNotificacion } from "./notificacionesServices"
+import { recordarReintegrosPendientes } from "./tramitadores/avisosPush"
 
 // =====================================
-// NOTIFICACIONES AUTOMÁTICAS DE WHATSAPP (diligencias de hoy y vencidas)
-// La hora, los días y si están activas se guardan en `notificaciones_programadas` y se
+// NOTIFICACIONES AUTOMÁTICAS: WhatsApp (diligencias de hoy y vencidas) y push de la app de
+// tramitadores (recordatorio de reintegros). La hora, los días y si están activas se guardan en `notificaciones_programadas` y se
 // cambian desde Nodex Trámites. Al guardar, la tarea se reprograma en caliente.
 // Ojo: el programador vive en memoria; con más de una instancia del backend, cada una
 // enviaría sus propios mensajes (por eso se despliega una sola).
@@ -21,16 +22,45 @@ export class ErrorNotificacionesProgramadas extends Error {
   }
 }
 
+// sinTelefono: en WhatsApp, tramitadores sin número; en push, sin notificaciones activadas en la app
 type Resultado = { encontradas: number, enviadas: number, sinTelefono: number, errores: number }
 
 type Tarea = {
-  clave: "DILIGENCIA_HOY" | "DILIGENCIA_VENCIDA"
+  clave: "DILIGENCIA_HOY" | "DILIGENCIA_VENCIDA" | "RECORDATORIO_REINTEGROS"
   nombre: string
   descripcion: string
+  canal: "WHATSAPP" | "PUSH"
   // Valores con los que funcionaba antes de ser configurable
   porDefecto: { hora: string, dias: number[], activa: boolean }
-  buscar: () => Promise<SolicitudTramites[]>
-  datos: (solicitud: SolicitudTramites) => Record<string, unknown>
+  enviar: () => Promise<Resultado>
+}
+
+type DatosWhatsapp = (solicitud: SolicitudTramites) => Record<string, unknown>
+
+// Un WhatsApp por diligencia encontrada
+const enviarWhatsappDiligencias = async (
+  clave: "DILIGENCIA_HOY" | "DILIGENCIA_VENCIDA",
+  buscar: () => Promise<SolicitudTramites[]>,
+  datos: DatosWhatsapp
+): Promise<Resultado> => {
+  const diligencias = await buscar()
+  const cuenta: Resultado = { encontradas: diligencias.length, enviadas: 0, sinTelefono: 0, errores: 0 }
+
+  for (const solicitud of diligencias) {
+    // crearNotificacion no envía nada si el tramitador no tiene número
+    if (!solicitud.tramitador?.numeroTramitador) {
+      cuenta.sinTelefono++
+      continue
+    }
+    try {
+      await crearNotificacion({ solicitud, tipo: clave, destinatario: solicitud.tramitador, data: datos(solicitud) })
+      cuenta.enviadas++
+    } catch (error) {
+      cuenta.errores++
+      console.error(`❌ ${clave}: error con la solicitud ${solicitud.id}`, error)
+    }
+  }
+  return cuenta
 }
 
 const TAREAS: Tarea[] = [
@@ -38,9 +68,9 @@ const TAREAS: Tarea[] = [
     clave: "DILIGENCIA_HOY",
     nombre: "Diligencias de hoy",
     descripcion: "Recuerda al tramitador las diligencias en curso programadas para hoy.",
+    canal: "WHATSAPP",
     porDefecto: { hora: "08:00", dias: TODOS_LOS_DIAS, activa: true },
-    buscar: obtenerDiligenciasDeHoy,
-    datos: solicitud => ({
+    enviar: () => enviarWhatsappDiligencias("DILIGENCIA_HOY", obtenerDiligenciasDeHoy, solicitud => ({
       nombre: solicitud.tramitador?.nombreTramitador,
       tipo: solicitud.tramite?.nombreTramite,
       detalle: solicitud.detalleSolicitud,
@@ -48,15 +78,15 @@ const TAREAS: Tarea[] = [
       ubicacion: solicitud.direccionTramite,
       // crearNotificacion lo reemplaza por el analista asignado, si el trámite tiene
       programador: solicitud.municipios?.responsable
-    })
+    }))
   },
   {
     clave: "DILIGENCIA_VENCIDA",
     nombre: "Diligencias vencidas",
     descripcion: "Avisa al tramitador las diligencias en curso cuya fecha programada ya pasó.",
+    canal: "WHATSAPP",
     porDefecto: { hora: "13:00", dias: TODOS_LOS_DIAS, activa: true },
-    buscar: obtenerDiligenciasVencidas,
-    datos: solicitud => ({
+    enviar: () => enviarWhatsappDiligencias("DILIGENCIA_VENCIDA", obtenerDiligenciasVencidas, solicitud => ({
       nombre: solicitud.tramitador?.nombreTramitador,
       tipo: solicitud.tramite?.nombreTramite,
       detalle: solicitud.detalleSolicitud,
@@ -64,7 +94,15 @@ const TAREAS: Tarea[] = [
       ubicacion: solicitud.direccionTramite,
       fecha: solicitud.programacion?.fechaProbableEntrega,
       programador: solicitud.tramite?.responsable
-    })
+    }))
+  },
+  {
+    clave: "RECORDATORIO_REINTEGROS",
+    nombre: "Reintegros por enviar",
+    descripcion: "Notificación en la app de tramitadores, cada día, a quien tenga reintegros sin enviar (deja de llegarle cuando sube el comprobante; si se lo rechazan, vuelve a llegarle).",
+    canal: "PUSH",
+    porDefecto: { hora: "09:00", dias: TODOS_LOS_DIAS, activa: true },
+    enviar: recordarReintegrosPendientes
   }
 ]
 
@@ -89,28 +127,11 @@ const ejecutar = async (tarea: Tarea, origen: "PROGRAMADA" | "MANUAL", usuario?:
 
   let resultado: Resultado | { error: string }
   try {
-    const diligencias = await tarea.buscar()
-    const cuenta: Resultado = { encontradas: diligencias.length, enviadas: 0, sinTelefono: 0, errores: 0 }
-
-    for (const solicitud of diligencias) {
-      // crearNotificacion no envía nada si el tramitador no tiene número
-      if (!solicitud.tramitador?.numeroTramitador) {
-        cuenta.sinTelefono++
-        continue
-      }
-      try {
-        await crearNotificacion({ solicitud, tipo: tarea.clave, destinatario: solicitud.tramitador, data: tarea.datos(solicitud) })
-        cuenta.enviadas++
-      } catch (error) {
-        cuenta.errores++
-        console.error(`❌ ${tarea.clave}: error con la solicitud ${solicitud.id}`, error)
-      }
-    }
-    resultado = cuenta
-    console.log(`✅ NOTIFICACIONES ${tarea.clave}:`, cuenta)
+    resultado = await tarea.enviar()
+    console.log(`✅ NOTIFICACIONES ${tarea.clave}:`, resultado)
   } catch (error) {
     console.error(`❌ NOTIFICACIONES ${tarea.clave}:`, error)
-    resultado = { error: "No se pudieron consultar las diligencias" }
+    resultado = { error: "No se pudo consultar a quién notificar" }
   } finally {
     enEjecucion.delete(tarea.clave)
   }
@@ -159,8 +180,11 @@ const programar = (tarea: Tarea, config: { hora: string, dias: number[], activa:
 
 // Al arrancar: crea las filas que falten con los valores de siempre y programa cada tarea.
 // Si la tabla no responde, programa los valores por defecto para no dejar de notificar.
-export const iniciarNotificacionesProgramadas = async () => {
+// En modo ensayo solo se programan las push: llegan únicamente a los celulares que las
+// activaron en la app del ensayo (los WhatsApp irían a los teléfonos reales de la copia).
+export const iniciarNotificacionesProgramadas = async ({ soloPush = false } = {}) => {
   for (const tarea of TAREAS) {
+    if (soloPush && tarea.canal !== "PUSH") continue
     try {
       const [config] = await NotificacionProgramada.findOrCreate({
         where: { clave: tarea.clave },
@@ -180,6 +204,7 @@ const vista = (tarea: Tarea, config: NotificacionProgramada) => ({
   clave: tarea.clave,
   nombre: tarea.nombre,
   descripcion: tarea.descripcion,
+  canal: tarea.canal,
   hora: config.hora,
   dias: config.dias,
   activa: config.activa,

@@ -8,8 +8,9 @@ import FormasPago from '../../models/gastos/formasPago'
 import Terceros from '../../models/gastos/terceros'
 import Bolsas from '../../models/gastos/bolsas'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
+import Anticipos from '../../models/gastos/anticipos'
 import { cambiarEstadoGasto, codigoEstadoGasto, idEstadoGasto, registrarTrazabilidad } from './estadosGasto'
-import { ESTADOS_GASTO, PARAMETROS, TIPOS_GASTO } from './constantes'
+import { ESTADOS_ANTICIPO, ESTADOS_GASTO, PARAMETROS, TIPOS_BOLSA, TIPOS_GASTO } from './constantes'
 import { ErrorGastos } from './errores'
 import { calcularRetencion } from './calculos'
 import { obtenerParametro } from './parametros'
@@ -35,6 +36,9 @@ export type DatosGasto = {
   bolsaId: number
   solicitudTramiteId?: number | null
   tramitadorId?: number | null
+  // Gasto creado desde el anticipo de un cliente: se paga de la bolsa del anticipo, no es
+  // reembolsable y se descuenta del saldo del cliente
+  anticipoId?: number | null
   tipoGastoId: number
   formaPagoId: number
   reembolsable?: boolean
@@ -120,17 +124,31 @@ const resolverBeneficiario = async (datos: DatosGasto, transaction: Transaction 
 // Devuelve los campos listos para guardar. Con soloValidar no escribe nada en la base de datos.
 const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloValidar = false) => {
 
+  const anticipo = datos.anticipoId
+    ? await Anticipos.findByPk(datos.anticipoId, { include: [{ model: Terceros, attributes: ['nombre', 'identificacion'] }], transaction })
+    : null
+  if (datos.anticipoId) {
+    if (!anticipo) throw new ErrorGastos('El anticipo no existe')
+    if (anticipo.estado !== ESTADOS_ANTICIPO.CONFIRMADO) {
+      throw new ErrorGastos(`El anticipo ${anticipo.codigo} aún no está confirmado por Contabilidad`)
+    }
+  }
+
   const [tipoGasto, formaPago, operacion, bolsa] = await Promise.all([
     TiposGasto.findByPk(datos.tipoGastoId, { transaction }),
     FormasPago.findByPk(datos.formaPagoId, { transaction }),
     Operaciones.findByPk(datos.operacionId, { transaction }),
-    Bolsas.findByPk(datos.bolsaId, { transaction })
+    // El gasto de un anticipo siempre sale de la bolsa del anticipo
+    Bolsas.findByPk(anticipo?.bolsaId ?? datos.bolsaId, { transaction })
   ])
 
   if (!tipoGasto?.activo) throw new ErrorGastos('El tipo de gasto no existe')
   if (!formaPago?.activo) throw new ErrorGastos('La forma de pago no existe o está inactiva')
   if (!operacion) throw new ErrorGastos('La operación no existe')
   if (!bolsa?.activo) throw new ErrorGastos('La bolsa no existe o está inactiva')
+  if (!anticipo && bolsa.tipo === TIPOS_BOLSA.ANTICIPOS) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos: solo paga gastos creados desde un anticipo confirmado`)
+  }
 
   let tramitadorId = datos.tramitadorId ?? null
   let placa = texto(datos.placa)?.toUpperCase() ?? null
@@ -179,19 +197,20 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     bolsaId: bolsa.id,
     solicitudTramiteId: datos.solicitudTramiteId ?? null,
     tramitadorId,
+    anticipoId: anticipo?.id ?? null,
     tipoGastoId: tipoGasto.id,
     formaPagoId: formaPago.id,
     beneficiarioId: await resolverBeneficiario(datos, transaction, soloValidar),
-    // Por defecto reembolsable (se le cobra al cliente)
-    reembolsable: datos.reembolsable ?? true,
+    // Por defecto reembolsable (se le cobra al cliente). El de un anticipo no: el cliente ya pagó
+    reembolsable: anticipo ? false : datos.reembolsable ?? true,
     numeroFactura: texto(datos.numeroFactura),
     conceptoPago: texto(datos.conceptoPago),
     matriculaInmobiliaria,
     placa,
     transito,
     contrato: texto(datos.contrato),
-    nombreClienteBanco: texto(datos.nombreClienteBanco),
-    identificacionClienteBanco: texto(datos.identificacionClienteBanco),
+    nombreClienteBanco: anticipo ? anticipo.cliente.nombre : texto(datos.nombreClienteBanco),
+    identificacionClienteBanco: anticipo ? anticipo.cliente.identificacion : texto(datos.identificacionClienteBanco),
     codigoBpr: texto(datos.codigoBpr),
     valorSolicitadoPago: String(valorSolicitado),
     ...retencion,
@@ -268,7 +287,8 @@ export const actualizarGasto = (gasto: SolicitudesGasto, datos: DatosGasto, usua
       throw new ErrorGastos('Solo se pueden editar gastos en estado Solicitado')
     }
 
-    const campos = await prepararDatos(datos, transaction)
+    // El anticipo del que salió el gasto no se cambia al editarlo
+    const campos = await prepararDatos({ ...datos, anticipoId: gasto.anticipoId }, transaction)
 
     await gasto.update({ ...campos, actualizadoPor: usuarioId }, { transaction })
 

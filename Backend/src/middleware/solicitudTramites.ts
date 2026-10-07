@@ -95,7 +95,7 @@ export const validateSolicitudTramitesId = async (
 // Se responde 404 (como si no existiera) para no revelar trámites ajenos.
 // =====================================================
 
-const puedeAccederTramite = async (req: Request, tramiteId: unknown) => {
+export const puedeAccederTramite = async (req: Request, tramiteId: unknown) => {
   if (!soloTramitesPropios(req)) return true
 
   const tramite = await SolicitudTramites.findByPk(Number(tramiteId), { attributes: ["id", "usuarioId"] })

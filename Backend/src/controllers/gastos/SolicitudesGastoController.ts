@@ -26,7 +26,29 @@ import { ErrorGastos } from '../../services/gastos/errores'
 import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados } from './utilidades'
 import SolicitudTramites from '../../models/solicitudTramites'
+import Anticipos from '../../models/gastos/anticipos'
 import { soloTramitesPropios } from '../../middleware/auth'
+import { avisoSaldoCliente, saldoDelCliente } from '../../services/gastos/anticipos'
+import { obtenerAnticipoConAcceso } from './AnticiposController'
+
+// Gastos de anticipos: saldo del cliente en la bolsa y lo que tiene por pagar (incluido este
+// gasto), para avisar en Tesorería y en Dirección de Negocio si no le alcanza. null si no es de anticipo.
+// `tabla` = alias del gasto en la consulta ("gastos" cuando va incluido en un lote)
+export const atributosSaldoAnticipo = (tabla = 'SolicitudesGasto'): [ReturnType<typeof literal>, string][] => [
+  [literal(`(
+    SELECT COALESCE(SUM(m.valor), 0) FROM gastos_anticipos a
+    JOIN gastos_movimientos_bolsa m ON m.bolsa_id = a.bolsa_id AND m.cliente_id = a.cliente_id
+    WHERE a.id = "${tabla}"."anticipo_id"
+  )`), 'saldoClienteAnticipo'],
+  [literal(`(
+    SELECT COALESCE(SUM(COALESCE(g2.valor_programado, g2.valor_solicitado_pago)), 0)
+    FROM gastos_anticipos a
+    JOIN gastos_anticipos a2 ON a2.bolsa_id = a.bolsa_id AND a2.cliente_id = a.cliente_id
+    JOIN gastos_solicitudes g2 ON g2.anticipo_id = a2.id
+    JOIN gastos_estados_gasto e2 ON e2.id = g2.estado_id AND e2.codigo IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO')
+    WHERE a.id = "${tabla}"."anticipo_id"
+  )`), 'comprometidoClienteAnticipo']
+]
 
 // Busca el gasto y verifica que el usuario pueda verlo.
 // A quien no puede verlo se le responde 404 (no se revela que existe).
@@ -59,7 +81,8 @@ const INCLUDES_LISTADO = [
   ...INCLUDES_BASE,
   { model: Terceros, attributes: ['id', 'identificacion', 'nombre'] },
   { model: FacturasGasto, attributes: ['id', 'numeroFactura', 'valorFactura', 'cuatroXMil', 'valorLegalizado'] },
-  { model: Tramitador, attributes: ['id', 'nombreTramitador'] }
+  { model: Tramitador, attributes: ['id', 'nombreTramitador'] },
+  { model: Anticipos, attributes: ['id', 'codigo'] }
 ]
 
 // Seguimiento desde la app de tramitadores, para Legalización:
@@ -125,6 +148,8 @@ const condicionesListado = async (req: Request) => {
   if (q.creadoPor) condiciones.push({ creadoPor: Number(q.creadoPor) })
   if (q.reembolsable) condiciones.push({ reembolsable: q.reembolsable === 'si' })
   if (q.conTramite) condiciones.push({ solicitudTramiteId: q.conTramite === 'si' ? { [Op.ne]: null } : null })
+  // Gastos de anticipos: Tesorería los paga directo en su propia bandeja
+  if (q.anticipo) condiciones.push({ anticipoId: q.anticipo === 'si' ? { [Op.ne]: null } : null })
 
   // Gastos que no están en ninguna cuenta de cobro activa (no reembolsables por contabilizar)
   if (q.sinCuentaCobro === 'si') {
@@ -204,8 +229,9 @@ export class SolicitudesGastoController {
           attributes: [
             'id', 'codigo', 'conceptoPago', 'placa', 'matriculaInmobiliaria', 'numeroFactura', 'reembolsable',
             'valorSolicitadoPago', 'valorRealmentePagado',
-            'fechaPago', 'createdAt', 'solicitudTramiteId',
-            ...ATRIBUTOS_SEGUIMIENTO_TRAMITADOR
+            'fechaPago', 'createdAt', 'solicitudTramiteId', 'anticipoId',
+            ...ATRIBUTOS_SEGUIMIENTO_TRAMITADOR,
+            ...atributosSaldoAnticipo()
           ],
           order: ORDENES[String(req.query.orden)] ?? ORDENES.recientes,
           limit: tamano,
@@ -254,6 +280,11 @@ export class SolicitudesGastoController {
           { model: Terceros },
           { model: Usuarios, as: 'actualizador', attributes: ATRIBUTOS_USUARIO },
           { model: Usuarios, as: 'contabilizador', attributes: ATRIBUTOS_USUARIO },
+          {
+            model: Anticipos,
+            attributes: ['id', 'codigo', 'tipo', 'valorRecibido', 'reciboCaja', 'bolsaId', 'clienteId'],
+            include: [{ model: Terceros, attributes: ['id', 'nombre', 'tipoIdentificacion', 'identificacion'] }]
+          },
           {
             model: FacturasGasto,
             include: [{ model: Usuarios, as: 'registrador', attributes: ATRIBUTOS_USUARIO }]
@@ -340,6 +371,8 @@ export class SolicitudesGastoController {
           documentos: documentosReintegros.filter(d => d.reintegroId === r.id)
         })),
         documentosPago,
+        // Gasto de un anticipo: cómo va el saldo del cliente en la bolsa
+        saldoAnticipo: gasto.anticipo ? await saldoDelCliente(gasto.anticipo.bolsaId, gasto.anticipo.clienteId) : null,
         permisos: {
           // La factura se registra o corrige mientras el gasto no esté en una cuenta de cobro
           registrarFactura: esLegalizacion && (
@@ -359,12 +392,23 @@ export class SolicitudesGastoController {
 
   static create = async (req: Request, res: Response) => {
     try {
+      // El gasto de un anticipo lo crea quien registró el anticipo (o un administrador)
+      if (req.body.anticipoId) {
+        const anticipo = await obtenerAnticipoConAcceso(req, Number(req.body.anticipoId))
+        if (anticipo.creadoPor !== req.usuario.id && !esAdmin(req)) {
+          throw new ErrorGastos('Solo quien registró el anticipo puede crear sus gastos', 403)
+        }
+      }
+
       const gasto = await crearGasto(req.body, req.usuario.id)
 
       // Fuera de la transacción: un fallo en el correo no revierte el gasto
       void notificarGastosCreados([gasto.id])
 
-      res.status(201).json({ id: gasto.id, codigo: gasto.codigo })
+      // Se crea aunque supere el saldo del cliente, pero se avisa en pantalla
+      const avisoSaldo = gasto.anticipoId ? await avisoSaldoCliente(gasto.anticipoId) : null
+
+      res.status(201).json({ id: gasto.id, codigo: gasto.codigo, avisoSaldo })
     } catch (error) {
       responderError(res, error)
     }
@@ -379,7 +423,8 @@ export class SolicitudesGastoController {
       }
 
       await actualizarGasto(gasto, req.body, req.usuario.id)
-      res.json({ id: gasto.id, codigo: gasto.codigo })
+      const avisoSaldo = gasto.anticipoId ? await avisoSaldoCliente(gasto.anticipoId) : null
+      res.json({ id: gasto.id, codigo: gasto.codigo, avisoSaldo })
     } catch (error) {
       responderError(res, error)
     }

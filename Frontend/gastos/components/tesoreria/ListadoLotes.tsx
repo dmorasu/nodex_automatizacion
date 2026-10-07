@@ -2,34 +2,31 @@ import Link from "next/link"
 import { Search, X } from "lucide-react"
 import { obtenerLotes } from "@/src/lib/datosTesoreria"
 import { obtenerBolsasActivas } from "@/src/lib/datosGastos"
-import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
-import { ESTADOS_LOTE } from "@/src/schemas/gastos"
 import Paginacion from "@/components/ui/Paginacion"
-import EstadoGasto from "@/components/gastos/EstadoGasto"
+import TablaLotes from "@/components/tesoreria/TablaLotes"
 import { claseBotonSecundario, claseInput } from "@/components/ui/estilos"
 
 export type FiltrosListadoLotes = { busqueda?: string, bolsaId?: string, desde?: string, hasta?: string, pagina?: string }
 
-// Cuántos códigos de gasto se muestran por lote antes de resumir con "+N"
-const GASTOS_VISIBLES = 3
-
 // Lotes de pago filtrados por estado. Lo usan Tesorería (programados y pagos realizados) y
 // Dirección de Negocio (por aprobar e historial); el detalle se abre en `rutaDetalle/:id`.
+// `confirmables`: los lotes aprobados se marcan y se confirman juntos (Tesorería → Programados).
 export default async function ListadoLotes({
   searchParams,
   estado,
   rutaBase,
   rutaDetalle,
-  vacio
+  vacio,
+  confirmables = false
 }: {
   searchParams: FiltrosListadoLotes
   estado: string
   rutaBase: string
   rutaDetalle: string
   vacio: string
+  confirmables?: boolean
 }) {
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
-  const variosEstados = estado.includes(",")
 
   const [{ total, tamano, registros }, bolsas] = await Promise.all([
     obtenerLotes({ ...searchParams, estado, pagina }),
@@ -89,59 +86,13 @@ export default async function ListadoLotes({
 
       <p className="text-xs text-slate-500">{total} lote(s) encontrado(s)</p>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Lote</th>
-              {variosEstados && <th className="px-4 py-3 font-semibold">Estado</th>}
-              <th className="px-4 py-3 font-semibold">Gastos</th>
-              <th className="px-4 py-3 font-semibold">{estado === "PAGADO" ? "Fecha de pago" : "Fecha"}</th>
-              <th className="px-4 py-3 font-semibold">Bolsa</th>
-              <th className="px-4 py-3 font-semibold">Programado por</th>
-              <th className="px-4 py-3 font-semibold text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {registros.map(lote => (
-              <tr key={lote.id} className="align-top hover:bg-slate-50">
-                <td className="px-4 py-3">
-                  <Link href={`${rutaDetalle}/${lote.id}`} className="font-semibold text-emerald-700 hover:underline">
-                    #{lote.id}
-                  </Link>
-                </td>
-                {variosEstados && (
-                  <td className="px-4 py-3"><EstadoGasto codigo={lote.estado} nombre={ESTADOS_LOTE[lote.estado] ?? lote.estado} /></td>
-                )}
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-x-2 gap-y-1">
-                    {lote.gastos.slice(0, GASTOS_VISIBLES).map(gasto => (
-                      <Link key={gasto.id} href={`/solicitudes/${gasto.id}`} className="text-emerald-700 hover:underline whitespace-nowrap">
-                        {gasto.codigo}
-                      </Link>
-                    ))}
-                    {lote.gastos.length > GASTOS_VISIBLES && (
-                      <Link href={`${rutaDetalle}/${lote.id}`} className="text-slate-400 hover:text-slate-600 whitespace-nowrap">
-                        +{lote.gastos.length - GASTOS_VISIBLES} más
-                      </Link>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{formatoFecha(lote.fechaPago)}</td>
-                <td className="px-4 py-3 text-slate-600">{lote.bolsa.nombre}</td>
-                <td className="px-4 py-3 text-slate-600">{lote.creador?.nombreUsuario}</td>
-                <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">{formatoMoneda(lote.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {registros.length === 0 && (
-          <p className="py-14 text-center text-sm text-slate-400">
-            {hayFiltros ? "No hay lotes con estos filtros." : vacio}
-          </p>
-        )}
-      </div>
+      <TablaLotes
+        registros={registros}
+        estado={estado}
+        rutaDetalle={rutaDetalle}
+        vacio={hayFiltros ? "No hay lotes con estos filtros." : vacio}
+        confirmables={confirmables}
+      />
 
       <Paginacion pagina={pagina} total={total} tamano={tamano} url={url} />
     </div>

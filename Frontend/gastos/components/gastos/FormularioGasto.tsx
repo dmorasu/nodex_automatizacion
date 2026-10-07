@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
-import { Link2, X, Save, Loader2 } from "lucide-react"
+import { AlertTriangle, HandCoins, Link2, X, Save, Loader2 } from "lucide-react"
 import { consultarTramite, guardarGasto } from "@/actions/gastos/gastos"
 import type {
   BolsaApoyo,
@@ -31,6 +31,21 @@ import {
 // ESTADO INICIAL
 // =====================================
 
+// Gasto creado desde el anticipo de un cliente: se paga de la bolsa del anticipo, no es
+// reembolsable y se descuenta del saldo del cliente. `disponible` = lo que le queda sin este gasto
+export type AnticipoDelGasto = {
+  id: number
+  codigo: string
+  tipo: string
+  concepto: string
+  placa: string | null
+  matriculaInmobiliaria: string | null
+  operacionId: number
+  bolsa: { id: number, nombre: string }
+  cliente: { nombre: string, identificacion: string }
+  disponible: number
+}
+
 const BENEFICIARIO_VACIO = {
   tipoIdentificacion: "NIT",
   identificacion: "",
@@ -45,6 +60,21 @@ const BENEFICIARIO_VACIO = {
 const aPorcentaje = (fraccion: string) => String(Math.round(Number(fraccion) * 1e6) / 1e4)
 
 const centavos = (valor: string | null) => Math.round(Number(valor || 0) * 100)
+
+// Gasto nuevo desde un anticipo: se precarga con sus datos (el valor, con lo que le queda al cliente)
+const desdeAnticipo = (anticipo: AnticipoDelGasto, catalogos: Catalogos): Partial<DatosGasto> => ({
+  anticipoId: anticipo.id,
+  operacionId: anticipo.operacionId,
+  bolsaId: anticipo.bolsa.id,
+  tipoGastoId: catalogos.tiposGasto.find(t => t.codigo === anticipo.tipo)?.id ?? null,
+  reembolsable: false,
+  conceptoPago: anticipo.concepto,
+  placa: anticipo.placa ?? "",
+  matriculaInmobiliaria: anticipo.matriculaInmobiliaria ?? "",
+  nombreClienteBanco: anticipo.cliente.nombre,
+  identificacionClienteBanco: anticipo.cliente.identificacion,
+  valorSolicitado: anticipo.disponible > 0 ? String(anticipo.disponible) : ""
+})
 
 const datosIniciales = (porcentajeRetencion: number, gasto?: GastoDetalle): DatosGasto => ({
   operacionId: gasto?.operacionId ?? null,
@@ -123,7 +153,8 @@ export default function FormularioGasto({
   tramitadores,
   bolsas,
   porcentajeRetencion,
-  gasto
+  gasto,
+  anticipo
 }: {
   catalogos: Catalogos
   operaciones: Operacion[]
@@ -131,12 +162,16 @@ export default function FormularioGasto({
   bolsas: BolsaApoyo[]
   porcentajeRetencion: number
   gasto?: GastoDetalle
+  anticipo?: AnticipoDelGasto
 }) {
   const router = useRouter()
   const [guardando, startGuardar] = useTransition()
   const [consultando, startConsultar] = useTransition()
 
-  const [datos, setDatos] = useState<DatosGasto>(() => datosIniciales(porcentajeRetencion, gasto))
+  const [datos, setDatos] = useState<DatosGasto>(() => ({
+    ...datosIniciales(porcentajeRetencion, gasto),
+    ...(anticipo && !gasto ? desdeAnticipo(anticipo, catalogos) : {})
+  }))
 
   // Trámite asociado (opcional)
   const [numeroTramite, setNumeroTramite] = useState(gasto?.solicitudTramiteId ? String(gasto.solicitudTramiteId) : "")
@@ -150,6 +185,9 @@ export default function FormularioGasto({
     setDatos(actuales => ({ ...actuales, [campo]: valor }))
 
   const codigoTipo = catalogos.tiposGasto.find(t => t.id === datos.tipoGastoId)?.codigo
+
+  // Gasto de anticipo que supera lo que le queda al cliente: se puede crear, pero se avisa
+  const excedeSaldo = anticipo ? Number(datos.valorSolicitado || 0) > anticipo.disponible : false
   const llevaRetencion = codigoTipo === "INMUEBLE"
 
   // Vista previa de la retención (el cálculo definitivo lo hace el backend), en centavos
@@ -220,6 +258,7 @@ export default function FormularioGasto({
 
     const payload = {
       ...datos,
+      ...(anticipo ? { anticipoId: anticipo.id, bolsaId: anticipo.bolsa.id, reembolsable: false } : {}),
       // La retención solo se envía en gastos de inmueble
       baseRetencion: llevaRetencion ? datos.baseRetencion : null,
       porcentajeRetencion: llevaRetencion ? datos.porcentajeRetencion : null,
@@ -236,6 +275,7 @@ export default function FormularioGasto({
       }
 
       toast.success(gasto ? "Gasto actualizado" : "Gasto creado")
+      if (resultado.datos.avisoSaldo) toast.warning(resultado.datos.avisoSaldo, { autoClose: 10000 })
       router.push(`/solicitudes/${resultado.datos.id}`)
       router.refresh()
     })
@@ -244,6 +284,24 @@ export default function FormularioGasto({
 
   return (
     <form onSubmit={guardar} className="space-y-6" noValidate>
+
+      {/* ── ANTICIPO ── */}
+      {anticipo && (
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-sky-200 bg-sky-50 px-5 py-4">
+          <div className="flex gap-3 text-xs text-slate-600">
+            <HandCoins size={20} className="mt-0.5 shrink-0 text-sky-600" />
+            <div>
+              <p className="font-semibold text-sky-900">Gasto del anticipo {anticipo.codigo}</p>
+              <p className="mt-0.5">Cliente {anticipo.cliente.nombre} · {anticipo.cliente.identificacion} · bolsa {anticipo.bolsa.nombre}</p>
+              <p className="mt-0.5">No reembolsable: después del pago lo lleva Contabilidad (no pasa por Legalización).</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Disponible del cliente</p>
+            <p className={anticipo.disponible < 0 ? "text-base font-semibold text-red-600" : "text-base font-semibold text-slate-800"}>{formatoMoneda(anticipo.disponible)}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── TRÁMITE ── */}
       <Seccion
@@ -299,6 +357,10 @@ export default function FormularioGasto({
           </Campo>
 
           <Campo etiqueta="Bolsa" obligatorio>
+            {anticipo ? (
+              // La del anticipo: no se cambia
+              <input value={anticipo.bolsa.nombre} disabled className={claseInput} aria-label="Bolsa" />
+            ) : (
             <Selector
               valor={datos.bolsaId}
               opciones={bolsas.map(b => ({
@@ -308,6 +370,7 @@ export default function FormularioGasto({
               onChange={v => cambiar("bolsaId", v)}
               vacio={bolsas.length ? "Seleccione la bolsa" : "No hay bolsas activas"}
             />
+            )}
           </Campo>
 
           <Campo etiqueta="Tipo de gasto" obligatorio>
@@ -344,11 +407,12 @@ export default function FormularioGasto({
           <label className="flex items-center gap-2 self-end h-10 text-xs text-slate-600">
             <input
               type="checkbox"
-              checked={datos.reembolsable}
+              checked={anticipo ? false : datos.reembolsable}
+              disabled={Boolean(anticipo)}
               onChange={e => cambiar("reembolsable", e.target.checked)}
               className="h-4 w-4 accent-emerald-600"
             />
-            Reembolsable (se le cobra al cliente)
+            {anticipo ? "No reembolsable (el cliente ya pagó el anticipo)" : "Reembolsable (se le cobra al cliente)"}
           </label>
         </div>
 
@@ -396,10 +460,10 @@ export default function FormularioGasto({
       <Seccion titulo="Cliente / banco">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Campo etiqueta="Nombre del cliente">
-            <input value={datos.nombreClienteBanco} onChange={e => cambiar("nombreClienteBanco", e.target.value)} maxLength={200} className={claseInput} />
+            <input value={datos.nombreClienteBanco} onChange={e => cambiar("nombreClienteBanco", e.target.value)} disabled={Boolean(anticipo)} maxLength={200} className={claseInput} />
           </Campo>
           <Campo etiqueta="Identificación del cliente">
-            <input value={datos.identificacionClienteBanco} onChange={e => cambiar("identificacionClienteBanco", e.target.value)} maxLength={30} className={claseInput} />
+            <input value={datos.identificacionClienteBanco} onChange={e => cambiar("identificacionClienteBanco", e.target.value)} disabled={Boolean(anticipo)} maxLength={30} className={claseInput} />
           </Campo>
           <Campo etiqueta="Contrato">
             <input value={datos.contrato} onChange={e => cambiar("contrato", e.target.value)} maxLength={50} className={claseInput} />
@@ -526,6 +590,14 @@ export default function FormularioGasto({
             </>
           )}
         </div>
+
+        {excedeSaldo && anticipo && (
+          <p className="mt-4 flex gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            El valor supera lo que le queda al cliente ({formatoMoneda(anticipo.disponible)}): faltan {formatoMoneda(Number(datos.valorSolicitado) - anticipo.disponible)}.
+            Se puede crear, pero Tesorería y Dirección de Negocio verán el aviso.
+          </p>
+        )}
 
         {llevaRetencion && (
           <div className="mt-4 grid gap-x-6 gap-y-2 rounded-md bg-slate-50 px-4 py-3 text-xs sm:grid-cols-2">

@@ -10,6 +10,7 @@ import { quitarDelLote } from "@/actions/gastos/tesoreria"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { LoteDetalle } from "@/src/schemas/gastos"
 import EstadoGasto from "../gastos/EstadoGasto"
+import AvisoSaldoAnticipo from "../anticipos/AvisoSaldoAnticipo"
 import { claseBotonPeligro, claseBotonPrimario, claseBotonSecundario, claseLabel, claseTextarea } from "../ui/estilos"
 
 type Gasto = LoteDetalle["gastos"][number]
@@ -185,6 +186,7 @@ export default function GastosLote({ loteId, gastos, accion }: {
                   <td className="px-4 py-3">
                     <Link href={`/solicitudes/${gasto.id}`} className="font-semibold text-emerald-700 hover:underline">{gasto.codigo}</Link>
                     <p className="text-[11px] text-slate-400">{gasto.conceptoPago}</p>
+                    <AvisoSaldoAnticipo gasto={gasto} />
                   </td>
                   <td className="px-4 py-3 text-slate-600">{gasto.beneficiario.nombre}</td>
                   <td className="px-4 py-3 text-slate-600">{gasto.creador?.nombreUsuario}</td>

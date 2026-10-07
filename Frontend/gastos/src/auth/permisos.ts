@@ -55,6 +55,12 @@ export const MODULOS: Modulo[] = [
     roles: []
   },
   {
+    href: "/anticipos",
+    nombre: "Anticipos",
+    descripcion: "Registra los pagos de clientes del banco y conviértelos en gastos",
+    roles: []
+  },
+  {
     href: "/tesoreria",
     nombre: "Tesorería",
     descripcion: "Paga gastos y administra las bolsas",
@@ -80,7 +86,7 @@ export const MODULOS: Modulo[] = [
   },
   {
     href: "/tablero",
-    nombre: "Tablero",
+    nombre: "Indicadores",
     descripcion: "Saldos por bolsa, pagos, reintegros y lo pendiente por legalizar",
     roles: [ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD]
   },
@@ -92,7 +98,7 @@ export const MODULOS: Modulo[] = [
   },
   {
     href: "/admin",
-    nombre: "Administración",
+    nombre: "Tablero de Control",
     descripcion: "Todos los gastos con filtros, totales y paginación",
     roles: [ROLES.ADMIN]
   },

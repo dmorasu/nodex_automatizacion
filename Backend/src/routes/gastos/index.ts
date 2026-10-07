@@ -13,6 +13,7 @@ import {
   validarCatalogo
 } from '../../middleware/gastos/validacionesAdmin'
 import { ROLES } from '../../services/gastos/constantes'
+import { FILTROS_ARQUEO, ORDENES_ARQUEO } from '../../services/gastos/anticipos'
 import { CatalogosGastosController } from '../../controllers/gastos/CatalogosGastosController'
 import { ParametrosGastosController } from '../../controllers/gastos/ParametrosGastosController'
 import { RolesGastosController } from '../../controllers/gastos/RolesGastosController'
@@ -44,6 +45,7 @@ import {
   validarAprobacionLote,
   validarSalidaLote,
   validarConfirmacionPago,
+  validarConfirmacionPagos,
   validarRecarga,
   validarAnulacion,
   validarBolsa,
@@ -54,8 +56,17 @@ import {
   validarListadoLotes
 } from '../../middleware/gastos/validacionesSolicitud'
 import { recibirDocumentos } from '../../middleware/gastos/uploadDocumentosGasto'
+import { AnticiposController, ClientesEmpresarialesController } from '../../controllers/gastos/AnticiposController'
+import {
+  leerDatosJson,
+  validarAnticipo,
+  validarClienteEmpresarial,
+  validarConfirmacionAnticipos,
+  validarListadoAnticipos,
+  validarMotivo
+} from '../../middleware/gastos/validacionesAnticipos'
 import { RevisionSoportesController } from '../../controllers/tramitadores/SoportesTramitadorController'
-import { body } from 'express-validator'
+import { body, param, query } from 'express-validator'
 
 // =====================================
 // MÓDULO DE GASTOS  →  /api/gastos
@@ -110,6 +121,25 @@ router.put('/solicitudes/:id', validarId, validarGasto, handleInputErrors, Solic
 router.post('/solicitudes/:id/anular', validarAnulacion, handleInputErrors, SolicitudesGastoController.anular)
 
 
+// ── Anticipos de clientes del banco ──
+// Cualquier usuario los registra (como los gastos); Contabilidad confirma o devuelve con novedad.
+// Ver, corregir y anular se valida en el controlador.
+const contabilidadAnticipos = requiereRol(ROLES.CONTABILIDAD)
+router.get('/anticipos', validarListadoAnticipos, handleInputErrors, AnticiposController.listar)
+router.get('/anticipos/resumen', AnticiposController.resumen)
+router.post('/anticipos', recibirDocumentos, leerDatosJson, validarAnticipo, handleInputErrors, AnticiposController.crear)
+router.post('/anticipos/confirmar', contabilidadAnticipos, validarConfirmacionAnticipos, handleInputErrors, AnticiposController.confirmar)
+router.get('/anticipos/:id', validarId, handleInputErrors, AnticiposController.detalle)
+router.put('/anticipos/:id', recibirDocumentos, leerDatosJson, validarId, validarAnticipo, handleInputErrors, AnticiposController.actualizar)
+router.post('/anticipos/:id/anular', validarId, validarMotivo, handleInputErrors, AnticiposController.anular)
+router.post('/anticipos/:id/novedad', contabilidadAnticipos, validarId, validarMotivo, handleInputErrors, AnticiposController.novedad)
+
+// Clientes empresariales (ej: Davivienda): los ve todo el que registra anticipos; los crea Contabilidad
+router.get('/clientes-empresariales', ClientesEmpresarialesController.listar)
+router.post('/clientes-empresariales', contabilidadAnticipos, validarClienteEmpresarial, handleInputErrors, ClientesEmpresarialesController.crear)
+router.put('/clientes-empresariales/:id', contabilidadAnticipos, validarId, validarClienteEmpresarial, handleInputErrors, ClientesEmpresarialesController.actualizar)
+
+
 // ── Documentos ──────────────────────
 router.post('/solicitudes/:id/documentos', recibirDocumentos, validarId, handleInputErrors, DocumentosGastoController.subir)
 router.get('/documentos/:documentoId/ver', DocumentosGastoController.ver)
@@ -136,6 +166,26 @@ router.get('/bolsas', tesoreriaOCertificados, BolsasController.getAll)
 router.post('/bolsas', soloTesoreria, validarCrearBolsa, handleInputErrors, BolsasController.create)
 router.put('/bolsas/:id', soloTesoreria, validarId, validarBolsa, handleInputErrors, BolsasController.update)
 router.get('/bolsas/:id/movimientos', soloTesoreria, validarId, handleInputErrors, BolsasController.movimientos)
+// Saldo de cada cliente en una bolsa de anticipos (Tesorería y Contabilidad)
+// Arqueo: Tesorería y Contabilidad
+const verArqueo = requiereRol(ROLES.TESORERIA, ROLES.CONTABILIDAD)
+const filtrosArqueo = [
+  query('filtro').optional({ values: 'falsy' }).isIn(FILTROS_ARQUEO).withMessage('Filtro no válido'),
+  query('orden').optional({ values: 'falsy' }).isIn(ORDENES_ARQUEO).withMessage('Orden no válido'),
+  query('busqueda').optional().isString().isLength({ max: 100 }),
+  query('pagina').optional().isInt({ min: 1 }),
+  query('tamano').optional().isInt({ min: 1, max: 200 })
+]
+const periodoArqueo = [
+  validarId,
+  param('clienteId').isInt({ min: 1 }).withMessage('Cliente no válido'),
+  query(['desde', 'hasta']).optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida')
+]
+router.get('/bolsas/:id/clientes', verArqueo, validarId, ...filtrosArqueo, handleInputErrors, BolsasController.clientes)
+router.get('/bolsas/:id/clientes/exportar', verArqueo, validarId, ...filtrosArqueo, handleInputErrors, BolsasController.exportarArqueo)
+// Estado de cuenta de un cliente (movimientos con saldo corrido, por pagar y anticipos)
+router.get('/bolsas/:id/clientes/:clienteId', verArqueo, ...periodoArqueo, handleInputErrors, BolsasController.estadoDeCuenta)
+router.get('/bolsas/:id/clientes/:clienteId/exportar', verArqueo, ...periodoArqueo, handleInputErrors, BolsasController.exportarEstadoCuenta)
 router.post('/bolsas/:id/recargas', soloTesoreria, validarRecarga, handleInputErrors, BolsasController.recargar)
 router.post('/bolsas/:id/ajustes', soloAdmin, validarAjuste, handleInputErrors, BolsasController.ajustar)
 
@@ -150,6 +200,9 @@ router.post('/lotes/:id/aprobar', soloDireccion, validarAprobacionLote, handleIn
 router.post('/lotes/:id/rechazar', soloDireccion, validarSalidaLote, handleInputErrors, PagosController.rechazar)
 router.post('/lotes/:id/quitar', tesoreriaOCertificados, validarSalidaLote, handleInputErrors, PagosController.quitar)
 router.post('/lotes/:id/confirmar', tesoreriaOCertificados, validarConfirmacionPago, handleInputErrors, PagosController.confirmar)
+// Uno o varios lotes aprobados a la vez, adjuntando el soporte del banco en el mismo paso
+// (multipart: datos = JSON con loteIds, fechaPago y observacion; archivos[])
+router.post('/lotes/confirmar', tesoreriaOCertificados, recibirDocumentos, leerDatosJson, validarConfirmacionPagos, handleInputErrors, PagosController.confirmarVarios)
 // Contabilidad también consulta los pagos para registrarles el número de egreso
 const verLotes = requiereRol(ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO)
 router.get('/lotes', verLotes, validarListadoLotes, handleInputErrors, PagosController.getLotes)

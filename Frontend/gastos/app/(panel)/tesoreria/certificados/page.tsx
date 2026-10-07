@@ -13,7 +13,7 @@ export default async function CertificadosPage({ searchParams }: { searchParams:
       <p className="text-xs text-slate-500">
         Compras de CTL y certificados de Cámara de Comercio por pagar. No aparecen en el &quot;Por pagar&quot; general de Tesorería.
       </p>
-      <BandejaPorPagar certificados="si" searchParams={searchParams} />
+      <BandejaPorPagar tipo="certificados" searchParams={searchParams} />
     </div>
   )
 }

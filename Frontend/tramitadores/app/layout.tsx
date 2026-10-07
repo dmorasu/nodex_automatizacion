@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   title: "Nodex Tramitadores",
   description: "Trámites asignados, gastos y soportes de los tramitadores",
   applicationName: "Nodex Tramitadores",
-  appleWebApp: { capable: true, title: "Nodex", statusBarStyle: "default" },
-  icons: { icon: [{ url: "/iconos/32", sizes: "32x32" }, { url: "/iconos/192", sizes: "192x192" }], apple: "/iconos/180" }
+  // Íconos: app/favicon.ico, app/icon.png y app/apple-icon.png (Next los enlaza solo)
+  appleWebApp: { capable: true, title: "Nodex", statusBarStyle: "default" }
 }
 
 export const viewport: Viewport = {

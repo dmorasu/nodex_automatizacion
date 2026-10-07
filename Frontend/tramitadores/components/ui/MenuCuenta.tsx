@@ -4,6 +4,23 @@ import Link from "next/link"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import { CircleUserRound, KeyRound, LogOut } from "lucide-react"
 import { cerrarSesion } from "@/actions/sesion"
+import { quitarSuscripcionPush } from "@/actions/notificaciones"
+import { suscripcionActual } from "@/src/lib/push"
+
+// Al salir, este celular deja de recibir los avisos del tramitador (puede ser un celular prestado).
+// Si algo falla, igual cierra la sesión.
+const salir = async () => {
+  try {
+    const suscripcion = await suscripcionActual()
+    if (suscripcion) {
+      await quitarSuscripcionPush(suscripcion.endpoint)
+      await suscripcion.unsubscribe()
+    }
+  } catch {
+    // Sin conexión o navegador sin push: no impide cerrar la sesión
+  }
+  await cerrarSesion()
+}
 
 export default function MenuCuenta({ nombre, identificacion }: { nombre: string, identificacion: string }) {
   return (
@@ -25,7 +42,7 @@ export default function MenuCuenta({ nombre, identificacion }: { nombre: string,
           </Link>
         </MenuItem>
         <MenuItem>
-          <button type="button" onClick={() => cerrarSesion()} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-red-600 data-[focus]:bg-red-50">
+          <button type="button" onClick={() => salir()} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-red-600 data-[focus]:bg-red-50">
             <LogOut size={17} />
             Cerrar sesión
           </button>

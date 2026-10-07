@@ -33,7 +33,9 @@ export const OperacionSchema = z.object({
 export const BolsaApoyoSchema = z.object({
   id: z.number(),
   nombre: z.string(),
-  lineaNegocio: textoNulo
+  lineaNegocio: textoNulo,
+  // GENERAL | ANTICIPOS (la de anticipos lleva saldo por cliente)
+  tipo: z.string().default("GENERAL")
 })
 
 // Vista de Tesorería (incluye saldo)
@@ -56,7 +58,10 @@ export const TerceroSchema = z.object({
   banco: textoNulo,
   tipoCuenta: textoNulo,
   numeroCuenta: textoNulo,
-  correo: textoNulo
+  correo: textoNulo,
+  // Clientes del banco que pagan anticipos
+  telefono: textoNulo.optional(),
+  direccion: textoNulo.optional()
 })
 
 export const TramiteApoyoSchema = z.object({
@@ -105,7 +110,12 @@ export const GastoListadoSchema = z.object({
   solicitudTramiteId: z.number().nullish(),
   soporteTramitador: z.enum(["PENDIENTE", "APROBADO", "RECHAZADO"]).nullish(),
   estadoTramite: z.string().nullish(),
-  reporteRealizado: z.enum(["PENDIENTE", "REVISADO"]).nullish()
+  reporteRealizado: z.enum(["PENDIENTE", "REVISADO"]).nullish(),
+  // Gasto de un anticipo: saldo del cliente y lo que tiene por pagar (para avisar si no alcanza)
+  anticipoId: z.number().nullish(),
+  anticipo: z.object({ id: z.number(), codigo: z.string() }).nullish(),
+  saldoClienteAnticipo: z.coerce.string().nullish(),
+  comprometidoClienteAnticipo: z.coerce.string().nullish()
 })
 
 export const ListadoGastosSchema = z.object({
@@ -225,6 +235,15 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
   factura: FacturaSchema.nullable(),
   reintegros: z.array(ReintegroGastoSchema),
   lineasCuentaCobro: z.array(LineaCuentaDeGastoSchema),
+  anticipo: z.object({
+    id: z.number(),
+    codigo: z.string(),
+    tipo: z.string(),
+    valorRecibido: dinero,
+    reciboCaja: textoNulo,
+    cliente: z.object({ id: z.number(), nombre: z.string(), tipoIdentificacion: z.string(), identificacion: z.string() })
+  }).nullish(),
+  saldoAnticipo: z.lazy(() => SaldoClienteSchema).nullish(),
   permisos: z.object({
     registrarFactura: z.boolean(),
     editar: z.boolean(),
@@ -244,7 +263,10 @@ export const MovimientoBolsaSchema = z.object({
   observacion: textoNulo,
   createdAt: z.string(),
   solicitudGasto: z.object({ id: z.number(), codigo: z.string() }).nullable(),
-  usuario: UsuarioCortoSchema
+  usuario: UsuarioCortoSchema,
+  // Bolsas de anticipos
+  cliente: z.object({ id: z.number(), nombre: z.string(), identificacion: z.string() }).nullish(),
+  anticipo: z.object({ id: z.number(), codigo: z.string() }).nullish()
 })
 
 export const MovimientosBolsaSchema = z.object({
@@ -298,7 +320,11 @@ export const LoteDetalleSchema = LoteListadoSchema.omit({ cantidadGastos: true }
     valorRealmentePagado: dinero,
     estado: z.object({ codigo: z.string(), nombre: z.string() }),
     beneficiario: z.object({ id: z.number(), identificacion: z.string(), nombre: z.string() }),
-    creador: UsuarioCortoSchema
+    creador: UsuarioCortoSchema,
+    anticipoId: z.number().nullish(),
+    anticipo: z.object({ id: z.number(), codigo: z.string(), cliente: z.object({ nombre: z.string() }).nullish() }).nullish(),
+    saldoClienteAnticipo: z.coerce.string().nullish(),
+    comprometidoClienteAnticipo: z.coerce.string().nullish()
   })),
   documentos: z.array(DocumentoSchema)
 })
@@ -489,6 +515,7 @@ export type BolsaApoyo = z.infer<typeof BolsaApoyoSchema>
 export type Bolsa = z.infer<typeof BolsaSchema>
 export type MovimientoBolsa = z.infer<typeof MovimientoBolsaSchema>
 export type LoteDetalle = z.infer<typeof LoteDetalleSchema>
+export type LoteListado = z.infer<typeof LoteListadoSchema>
 export type CuentaListado = z.infer<typeof CuentaListadoSchema>
 export type CuentaDetalle = z.infer<typeof CuentaDetalleSchema>
 export type LineaCuenta = z.infer<typeof LineaCuentaSchema>
@@ -504,6 +531,8 @@ export type DatosGasto = {
   operacionId: number | null
   bolsaId: number | null
   solicitudTramiteId: number | null
+  // Gasto creado desde un anticipo (bolsa del anticipo y no reembolsable)
+  anticipoId?: number | null
   tramitadorId: number | null
   tipoGastoId: number | null
   formaPagoId: number | null
@@ -570,3 +599,181 @@ export const SoporteRevisionSchema = z.object({
 })
 
 export type SoporteRevision = z.infer<typeof SoporteRevisionSchema>
+
+// ── Anticipos de clientes ──────────────────
+
+export const ESTADOS_ANTICIPO: Record<string, { nombre: string, clase: string }> = {
+  POR_CONFIRMAR: { nombre: "Por confirmar", clase: "border-amber-200 bg-amber-50 text-amber-800" },
+  NOVEDAD: { nombre: "Con novedad", clase: "border-red-200 bg-red-50 text-red-700" },
+  CONFIRMADO: { nombre: "Confirmado", clase: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  ANULADO: { nombre: "Anulado", clase: "border-slate-200 bg-slate-100 text-slate-500" }
+}
+
+export const TIPOS_ANTICIPO: Record<string, string> = { VEHICULO: "Vehículo", INMUEBLE: "Inmueble" }
+
+export const ClienteEmpresarialSchema = z.object({ id: z.number(), nombre: z.string(), activo: z.boolean().optional() })
+
+export const SaldoClienteSchema = z.object({
+  clienteId: z.number(),
+  nombre: z.string(),
+  tipoIdentificacion: z.string(),
+  identificacion: z.string(),
+  ingresado: z.number(),
+  pagado: z.number(),
+  otros: z.number(),
+  saldo: z.number(),
+  comprometido: z.number(),
+  disponible: z.number(),
+  ultimoMovimiento: z.string().nullish()
+})
+
+export const AnticipoListadoSchema = z.object({
+  id: z.number(),
+  codigo: z.string(),
+  tipo: z.string(),
+  estado: z.string(),
+  concepto: z.string(),
+  placa: textoNulo,
+  matriculaInmobiliaria: textoNulo,
+  valorConsignado: z.string(),
+  fechaConsignacion: z.string(),
+  valorRecibido: dinero,
+  reciboCaja: textoNulo,
+  motivoNovedad: textoNulo,
+  creadoPor: z.number(),
+  createdAt: z.string(),
+  cantidadGastos: z.coerce.number().default(0),
+  cliente: z.object({ id: z.number(), tipoIdentificacion: z.string(), identificacion: z.string(), nombre: z.string() }),
+  clienteEmpresarial: z.object({ id: z.number(), nombre: z.string() }),
+  bolsa: z.object({ id: z.number(), nombre: z.string() }),
+  operacion: z.object({ id: z.number(), nombreOperacion: z.string() })
+})
+
+export const ListadoAnticiposSchema = z.object({
+  total: z.number(),
+  pagina: z.number(),
+  tamano: z.number(),
+  registros: z.array(AnticipoListadoSchema)
+})
+
+export const AnticipoDetalleSchema = AnticipoListadoSchema.omit({ cantidadGastos: true }).extend({
+  operacionId: z.number(),
+  bolsaId: z.number(),
+  clienteId: z.number(),
+  clienteEmpresarialId: z.number(),
+  observacion: textoNulo,
+  observacionContabilidad: textoNulo,
+  motivoAnulacion: textoNulo,
+  fechaConfirmacion: textoNulo,
+  cliente: z.object({
+    id: z.number(), tipoIdentificacion: z.string(), identificacion: z.string(), nombre: z.string(),
+    telefono: textoNulo, direccion: textoNulo
+  }),
+  creador: UsuarioCortoSchema,
+  confirmador: UsuarioCortoSchema,
+  trazabilidad: z.array(z.object({
+    id: z.number(),
+    estadoAnterior: textoNulo,
+    estadoNuevo: z.string(),
+    observacion: textoNulo,
+    createdAt: z.string(),
+    usuario: UsuarioCortoSchema
+  })),
+  documentos: z.array(DocumentoSchema),
+  gastos: z.array(z.object({
+    id: z.number(),
+    codigo: z.string(),
+    conceptoPago: z.string(),
+    valorSolicitadoPago: z.string(),
+    valorProgramado: dinero,
+    valorRealmentePagado: dinero,
+    fechaPago: textoNulo,
+    estado: z.object({ codigo: z.string(), nombre: z.string() })
+  })),
+  saldoCliente: SaldoClienteSchema.nullable(),
+  permisos: z.object({ editar: z.boolean(), anular: z.boolean(), revisar: z.boolean(), crearGasto: z.boolean() })
+})
+
+// Arqueo de una bolsa de anticipos: totales y conteos de todos los clientes + la página filtrada
+export const FILTROS_ARQUEO = { faltante: "Con faltante", porPagar: "Con gastos por pagar", sobrante: "Con sobrante", inactivos: "Sin movimiento en 30 días" } as const
+export const ORDENES_ARQUEO = { faltante: "Faltantes primero", saldo: "Mayor saldo", reciente: "Movimiento más reciente", nombre: "Nombre" } as const
+
+export const SaldosClientesSchema = z.object({
+  bolsa: z.object({ id: z.number(), nombre: z.string(), tipo: z.string(), saldoActual: z.string() }),
+  totales: z.object({
+    clientes: z.number(), saldo: z.number(), comprometido: z.number(), sobrantes: z.number(), faltantes: z.number(), diferencia: z.number()
+  }),
+  conteos: z.object({ faltante: z.number(), porPagar: z.number(), sobrante: z.number(), inactivos: z.number() }),
+  total: z.number(),
+  pagina: z.number(),
+  tamano: z.number(),
+  clientes: z.array(SaldoClienteSchema)
+})
+
+export type Arqueo = z.infer<typeof SaldosClientesSchema>
+
+export const ResumenAnticiposSchema = z.object({ porConfirmar: z.number(), conNovedad: z.number(), confirmadosSinGasto: z.number() })
+
+export type ClienteEmpresarial = z.infer<typeof ClienteEmpresarialSchema>
+export type SaldoCliente = z.infer<typeof SaldoClienteSchema>
+export type AnticipoListado = z.infer<typeof AnticipoListadoSchema>
+export type AnticipoDetalle = z.infer<typeof AnticipoDetalleSchema>
+
+// Lo que envía el formulario del anticipo (va como JSON en el campo "datos", con los soportes)
+export type DatosAnticipo = {
+  tipo: "VEHICULO" | "INMUEBLE"
+  cliente: { tipoIdentificacion: "CC" | "NIT", identificacion: string, nombre: string, telefono: string, direccion: string }
+  clienteEmpresarialId: number | null
+  operacionId: number | null
+  bolsaId: number | null
+  concepto: string
+  placa: string
+  matriculaInmobiliaria: string
+  valorConsignado: string
+  fechaConsignacion: string
+  observacion: string
+}
+
+// Estado de cuenta de un cliente en una bolsa de anticipos (panel del arqueo)
+export const EstadoCuentaClienteSchema = z.object({
+  bolsa: z.object({ id: z.number(), nombre: z.string() }),
+  cliente: z.object({
+    id: z.number(), nombre: z.string(), tipoIdentificacion: z.string(), identificacion: z.string(),
+    telefono: textoNulo.optional(), direccion: textoNulo.optional()
+  }),
+  saldo: SaldoClienteSchema.nullable(),
+  periodo: z.object({
+    desde: textoNulo, hasta: textoNulo,
+    saldoInicial: z.number(), entradas: z.number(), salidas: z.number(), saldoFinal: z.number()
+  }),
+  movimientos: z.array(z.object({
+    id: z.number(),
+    tipo: z.string(),
+    valor: z.number(),
+    saldo: z.number(),
+    fecha: z.string(),
+    dia: z.string(),
+    observacion: textoNulo,
+    lotePagoId: z.number().nullable(),
+    gastoId: z.number().nullable(),
+    gastoCodigo: textoNulo,
+    gastoConcepto: textoNulo,
+    beneficiario: textoNulo,
+    anticipoId: z.number().nullable(),
+    anticipoCodigo: textoNulo,
+    reciboCaja: textoNulo,
+    anticipoConcepto: textoNulo,
+    usuario: textoNulo
+  })),
+  porPagar: z.array(z.object({
+    id: z.number(), codigo: z.string(), concepto: z.string(), valor: z.number(),
+    estadoCodigo: z.string(), estado: z.string(), fecha: z.string(), anticipoCodigo: textoNulo
+  })),
+  anticipos: z.array(z.object({
+    id: z.number(), codigo: z.string(), estado: z.string(), concepto: z.string(),
+    placa: textoNulo, matriculaInmobiliaria: textoNulo,
+    valorConsignado: z.string(), valorRecibido: dinero, reciboCaja: textoNulo, fechaConsignacion: z.string(), createdAt: z.string()
+  }))
+})
+
+export type EstadoCuentaCliente = z.infer<typeof EstadoCuentaClienteSchema>

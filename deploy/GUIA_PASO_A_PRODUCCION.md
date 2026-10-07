@@ -74,6 +74,9 @@ grep -E "^(DB_NAME|MODO_ENSAYO|AZURE_FILE_SHARE_NAME|REDIS_DB|PORT)=" .env
 ```
 Debe quedar: `DB_NAME=nodex`, `MODO_ENSAYO=no`, el recurso compartido de producción, `REDIS_DB=1`
 (la base 0 queda con lo de la 4.5) y `PORT=9000`.
+**No cambiar `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`:** las suscripciones push del ensayo quedan en
+`nodex_pruebas`, pero con las mismas claves cada celular se vuelve a registrar solo la próxima vez que
+el tramitador abre el inicio de la app (si ya había dado el permiso).
 
 ### 6. Reiniciar backend y worker contra la base real
 El primer arranque crea columnas y tablas nuevas en `nodex`, asigna los analistas y crea roles,

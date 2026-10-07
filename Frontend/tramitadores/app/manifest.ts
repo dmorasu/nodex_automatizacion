@@ -13,9 +13,10 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#ffffff",
     lang: "es",
     icons: [
-      { src: "/iconos/192", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/iconos/512", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/iconos/512", sizes: "512x512", type: "image/png", purpose: "maskable" }
+      { src: "/iconos/192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/iconos/512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      // Con margen y fondo de color: Android lo recorta en círculo o en gota sin cortar la N
+      { src: "/iconos/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
     ]
   }
 }

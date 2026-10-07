@@ -82,13 +82,16 @@ export const TIPOS_MOVIMIENTO_BOLSA = {
   REINTEGRO: 'REINTEGRO',       // + el tramitador devuelve un sobrante (fase 5)
   LEGALIZACION: 'LEGALIZACION', // + se legaliza una cuenta de cobro (fase 5)
   REVERSO: 'REVERSO',           // ± se deshace un movimiento
-  AJUSTE: 'AJUSTE'              // ± corrección manual del administrador
+  AJUSTE: 'AJUSTE',             // ± corrección manual del administrador
+  ANTICIPO: 'ANTICIPO'          // + Contabilidad confirma el pago de un cliente (recibo de caja)
 } as const
 
 export type TipoMovimientoBolsa = typeof TIPOS_MOVIMIENTO_BOLSA[keyof typeof TIPOS_MOVIMIENTO_BOLSA]
 
 export const TIPOS_DOCUMENTO = {
   SOPORTE_PAGO: 'SOPORTE_PAGO',
+  // Comprobante de la consignación que hizo el cliente (anticipos)
+  SOPORTE_CONSIGNACION: 'SOPORTE_CONSIGNACION',
   CUENTA_COBRO: 'CUENTA_COBRO',
   SOPORTE_REINTEGRO: 'SOPORTE_REINTEGRO'
 } as const
@@ -99,3 +102,29 @@ export const PARAMETROS = {
 } as const
 
 export type ClaveParametro = typeof PARAMETROS[keyof typeof PARAMETROS]
+
+// GENERAL: la recarga Tesorería y paga cualquier gasto.
+// ANTICIPOS: se llena con los pagos de los clientes del banco (anticipos confirmados por
+// Contabilidad) y además lleva el saldo de cada cliente; solo paga los gastos de esos anticipos.
+export const TIPOS_BOLSA = {
+  GENERAL: 'GENERAL',
+  ANTICIPOS: 'ANTICIPOS'
+} as const
+
+export type TipoBolsa = typeof TIPOS_BOLSA[keyof typeof TIPOS_BOLSA]
+
+// Anticipo (ingreso de un cliente del banco): la operación lo registra → Contabilidad
+// confirma que el dinero entró (recibo de caja) o lo devuelve con novedad → se convierte en gastos
+export const ESTADOS_ANTICIPO = {
+  POR_CONFIRMAR: 'POR_CONFIRMAR',
+  NOVEDAD: 'NOVEDAD',           // Contabilidad lo devolvió al creador para corregirlo
+  CONFIRMADO: 'CONFIRMADO',     // el dinero entró: suma a la bolsa y al saldo del cliente
+  ANULADO: 'ANULADO'
+} as const
+
+export type EstadoAnticipo = typeof ESTADOS_ANTICIPO[keyof typeof ESTADOS_ANTICIPO]
+
+export const TIPOS_ANTICIPO = {
+  VEHICULO: 'VEHICULO',
+  INMUEBLE: 'INMUEBLE'
+} as const

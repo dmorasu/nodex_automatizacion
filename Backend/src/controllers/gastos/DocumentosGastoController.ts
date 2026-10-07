@@ -6,9 +6,10 @@ import LotesPago from '../../models/gastos/lotesPago'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import CuentasCobro from '../../models/gastos/cuentasCobro'
 import Reintegros from '../../models/gastos/reintegros'
+import Anticipos from '../../models/gastos/anticipos'
 import { subirArchivo, obtenerArchivo, eliminarArchivo } from '../../services/azureFileStorage'
 import { codigoEstadoGasto } from '../../services/gastos/estadosGasto'
-import { ESTADOS_GASTO, TIPOS_DOCUMENTO, ESTADOS_LOTE } from '../../services/gastos/constantes'
+import { ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_DOCUMENTO, ESTADOS_LOTE } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { obtenerGastoConAcceso } from './SolicitudesGastoController'
 import { esAdmin, puedeVerTodos, responderError } from './utilidades'
@@ -104,6 +105,17 @@ const obtenerDocumentoConAcceso = async (req: Request) => {
     if (!reintegro) throw new ErrorGastos('El documento no existe', 404)
     const gasto = await obtenerGastoConAcceso(req, reintegro.solicitudGastoId)
     return { documento, gasto }
+  }
+
+  // Soporte de consignación de un anticipo: quien lo registró o cualquier rol del módulo.
+  // Solo se borra mientras el anticipo se puede corregir.
+  if (documento?.anticipoId) {
+    const anticipo = await Anticipos.findByPk(documento.anticipoId, { attributes: ['id', 'creadoPor', 'estado'] })
+    if (!anticipo || (!puedeVerTodos(req) && anticipo.creadoPor !== req.usuario.id)) {
+      throw new ErrorGastos('El documento no existe', 404)
+    }
+    const editable = [ESTADOS_ANTICIPO.POR_CONFIRMAR, ESTADOS_ANTICIPO.NOVEDAD].includes(anticipo.estado as 'NOVEDAD')
+    return { documento, gasto: null, anticipoCerrado: !editable }
   }
 
   throw new ErrorGastos('El documento no existe', 404)
@@ -243,7 +255,12 @@ export class DocumentosGastoController {
   // DELETE /documentos/:documentoId  (quien lo subió o ADMIN)
   static eliminar = async (req: Request, res: Response) => {
     try {
-      const { documento, gasto } = await obtenerDocumentoConAcceso(req)
+      const acceso = await obtenerDocumentoConAcceso(req)
+      const { documento, gasto } = acceso
+
+      if ('anticipoCerrado' in acceso && acceso.anticipoCerrado) {
+        throw new ErrorGastos('El anticipo ya fue confirmado o anulado: sus soportes no se pueden eliminar')
+      }
 
       if (documento.subidoPor !== req.usuario.id && !esAdmin(req)) {
         throw new ErrorGastos('Solo quien subió el documento puede eliminarlo', 403)

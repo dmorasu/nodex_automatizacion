@@ -104,7 +104,7 @@ export default async function DetalleLote({
 
       {/* Soporte del banco: se adjunta cuando Dirección aprueba; con él se confirma el pago */}
       {modo === "tesoreria" && lote.estado === "APROBADO" ? (
-        <Seccion titulo="Confirmar pago" descripcion="1. Adjunte el soporte del banco  ·  2. Indique la fecha del pago y confírmelo.">
+        <Seccion titulo="Confirmar pago" descripcion="Adjunte el soporte del banco y la fecha del pago, y confírmelo (en un solo paso).">
           <div className="space-y-6">
             <SoportesLote
               loteId={lote.id}
@@ -113,7 +113,7 @@ export default async function DetalleLote({
               esAdmin={sesion.roles.includes(ROLES.ADMIN)}
             />
             <div className="border-t border-slate-100 pt-5">
-              <ConfirmarPagoLote loteId={lote.id} total={lote.total} haySoporte={lote.documentos.length > 0} />
+              <ConfirmarPagoLote loteId={lote.id} total={lote.total} haySoporte={lote.documentos.length > 0} cantidadGastos={lote.gastos.length} bolsa={lote.bolsa} />
             </div>
           </div>
         </Seccion>

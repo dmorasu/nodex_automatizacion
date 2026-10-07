@@ -9,7 +9,7 @@ const direccionPublica = (request: NextRequest) => {
   return host ? `${protocolo}://${host}` : request.url
 }
 
-// Sin cookie de sesión, todo (menos el login y los íconos) lleva al login.
+// Sin cookie de sesión, todo (menos el login, los íconos y el service worker) lleva al login.
 // La validez del token la revisa el backend en cada página.
 export function middleware(request: NextRequest) {
   if (!request.cookies.has("TOKEN_TRAMITADOR")) {
@@ -19,5 +19,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!auth|_next|iconos|manifest.webmanifest|favicon.ico|.*\\.png$).*)"]
+  matcher: ["/((?!auth|_next|iconos|manifest.webmanifest|favicon.ico|sw.js|.*\\.png$).*)"]
 }

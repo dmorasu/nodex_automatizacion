@@ -8,6 +8,7 @@ import type { Bolsa, GastoListado } from "@/src/schemas/gastos"
 import SeleccionGastos from "../gastos/SeleccionGastos"
 import { claseBotonPrimario } from "../ui/estilos"
 import ModalPago from "./ModalPago"
+import AvisoSaldoAnticipo from "../anticipos/AvisoSaldoAnticipo"
 
 // Gastos en estado Solicitado con selección. Los generales se programan para aprobación de
 // Dirección de Negocio; las compras de certificados (`directo`) se pagan de una vez.
@@ -26,7 +27,8 @@ export default function BandejaPagos({ gastos, bolsas, directo = false }: { gast
             titulo: "Beneficiario",
             valor: g => <><p>{g.beneficiario.nombre}</p><p className="text-[11px] text-slate-400">{g.beneficiario.identificacion}</p></>
           },
-          { titulo: "Bolsa", valor: g => g.bolsa?.nombre ?? "—" },
+          // Gastos de anticipos: avisa si el cliente no tiene saldo suficiente
+          { titulo: "Bolsa", valor: g => <>{g.bolsa?.nombre ?? "—"}<AvisoSaldoAnticipo gasto={g} /></> },
           { titulo: "Solicitante", valor: g => g.creador?.nombreUsuario },
           { titulo: "Valor solicitado", alinearDerecha: true, valor: g => <b className="text-slate-800">{formatoMoneda(g.valorSolicitadoPago)}</b> }
         ]}

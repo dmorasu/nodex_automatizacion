@@ -14,7 +14,7 @@ const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "Am
 const aCentavos = (valor: string | number) => Math.round(Number(valor) * 100)
 
 // Gastos generales: se PROGRAMA el pago (Dirección de Negocio aprueba y luego Tesorería confirma).
-// Compras de certificados (`directo`): se pagan en un solo paso, como siempre.
+// Compras de certificados y gastos de anticipos (`directo`): se pagan en un solo paso.
 export default function ModalPago({
   gastos,
   bolsas,
@@ -109,7 +109,7 @@ export default function ModalPago({
               </DialogTitle>
               <p className="mt-0.5 text-xs text-slate-400">
                 {directo
-                  ? "Compras de certificados: se paga en un solo paso, se descuenta la bolsa y se avisa por correo."
+                  ? "Pago directo (compras de certificados y gastos de anticipos, sin aprobación de Dirección): se paga en un solo paso, se descuenta la bolsa y se avisa por correo a quien creó el gasto."
                   : "Se crea un lote que Dirección de Negocio debe aprobar. La bolsa se descuenta cuando confirme el pago con el soporte del banco."}
               </p>
             </div>

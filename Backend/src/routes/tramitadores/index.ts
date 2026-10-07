@@ -9,6 +9,7 @@ import { GastosTramitadorController } from '../../controllers/tramitadores/Sopor
 import { recibirDocumentos } from '../../middleware/gastos/uploadDocumentosGasto'
 import { TIPOS_DOCUMENTO_TRAMITE } from '../../services/tramitadores/nombresDocumento'
 import { RutaMensajeroController, recibirFoto } from '../../controllers/tramitadores/RutaMensajeroController'
+import { NotificacionesTramitadorController } from '../../controllers/tramitadores/NotificacionesTramitadorController'
 
 // API de la app Nodex Tramitadores (/api/app-tramitadores).
 // Usa su propio token: los tokens de usuarios internos no sirven aquí ni al revés.
@@ -99,6 +100,20 @@ router.get('/soportes/archivos/:id/ver',
   handleInputErrors,
   GastosTramitadorController.verArchivo
 )
+
+// ── Notificaciones push del celular ──────────────
+const endpointPush = body('endpoint').isURL({ protocols: ['https'], require_tld: true }).withMessage('Suscripción no válida').isLength({ max: 1000 })
+
+router.get('/notificaciones/clave', ...sesion, NotificacionesTramitadorController.clave)
+router.post('/notificaciones/suscripcion',
+  ...sesion,
+  endpointPush,
+  body(['keys.p256dh', 'keys.auth']).isString().notEmpty().isLength({ max: 200 }).withMessage('Suscripción no válida'),
+  handleInputErrors,
+  NotificacionesTramitadorController.suscribir
+)
+router.delete('/notificaciones/suscripcion', ...sesion, endpointPush, handleInputErrors, NotificacionesTramitadorController.desuscribir)
+router.post('/notificaciones/prueba', ...sesion, NotificacionesTramitadorController.prueba)
 
 // ── Mi ruta (solo mensajeros) ──────────────
 router.get('/ruta',

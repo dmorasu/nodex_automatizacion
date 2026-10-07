@@ -58,7 +58,7 @@ export default async function TableroPage({ searchParams }: { searchParams: Filt
     <div className="space-y-6">
 
       <div>
-        <h1 className="text-xl font-semibold text-slate-800">Tablero</h1>
+        <h1 className="text-xl font-semibold text-slate-800">Indicadores</h1>
         <p className="mt-1 text-sm text-slate-400">
           El saldo es el actual de cada bolsa. Las demás cifras corresponden a gastos pagados en el rango de fechas elegido.
         </p>

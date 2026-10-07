@@ -9,14 +9,17 @@ import { formatoMoneda } from "@/src/lib/formato"
 import type { Bolsa } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
 
-// RECARGA: suma saldo (Tesorería) | AJUSTE: suma o resta con motivo obligatorio (Admin)
+// RECARGA: suma saldo (Tesorería) | AJUSTE: suma o resta con motivo obligatorio (Admin).
+// En una bolsa de anticipos el ajuste es al saldo de un cliente (`cliente`)
 export default function ModalSaldoBolsa({
   bolsa,
   tipo,
+  cliente,
   onCerrar
 }: {
-  bolsa: Bolsa
+  bolsa: Pick<Bolsa, "id" | "nombre" | "saldoActual">
   tipo: "RECARGA" | "AJUSTE"
+  cliente?: { id: number, nombre: string, saldo: number }
   onCerrar: () => void
 }) {
   const [valor, setValor] = useState("")
@@ -32,7 +35,7 @@ export default function ModalSaldoBolsa({
     if (esAjuste && !observacion.trim()) return toast.error("Explique el motivo del ajuste")
 
     startGuardar(async () => {
-      const resultado = await moverSaldoBolsa(bolsa.id, tipo, numero, observacion.trim())
+      const resultado = await moverSaldoBolsa(bolsa.id, tipo, numero, observacion.trim(), cliente?.id)
 
       if (!resultado.ok) {
         resultado.errores.forEach(error => toast.error(error))
@@ -54,7 +57,9 @@ export default function ModalSaldoBolsa({
             {esAjuste ? "Ajustar saldo" : "Recargar"} · {bolsa.nombre}
           </DialogTitle>
           <p className="mt-1 text-xs text-slate-400">
-            Saldo actual {formatoMoneda(bolsa.saldoActual)}.
+            {cliente
+              ? <>Cliente <b className="text-slate-600">{cliente.nombre}</b>: saldo {formatoMoneda(cliente.saldo)} (bolsa {formatoMoneda(bolsa.saldoActual)}).</>
+              : <>Saldo actual {formatoMoneda(bolsa.saldoActual)}.</>}
             {esAjuste && " Use un valor negativo para restar."}
           </p>
 
@@ -80,7 +85,8 @@ export default function ModalSaldoBolsa({
             </label>
 
             <p className="text-xs text-slate-500">
-              Saldo después: <b className={saldoNuevo < 0 ? "text-red-600" : "text-slate-800"}>{formatoMoneda(saldoNuevo)}</b>
+              Saldo de la bolsa después: <b className={saldoNuevo < 0 ? "text-red-600" : "text-slate-800"}>{formatoMoneda(saldoNuevo)}</b>
+              {cliente && <> · del cliente: <b>{formatoMoneda(cliente.saldo + (Number.isFinite(numero) ? numero : 0))}</b></>}
             </p>
           </div>
 

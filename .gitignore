@@ -15,3 +15,6 @@ Backend/dist/
 
 # Logs
 *.log
+
+# Guías de transporte reales para probar el OCR (tienen datos personales: no subir)
+docs/guias-ejemplo/

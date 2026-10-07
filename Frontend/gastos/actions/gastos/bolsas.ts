@@ -8,6 +8,8 @@ type Resultado = { ok: true } | { ok: false, errores: string[] }
 type DatosBolsa = {
   nombre?: string
   lineaNegocio?: string | null
+  // Solo al crear: GENERAL | ANTICIPOS
+  tipo?: string
   activo?: boolean
 }
 

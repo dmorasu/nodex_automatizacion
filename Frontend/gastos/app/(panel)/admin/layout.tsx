@@ -8,7 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-800">Administración</h1>
+        <h1 className="text-xl font-semibold text-slate-800">Tablero de Control</h1>
         <p className="mt-1 text-sm text-slate-400">Todos los gastos, con filtros, totales y paginación.</p>
       </div>
       {children}

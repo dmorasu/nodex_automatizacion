@@ -3,9 +3,10 @@ import Usuarios from '../usuarios'
 import SolicitudesGasto from './solicitudesGasto'
 import TiposDocumentoGasto from './tiposDocumentoGasto'
 import LotesPago from './lotesPago'
+import Anticipos from './anticipos'
 
 // Archivos en Azure File Share. Un documento pertenece a UNO de:
-// un gasto, un lote de pago, una cuenta de cobro o un reintegro.
+// un gasto, un lote de pago, una cuenta de cobro, un reintegro o un anticipo.
 @Table({
   tableName: 'gastos_documentos',
   underscored: true
@@ -33,6 +34,14 @@ class DocumentosGasto extends Model {
 
   @BelongsTo(() => LotesPago)
   declare lotePago: LotesPago
+
+  // Soporte de la consignación del cliente
+  @ForeignKey(() => Anticipos)
+  @Column({ type: DataType.INTEGER })
+  declare anticipoId: number | null
+
+  @BelongsTo(() => Anticipos)
+  declare anticipo: Anticipos
 
   // Las tablas de cuentas de cobro y reintegros se crean en la fase 5;
   // por ahora son columnas sin llave foránea

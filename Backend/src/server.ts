@@ -70,12 +70,14 @@ async function connectDB() {
     }
 }
 
-// Las notificaciones de WhatsApp (diligencias de hoy y vencidas) leen su hora de la base,
-// por eso se programan después de sync(). Si la base falló, usan los valores por defecto.
-// En modo ensayo no se programan los WhatsApp automáticos (la base es una copia con datos reales)
-connectDB().then(() => modoEnsayo()
-    ? console.log(colors.yellow.bold('🧪 MODO ENSAYO: notificaciones automáticas NO programadas; WhatsApp bloqueado y correos a CORREO_ENSAYO'))
-    : iniciarNotificacionesProgramadas())
+// Las notificaciones automáticas (WhatsApp de diligencias y push de reintegros) leen su hora
+// de la base, por eso se programan después de sync(). Si la base falló, usan los valores por defecto.
+// En modo ensayo no se programan los WhatsApp automáticos (la base es una copia con datos reales);
+// las push sí, porque solo llegan a los celulares que las activaron en la app del ensayo
+connectDB().then(() => {
+    if (modoEnsayo()) console.log(colors.yellow.bold('🧪 MODO ENSAYO: WhatsApp automáticos NO programados; WhatsApp bloqueado y correos a CORREO_ENSAYO'))
+    return iniciarNotificacionesProgramadas({ soloPush: modoEnsayo() })
+})
 
 const app = express()
 

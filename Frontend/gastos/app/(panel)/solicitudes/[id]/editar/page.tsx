@@ -21,7 +21,23 @@ export default async function EditarGastoPage({ params }: { params: { id: string
         <p className="mt-1 text-sm text-slate-400">Los valores se recalculan al guardar.</p>
       </div>
 
-      <FormularioGasto {...datosFormulario} gasto={gasto} />
+      <FormularioGasto
+        {...datosFormulario}
+        gasto={gasto}
+        anticipo={gasto.anticipo ? {
+          id: gasto.anticipo.id,
+          codigo: gasto.anticipo.codigo,
+          tipo: gasto.anticipo.tipo,
+          concepto: gasto.conceptoPago,
+          placa: gasto.placa,
+          matriculaInmobiliaria: gasto.matriculaInmobiliaria,
+          operacionId: gasto.operacionId,
+          bolsa: gasto.bolsa ?? { id: gasto.bolsaId ?? 0, nombre: "" },
+          cliente: { nombre: gasto.anticipo.cliente.nombre, identificacion: gasto.anticipo.cliente.identificacion },
+          // Lo que le queda al cliente sin contar este gasto (que ya está en "por pagar")
+          disponible: (gasto.saldoAnticipo?.disponible ?? 0) + Number(gasto.valorSolicitadoPago)
+        } : undefined}
+      />
     </div>
   )
 }

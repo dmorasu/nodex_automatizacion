@@ -1,21 +1,46 @@
-import FormularioGasto from "@/components/gastos/FormularioGasto"
+import { redirect } from "next/navigation"
+import FormularioGasto, { type AnticipoDelGasto } from "@/components/gastos/FormularioGasto"
 import { requiereAcceso } from "@/src/auth/dal"
 import { obtenerDatosFormulario } from "@/src/lib/datosGastos"
+import { obtenerAnticipo } from "@/src/lib/datosAnticipos"
 
-export default async function NuevoGastoPage() {
+// ?anticipo=<id> → gasto creado desde un anticipo confirmado (botón "Crear gasto")
+export default async function NuevoGastoPage({ searchParams }: { searchParams: { anticipo?: string } }) {
   await requiereAcceso([])
-  const datosFormulario = await obtenerDatosFormulario()
+  const anticipoId = Number(searchParams.anticipo) || null
+
+  const [datosFormulario, anticipo] = await Promise.all([
+    obtenerDatosFormulario(),
+    anticipoId ? obtenerAnticipo(anticipoId) : Promise.resolve(null)
+  ])
+
+  if (anticipo && !anticipo.permisos.crearGasto) redirect(`/anticipos/${anticipo.id}`)
+
+  const delAnticipo: AnticipoDelGasto | undefined = anticipo ? {
+    id: anticipo.id,
+    codigo: anticipo.codigo,
+    tipo: anticipo.tipo,
+    concepto: anticipo.concepto,
+    placa: anticipo.placa,
+    matriculaInmobiliaria: anticipo.matriculaInmobiliaria,
+    operacionId: anticipo.operacionId,
+    bolsa: anticipo.bolsa,
+    cliente: { nombre: anticipo.cliente.nombre, identificacion: anticipo.cliente.identificacion },
+    disponible: anticipo.saldoCliente?.disponible ?? Number(anticipo.valorRecibido ?? 0)
+  } : undefined
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-800">Nuevo gasto</h1>
+        <h1 className="text-xl font-semibold text-slate-800">{anticipo ? `Nuevo gasto del anticipo ${anticipo.codigo}` : "Nuevo gasto"}</h1>
         <p className="mt-1 text-sm text-slate-400">
-          La solicitud queda en estado Solicitado hasta que Tesorería la pague.
+          {anticipo
+            ? "Se paga de la bolsa de anticipos y se descuenta del saldo del cliente. Es no reembolsable (no pasa por Legalización)."
+            : "La solicitud queda en estado Solicitado hasta que Tesorería la pague."}
         </p>
       </div>
 
-      <FormularioGasto {...datosFormulario} />
+      <FormularioGasto {...datosFormulario} anticipo={delAnticipo} />
     </div>
   )
 }

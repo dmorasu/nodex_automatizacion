@@ -11,6 +11,8 @@ export type NotificacionProgramada = {
   clave: string
   nombre: string
   descripcion: string
+  // WHATSAPP: al teléfono del tramitador · PUSH: notificación en la app de tramitadores
+  canal: "WHATSAPP" | "PUSH"
   hora: string
   dias: number[]
   activa: boolean
@@ -46,17 +48,24 @@ const fechaHora = (valor: string | null) =>
     })
     : "—"
 
-const textoResultado = (resultado: Resultado | null) => {
+const CANALES = {
+  WHATSAPP: { nombre: "WhatsApp", encontradas: "diligencia(s)", sinCanal: "sin teléfono", recibiran: "el WhatsApp" },
+  PUSH: { nombre: "App de tramitadores", encontradas: "tramitador(es)", sinCanal: "sin notificaciones activadas en la app", recibiran: "la notificación en la app" }
+}
+
+const textoResultado = (resultado: Resultado | null, canal: NotificacionProgramada["canal"]) => {
   if (!resultado) return null
   if ("error" in resultado) return resultado.error
-  const partes = [`${resultado.enviadas} enviada(s) de ${resultado.encontradas} diligencia(s)`]
-  if (resultado.sinTelefono) partes.push(`${resultado.sinTelefono} sin teléfono`)
+  const textos = CANALES[canal] ?? CANALES.WHATSAPP
+  const partes = [`${resultado.enviadas} enviada(s) de ${resultado.encontradas} ${textos.encontradas}`]
+  if (resultado.sinTelefono) partes.push(`${resultado.sinTelefono} ${textos.sinCanal}`)
   if (resultado.errores) partes.push(`${resultado.errores} con error`)
   return partes.join(" · ")
 }
 
 export default function TarjetaNotificacionProgramada({ inicial }: { inicial: NotificacionProgramada }) {
   const [guardada, setGuardada] = useState(inicial)
+  const canal = CANALES[guardada.canal] ?? CANALES.WHATSAPP
   const [hora, setHora] = useState(inicial.hora)
   const [dias, setDias] = useState(inicial.dias)
   const [activa, setActiva] = useState(inicial.activa)
@@ -99,7 +108,7 @@ export default function TarjetaNotificacionProgramada({ inicial }: { inicial: No
   const enviarAhora = async () => {
     const aviso = [
       `¿Enviar ahora "${guardada.nombre}"?`,
-      "Los tramitadores recibirán el WhatsApp en este momento.",
+      `Los tramitadores recibirán ${canal.recibiran} en este momento.`,
       guardada.activa ? `Si hoy también se envía a la hora programada (${guardada.hora}), lo recibirán dos veces.` : ""
     ].filter(Boolean).join("\n\n")
     if (!confirm(aviso)) return
@@ -110,7 +119,7 @@ export default function TarjetaNotificacionProgramada({ inicial }: { inicial: No
     if (!resultado.ok) {
       toast.error(resultado.error)
     } else {
-      toast.success(textoResultado(resultado.datos) ?? "Enviado")
+      toast.success(textoResultado(resultado.datos, guardada.canal) ?? "Enviado")
     }
     await recargar()
   }
@@ -121,7 +130,10 @@ export default function TarjetaNotificacionProgramada({ inicial }: { inicial: No
       {/* Encabezado con interruptor */}
       <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-slate-800">{guardada.nombre}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-800">{guardada.nombre}</h2>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">{canal.nombre}</span>
+          </div>
           <p className="mt-0.5 text-xs text-slate-500">{guardada.descripcion}</p>
         </div>
         <button
@@ -204,7 +216,7 @@ export default function TarjetaNotificacionProgramada({ inicial }: { inicial: No
                 {" · "}
                 {guardada.ultimoOrigen === "MANUAL" ? `manual (${guardada.ultimoEjecutadoPor ?? "—"})` : "programado"}
                 <span className={`block ${guardada.ultimoResultado && "error" in guardada.ultimoResultado ? "text-red-600" : "text-slate-500"}`}>
-                  {textoResultado(guardada.ultimoResultado)}
+                  {textoResultado(guardada.ultimoResultado, guardada.canal)}
                 </span>
               </>
             ) : "Sin registro todavía"}

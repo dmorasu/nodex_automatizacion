@@ -10,7 +10,8 @@ type Resultado<T = undefined> =
   | { ok: false, errores: string[] }
 
 // Crea (sin id) o actualiza (con id) un gasto
-export async function guardarGasto(datos: DatosGasto, id?: number): Promise<Resultado<{ id: number }>> {
+// avisoSaldo: el gasto de un anticipo supera lo que le queda al cliente (se crea igual)
+export async function guardarGasto(datos: DatosGasto, id?: number): Promise<Resultado<{ id: number, avisoSaldo: string | null }>> {
   const req = await fetchApi(id ? `/gastos/solicitudes/${id}` : "/gastos/solicitudes", {
     method: id ? "PUT" : "POST",
     body: JSON.stringify(datos)
@@ -20,8 +21,9 @@ export async function guardarGasto(datos: DatosGasto, id?: number): Promise<Resu
 
   const json = await req.json()
   revalidatePath("/solicitudes")
+  if (datos.anticipoId) revalidatePath(`/anticipos/${datos.anticipoId}`)
 
-  return { ok: true, datos: { id: json.id } }
+  return { ok: true, datos: { id: json.id, avisoSaldo: json.avisoSaldo ?? null } }
 }
 
 export async function anularGasto(id: number, motivo: string): Promise<Resultado> {

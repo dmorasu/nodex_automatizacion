@@ -36,6 +36,13 @@ class Terceros extends Model {
   @Column({ type: DataType.STRING(100) })
   declare correo: string
 
+  // Contacto de los clientes del banco que pagan anticipos
+  @Column({ type: DataType.STRING(30) })
+  declare telefono: string | null
+
+  @Column({ type: DataType.STRING(200) })
+  declare direccion: string | null
+
   @Default(true)
   @Column({ type: DataType.BOOLEAN })
   declare activo: boolean

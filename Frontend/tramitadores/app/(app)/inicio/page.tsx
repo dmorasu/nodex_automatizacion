@@ -3,15 +3,18 @@ import { ChevronRight, ClipboardList, Receipt, Wallet } from "lucide-react"
 import { requiereSesion } from "@/src/auth/sesion"
 import { obtenerDatos } from "@/src/lib/api"
 import { formatoMoneda } from "@/src/lib/formato"
-import { ListadoGastosSchema, ListadoTramitesSchema } from "@/src/schemas"
+import { ClavePushSchema, ListadoGastosSchema, ListadoTramitesSchema } from "@/src/schemas"
 import TarjetaTramite from "@/components/tramites/TarjetaTramite"
+import ActivarNotificaciones from "@/components/notificaciones/ActivarNotificaciones"
 
 // Pantalla de inicio: lo que tiene pendiente hoy
 export default async function InicioPage({ searchParams }: { searchParams: { bienvenida?: string } }) {
-  const [sesion, tramites, gastos] = await Promise.all([
+  const [sesion, tramites, gastos, push] = await Promise.all([
     requiereSesion(),
     obtenerDatos("/tramites?filtro=activos", ListadoTramitesSchema),
-    obtenerDatos("/gastos", ListadoGastosSchema)
+    obtenerDatos("/gastos", ListadoGastosSchema),
+    // Si falla, el inicio carga igual (solo no ofrece activar las notificaciones)
+    obtenerDatos("/notificaciones/clave", ClavePushSchema).catch(() => null)
   ])
 
   const primerNombre = sesion.nombre.split(" ")[0]
@@ -32,6 +35,8 @@ export default async function InicioPage({ searchParams }: { searchParams: { bie
           {searchParams.bienvenida ? "Su contraseña quedó guardada. ¡Bienvenido!" : "Esto es lo que tiene pendiente."}
         </p>
       </div>
+
+      {push?.clavePublica && <ActivarNotificaciones clavePublica={push.clavePublica} />}
 
       <div className="grid grid-cols-2 gap-3">
         {indicadores.map(({ href, Icono, valor, texto, alerta }, i) => (

@@ -111,9 +111,41 @@ const pagoProgramado = async () => {
   }
 }
 
+// 2026-10-07 · Anticipos de clientes del banco: bolsas de tipo ANTICIPOS con saldo por cliente.
+// Las tablas nuevas (gastos_anticipos, gastos_clientes_empresariales, gastos_trazabilidad_anticipos)
+// las crea sync(); aquí se agregan las columnas a las tablas que ya existían.
+const anticiposDeClientes = async () => {
+  const agregar = async (tabla: string, nuevas: [string, string][]) => {
+    const columnas = await columnasDe(tabla)
+    if (!columnas) return
+    for (const [columna, tipo] of nuevas) {
+      if (!columnas[columna]) await db.query(`ALTER TABLE ${tabla} ADD COLUMN ${columna} ${tipo}`)
+    }
+  }
+
+  await agregar('gastos_bolsas', [['tipo', `VARCHAR(20) NOT NULL DEFAULT 'GENERAL'`]])
+  await agregar('gastos_terceros', [['telefono', 'VARCHAR(30)'], ['direccion', 'VARCHAR(200)']])
+  await agregar('gastos_solicitudes', [['anticipo_id', 'INTEGER REFERENCES gastos_anticipos (id) ON UPDATE CASCADE ON DELETE SET NULL']])
+  await agregar('gastos_movimientos_bolsa', [
+    ['cliente_id', 'INTEGER REFERENCES gastos_terceros (id) ON UPDATE CASCADE ON DELETE SET NULL'],
+    ['anticipo_id', 'INTEGER REFERENCES gastos_anticipos (id) ON UPDATE CASCADE ON DELETE SET NULL']
+  ])
+  await agregar('gastos_documentos', [['anticipo_id', 'INTEGER REFERENCES gastos_anticipos (id) ON UPDATE CASCADE ON DELETE SET NULL']])
+
+  // 2026-10-07 · El número de solicitud del anticipo es su código (ANT-…): se quita la columna
+  // que se pedía aparte (solo existió en desarrollo, antes del primer despliegue)
+  const anticipos = await columnasDe('gastos_anticipos')
+  if (anticipos?.numero_solicitud) await db.query('ALTER TABLE gastos_anticipos DROP COLUMN numero_solicitud')
+
+  // Saldo de cada cliente = suma de sus movimientos en la bolsa
+  await db.query(`CREATE INDEX IF NOT EXISTS gastos_movimientos_bolsa_cliente ON gastos_movimientos_bolsa (bolsa_id, cliente_id) WHERE cliente_id IS NOT NULL`)
+  await db.query(`CREATE INDEX IF NOT EXISTS gastos_solicitudes_anticipo ON gastos_solicitudes (anticipo_id) WHERE anticipo_id IS NOT NULL`)
+}
+
 export const ajustarEsquemaGastos = async () => {
   await retencionPasaALaFactura()
   await contabilizacionDeGastos()
   await retencionAlCrearGasto()
   await pagoProgramado()
+  await anticiposDeClientes()
 }

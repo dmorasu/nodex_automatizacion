@@ -73,6 +73,17 @@ export async function quitarDelLote(loteId: number, gastoIds: number[], motivo: 
   return { ok: true, datos: await req.json() }
 }
 
+// Confirma uno o varios lotes aprobados en un solo paso: adjunta el soporte del banco a cada
+// lote (puede ser uno para todos), descuenta las bolsas y los gastos quedan PAGADO.
+// formData: datos (JSON con loteIds, fechaPago y observacion) + archivos[]
+export async function confirmarLotes(formData: FormData): Promise<Resultado<{ lotes: number, gastos: number }>> {
+  const req = await fetchApi("/gastos/lotes/confirmar", { method: "POST", body: formData })
+  if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+
+  refrescarPagos()
+  return { ok: true, datos: await req.json() }
+}
+
 // Con el soporte del banco ya adjunto: descuenta la bolsa y los gastos quedan PAGADO
 export async function confirmarPago(loteId: number, fechaPago: string, observacion: string): Promise<Resultado> {
   const req = await fetchApi(`/gastos/lotes/${loteId}/confirmar`, { method: "POST", body: JSON.stringify({ fechaPago, observacion }) })
@@ -100,20 +111,23 @@ export async function eliminarSoporteLote(documentoId: number): Promise<Resultad
   return { ok: true, datos: undefined }
 }
 
-// tipo RECARGA (Tesorería, valor positivo) o AJUSTE (solo Admin, valor ±)
+// tipo RECARGA (Tesorería, valor positivo) o AJUSTE (solo Admin, valor ±).
+// En una bolsa de anticipos el ajuste es al saldo de un cliente (clienteId)
 export async function moverSaldoBolsa(
   bolsaId: number,
   tipo: "RECARGA" | "AJUSTE",
   valor: number,
-  observacion: string
+  observacion: string,
+  clienteId?: number
 ): Promise<Resultado<{ saldo: number }>> {
   const req = await fetchApi(`/gastos/bolsas/${bolsaId}/${tipo === "RECARGA" ? "recargas" : "ajustes"}`, {
     method: "POST",
-    body: JSON.stringify({ valor, observacion })
+    body: JSON.stringify({ valor, observacion, clienteId })
   })
 
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }
 
   refrescarTesoreria()
+  revalidatePath(`/tesoreria/bolsas/${bolsaId}`)
   return { ok: true, datos: await req.json() }
 }

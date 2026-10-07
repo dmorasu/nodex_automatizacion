@@ -1,61 +1,45 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { toast } from "react-toastify"
-import { CheckCircle2, Loader2 } from "lucide-react"
-import { confirmarPago } from "@/actions/gastos/tesoreria"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { CheckCircle2 } from "lucide-react"
 import { formatoMoneda } from "@/src/lib/formato"
-import { claseBotonPrimario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
+import { claseBotonPrimario } from "../ui/estilos"
+import ModalConfirmarLotes from "./ModalConfirmarLotes"
 
-const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
-
-// Último paso del pago: con el soporte del banco ya adjunto, Tesorería confirma.
-// Ahí se descuenta la bolsa y los gastos quedan Pagados.
-export default function ConfirmarPagoLote({ loteId, total, haySoporte }: {
+// Último paso del pago: Tesorería adjunta el soporte del banco (aquí mismo, o el que ya subió)
+// y confirma con la fecha real. Ahí se descuenta la bolsa y los gastos quedan Pagados.
+// Para confirmar varios lotes a la vez: Tesorería → Programados.
+export default function ConfirmarPagoLote({ loteId, total, haySoporte, cantidadGastos, bolsa }: {
   loteId: number
   total: string
   haySoporte: boolean
+  cantidadGastos: number
+  bolsa: { nombre: string }
 }) {
-  const [fechaPago, setFechaPago] = useState(hoyEnBogota)
-  const [observacion, setObservacion] = useState("")
-  const [confirmando, start] = useTransition()
-
-  const confirmar = () => {
-    if (!fechaPago) return toast.error("Indique la fecha del pago")
-    start(async () => {
-      const resultado = await confirmarPago(loteId, fechaPago, observacion)
-      if (!resultado.ok) {
-        resultado.errores.forEach(error => toast.error(error))
-        return
-      }
-      toast.success(`Pago del lote #${loteId} confirmado. Se avisó a quienes crearon los gastos.`)
-    })
-  }
+  const router = useRouter()
+  const [abierto, setAbierto] = useState(false)
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className={claseLabel}>Fecha del pago en el banco <span className="text-red-400">*</span></span>
-          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)} className={claseInput} />
-        </label>
-        <label className="block">
-          <span className={claseLabel}>Observación</span>
-          <textarea value={observacion} onChange={e => setObservacion(e.target.value)} rows={1} maxLength={1000} className={claseTextarea} />
-        </label>
-      </div>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs text-slate-500">
+        {haySoporte
+          ? "Ya tiene soporte del banco. Al confirmar se descuenta la bolsa y se avisa por correo a quienes crearon los gastos."
+          : "Adjunte el soporte del banco al confirmar (o súbalo arriba). Se descuenta la bolsa y se avisa a quienes crearon los gastos."}
+      </p>
+      <button type="button" onClick={() => setAbierto(true)} className={claseBotonPrimario}>
+        <CheckCircle2 size={15} />
+        Confirmar pago de {formatoMoneda(total)}
+      </button>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className={`text-xs ${haySoporte ? "text-slate-500" : "text-amber-700"}`}>
-          {haySoporte
-            ? "Al confirmar se descuenta la bolsa y se avisa por correo a quienes crearon los gastos."
-            : "Adjunte arriba el soporte del banco para poder confirmar el pago."}
-        </p>
-        <button type="button" onClick={confirmar} disabled={confirmando || !haySoporte} className={claseBotonPrimario}>
-          {confirmando ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-          Confirmar pago de {formatoMoneda(total)}
-        </button>
-      </div>
+      {abierto && (
+        <ModalConfirmarLotes
+          lotes={[{ id: loteId, total, cantidadGastos, bolsa }]}
+          requiereSoporte={!haySoporte}
+          onCerrar={() => setAbierto(false)}
+          onConfirmados={() => router.refresh()}
+        />
+      )}
     </div>
   )
 }

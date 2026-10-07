@@ -10,7 +10,7 @@ import type { Bolsa } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseInput } from "../ui/estilos"
 import ModalSaldoBolsa from "./ModalSaldoBolsa"
 
-type Edicion = { id?: number, nombre: string, lineaNegocio: string }
+type Edicion = { id?: number, nombre: string, lineaNegocio: string, tipo: string }
 
 export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], esAdmin: boolean }) {
   // null = sin edición | sin id = bolsa nueva | con id = editando esa bolsa
@@ -34,7 +34,12 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
   const guardarEdicion = () => {
     if (!edicion?.nombre.trim()) return toast.error("El nombre de la bolsa es obligatorio")
 
-    const datos = { nombre: edicion.nombre.trim(), lineaNegocio: edicion.lineaNegocio.trim() || null }
+    const datos = {
+      nombre: edicion.nombre.trim(),
+      lineaNegocio: edicion.lineaNegocio.trim() || null,
+      // El tipo se elige solo al crear la bolsa
+      ...(edicion.id ? {} : { tipo: edicion.tipo })
+    }
     ejecutar(() => guardarBolsa(datos, edicion.id), edicion.id ? "Bolsa actualizada" : "Bolsa creada")
   }
 
@@ -66,6 +71,19 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
           className={claseInput}
         />
       </td>
+      <td className="px-4 py-2">
+        {edicion?.id ? null : (
+          <select
+            value={edicion?.tipo ?? "GENERAL"}
+            onChange={e => setEdicion(actual => actual && { ...actual, tipo: e.target.value })}
+            className={claseInput}
+            aria-label="Tipo de bolsa"
+          >
+            <option value="GENERAL">General</option>
+            <option value="ANTICIPOS">Anticipos de clientes</option>
+          </select>
+        )}
+      </td>
       <td colSpan={2} />
       <td className="px-4 py-2 text-right whitespace-nowrap">
         <button type="button" onClick={guardarEdicion} disabled={guardando} className="p-2 text-emerald-600 hover:text-emerald-800" aria-label="Guardar">
@@ -83,7 +101,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => setEdicion({ nombre: "", lineaNegocio: "" })}
+          onClick={() => setEdicion({ nombre: "", lineaNegocio: "", tipo: "GENERAL" })}
           disabled={edicion !== null}
           className={claseBotonPrimario}
         >
@@ -98,6 +116,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
             <tr>
               <th className="px-4 py-3 font-semibold">Bolsa</th>
               <th className="px-4 py-3 font-semibold">Línea de negocio</th>
+              <th className="px-4 py-3 font-semibold">Tipo</th>
               <th className="px-4 py-3 font-semibold text-right">Saldo</th>
               <th className="px-4 py-3 font-semibold">Estado</th>
               <th className="px-4 py-3" />
@@ -113,6 +132,11 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                 <tr key={bolsa.id} className={bolsa.activo ? "" : "opacity-50"}>
                   <td className="px-4 py-3 font-medium text-slate-700">{bolsa.nombre}</td>
                   <td className="px-4 py-3 text-slate-600">{bolsa.lineaNegocio ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {bolsa.tipo === "ANTICIPOS"
+                      ? <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">Anticipos</span>
+                      : <span className="text-slate-500">General</span>}
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatoMoneda(bolsa.saldoActual)}</td>
                   <td className="px-4 py-3">
                     <button
@@ -126,7 +150,8 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {bolsa.activo && (
+                    {/* Las de anticipos se llenan con los anticipos confirmados; sus ajustes son por cliente (en el detalle) */}
+                    {bolsa.activo && bolsa.tipo !== "ANTICIPOS" && (
                       <button
                         type="button"
                         onClick={() => setMovimiento({ bolsa, tipo: "RECARGA" })}
@@ -137,7 +162,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                         <PlusCircle size={15} />
                       </button>
                     )}
-                    {esAdmin && (
+                    {esAdmin && bolsa.tipo !== "ANTICIPOS" && (
                       <button
                         type="button"
                         onClick={() => setMovimiento({ bolsa, tipo: "AJUSTE" })}
@@ -151,7 +176,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                     <Link
                       href={`/tesoreria/bolsas/${bolsa.id}`}
                       className="inline-block p-2 text-slate-400 hover:text-emerald-600"
-                      title="Ver movimientos"
+                      title={bolsa.tipo === "ANTICIPOS" ? "Ver movimientos y saldos por cliente" : "Ver movimientos"}
                       aria-label={`Movimientos de ${bolsa.nombre}`}
                     >
                       <List size={15} />
@@ -159,7 +184,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                     <button
                       type="button"
                       title="Editar"
-                      onClick={() => setEdicion({ id: bolsa.id, nombre: bolsa.nombre, lineaNegocio: bolsa.lineaNegocio ?? "" })}
+                      onClick={() => setEdicion({ id: bolsa.id, nombre: bolsa.nombre, lineaNegocio: bolsa.lineaNegocio ?? "", tipo: bolsa.tipo })}
                       disabled={edicion !== null}
                       className="p-2 text-slate-400 hover:text-emerald-600 disabled:opacity-30"
                       aria-label={`Editar ${bolsa.nombre}`}

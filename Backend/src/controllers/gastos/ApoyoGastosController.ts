@@ -8,6 +8,7 @@ import Tramite from '../../models/tramite'
 import Terceros from '../../models/gastos/terceros'
 import Bolsas from '../../models/gastos/bolsas'
 import { ErrorGastos } from '../../services/gastos/errores'
+import { TIPOS_BOLSA } from '../../services/gastos/constantes'
 import { responderError } from './utilidades'
 
 // Datos de apoyo para el formulario de gastos (selects y autocompletado)
@@ -25,12 +26,14 @@ export class ApoyoGastosController {
     }
   }
 
-  // Bolsas activas para elegir al crear el gasto (sin saldo: eso lo ve Tesorería)
+  // Bolsas activas para elegir al crear el gasto (sin saldo: eso lo ve Tesorería).
+  // ?tipo=ANTICIPOS para el formulario del anticipo; por defecto las generales (las de
+  // anticipos solo pagan gastos creados desde un anticipo)
   static bolsas = async (req: Request, res: Response) => {
     try {
       const bolsas = await Bolsas.findAll({
-        where: { activo: true },
-        attributes: ['id', 'nombre', 'lineaNegocio'],
+        where: { activo: true, tipo: req.query.tipo === TIPOS_BOLSA.ANTICIPOS ? TIPOS_BOLSA.ANTICIPOS : TIPOS_BOLSA.GENERAL },
+        attributes: ['id', 'nombre', 'lineaNegocio', 'tipo'],
         order: [['nombre', 'ASC']]
       })
       res.json(bolsas)
@@ -88,7 +91,7 @@ export class ApoyoGastosController {
             { nombre: { [Op.iLike]: `%${busqueda}%` } }
           ]
         },
-        attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'banco', 'tipoCuenta', 'numeroCuenta', 'correo'],
+        attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'banco', 'tipoCuenta', 'numeroCuenta', 'correo', 'telefono', 'direccion'],
         order: [['nombre', 'ASC']],
         limit: 20
       })

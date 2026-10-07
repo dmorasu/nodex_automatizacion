@@ -159,6 +159,31 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
             )}
           </Seccion>
 
+          {gasto.anticipo && (
+            <Seccion titulo="Anticipo del cliente" descripcion="Se paga de la bolsa de anticipos y se descuenta del saldo del cliente">
+              <dl className="space-y-4">
+                <Dato etiqueta="Anticipo" valor={<Link href={`/anticipos/${gasto.anticipo.id}`} className="font-semibold text-emerald-700 hover:underline">{gasto.anticipo.codigo}</Link>} />
+                <Dato etiqueta="Cliente" valor={`${gasto.anticipo.cliente.nombre} · ${gasto.anticipo.cliente.identificacion}`} />
+                <Dato etiqueta="Recibo de caja" valor={gasto.anticipo.reciboCaja} />
+                {gasto.saldoAnticipo && (
+                  <>
+                    <Dato etiqueta="Saldo del cliente" valor={formatoMoneda(gasto.saldoAnticipo.saldo)} />
+                    <Dato etiqueta="Gastos por pagar del cliente" valor={formatoMoneda(gasto.saldoAnticipo.comprometido)} />
+                    <Dato
+                      etiqueta="Disponible"
+                      valor={<span className={gasto.saldoAnticipo.disponible < 0 ? "font-semibold text-red-600" : "font-semibold text-emerald-700"}>{formatoMoneda(gasto.saldoAnticipo.disponible)}</span>}
+                    />
+                  </>
+                )}
+              </dl>
+              {gasto.saldoAnticipo && gasto.saldoAnticipo.disponible < 0 && (
+                <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                  Los gastos del cliente superan lo que pagó: faltan {formatoMoneda(-gasto.saldoAnticipo.disponible)}.
+                </p>
+              )}
+            </Seccion>
+          )}
+
           <Seccion titulo="Pago (Tesorería)">
             {pagado ? (
               <dl className="space-y-4">

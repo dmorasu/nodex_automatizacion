@@ -2,6 +2,7 @@ import { randomInt } from 'crypto'
 import jwt from 'jsonwebtoken'
 import Tramitador from '../../models/tramitador'
 import AccesoTramitador from '../../models/tramitadores/accesoTramitador'
+import SuscripcionPush from '../../models/tramitadores/suscripcionPush'
 import { checkContrasena, hashcontrasena } from '../../utils/auth'
 import { generarContrasenaCumplida } from '../../utils/politicaContrasena'
 import { ErrorGastos as ErrorNegocio } from '../gastos/errores'
@@ -67,9 +68,11 @@ export const crearORestablecerAcceso = async (tramitador: Tramitador, usuarioId:
 }
 
 // Quita el acceso: las sesiones abiertas dejan de funcionar en la siguiente petición
+// y sus celulares dejan de recibir notificaciones
 export const revocarAcceso = async (tramitadorId: number) => {
   const eliminados = await AccesoTramitador.destroy({ where: { tramitadorId } })
   if (!eliminados) throw new ErrorNegocio('El tramitador no tiene acceso a la app', 404)
+  await SuscripcionPush.destroy({ where: { tramitadorId } })
 }
 
 // =====================================

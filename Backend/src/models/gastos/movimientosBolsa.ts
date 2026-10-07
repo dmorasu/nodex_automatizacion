@@ -3,6 +3,8 @@ import Usuarios from '../usuarios'
 import Bolsas from './bolsas'
 import SolicitudesGasto from './solicitudesGasto'
 import LotesPago from './lotesPago'
+import Terceros from './terceros'
+import Anticipos from './anticipos'
 
 // Libro de la bolsa: cada entrada o salida de dinero es un registro.
 // Nunca se edita ni se borra; las correcciones son movimientos nuevos (REVERSO / AJUSTE).
@@ -21,7 +23,7 @@ class MovimientosBolsa extends Model {
   @BelongsTo(() => Bolsas)
   declare bolsa: Bolsas
 
-  // RECARGA | PAGO | REINTEGRO | LEGALIZACION | REVERSO | AJUSTE
+  // RECARGA | PAGO | REINTEGRO | LEGALIZACION | REVERSO | AJUSTE | ANTICIPO
   @AllowNull(false)
   @Column({ type: DataType.STRING(20) })
   declare tipo: string
@@ -49,6 +51,22 @@ class MovimientosBolsa extends Model {
 
   @BelongsTo(() => LotesPago)
   declare lotePago: LotesPago
+
+  // Bolsas de anticipos: cliente al que pertenece el dinero. La suma de sus movimientos es
+  // su saldo (lo llena registrarMovimientos; en las bolsas generales queda null)
+  @ForeignKey(() => Terceros)
+  @Column({ type: DataType.INTEGER })
+  declare clienteId: number | null
+
+  @BelongsTo(() => Terceros)
+  declare cliente: Terceros
+
+  @ForeignKey(() => Anticipos)
+  @Column({ type: DataType.INTEGER })
+  declare anticipoId: number | null
+
+  @BelongsTo(() => Anticipos)
+  declare anticipo: Anticipos
 
   // Las tablas de cuentas de cobro y reintegros se crean en la fase 5
   @Column({ type: DataType.INTEGER })

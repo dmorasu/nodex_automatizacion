@@ -10,6 +10,7 @@ import {
   Settings2,
   Users,
   BadgeCheck,
+  HandCoins,
   type LucideIcon
 } from "lucide-react"
 import { obtenerSesion } from "@/src/auth/dal"
@@ -19,6 +20,7 @@ import { fetchApi } from "@/src/lib/api"
 // Aspecto de cada módulo. Las clases van completas (Tailwind solo genera las que lee literalmente).
 const ASPECTO: Record<string, { Icono: LucideIcon, fondo: string, sombra: string, borde: string, halo: string }> = {
   "/solicitudes": { Icono: Receipt, fondo: "from-emerald-400 to-teal-600", sombra: "shadow-emerald-500/30", borde: "hover:border-emerald-300", halo: "bg-emerald-400" },
+  "/anticipos": { Icono: HandCoins, fondo: "from-cyan-400 to-sky-600", sombra: "shadow-cyan-500/30", borde: "hover:border-cyan-300", halo: "bg-cyan-400" },
   "/tesoreria": { Icono: Landmark, fondo: "from-sky-400 to-blue-600", sombra: "shadow-sky-500/30", borde: "hover:border-sky-300", halo: "bg-sky-400" },
   "/direccion": { Icono: BadgeCheck, fondo: "from-teal-400 to-emerald-600", sombra: "shadow-teal-500/30", borde: "hover:border-teal-300", halo: "bg-teal-400" },
   "/legalizacion": { Icono: FileCheck2, fondo: "from-violet-400 to-purple-600", sombra: "shadow-violet-500/30", borde: "hover:border-violet-300", halo: "bg-violet-400" },
@@ -50,12 +52,20 @@ type Pendiente = { cantidad: number, texto: string }
 const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pendiente[]>> => {
   const puede = (rol: (typeof ROLES)[keyof typeof ROLES]) => tieneAcceso(roles, [rol])
 
+  // Anticipos: con novedad y confirmados sin gasto (los propios) y por confirmar (Contabilidad)
+  const anticipos = fetchApi("/gastos/anticipos/resumen")
+    .then(async req => req.ok ? await req.json() as { porConfirmar: number, conNovedad: number, confirmadosSinGasto: number } : null)
+    .catch(() => null)
+
   const consultas: [string, string, Promise<number>][] = [
-    ["/solicitudes", "por pagar", contar({ alcance: "mios", estado: "SOLICITADO" })]
+    ["/solicitudes", "por pagar", contar({ alcance: "mios", estado: "SOLICITADO" })],
+    ["/anticipos", "con novedad por corregir", anticipos.then(r => r?.conNovedad ?? 0)],
+    ["/anticipos", "confirmados para crear el gasto", anticipos.then(r => r?.confirmadosSinGasto ?? 0)]
   ]
   if (puede(ROLES.TESORERIA)) {
     consultas.push(
-      ["/tesoreria", "por programar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "no" })],
+      ["/tesoreria", "por programar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "no", anticipo: "no" })],
+      ["/tesoreria", "de anticipos por pagar", contar({ alcance: "todos", estado: "SOLICITADO", anticipo: "si" })],
       ["/tesoreria", "aprobados por confirmar", contar({ alcance: "todos", estado: "APROBADO_PAGO", certificados: "no" })]
     )
   }
@@ -63,7 +73,7 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
     consultas.push(["/direccion", "por aprobar", contar({ alcance: "todos", estado: "PROGRAMADO" })])
   }
   if (puede(ROLES.TESORERIA_CERTIFICADOS)) {
-    consultas.push(["/tesoreria", "certificados por pagar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "si" })])
+    consultas.push(["/tesoreria", "certificados por pagar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "si", anticipo: "no" })])
   }
   if (puede(ROLES.LEGALIZACION)) {
     consultas.push(
@@ -74,6 +84,7 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
   }
   if (puede(ROLES.CONTABILIDAD)) {
     consultas.push(
+      ["/contabilidad", "anticipos por confirmar", anticipos.then(r => r?.porConfirmar ?? 0)],
       ["/contabilidad", "no reembolsables sin factura", contar({ alcance: "todos", estado: "PAGADO", reembolsable: "no" })],
       ["/contabilidad", "por contabilizar", contar({ alcance: "todos", estado: "LEGALIZADO", reembolsable: "no", sinCuentaCobro: "si" })]
     )

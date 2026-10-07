@@ -16,6 +16,13 @@ class Bolsas extends Model {
   @Column({ type: DataType.STRING(100) })
   declare lineaNegocio: string
 
+  // GENERAL | ANTICIPOS (constantes TIPOS_BOLSA). La de anticipos se llena con los pagos de
+  // los clientes y lleva el saldo de cada uno en sus movimientos (clienteId)
+  @AllowNull(false)
+  @Default('GENERAL')
+  @Column({ type: DataType.STRING(20) })
+  declare tipo: string
+
   @AllowNull(false)
   @Default(0)
   @Column({ type: DataType.DECIMAL(15, 2) })

@@ -145,6 +145,13 @@ URL_NODEX_TRAMITES=https://tramites.nodexgpa.com
 
 GOOGLE_MAPS_API_KEY=<clave del servidor>
 API_KEY_EXTERNA=<una nueva>
+
+# Notificaciones push de la app de tramitadores. Generarlas UNA vez en el servidor con
+#   cd Backend && npx web-push generate-vapid-keys
+# y conservarlas (pasan iguales a producción): si cambian, los celulares deben volver a abrir la app
+VAPID_PUBLIC_KEY=<clave pública>
+VAPID_PRIVATE_KEY=<clave privada>
+VAPID_CONTACTO=https://tramitadores.nodexgpa.com
 ```
 Crear el recurso compartido `nodex-ensayo` en la cuenta de Azure Storage (Portal → Cuenta de
 almacenamiento → Recursos compartidos de archivos → + Recurso compartido).

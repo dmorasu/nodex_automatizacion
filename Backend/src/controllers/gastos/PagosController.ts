@@ -9,22 +9,26 @@ import Bolsas from '../../models/gastos/bolsas'
 import Terceros from '../../models/gastos/terceros'
 import Usuarios from '../../models/usuarios'
 import EstadosGasto from '../../models/gastos/estadosGasto'
-import { aprobarGastos, confirmarPago, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
+import Anticipos from '../../models/gastos/anticipos'
+import { atributosSaldoAnticipo } from './SolicitudesGastoController'
+import { aprobarGastos, confirmarPago, confirmarPagos, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
 import { notificarGastosPagados, notificarLoteProgramado, notificarRevisionLote } from '../../services/gastos/notificacionesGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
 import { ESTADOS_LOTE, ROLES } from '../../services/gastos/constantes'
 
 // Las compras de certificados (CTL y Cámara de Comercio) las paga Tesorería - Certificados;
-// los demás gastos, Tesorería. El administrador paga ambos.
+// los demás gastos, Tesorería (también los de anticipos, aunque sean de un certificado).
+// El administrador paga todo.
 const verificarQuienPaga = async (req: Request, gastoIds: number[]) => {
   if (esAdmin(req)) return
   const roles = req.roles ?? []
   const certificados = await idsTiposCertificados()
-  const gastos = await SolicitudesGasto.findAll({ where: { id: gastoIds }, attributes: ['id', 'codigo', 'tipoGastoId'] })
+  const gastos = await SolicitudesGasto.findAll({ where: { id: gastoIds }, attributes: ['id', 'codigo', 'tipoGastoId', 'anticipoId'] })
 
-  const deCertificados = gastos.filter(g => certificados.includes(g.tipoGastoId))
-  const generales = gastos.filter(g => !certificados.includes(g.tipoGastoId))
+  const esCertificado = (g: SolicitudesGasto) => !g.anticipoId && certificados.includes(g.tipoGastoId)
+  const deCertificados = gastos.filter(esCertificado)
+  const generales = gastos.filter(g => !esCertificado(g))
 
   if (deCertificados.length && !roles.includes(ROLES.TESORERIA_CERTIFICADOS)) {
     throw new ErrorGastos(`Las compras de certificados las paga Tesorería - Certificados (${deCertificados.map(g => g.codigo).join(', ')})`, 403)
@@ -40,16 +44,18 @@ const LOTES_CON_CERTIFICADOS = (ids: number[]) => literal(`(
   WHERE g.lote_pago_id IS NOT NULL AND g.tipo_gasto_id IN (${ids.map(Number).join(',') || 'NULL'})
 )`)
 
-// Los certificados se pagan directo; los demás gastos se programan para aprobación de Dirección
+// Los certificados y los gastos de anticipos (el cliente ya pagó) se pagan directo; los demás
+// gastos se programan para aprobación de Dirección
 const verificarFlujo = async (gastoIds: number[], flujo: 'directo' | 'programado') => {
   const certificados = await idsTiposCertificados()
-  const gastos = await SolicitudesGasto.findAll({ where: { id: gastoIds }, attributes: ['codigo', 'tipoGastoId'] })
-  const fuera = gastos.filter(g => certificados.includes(g.tipoGastoId) !== (flujo === 'directo'))
+  const gastos = await SolicitudesGasto.findAll({ where: { id: gastoIds }, attributes: ['codigo', 'tipoGastoId', 'anticipoId'] })
+  const esDirecto = (g: SolicitudesGasto) => Boolean(g.anticipoId) || certificados.includes(g.tipoGastoId)
+  const fuera = gastos.filter(g => esDirecto(g) !== (flujo === 'directo'))
   if (!fuera.length) return
   const codigos = fuera.map(g => g.codigo).join(', ')
   throw new ErrorGastos(flujo === 'directo'
-    ? `Solo las compras de certificados se pagan directo; ${codigos} se debe programar para aprobación de Dirección de Negocio`
-    : `Las compras de certificados se pagan directo, sin aprobación de Dirección (${codigos})`)
+    ? `Solo las compras de certificados y los gastos de anticipos se pagan directo; ${codigos} se debe programar para aprobación de Dirección de Negocio`
+    : `Las compras de certificados y los gastos de anticipos se pagan directo, sin aprobación de Dirección (${codigos})`)
 }
 
 const idsDelLote = async (loteId: number) =>
@@ -139,6 +145,26 @@ export class PagosController {
       void notificarGastosPagados(gastoIds)
 
       res.json({ loteId: lote.id, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /lotes/confirmar  (multipart: datos = { loteIds, fechaPago, observacion }, archivos[])
+  // Confirma uno o varios lotes aprobados con el soporte del banco (puede ser uno para todos)
+  static confirmarVarios = async (req: Request, res: Response) => {
+    try {
+      const loteIds = (req.body.loteIds as unknown[]).map(Number)
+      const gastosDeLosLotes = (await SolicitudesGasto.findAll({ where: { lotePagoId: loteIds }, attributes: ['id'] })).map(g => g.id)
+      await verificarQuienPaga(req, gastosDeLosLotes)
+
+      const archivos = (req.files ?? []) as Express.Multer.File[]
+      const { gastoIds } = await confirmarPagos(loteIds, req.body, archivos, req.usuario.id)
+
+      // Fuera de la transacción: un fallo en el correo no revierte el pago
+      void notificarGastosPagados(gastoIds)
+
+      res.json({ lotes: loteIds.length, gastos: gastoIds.length })
     } catch (error) {
       responderError(res, error)
     }
@@ -236,9 +262,11 @@ export class PagosController {
           { model: Usuarios, as: 'confirmador', attributes: ATRIBUTOS_USUARIO },
           {
             model: SolicitudesGasto,
-            attributes: ['id', 'codigo', 'conceptoPago', 'valorSolicitadoPago', 'valorProgramado', 'valorRealmentePagado'],
+            // Gastos de anticipos: saldo del cliente, para avisar si no le alcanza
+            attributes: ['id', 'codigo', 'conceptoPago', 'valorSolicitadoPago', 'valorProgramado', 'valorRealmentePagado', 'anticipoId', ...atributosSaldoAnticipo('gastos')],
             include: [
               { model: Terceros, attributes: ['id', 'identificacion', 'nombre'] },
+              { model: Anticipos, attributes: ['id', 'codigo'], include: [{ model: Terceros, attributes: ['nombre'] }] },
               { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
               { model: EstadosGasto, attributes: ['codigo', 'nombre'] }
             ]

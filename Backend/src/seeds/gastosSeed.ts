@@ -68,6 +68,7 @@ const TIPOS_DOCUMENTO_INICIALES = [
   { codigo: 'SOPORTE_PAGO', nombre: 'Soporte de pago' },
   { codigo: 'CUENTA_COBRO', nombre: 'Cuenta de cobro' },
   { codigo: 'SOPORTE_REINTEGRO', nombre: 'Soporte de reintegro' },
+  { codigo: 'SOPORTE_CONSIGNACION', nombre: 'Soporte de consignación' },
   { codigo: 'OTRO', nombre: 'Otro' }
 ]
 

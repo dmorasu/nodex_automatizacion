@@ -7,6 +7,9 @@ const texto = z.string().nullish()
 
 export const ErrorRespuestaSchema = z.object({ error: z.string() })
 
+// Clave pública de las notificaciones push (null = el servidor no las tiene configuradas)
+export const ClavePushSchema = z.object({ clavePublica: z.string().nullable() })
+
 // ── Sesión ─────────────────────────────────
 export const InicioSesionSchema = z.object({
   identificacion: z.string().trim().min(1, "Ingrese su identificación"),

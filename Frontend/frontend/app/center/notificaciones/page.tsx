@@ -17,8 +17,8 @@ const leer = async (): Promise<NotificacionProgramada[] | null> => {
   }
 }
 
-// Admin y Torre de control: hora, días y activación de los WhatsApp automáticos a los
-// tramitadores (diligencias de hoy y vencidas), y envío manual
+// Admin y Torre de control: hora, días y activación de los avisos automáticos a los
+// tramitadores (WhatsApp de diligencias de hoy y vencidas; push de reintegros), y envío manual
 export default async function NotificacionesPage() {
   await requiereConfigurarNotificaciones()
   const notificaciones = await leer()
@@ -33,7 +33,7 @@ export default async function NotificacionesPage() {
           <h1 className="text-xl font-semibold text-slate-800">Notificaciones automáticas</h1>
         </div>
         <p className="mt-1 ml-11 text-xs text-slate-400">
-          WhatsApp que reciben los tramitadores sobre sus diligencias en curso. Las horas son de Colombia.
+          Avisos que reciben los tramitadores por WhatsApp y en la app. Las horas son de Colombia.
         </p>
       </div>
 

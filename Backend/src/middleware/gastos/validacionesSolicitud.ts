@@ -26,6 +26,7 @@ export const validarGasto = [
   idOpcional('solicitudTramiteId'),
   idOpcional('tramitadorId'),
   idOpcional('beneficiarioId'),
+  idOpcional('anticipoId'),
 
   body('conceptoPago')
     .isString().trim()
@@ -88,6 +89,7 @@ export const validarBolsa = [
 
 export const validarCrearBolsa = [
   body('nombre').exists().withMessage('El nombre de la bolsa es obligatorio'),
+  body('tipo').optional({ values: 'falsy' }).isIn(['GENERAL', 'ANTICIPOS']).withMessage('Tipo de bolsa no válido'),
   ...validarBolsa
 ]
 
@@ -106,7 +108,9 @@ export const validarAjuste = [
   body('observacion')
     .isString().trim()
     .notEmpty().withMessage('Debe explicar el motivo del ajuste')
-    .isLength({ max: 1000 })
+    .isLength({ max: 1000 }),
+  // Bolsas de anticipos: cliente al que se le ajusta el saldo
+  body('clienteId').optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Cliente no válido').toInt()
 ]
 
 // Tesorería programa el pago (aún no descuenta la bolsa)
@@ -149,6 +153,14 @@ export const validarSalidaLote = [
 
 export const validarConfirmacionPago = [
   validarId,
+  body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha de pago no válida'),
+  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
+]
+
+// Uno o varios lotes aprobados con el mismo soporte del banco
+export const validarConfirmacionPagos = [
+  body('loteIds').isArray({ min: 1, max: 100 }).withMessage('Seleccione entre 1 y 100 lotes'),
+  body('loteIds.*').isInt({ min: 1 }).withMessage('Lote no válido').toInt(),
   body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha de pago no válida'),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
 ]
@@ -266,6 +278,7 @@ export const validarListado = [
   query('pagados').optional({ values: 'falsy' }).isIn(['si']),
   query('certificados').optional({ values: 'falsy' }).isIn(['si', 'no']),
   query('conTramite').optional({ values: 'falsy' }).isIn(['si', 'no']),
+  query('anticipo').optional({ values: 'falsy' }).isIn(['si', 'no']),
   query('reintegroPendiente').optional({ values: 'falsy' }).isIn(['si']),
   query(['operacionId', 'tramitadorId', 'creadoPor']).optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Filtro no válido'),
   query(['desde', 'hasta', 'pagoDesde', 'pagoHasta']).optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida'),

@@ -9,6 +9,7 @@ import { LogisticaController } from '../controllers/LogisticaController'
 import { ProgramacionController } from '../controllers/ProgramacionController'
 import { CuentaCobroController } from '../controllers/CuentaCobroController'
 import {cargaMasivaSolicitudes, generarPlantillaExcel, validarSolicitudesExcel} from '../controllers/CargaMasivaController'
+import { CargueMasivoTramitesController } from '../controllers/CargueMasivoTramitesController'
 import { handleInputErrors } from '../middleware/validation'
 import { validateSolicitudTramiteExits, validateSolicitudTramitesInput } from '../middleware/solicitudTramites'
 import { validateTrazabilidadInput, validateTrazabilidadExits } from '../middleware/trazabilidad'
@@ -67,6 +68,16 @@ router.param('cuentaCobroId', validateCuentaCobroExits)
 
 
 
+// Cargue masivo en pantalla (trámites y sus gastos; el Excel se importa a la pantalla)
+router.get('/cargue/catalogos', CargueMasivoTramitesController.catalogos)
+router.get('/cargue/clientes', CargueMasivoTramitesController.clientes)
+router.post('/cargue/beneficiarios', CargueMasivoTramitesController.beneficiarios)
+router.post('/cargue/validar', CargueMasivoTramitesController.validar)
+router.post('/cargue/crear', CargueMasivoTramitesController.crear)
+router.get('/cargue/plantilla', CargueMasivoTramitesController.plantilla)
+router.post('/cargue/leer-excel', upload.single('file'), CargueMasivoTramitesController.leerExcel)
+
+// Cargue con el Excel de ids (el de siempre)
 router.post('/carga-masiva', upload.single('file'), cargaMasivaSolicitudes )
 router.get('/plantilla', generarPlantillaExcel) 
 router.post('/validar-excel', upload.single('file'), validarSolicitudesExcel )

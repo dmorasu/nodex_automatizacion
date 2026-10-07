@@ -14,6 +14,7 @@ import DocumentosGasto from './documentosGasto'
 import Reintegros from './reintegros'
 import CuentasCobroGastos from './cuentasCobroGastos'
 import FacturasGasto from './facturasGasto'
+import Anticipos from './anticipos'
 
 // Solicitud de gasto. Nace en estado SOLICITADO por un valor solicitado y la paga Tesorería.
 // La retención se define al crear (solo inmuebles); el 4x1000 se calcula al registrar la factura real.
@@ -52,6 +53,15 @@ class SolicitudesGasto extends Model {
 
   @BelongsTo(() => Tramitador)
   declare tramitador: Tramitador
+
+  // Anticipo del cliente del que salió el gasto: se paga de la bolsa de anticipos y
+  // se descuenta del saldo de ese cliente. No se puede cambiar después de crear el gasto
+  @ForeignKey(() => Anticipos)
+  @Column({ type: DataType.INTEGER })
+  declare anticipoId: number | null
+
+  @BelongsTo(() => Anticipos)
+  declare anticipo: Anticipos
 
   @ForeignKey(() => TiposGasto)
   @AllowNull(false)

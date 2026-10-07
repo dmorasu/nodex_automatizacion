@@ -342,7 +342,8 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 - **`pm2-logrotate`**: logs de PM2 de máximo 20 MB, 10 rotaciones comprimidas.
 - `journalctl --vacuum-size=200M`: `/var/log` bajó de 557 a 229 MB.
 - Puertos 5432, 3000 y 4000 cerrados en el NSG de Azure (confirmado por el usuario).
-- **Pendiente:** quitar de PM2 las entradas detenidas `api4.2`, `worker4.2`, `Nodex4.2`, `api_Nodex_4.3` y `Nodex4.3` (apuntan a `nodex4.0`), y borrar `/home/desarrolloti/Nodex`, `Nodex2.0` y `nodex3.0` (~3 GB; ningún proceso de PM2 las usa) tras confirmar que nada en Nginx ni cron las usa. Revisar qué es `/home/desarrolloti/apps` (772 MB).
+- **Limpieza hecha:** se quitaron de PM2 las entradas detenidas `api4.2`, `worker4.2`, `Nodex4.2`, `api_Nodex_4.3` y `Nodex4.3`, y se borraron `/home/desarrolloti/Nodex`, `Nodex2.0`, `nodex3.0` y `apps` (copias viejas que no usaba PM2, Nginx ni cron). Su código (sin `node_modules`, `.next` ni `dist`, con sus `.env`) quedó en Azure en `respaldos-nodex/archivo-servidor/` y se borra solo a los 30 días. El disco quedó en **59 %** (13 GB libres).
+- **Cuando la 5.0 pase a producción:** archivar igual y borrar `nodex4.0` (1,2 GB) después de la semana de espera de la guía.
 
 ## Checklist de paso a producción
 > El procedimiento del día del cambio (del ensayo `nodex5.0` a la base `nodex`, con respaldo, perfiles, scripts y plan B) está en `deploy/GUIA_PASO_A_PRODUCCION.md`.

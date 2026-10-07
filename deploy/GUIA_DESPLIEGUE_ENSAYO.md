@@ -253,13 +253,49 @@ Ver [GUIA_PASO_A_PRODUCCION.md](GUIA_PASO_A_PRODUCCION.md): apuntar esta misma i
 
 ## Actualizar el ensayo con cambios nuevos
 
-```bash
-cd /home/desarrolloti/nodex5.0 && git pull
-cd Backend && npm ci && npm run build && cd ..
-# solo las apps que cambiaron:
-cd Frontend/gastos && npm ci && npm run build && cd ../..
-pm2 restart nodex-ensayo-api nodex-ensayo-worker nodex-ensayo-gastos
-```
+Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
+
+1. **Respaldar la base del ensayo** (el arranque puede crear tablas y columnas):
+   ```bash
+   cd /tmp && sudo -u postgres pg_dump -Fc nodex_pruebas > /tmp/nodex_pruebas_antes_$(date +%Y%m%d_%H%M).dump
+   ```
+2. **Traer el código** y anotar el commit anterior (para volver si hace falta):
+   ```bash
+   cd /home/desarrolloti/nodex5.0 && git log --oneline -1 && git pull origin desarrollo && git log --oneline -1
+   ```
+3. **Variables nuevas** del `.env` que pida la versión (ver "Variables por versión" abajo).
+4. **Compilar** el backend y las apps que cambiaron, **una por una** (para no quedarse sin memoria). Si un build falla, no seguir:
+   ```bash
+   cd /home/desarrolloti/nodex5.0/Backend && npm ci && npm run build
+   cd /home/desarrolloti/nodex5.0/Frontend/frontend && npm ci && npm run build
+   cd /home/desarrolloti/nodex5.0/Frontend/gastos && npm ci && npm run build
+   cd /home/desarrolloti/nodex5.0/Frontend/tramitadores && npm ci && npm run build
+   ```
+5. **Reiniciar** y revisar el log (`Conexion Exitosa`, `🧪 MODO ENSAYO…`; si sale "Fallo la Conexion…", `pm2 stop nodex-ensayo-api` y revisar el error):
+   ```bash
+   pm2 restart nodex-ensayo-api nodex-ensayo-worker nodex-ensayo-tramites nodex-ensayo-gastos nodex-ensayo-tramitadores --update-env
+   pm2 logs nodex-ensayo-api --lines 40 --nostream | grep -v "dotenv@"
+   pm2 list
+   ```
+6. **Volver atrás** si algo sale mal: `git checkout <commit anterior>`, recompilar (paso 4), reiniciar (paso 5) y, si hace falta, restaurar la base:
+   `sudo -u postgres pg_restore --clean --if-exists -d nodex_pruebas --no-owner --role=desarrolloti /tmp/nodex_pruebas_antes_XXXX.dump`. Para volver a la versión nueva: `git checkout desarrollo`.
+
+### Variables por versión
+
+**Commit `0659fe27` (2026-10-07: anticipos, arqueo, push, cargue masivo en pantalla)** — cambian el backend y las tres apps.
+- Generar **una sola vez** las claves de las notificaciones push y agregarlas a `Backend/.env`. **Guardarlas en el gestor de contraseñas: son las mismas que van a producción** (si cambian, cada celular debe volver a activar las notificaciones):
+  ```bash
+  cd /home/desarrolloti/nodex5.0/Backend && npm ci && npx web-push generate-vapid-keys
+  ```
+  ```ini
+  VAPID_PUBLIC_KEY=<Public Key>
+  VAPID_PRIVATE_KEY=<Private Key>
+  VAPID_CONTACTO=https://tramitadores.nodexgpa.com
+  ```
+- En el log debe salir además `⏰ Reintegros por enviar: 09:00 …` (el recordatorio push sí corre en el ensayo: solo llega a celulares que lo activaron en la app del ensayo).
+- Comprobar la base: `sudo -u postgres psql -d nodex_pruebas -c "\dt gastos_anticipos*" -c "\dt gastos_clientes_empresariales" -c "\dt tramitadores_suscripciones_push"`.
+- En pantalla, una vez: Tesorería → Bolsas → **Nueva bolsa** de tipo **Anticipos de clientes**; Contabilidad → **Clientes empresariales** (ej. Davivienda).
+- Pruebas: cargue masivo de trámites "En pantalla" (con una fila con gasto) y "Subir documentos de estos trámites"; anticipo → confirmar en Contabilidad → Crear gasto → pagar en Tesorería → **Gastos de anticipos** → arqueo y estado de cuenta en la bolsa; dos lotes generales aprobados confirmados juntos en **Programados**; en el celular, **Activar notificaciones** en la app de tramitadores y asignarle un trámite. Recargar con Ctrl+F5 para ver los íconos nuevos.
 
 ## Si algo sale mal
 

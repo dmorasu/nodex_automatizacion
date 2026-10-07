@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-07_
+_Actualizado: 2026-10-07 (noche)_
 
 ## Arquitectura
 
@@ -398,6 +398,16 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 - **Limpieza hecha:** se quitaron de PM2 las entradas detenidas `api4.2`, `worker4.2`, `Nodex4.2`, `api_Nodex_4.3` y `Nodex4.3`, y se borraron `/home/desarrolloti/Nodex`, `Nodex2.0`, `nodex3.0` y `apps` (copias viejas que no usaba PM2, Nginx ni cron). Su código (sin `node_modules`, `.next` ni `dist`, con sus `.env`) quedó en Azure en `respaldos-nodex/archivo-servidor/` y se borra solo a los 30 días. El disco quedó en **59 %** (13 GB libres).
 - **Cuando la 5.0 pase a producción:** archivar igual y borrar `nodex4.0` (1,2 GB) después de la semana de espera de la guía.
 
+## Estado del código y del despliegue (2026-10-07)
+- **Rama `desarrollo`, commit `0659fe27`** (subido a GitHub): incluye todo lo del 2026-10-07 (raíz de Trámites al Dashboard, notificaciones push, anticipos con arqueo y estado de cuenta, pago directo de gastos de anticipos, confirmación de varios lotes, menú de Gastos, íconos, cargue masivo en pantalla y de documentos). El commit anterior era `5003f5ca` (para volver atrás).
+- **Ensayo:** pendiente de actualizar por el usuario con `deploy/GUIA_DESPLIEGUE_ENSAYO.md` → "Actualizar el ensayo con cambios nuevos" → "Variables por versión" (commit `0659fe27`: generar las claves VAPID una vez).
+- **Datos que se necesitan para producción** (no están en git; guardarlos en el gestor de contraseñas):
+  - Claves **VAPID** (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACTO`): las que se generen en el ensayo; **las mismas** en producción.
+  - `JWT_SECRET` nuevo (cambiado el 2026-10-06), `API_KEY_EXTERNA` definitiva, claves de Google (servidor y navegador), correos de las áreas y demás variables del `.env` del ensayo (comparar nombres con `comm`, ver "Lo que se aprendió en el ensayo").
+  - Respaldo de `nodex` antes del cambio y `perfiles.sql` del ensayo (guía de paso a producción, pasos 1 y 2).
+- **Configuración en pantalla para producción:** bolsa de tipo Anticipos y clientes empresariales (además de lo ya listado en la guía de paso a producción → "Qué se repite y qué no").
+- Los `favico.png` originales (1,6 MB c/u) quedaron fuera de git; los íconos generados sí están.
+
 ## Checklist de paso a producción
 > El procedimiento del día del cambio (del ensayo `nodex5.0` a la base `nodex`, con respaldo, perfiles, scripts y plan B) está en `deploy/GUIA_PASO_A_PRODUCCION.md`.
 Todo se probó contra la base de **desarrollo**. Para producción, en este orden:
@@ -452,7 +462,7 @@ Todo se probó contra la base de **desarrollo**. Para producción, en este orden
    - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: la clave del navegador (paso 4). Sin ella el mapa de rutas usa OpenStreetMap.
    - `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`: Map ID propio (opcional; sin él usa `DEMO_MAP_ID`).
    - `NEXT_PUBLIC_URL_APP_TRAMITADORES` (ya pendiente de antes).
-9. Arranque: confirmar en el log "Conexion Exitosa" y no "Fallo la Conexion…" (crea los índices de `mensajeria_paradas`); columnas de analistas y retención, y roles creados (`ANALISTA_TRAMITES`, `ADMIN_TORRE_CONTROL`, `TESORERIA_CERTIFICADOS`, `DIRECCION_NEGOCIO`); estados de gasto `PROGRAMADO` y `APROBADO_PAGO`. Deben salir también "⏰ Diligencias de hoy…" y "⏰ Diligencias vencidas…".
+9. Arranque: confirmar en el log "Conexion Exitosa" y no "Fallo la Conexion…" (crea los índices de `mensajeria_paradas`); columnas de analistas y retención, y roles creados (`ANALISTA_TRAMITES`, `ADMIN_TORRE_CONTROL`, `TESORERIA_CERTIFICADOS`, `DIRECCION_NEGOCIO`); estados de gasto `PROGRAMADO` y `APROBADO_PAGO`; tablas `gastos_anticipos`, `gastos_clientes_empresariales`, `gastos_trazabilidad_anticipos` y `tramitadores_suscripciones_push`, y la columna `gastos_bolsas.tipo`. Deben salir también "⏰ Diligencias de hoy…", "⏰ Diligencias vencidas…" y "⏰ Reintegros por enviar…".
 10. **Una sola instancia del backend** (PM2 sin modo cluster): el programador de WhatsApp y la caché del trazado de rutas viven en memoria.
 
 **Después de desplegar**

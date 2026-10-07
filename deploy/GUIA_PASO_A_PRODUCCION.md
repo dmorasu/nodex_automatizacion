@@ -71,6 +71,7 @@ sed -i '/^CORREO_ENSAYO=/d' .env
 poner AZURE_FILE_SHARE_NAME "$(grep '^AZURE_FILE_SHARE_NAME=' /home/desarrolloti/nodex4.0/nodex_automatizacion/Backend/.env | cut -d= -f2-)" .env
 nano .env    # pegar la API_KEY_EXTERNA definitiva
 grep -E "^(DB_NAME|MODO_ENSAYO|AZURE_FILE_SHARE_NAME|REDIS_DB|PORT)=" .env
+grep -cE "^VAPID_(PUBLIC_KEY|PRIVATE_KEY|CONTACTO)=" .env     # debe dar 3 (las mismas del ensayo)
 ```
 Debe quedar: `DB_NAME=nodex`, `MODO_ENSAYO=no`, el recurso compartido de producción, `REDIS_DB=1`
 (la base 0 queda con lo de la 4.5) y `PORT=9000`.
@@ -149,8 +150,11 @@ sudo -u postgres pg_restore -d nodex --no-owner --role=desarrolloti /var/backups
 ## Qué se repite y qué no
 
 **Lo hace solo el backend al primer arranque contra `nodex` (paso 6):**
-columnas y tablas nuevas, asignación de analistas a municipios y trámites (por `responsable`), roles,
-catálogos de Gastos y las 2 notificaciones automáticas con sus horarios por defecto.
+columnas y tablas nuevas (incluidas las de anticipos, clientes empresariales y suscripciones push),
+asignación de analistas a municipios y trámites (por `responsable`), roles, catálogos de Gastos
+(con el tipo de documento "Soporte de consignación") y las 3 notificaciones automáticas con sus
+horarios por defecto (WhatsApp de diligencias 08:00 y 13:00; recordatorio push de reintegros 09:00).
+Todas las bolsas existentes quedan de tipo General.
 
 **Se repite a mano (pasos 7 y 8):**
 
@@ -169,6 +173,12 @@ producción, repetirlo desde las pantallas después del paso 8:
 - Accesos a la app de tramitadores (usuario y contraseña temporal).
 - Horarios o días de las notificaciones automáticas.
 - Nodex Gastos: bolsas, beneficiarios, cuentas y demás configuración.
+- **Anticipos:** la bolsa (o bolsas) de tipo **Anticipos de clientes** (Tesorería → Bolsas) y los
+  **clientes empresariales** (Contabilidad → Clientes empresariales), **antes** de que la operación
+  registre el primer anticipo. Los anticipos de prueba del ensayo no pasan.
+- **Notificaciones push de tramitadores:** las suscripciones del ensayo quedan en `nodex_pruebas`.
+  Con las **mismas claves VAPID** (paso 5) cada celular se vuelve a registrar solo cuando el tramitador
+  abre el inicio de la app (si ya dio el permiso); si no, toca "Activar notificaciones" otra vez.
 
 Los datos de prueba del ensayo (gastos, pagos, trámites de prueba) **no** deben pasar y no pasan.
 Si lo configurado es mucho, se puede exportar de `nodex_pruebas` e importar en `nodex` por SQL, tabla
@@ -181,7 +191,10 @@ por tabla, con cuidado (producción sigue recibiendo datos).
 - Dejar los procesos 4.5 **detenidos, sin borrar**, una semana. Si todo va bien:
   `pm2 delete apiNodex4.5 Nodex4.5 worker4.5 && pm2 save`.
 - Desde ese momento salen **WhatsApp y correos reales**; las notificaciones automáticas a las 08:00 y
-  13:00 (o lo configurado en Notificaciones automáticas).
+  13:00 (o lo configurado en Notificaciones automáticas) y el recordatorio push de reintegros a las 09:00.
+- Avisar a los usuarios de lo nuevo: cargue masivo de trámites en pantalla y cargue masivo de
+  documentos (Trámites); anticipos de clientes, arqueo por cliente, gastos de anticipos pagados directo
+  y confirmación de varios lotes con un soporte (Gastos); "Activar notificaciones" (app de tramitadores).
 - `nodex5.0` pasa a ser producción y ya no hay ensayo. Para tener uno de nuevo: otra carpeta, la base
   `nodex_pruebas`, otros puertos y otros subdominios.
 - Los procesos se siguen llamando `nodex-ensayo-*` en PM2; funciona igual (se pueden renombrar después).

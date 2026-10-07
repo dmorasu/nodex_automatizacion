@@ -320,6 +320,30 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 
 **Para volver el ensayo producción:** procedimiento completo en `deploy/GUIA_PASO_A_PRODUCCION.md` (respaldo, perfiles reutilizados del ensayo con `perfiles.sql`, apagar la 4.5, `.env` a `nodex` sin modo ensayo y con el recurso de Azure de producción, scripts de datos, redirección de la dirección vieja y plan B). Lo configurado en las pantallas del ensayo (catálogos, sedes y mensajeros, accesos a la app, Gastos) no pasa solo: se repite a mano.
 
+## Servidor: mantenimiento y respaldos (2026-10-06)
+**Capacidad (medida):** 2 vCPU Xeon E5-2673 v4 con carga ~0,05; 7,8 GB de RAM con ~4,8 GB disponibles (4.5 y ensayo encendidos); disco 31 GB al 65 %. **Alcanza** para Nodex; crecer solo si el disco pasa del 80 % (ampliar el disco en Azure) o si llegan muchas más apps o usuarios (4 vCPU).
+
+**Respaldos automáticos a Azure (no quedan en el servidor):**
+- Contenedor de Blob Storage **`respaldos-nodex`** en la cuenta **`filegpa02`** (privado). Regla de ciclo de vida `respaldos-nodex-30-dias`: pasa a *Cool* a los 7 días y **se borra a los 30**.
+- El servidor sube con un **SAS del contenedor** (Lectura, Agregar, Crear, Escribir, Lista; **sin Eliminar**; vence en 1 año: **renovarlo antes de octubre de 2027**). Guardado en `/root/.respaldo-nodex.env` (`DESTINO_AZURE="https://filegpa02.blob.core.windows.net/respaldos-nodex?sv=..."`, `chmod 600`). **Sin restricción de IP:** con IP pública (`20.186.19.92`) Azure respondía 403 `AuthorizationFailure`, porque el servidor llega a la cuenta por la red interna de Azure.
+- Script `/usr/local/bin/respaldo-nodex.sh` (root): `pg_dump -Fc` de `nodex` y `nodex_pruebas` en una carpeta temporal, `pg_restore -l` para comprobar que se puede leer, subida con **AzCopy** (`/usr/local/bin/azcopy`) a `<base>/<año>/<mes>/<base>_<fecha>.dump` y borrado local. Empieza con `cd /tmp` (postgres no entra a `/root` ni a `/home/desarrolloti`).
+- Cron `/etc/cron.d/respaldo-nodex`: todos los días a las **2:30 a. m.**; historial en `/var/log/respaldo-nodex.log`.
+- Ver lo que hay en Azure: `cd /tmp; source /root/.respaldo-nodex.env; azcopy list "$DESTINO_AZURE"`.
+- **Restaurar** (por ejemplo para revisar un respaldo en una base aparte):
+  ```bash
+  cd /tmp; source /root/.respaldo-nodex.env
+  azcopy copy "${DESTINO_AZURE%%\?*}/nodex/2026/10/<archivo>.dump?${DESTINO_AZURE#*\?}" /tmp/restaurar.dump
+  sudo -u postgres createdb -O desarrolloti nodex_revision
+  sudo -u postgres pg_restore -d nodex_revision --no-owner --role=desarrolloti /tmp/restaurar.dump && rm /tmp/restaurar.dump
+  ```
+
+**Otros ajustes del servidor:**
+- **Swap de 2 GB** (`/swapfile`, `vm.swappiness=10`): colchón para que un `npm run build` no deje sin memoria a producción.
+- **`pm2-logrotate`**: logs de PM2 de máximo 20 MB, 10 rotaciones comprimidas.
+- `journalctl --vacuum-size=200M`: `/var/log` bajó de 557 a 229 MB.
+- Puertos 5432, 3000 y 4000 cerrados en el NSG de Azure (confirmado por el usuario).
+- **Pendiente:** quitar de PM2 las entradas detenidas `api4.2`, `worker4.2`, `Nodex4.2`, `api_Nodex_4.3` y `Nodex4.3` (apuntan a `nodex4.0`), y borrar `/home/desarrolloti/Nodex`, `Nodex2.0` y `nodex3.0` (~3 GB; ningún proceso de PM2 las usa) tras confirmar que nada en Nginx ni cron las usa. Revisar qué es `/home/desarrolloti/apps` (772 MB).
+
 ## Checklist de paso a producción
 > El procedimiento del día del cambio (del ensayo `nodex5.0` a la base `nodex`, con respaldo, perfiles, scripts y plan B) está en `deploy/GUIA_PASO_A_PRODUCCION.md`.
 Todo se probó contra la base de **desarrollo**. Para producción, en este orden:
@@ -466,7 +490,7 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
 9. **`node_modules` en git:** resuelto el 2026-10-06 (`git rm -r --cached Backend/node_modules`). Al hacer `git pull` en otro equipo que todavía los tenga versionados, git los borrará del disco: correr `npm ci` en `Backend` después del pull.
 10. **HTTPS:** resuelto en el ensayo (Let's Encrypt en los 4 subdominios de nodexgpa.com); la cookie `secure` de la app de tramitadores ya funciona. La 4.5 sigue por HTTP en la IP hasta el paso a producción.
 11. **Claves de Google:** en el servidor ya hay dos claves nuevas (servidor restringida a `20.186.19.92`, navegador restringida a `https://tramites.nodexgpa.com/*`). La clave de desarrollo de los `.env` locales sigue sin restricción por IP: restringirla (fase 0.2, paso 4).
-12. **Seguridad del servidor (encontrado en el despliegue):** Postgres escucha en `0.0.0.0:5432`, y la API (4000) y Nodex (3000) de la 4.5 están abiertas directo; `ufw` está inactivo, así que la única barrera es el NSG de Azure. Verificar que el NSG **no** permita 5432, 3000, 4000 ni 9000–9003 desde Any.
+12. **Seguridad del servidor:** Postgres escucha en `0.0.0.0:5432` y la 4.5 en 3000/4000, con `ufw` inactivo; el NSG de Azure ya los tiene cerrados (confirmado 2026-10-06). Respaldos diarios automáticos a Azure resueltos (ver "Servidor: mantenimiento y respaldos").
 13. **`API_KEY_EXTERNA` del ensayo es la de desarrollo** (quedó escrita en el chat): generar una nueva antes de entregarla a la otra plataforma. El `JWT_SECRET` del ensayo es el mismo de producción (decisión del usuario): una sesión del ensayo sirve contra la API de producción.
 14. **Redis 6.0.16:** BullMQ recomienda 6.2 o más. Funciona; actualizar con calma porque la producción usa el mismo Redis.
 15. **Avisos de lint en Trámites** (5, no frenan el build) y un botón de documentos en `SolicitudTramitesForm` que cambia un estado que nada muestra (`TODO`).

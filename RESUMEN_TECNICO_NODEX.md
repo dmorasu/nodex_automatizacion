@@ -212,6 +212,13 @@ _Actualizado: 2026-10-06_
 - Filtros opcionales: `tramitadorId`, `estadoId`, `desde`/`hasta` (día de la diligencia, YYYY-MM-DD), `pagina`, `tamano` (100 por defecto, máx. 500). Respuesta `{ pagina, tamano, total, paginas, datos }`; errores de filtros → 400 `{ errores }`.
 - Probado contra desarrollo: 903 trámites de mensajeros. **Para producción:** definir `API_KEY_EXTERNA` y entregarla a la otra plataforma por un canal seguro; si el backend queda detrás de Nginx con lista de IPs, permitir la IP de esa plataforma para `/api/externa`.
 
+### Política de contraseñas (2026-10-06)
+- Toda contraseña que se **crea o cambia** debe tener mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial, sin espacios al inicio ni al final (se aceptan tildes y ñ). La regla está en un solo lugar del backend: `utils/politicaContrasena.ts` (`contrasenaSegura()` para express-validator, `faltantesContrasena()`); el mensaje dice exactamente qué falta.
+- Se aplica en: registro (`POST /auth/create-account`), cambio de contraseña (`/auth/update-password`), crear usuario y restablecer contraseña desde Administración (`validacionesAdmin.ts`) y cambio de contraseña de la app de tramitadores. Los **logins no** la exigen (si no, nadie con una contraseña antigua podría entrar a cambiarla).
+- La contraseña temporal de la app de tramitadores se genera cumpliendo la política (`generarContrasenaCumplida`, sin 0/O ni 1/l/I).
+- Las apps muestran los requisitos mientras se escribe y los marcan al cumplirse: `components/auth/RequisitosContrasena.tsx` (Trámites: registro y Administración; Tramitadores: cambio de contraseña), con copias de la regla en `Frontend/frontend/src/auth/politicaContrasena.ts` y `Frontend/tramitadores/src/politicaContrasena.ts`. Nodex Gastos no tiene formularios de contraseña.
+- **Las contraseñas ya guardadas siguen sirviendo** hasta que se cambien (no se pueden revisar: están cifradas). Pendiente opcional: pedir el cambio al iniciar sesión si la contraseña no cumple.
+
 ### Corrección: índices de `mensajeria_paradas` (2026-10-04)
 - El arranque fallaba en `db.sync()` con `column "solicitudTramiteId" does not exist`: el modelo tiene `underscored: true` y `@Index` en la propiedad le pasa a Postgres el nombre del atributo, no el de la columna (`solicitud_tramite_id`).
 - Los índices `mensajeria_paradas_tramite_fecha` (único) y `mensajeria_paradas_fecha_tramitador` pasaron a `@Table({ indexes })` con los nombres reales de columna (`models/mensajeria/paradaMensajeria.ts`). Ya se crearon en la base de desarrollo.

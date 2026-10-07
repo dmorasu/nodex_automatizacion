@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator'
+import { contrasenaSegura } from '../../utils/politicaContrasena'
 import { CATALOGOS_EDITABLES } from '../../controllers/gastos/CatalogosGastosController'
 import { PARAMETROS } from '../../services/gastos/constantes'
 
@@ -60,10 +61,8 @@ const datosUsuario = [
   body('area').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
 ]
 
-// Misma regla del registro de cuenta: mínimo 8 caracteres
-const contrasena = body('contrasena')
-  .isString()
-  .isLength({ min: 8, max: 100 }).withMessage('La contraseña debe tener mínimo 8 caracteres')
+// Misma política del registro y del cambio de contraseña (utils/politicaContrasena.ts)
+const contrasena = contrasenaSegura()
 
 export const validarCrearUsuario = [
   ...datosUsuario,

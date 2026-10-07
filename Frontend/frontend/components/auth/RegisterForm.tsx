@@ -1,13 +1,16 @@
 "use client"
 
 import { registrarUsuario } from "@/actions/crear-cuenta"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import RequisitosContrasena from "./RequisitosContrasena"
 
 import { useFormState } from "react-dom"
 import { toast } from "react-toastify"
 
 export default function RegisterForm() {
   const ref =useRef<HTMLFormElement>(null)
+  // Para mostrar los requisitos de la contraseña mientras se escribe
+  const [contrasena, setContrasena] = useState("")
   const [state,dispatch]=useFormState(registrarUsuario,{
     errors:[],
     success:''
@@ -16,6 +19,7 @@ export default function RegisterForm() {
   useEffect(()=>{
     if(state.success){
         ref.current?.reset()
+        setContrasena("")
     }
 
   },[state])
@@ -80,7 +84,10 @@ export default function RegisterForm() {
             placeholder="Contraseña"
             className="w-full border border-gray-300 p-3 rounded-lg"
             name="contrasena"
+            autoComplete="new-password"
+            onChange={e => setContrasena(e.target.value)}
         />
+        <RequisitosContrasena contrasena={contrasena} />
     </div>
 
     <div className="flex flex-col gap-2">

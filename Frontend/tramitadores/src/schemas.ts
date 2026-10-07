@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { errorContrasena } from "./politicaContrasena"
 
 // Respuestas del backend (/api/app-tramitadores). Los campos opcionales del
 // trámite vienen como null cuando no se han diligenciado.
@@ -59,10 +60,10 @@ export const RutaSchema = z.object({
 
 export const CambioContrasenaSchema = z.object({
   contrasenaActual: z.string().min(1, "Ingrese su contraseña actual"),
-  contrasena: z.string()
-    .min(8, "La nueva contraseña debe tener mínimo 8 caracteres")
-    .regex(/[A-Za-z]/, "La nueva contraseña debe tener al menos una letra")
-    .regex(/\d/, "La nueva contraseña debe tener al menos un número"),
+  contrasena: z.string().superRefine((valor, ctx) => {
+    const error = errorContrasena(valor)
+    if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, message: error.replace("La contraseña", "La nueva contraseña") })
+  }),
   confirmacion: z.string()
 }).refine(datos => datos.contrasena === datos.confirmacion, { message: "Las contraseñas no coinciden" })
 

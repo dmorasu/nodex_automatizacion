@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react"
 import { toast } from "react-toastify"
+import { errorContrasena } from "@/src/auth/politicaContrasena"
+import RequisitosContrasena from "@/components/auth/RequisitosContrasena"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { ChevronLeft, ChevronRight, Eye, EyeOff, KeyRound, Loader2, Pencil, Plus, Save, Search, X } from "lucide-react"
 import {
@@ -110,7 +112,8 @@ function CampoContrasena({ etiqueta, valor, onChange }: { etiqueta: string, valo
 }
 
 const validarContrasenas = (contrasena: string, confirmacion: string) => {
-  if (contrasena.length < 8) return "La contraseña debe tener mínimo 8 caracteres"
+  const error = errorContrasena(contrasena)
+  if (error) return error
   if (contrasena !== confirmacion) return "Las contraseñas no coinciden"
   return null
 }
@@ -165,10 +168,13 @@ function ModalUsuario({ usuario, roles, grupos, onCerrar }: { usuario: UsuarioAd
       {!usuario && (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <CampoContrasena etiqueta="Contraseña" valor={contrasena} onChange={setContrasena} />
+            <div>
+              <CampoContrasena etiqueta="Contraseña" valor={contrasena} onChange={setContrasena} />
+              <RequisitosContrasena contrasena={contrasena} />
+            </div>
             <CampoContrasena etiqueta="Confirmar contraseña" valor={confirmacion} onChange={setConfirmacion} />
           </div>
-          <p className="-mt-2 text-[11px] text-slate-400">Mínimo 8 caracteres. Comparta la contraseña con el usuario por un medio seguro.</p>
+          <p className="-mt-2 text-[11px] text-slate-400">Comparta la contraseña con el usuario por un medio seguro (no por correo ni chat).</p>
 
           <div>
             <p className={claseLabel}>Perfiles</p>
@@ -237,7 +243,10 @@ function ModalContrasena({ usuario, onCerrar }: { usuario: UsuarioAdmin, onCerra
       <p className="text-xs text-slate-500">
         La contraseña actual de <b>{usuario.correoUsuario}</b> deja de funcionar. Comparta la nueva con el usuario por un medio seguro.
       </p>
-      <CampoContrasena etiqueta="Nueva contraseña" valor={contrasena} onChange={setContrasena} />
+      <div>
+        <CampoContrasena etiqueta="Nueva contraseña" valor={contrasena} onChange={setContrasena} />
+        <RequisitosContrasena contrasena={contrasena} />
+      </div>
       <CampoContrasena etiqueta="Confirmar contraseña" valor={confirmacion} onChange={setConfirmacion} />
     </Ventana>
   )

@@ -3,6 +3,7 @@ import { handleInputErrors } from '../middleware/validation'
 import {body} from 'express-validator'
 import { AuthController } from '../controllers/AuthController'
 import { autenticacion } from '../middleware/auth'
+import { contrasenaSegura } from '../utils/politicaContrasena'
 
 
 
@@ -10,8 +11,7 @@ const router = Router()
 
 router.post('/create-account',
     body('nombreUsuario').notEmpty().withMessage('El nombre no puede estar vacio'),
-    body('contrasena')
-        .isLength({min: 8}).withMessage('La contraseña debe tener mínimo 8 Caracteres'),
+    contrasenaSegura(),
     body('correoUsuario')
         .isEmail().withMessage('Correo no valido'),
     handleInputErrors,
@@ -35,8 +35,7 @@ router.get('/user',
 router.post('/update-password',
     autenticacion,
     body('contrasenaActual').notEmpty().withMessage('La contraseña no puede estar vacia'),
-    body('contrasena')
-        .isLength({min: 8}).withMessage('La contraseña Nueva debe tener mínimo 8 Caracteres'),
+    contrasenaSegura('contrasena', 'La contraseña nueva'),
     handleInputErrors,
     AuthController.updateContrasenaUsuario
 )

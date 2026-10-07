@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { body, param, query } from 'express-validator'
 import { handleInputErrors } from '../../middleware/validation'
+import { contrasenaSegura } from '../../utils/politicaContrasena'
 import { autenticacionTramitador, exigirContrasenaDefinitiva } from '../../middleware/tramitadores/autenticacionTramitador'
 import { AuthTramitadorController } from '../../controllers/tramitadores/AuthTramitadorController'
 import { TramitesTramitadorController } from '../../controllers/tramitadores/TramitesTramitadorController'
@@ -26,11 +27,7 @@ router.get('/auth/me', autenticacionTramitador, AuthTramitadorController.me)
 router.post('/auth/cambiar-contrasena',
   autenticacionTramitador,
   body('contrasenaActual').isString().notEmpty().withMessage('Ingrese su contraseña actual'),
-  body('contrasena')
-    .isString()
-    .isLength({ min: 8, max: 100 }).withMessage('La nueva contraseña debe tener mínimo 8 caracteres')
-    .matches(/[A-Za-z]/).withMessage('La nueva contraseña debe tener al menos una letra')
-    .matches(/\d/).withMessage('La nueva contraseña debe tener al menos un número'),
+  contrasenaSegura('contrasena', 'La nueva contraseña'),
   handleInputErrors,
   AuthTramitadorController.cambiarContrasena
 )

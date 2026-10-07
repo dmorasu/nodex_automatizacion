@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { errorContrasena } from '@/src/auth/politicaContrasena'
 
 export const RegistroSchema = z.object({
         correoUsuario: z.string().
@@ -6,8 +7,10 @@ export const RegistroSchema = z.object({
                 .email({ message: 'email no valido' }),
         nombreUsuario: z.string()
                 .min(1, { message: 'El nombre no puede estar vacio' }),
-        contrasena: z.string()
-                .min(8, { message: 'La contraseña debe tener minimo 8 Caracteres' }),
+        contrasena: z.string().superRefine((valor, ctx) => {
+                const error = errorContrasena(valor)
+                if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, message: error })
+        }),
         confirmacion_contrasena: z.string()
 
 

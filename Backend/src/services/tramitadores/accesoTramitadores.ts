@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import Tramitador from '../../models/tramitador'
 import AccesoTramitador from '../../models/tramitadores/accesoTramitador'
 import { checkContrasena, hashcontrasena } from '../../utils/auth'
+import { generarContrasenaCumplida } from '../../utils/politicaContrasena'
 import { ErrorGastos as ErrorNegocio } from '../gastos/errores'
 
 // Tipo de token de la app de tramitadores. El middleware de usuarios internos
@@ -13,10 +14,9 @@ const MAXIMO_INTENTOS = 5
 const MINUTOS_BLOQUEO = 15
 const DURACION_SESION = '15d'
 
-// Sin caracteres que se confunden al dictarlos (0/O, 1/l/I)
-const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-const generarContrasenaTemporal = () =>
-  Array.from({ length: 10 }, () => ALFABETO[randomInt(ALFABETO.length)]).join('')
+// Temporal que ya cumple la política (mayúscula, minúscula, número y especial), sin
+// caracteres que se confunden al dictarlos. El tramitador la cambia al primer ingreso.
+const generarContrasenaTemporal = () => generarContrasenaCumplida(randomInt)
 
 // Hash fijo para comparar cuando el usuario no existe: la respuesta tarda lo mismo
 // y no revela qué identificaciones tienen acceso

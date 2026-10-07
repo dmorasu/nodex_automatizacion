@@ -28,6 +28,7 @@ _Actualizado: 2026-10-06_
 - **No arrancar el backend completo:** carga el programador de notificaciones de WhatsApp. Probar los servicios con scripts aislados: `TS_NODE_TRANSPILE_ONLY=1 npx ts-node src/_x.ts`, y borrar el script después.
 - **Pruebas sin efectos:** no ejecutar pagos reales. Para Azure, reemplazar con un stub `require('./services/azureFileStorage').subirArchivo = async()=>{}`.
 - **Windows:** no se pueden mover carpetas mientras el dev server corre (`EPERM`).
+- **Detrás de Nginx, no armar URLs con `request.url`** en middleware o route handlers de Next: trae la dirección interna (`localhost:900x`). Usar la pública con los encabezados `Host` / `X-Forwarded-Proto` (ver `Frontend/tramitadores/middleware.ts`). `redirect("/ruta")` relativo no tiene el problema.
 
 ## Módulos construidos
 
@@ -297,7 +298,20 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 9. **Después del arranque:** `node dist/scripts/sincronizarEstadoActual.js` (sin y con `--aplicar`); asignar perfiles (Analista, Administrador Torre de control, Tesorería - Certificados, Dirección de Negocio); revisar la asignación de analistas.
 10. **Pruebas:** login en las 3 apps con cada perfil; pago en tres pasos y pago directo de certificados; trámites (desistir, finalizar, programar); correos llegando solo a `CORREO_ENSAYO` y WhatsApp "NO enviado" en `pm2 logs nodex-ensayo-worker`; app de tramitadores desde un celular.
 
-**Para volver el ensayo producción:** quitar `MODO_ENSAYO` y `CORREO_ENSAYO`, apuntar `DB_NAME` y `AZURE_FILE_SHARE_NAME` a los definitivos, `REDIS_DB` libre de otros entornos, y repetir el checklist de abajo.
+**Estado (2026-10-06): desplegado y funcionando** en https://tramites.nodexgpa.com, https://gastos.nodexgpa.com y https://tramitadores.nodexgpa.com (certificados Let's Encrypt con renovación automática).
+- **Servidor:** `SRVWEBNOX02`, IP pública `20.186.19.92` (estática), privada `10.0.4.4`. Postgres local con `nodex` (producción), `nodex_do` (desarrollo) y `nodex_pruebas` (ensayo). PM2 corre como **root** (`/root/.pm2`); el ensayo se compila y arranca como root. Producción 4.5 en `/home/desarrolloti/nodex4.0` (`apiNodex4.5`, `Nodex4.5`, `worker4.5`, puertos 4000/3000). Otras apps en 3001, 3002, 5000, 5001 y 6001 (Vehículos, Inmuebles, `nodex_ga4.0`).
+- **Nginx:** el sitio `app` (de la 4.5, `server_name _` → 3000/4000) sigue igual; el del ensayo es `/etc/nginx/sites-enabled/nodexgpa`. `api.nodexgpa.com` **solo publica `/api/externa`** (límite de 5 peticiones/s por IP); el resto da 404, porque las apps llaman a la API por `127.0.0.1:9000`.
+- **Azure:** reglas de entrada 80 y 443 creadas; recurso compartido `nodex-ensayo` creado en la misma cuenta de almacenamiento que producción.
+- **Base:** `nodex_pruebas` sin `analistaId` antes del primer arranque; los tres textos de `responsable` coincidían y cubren los 2.244 municipios. Se aplicaron `sincronizarEstadoActual` y la revisión de analistas.
+
+**Lo que se aprendió en el ensayo** (ya está en las guías):
+- **El `.env` del backend se arma, no se copia:** el primero que se puso era el de desarrollo (sin `MODO_ENSAYO`, sin `REDIS_DB`, con el recurso de Azure y el puerto de producción). Y al rehacerlo se perdieron `AZURE_STORAGE_CONNECTION_STRING`, `DB_PASSWORD`, `JWT_SECRET`, `SENDGRID_API_KEY`, `EMAIL_FROM` y las de Twilio: la API quedó en un ciclo de reinicios (`No está configurada AZURE_STORAGE_CONNECTION_STRING`) y sin `DB_PASSWORD` se queda esperando sin mensaje. Comparar siempre los nombres de variables con producción: `comm -23 <(grep -oE '^[A-Z_]+' prod/.env | sort -u) <(grep -oE '^[A-Z_]+' nuevo/.env | sort -u)`.
+- **El worker lee el `.env` solo al arrancar:** después de corregir el `.env` hay que reiniciar también `nodex-ensayo-worker`.
+- **El error real de la API no sale en `pm2 logs` cuando hay un ciclo de reinicios** (lo tapa el aviso de dotenv): arrancarla a mano con `timeout 30 node dist/index.js` desde `Backend/`.
+- **Primer acceso:** la 4.5 no tiene perfiles; tras el arranque nadie tiene rol y todos ven "Sin acceso". Hay que darle ADMIN por SQL a quien administra (`dmorasu@gmail.com`) y asignar el resto desde Administración.
+- **App de tramitadores redirigía a `localhost`:** el middleware armaba la URL del login con `request.url`. Corregido (commit `7886502f`): usa `Host` y `X-Forwarded-Proto`.
+
+**Para volver el ensayo producción:** procedimiento completo en `deploy/GUIA_PASO_A_PRODUCCION.md` (respaldo, perfiles reutilizados del ensayo con `perfiles.sql`, apagar la 4.5, `.env` a `nodex` sin modo ensayo y con el recurso de Azure de producción, scripts de datos, redirección de la dirección vieja y plan B). Lo configurado en las pantallas del ensayo (catálogos, sedes y mensajeros, accesos a la app, Gastos) no pasa solo: se repite a mano.
 
 ## Checklist de paso a producción
 > El procedimiento del día del cambio (del ensayo `nodex5.0` a la base `nodex`, con respaldo, perfiles, scripts y plan B) está en `deploy/GUIA_PASO_A_PRODUCCION.md`.
@@ -443,15 +457,21 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
    - **Por confirmar con el usuario:** si Contabilidad debe recibir un aviso igual por los gastos no reembolsables con factura, y si el correo a Legalización debe exigir además el reporte "Realizado".
 8. **Pago en tres pasos sin prueba completa:** crear un gasto de prueba, programarlo, aprobarlo con un usuario Dirección de Negocio, adjuntar soporte y confirmar; revisar la bolsa, los correos y la lista de egresos de Contabilidad. En desarrollo descuenta una bolsa (devolver con un ajuste).
 9. **`node_modules` en git:** resuelto el 2026-10-06 (`git rm -r --cached Backend/node_modules`). Al hacer `git pull` en otro equipo que todavía los tenga versionados, git los borrará del disco: correr `npm ci` en `Backend` después del pull.
-10. **Producción:** la app de tramitadores necesita HTTPS (cookie `secure` en producción). La variable `NEXT_PUBLIC_URL_APP_TRAMITADORES` quedó en el checklist (paso 8).
-11. **Claves de Google en desarrollo:** hoy el backend y Nodex Trámites usan la misma clave (sin restricciones). En producción deben ser dos claves restringidas (checklist, paso 4 y sección de seguridad).
+10. **HTTPS:** resuelto en el ensayo (Let's Encrypt en los 4 subdominios de nodexgpa.com); la cookie `secure` de la app de tramitadores ya funciona. La 4.5 sigue por HTTP en la IP hasta el paso a producción.
+11. **Claves de Google:** en el servidor ya hay dos claves nuevas (servidor restringida a `20.186.19.92`, navegador restringida a `https://tramites.nodexgpa.com/*`). La clave de desarrollo de los `.env` locales sigue sin restricción por IP: restringirla (fase 0.2, paso 4).
+12. **Seguridad del servidor (encontrado en el despliegue):** Postgres escucha en `0.0.0.0:5432`, y la API (4000) y Nodex (3000) de la 4.5 están abiertas directo; `ufw` está inactivo, así que la única barrera es el NSG de Azure. Verificar que el NSG **no** permita 5432, 3000, 4000 ni 9000–9003 desde Any.
+13. **`API_KEY_EXTERNA` del ensayo es la de desarrollo** (quedó escrita en el chat): generar una nueva antes de entregarla a la otra plataforma. El `JWT_SECRET` del ensayo es el mismo de producción (decisión del usuario): una sesión del ensayo sirve contra la API de producción.
+14. **Redis 6.0.16:** BullMQ recomienda 6.2 o más. Funciona; actualizar con calma porque la producción usa el mismo Redis.
+15. **Avisos de lint en Trámites** (5, no frenan el build) y un botón de documentos en `SolicitudTramitesForm` que cambia un estado que nada muestra (`TODO`).
 
 ## Próximos pasos sugeridos
+- **Ensayo (fase 7):** pruebas con un usuario de cada perfil (guía de ensayo, paso 10): pago en tres pasos, certificados, trámites (desistir, finalizar, programar), correos solo a `CORREO_ENSAYO`, WhatsApp "NO enviado", mapa de rutas con Google, autocompletado de dirección, API externa y la app de tramitadores desde un celular.
+- **Paso a producción:** cuando el ensayo pase, seguir `deploy/GUIA_PASO_A_PRODUCCION.md` (anotar antes lo configurado en las pantallas del ensayo que se quiera conservar).
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.
 - Probar en el navegador: carga masiva de facturas, descarga ZIP, bandejas de Legalización y Contabilidad, y el flujo de certificados con un gasto real.
 - Agregar la columna "Tipo" a la plantilla del cargue masivo.
 - Ofrecidos sin confirmar:
   - Carga masiva de facturas también en Contabilidad (no reembolsables).
   - Avisos por WhatsApp al tramitador (soporte rechazado, respuesta a un comentario).
-  - Despliegue con HTTPS: arquitectura propuesta = VM Ubuntu en Azure, Nginx como único proceso expuesto (Let's Encrypt), subdominios por app, lista de IPs permitidas en Nginx para Trámites y Gastos, Tramitadores público con límite de peticiones, backend y Postgres solo en 127.0.0.1, PM2 con una sola instancia del backend (cron de WhatsApp). Falta definir dominio, IPs, ubicación de la BD y si WhatsApp recibe webhooks.
+  - Lista de IPs permitidas en Nginx para Trámites y Gastos (Tramitadores queda público) y Postgres solo en 127.0.0.1 / 10.0.4.4.
   - PWA en Android: sin HTTPS Chrome solo crea un acceso directo con su logo. Con HTTPS, más un service worker básico y un ícono "maskable" con margen, queda como app.

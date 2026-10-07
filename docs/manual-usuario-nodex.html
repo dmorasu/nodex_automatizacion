@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manual de Nodex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: índice fijo a la izquierda en escritorio, contenido de lectura a ~68ch; cada app con su color de marca */
+:root {
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef2f8;
+  --ink: #152033;
+  --muted: #5a6579;
+  --line: #dde4ee;
+  --tramites: #0278b5;
+  --tramites-soft: #e3f2fb;
+  --gastos: #047857;
+  --gastos-soft: #e1f5ed;
+  --tramitadores: #4f46e5;
+  --tramitadores-soft: #eceafe;
+  --warn: #b45309;
+  --warn-soft: #fef3e2;
+  --danger: #b91c1c;
+  --danger-soft: #fdeaea;
+  --ok: #047857;
+  --ok-soft: #e1f5ed;
+  --neutral-soft: #eceff4;
+  --violet: #6d28d9;
+  --violet-soft: #f0eafd;
+  --shadow: 0 1px 2px rgba(21, 32, 51, .06), 0 8px 24px rgba(21, 32, 51, .06);
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1520; --surface: #161e2c; --surface-2: #1c2638; --ink: #e7ecf4; --muted: #a2adbf; --line: #2a3549;
+    --tramites: #4cb4ee; --tramites-soft: #12324a; --gastos: #3fcf98; --gastos-soft: #10362a;
+    --tramitadores: #9d97ff; --tramitadores-soft: #27254f; --warn: #f2b45a; --warn-soft: #3a2a12;
+    --danger: #f58a8a; --danger-soft: #3d1a1d; --ok: #3fcf98; --ok-soft: #10362a; --neutral-soft: #232d3f;
+    --violet: #b79bff; --violet-soft: #2c2347; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1520; --surface: #161e2c; --surface-2: #1c2638; --ink: #e7ecf4; --muted: #a2adbf; --line: #2a3549;
+  --tramites: #4cb4ee; --tramites-soft: #12324a; --gastos: #3fcf98; --gastos-soft: #10362a;
+  --tramitadores: #9d97ff; --tramitadores-soft: #27254f; --warn: #f2b45a; --warn-soft: #3a2a12;
+  --danger: #f58a8a; --danger-soft: #3d1a1d; --ok: #3fcf98; --ok-soft: #10362a; --neutral-soft: #232d3f;
+  --violet: #b79bff; --violet-soft: #2c2347; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font-body); margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--tramites); outline-offset: 2px; border-radius: 4px; }
+
+.envoltura { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 0 64px; }
+
+/* Portada */
+.portada { padding-block: 48px 28px; display: grid; gap: 28px; }
+.marca { font: 600 13px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.portada h1 { font: 800 clamp(2.3rem, 6vw, 4rem)/1.02 var(--font-display); letter-spacing: -.03em; margin: 0; text-wrap: balance; }
+.portada h1 span { color: var(--tramites); }
+.portada p.intro { max-width: 62ch; color: var(--muted); font-size: 1.08rem; margin: 0; }
+.apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.app { display: grid; gap: 6px; padding: 18px 18px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; text-decoration: none; transition: transform .15s ease, box-shadow .15s ease; position: relative; overflow: hidden; }
+.app:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.app::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--c); }
+.app .nombre { font: 700 1.2rem/1.2 var(--font-display); color: var(--c); }
+.app .para { color: var(--muted); font-size: .92rem; }
+.app .url { font: 500 12px/1.4 var(--font-mono); color: var(--ink); opacity: .75; overflow-wrap: anywhere; }
+.c-tramites { --c: var(--tramites); --cs: var(--tramites-soft); }
+.c-gastos { --c: var(--gastos); --cs: var(--gastos-soft); }
+.c-tramitadores { --c: var(--tramitadores); --cs: var(--tramitadores-soft); }
+
+/* Buscador */
+.buscador { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.buscador .fila { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.buscador label { position: absolute; left: -9999px; }
+.buscador input { flex: 1 1 260px; min-width: 0; font: inherit; font-size: 1rem; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.buscador input::placeholder { color: var(--muted); }
+.buscador .conteo { font-size: .88rem; color: var(--muted); min-width: 12ch; }
+
+/* Cuerpo: índice + contenido */
+.cuerpo { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; margin-top: 28px; }
+@media (max-width: 900px) { .cuerpo { grid-template-columns: minmax(0, 1fr); gap: 20px; } .indice { position: static !important; } }
+.indice { position: sticky; top: 84px; align-self: start; font-size: .92rem; display: grid; gap: 14px; }
+.indice .grupo { display: grid; gap: 2px; }
+.indice .titulo { font: 700 12px/1.4 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c, var(--muted)); padding: 0 10px 4px; }
+.indice a { text-decoration: none; padding: 5px 10px; border-radius: 7px; color: var(--muted); }
+.indice a:hover { background: var(--surface-2); color: var(--ink); }
+@media (max-width: 900px) {
+  .indice { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .indice .grupo a:nth-child(n+5) { display: none; }
+}
+
+.contenido { display: grid; gap: 56px; min-width: 0; }
+section.parte { display: grid; gap: 22px; scroll-margin-top: 80px; }
+.cabecera { display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 2px solid var(--c, var(--line)); }
+.cabecera .etiqueta { font: 600 12px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--c, var(--muted)); }
+.cabecera h2 { font: 800 clamp(1.8rem, 4vw, 2.5rem)/1.08 var(--font-display); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.cabecera p { margin: 0; color: var(--muted); max-width: 68ch; }
+
+article.tema { display: grid; gap: 12px; max-width: 72ch; scroll-margin-top: 80px; }
+article.tema h3 { font: 700 1.3rem/1.25 var(--font-display); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+article.tema h3 .quien { font: 600 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--c, var(--muted)); background: var(--cs, var(--surface-2)); padding: 4px 7px; border-radius: 6px; vertical-align: middle; margin-left: 6px; white-space: nowrap; }
+article.tema p { margin: 0; }
+article.tema ul, article.tema ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+article.tema li::marker { color: var(--c, var(--muted)); font-weight: 700; }
+b, strong { font-weight: 700; }
+.mono { font-family: var(--font-mono); font-size: .88em; background: var(--surface-2); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+
+.nota { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-size: .95rem; }
+.nota .ico { font: 700 13px/1.6 var(--font-mono); color: var(--muted); }
+.nota.importante { background: var(--warn-soft); }
+.nota.importante .ico { color: var(--warn); }
+.nota.bien { background: var(--ok-soft); }
+.nota.bien .ico { color: var(--ok); }
+
+/* Estados y flujos */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: .86rem; font-weight: 700; border: 1px solid transparent; }
+.chip.gris { background: var(--neutral-soft); color: var(--muted); }
+.chip.azul { background: var(--tramites-soft); color: var(--tramites); }
+.chip.ambar { background: var(--warn-soft); color: var(--warn); }
+.chip.violeta { background: var(--violet-soft); color: var(--violet); }
+.chip.rojo { background: var(--danger-soft); color: var(--danger); }
+.chip.verde { background: var(--ok-soft); color: var(--ok); }
+
+.flujo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; counter-reset: paso; }
+.flujo .paso { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 4px; position: relative; }
+.flujo .paso .n { font: 700 12px/1 var(--font-mono); color: var(--c); letter-spacing: .06em; }
+.flujo .paso .t { font: 700 1.02rem/1.25 var(--font-display); }
+.flujo .paso .d { font-size: .9rem; color: var(--muted); }
+.flujo .paso .r { font: 600 11px/1.3 var(--font-mono); color: var(--c); background: var(--cs); border-radius: 5px; padding: 3px 6px; justify-self: start; margin-top: 4px; }
+
+.cadena { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cadena .flecha { color: var(--muted); font-size: .9rem; }
+
+/* Tablas */
+.tabla { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 700 12px/1.3 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td .si { color: var(--ok); font-weight: 700; }
+td .no { color: var(--muted); }
+
+/* Preguntas */
+details.pregunta { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0 16px; max-width: 72ch; }
+details.pregunta summary { cursor: pointer; font: 700 1.02rem/1.35 var(--font-display); padding: 14px 0; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.pregunta summary::-webkit-details-marker { display: none; }
+details.pregunta summary::after { content: "+"; font: 500 1.2rem/1 var(--font-mono); color: var(--muted); }
+details.pregunta[open] summary::after { content: "–"; }
+details.pregunta .resp { padding-bottom: 14px; display: grid; gap: 8px; color: var(--ink); }
+.preguntas { display: grid; gap: 10px; }
+
+.contrasena-demo { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); max-width: 460px; }
+.contrasena-demo label { font-weight: 700; font-size: .92rem; }
+.contrasena-demo input { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.contrasena-demo ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px 12px; font-size: .88rem; }
+.contrasena-demo li { color: var(--muted); }
+.contrasena-demo li::before { content: "○ "; }
+.contrasena-demo li.cumple { color: var(--ok); }
+.contrasena-demo li.cumple::before { content: "✓ "; font-weight: 700; }
+
+.sin-resultados { padding: 28px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; }
+footer.pie { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<div class="envoltura">
+
+  <header class="portada">
+    <div class="marca">Nodex · Manual de usuario</div>
+    <h1>Todo lo que necesita para trabajar en <span>Nodex</span></h1>
+    <p class="intro">Nodex reúne tres aplicaciones: <b>Trámites</b> para gestionar las solicitudes, <b>Gastos</b> para pedir, pagar y legalizar el dinero de cada diligencia, y <b>Tramitadores</b>, la app del celular para quienes hacen el trabajo en la calle. Busque su tema o vaya directo a la aplicación que usa.</p>
+    <nav class="apps" aria-label="Aplicaciones">
+      <a class="app c-tramites" href="#tramites">
+        <span class="nombre">Nodex Trámites</span>
+        <span class="para">Torre de control, analistas y gestión de activos</span>
+        <span class="url">tramites.nodexgpa.com</span>
+      </a>
+      <a class="app c-gastos" href="#gastos">
+        <span class="nombre">Nodex Gastos</span>
+        <span class="para">Tesorería, Dirección de Negocio, Legalización y Contabilidad</span>
+        <span class="url">gastos.nodexgpa.com</span>
+      </a>
+      <a class="app c-tramitadores" href="#tramitadores">
+        <span class="nombre">Nodex Tramitadores</span>
+        <span class="para">Tramitadores y mensajeros, desde el celular</span>
+        <span class="url">tramitadores.nodexgpa.com</span>
+      </a>
+    </nav>
+  </header>
+
+  <div class="buscador" role="search">
+    <div class="fila">
+      <label for="buscar">Buscar en el manual</label>
+      <input id="buscar" type="search" placeholder="Buscar: contraseña, gestión masiva, reintegro, factura, ruta…" autocomplete="off">
+      <span class="conteo" id="conteo" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div class="cuerpo">
+    <nav class="indice" aria-label="Contenido">
+      <div class="grupo">
+        <span class="titulo">Primeros pasos</span>
+        <a href="#entrar">Cómo entrar</a>
+        <a href="#perfiles">Perfiles</a>
+        <a href="#contrasenas">Contraseñas</a>
+      </div>
+      <div class="grupo c-tramites">
+        <span class="titulo">Trámites</span>
+        <a href="#dashboard">Dashboard</a>
+        <a href="#crear-tramite">Crear un trámite</a>
+        <a href="#detalle-tramite">Detalle del trámite</a>
+        <a href="#gestion-masiva">Gestión masiva</a>
+        <a href="#tablero">Tablero de gestión</a>
+        <a href="#rutas">Rutas de mensajeros</a>
+        <a href="#realizados">Reportados como realizados</a>
+        <a href="#configuracion">Configuración</a>
+      </div>
+      <div class="grupo c-gastos">
+        <span class="titulo">Gastos</span>
+        <a href="#crear-gasto">Pedir un gasto</a>
+        <a href="#estados-gasto">Estados del gasto</a>
+        <a href="#pago">Pago en tres pasos</a>
+        <a href="#certificados">Certificados</a>
+        <a href="#legalizacion">Legalización</a>
+        <a href="#contabilidad">Contabilidad</a>
+      </div>
+      <div class="grupo c-tramitadores">
+        <span class="titulo">Tramitadores</span>
+        <a href="#instalar">Instalar en el celular</a>
+        <a href="#primer-ingreso">Primer ingreso</a>
+        <a href="#mis-tramites">Mis trámites</a>
+        <a href="#documentos">Subir documentos</a>
+        <a href="#reintegros-app">Reintegros</a>
+        <a href="#mi-ruta">Mi ruta</a>
+      </div>
+      <div class="grupo">
+        <span class="titulo">Ayuda</span>
+        <a href="#preguntas">Preguntas frecuentes</a>
+      </div>
+    </nav>
+
+    <main class="contenido" id="contenido">
+
+      <!-- PRIMEROS PASOS -->
+      <section class="parte" id="primeros-pasos">
+        <div class="cabecera">
+          <span class="etiqueta">Primeros pasos</span>
+          <h2>Antes de empezar</h2>
+          <p>Cómo entrar, qué puede hacer cada perfil y cómo crear una contraseña que el sistema acepte.</p>
+        </div>
+
+        <article class="tema" id="entrar">
+          <h3>Cómo entrar</h3>
+          <p>Abra la dirección de su aplicación en el navegador (Chrome, Edge o Safari) y escriba su <b>correo</b> y su <b>contraseña</b>. Es el mismo usuario para Trámites y Gastos.</p>
+          <ul>
+            <li><b>Nodex Trámites:</b> <span class="mono">https://tramites.nodexgpa.com</span></li>
+            <li><b>Nodex Gastos:</b> <span class="mono">https://gastos.nodexgpa.com</span></li>
+            <li><b>Nodex Tramitadores</b> (celular): <span class="mono">https://tramitadores.nodexgpa.com</span>. Se entra con la <b>cédula</b>, no con correo.</li>
+          </ul>
+          <div class="nota"><span class="ico">i</span><span>Revise que la dirección empiece por <b>https://</b> y que el navegador muestre el candado. Si alguna vez entra por otra dirección, el sistema lo lleva a la correcta.</span></div>
+        </article>
+
+        <article class="tema" id="perfiles">
+          <h3>Perfiles: qué ve cada persona</h3>
+          <p>Lo que aparece en el menú depende de su perfil. Si entra y ve el mensaje <b>"Sin acceso"</b>, su usuario todavía no tiene perfil: pídale al administrador de Nodex que se lo asigne.</p>
+          <div class="tabla">
+            <table>
+              <thead><tr><th>Perfil</th><th>App</th><th>Qué hace</th></tr></thead>
+              <tbody>
+                <tr><td><b>Torre de control</b></td><td>Trámites</td><td>Gestiona todos los trámites: estados, programación, logística, tramitadores, gestión masiva, rutas y reportes de realizado.</td></tr>
+                <tr><td><b>Analista de trámites</b></td><td>Trámites</td><td>Lo mismo que Torre de control, pero en el inicio ve solo los trámites que tiene asignados.</td></tr>
+                <tr><td><b>Administrador Torre de control</b></td><td>Trámites</td><td>Además reasigna analistas, maneja los catálogos y los perfiles de trámites.</td></tr>
+                <tr><td><b>Gestión de activos</b></td><td>Trámites</td><td>Crea y edita sus propios trámites, les crea gastos y hace cargues masivos.</td></tr>
+                <tr><td><b>Tesorería</b></td><td>Gastos</td><td>Programa y confirma los pagos, y administra las bolsas.</td></tr>
+                <tr><td><b>Tesorería - Certificados</b></td><td>Gastos</td><td>Paga directamente las compras de CTL y certificados de Cámara de Comercio.</td></tr>
+                <tr><td><b>Dirección de Negocio</b></td><td>Gastos</td><td>Aprueba o rechaza los pagos que programa Tesorería.</td></tr>
+                <tr><td><b>Legalización</b></td><td>Gastos</td><td>Registra facturas, arma cuentas de cobro, legaliza y revisa reintegros.</td></tr>
+                <tr><td><b>Contabilidad</b></td><td>Gastos</td><td>Contabiliza lo legalizado y gestiona los gastos que asume la bolsa.</td></tr>
+                <tr><td><b>Administrador</b></td><td>Ambas</td><td>Acceso total, incluida la administración de usuarios.</td></tr>
+                <tr><td><b>Tramitador / mensajero</b></td><td>Tramitadores</td><td>Ve sus trámites, sube documentos y soportes, reporta lo realizado y sigue su ruta.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="tema" id="contrasenas">
+          <h3>Contraseñas seguras</h3>
+          <p>Toda contraseña nueva o cambiada debe cumplir estas reglas. Mientras escribe, el sistema las va marcando en verde.</p>
+          <ul>
+            <li>Mínimo <b>8 caracteres</b>.</li>
+            <li>Al menos <b>una mayúscula</b> y <b>una minúscula</b>.</li>
+            <li>Al menos <b>un número</b>.</li>
+            <li>Al menos <b>un carácter especial</b>, por ejemplo <span class="mono">! @ # $ % * . -</span></li>
+            <li>Sin espacios al inicio ni al final.</li>
+          </ul>
+          <div class="contrasena-demo">
+            <label for="probar-contrasena">Pruebe una contraseña aquí (no se guarda ni se envía)</label>
+            <input id="probar-contrasena" type="text" placeholder="Ejemplo: Nodex2026!" autocomplete="off" spellcheck="false">
+            <ul id="reglas-demo">
+              <li data-regla="largo">Mínimo 8 caracteres</li>
+              <li data-regla="mayus">Una mayúscula</li>
+              <li data-regla="minus">Una minúscula</li>
+              <li data-regla="numero">Un número</li>
+              <li data-regla="especial">Un carácter especial</li>
+            </ul>
+          </div>
+          <div class="nota importante"><span class="ico">!</span><span>No use su cédula, su nombre ni la misma contraseña de otros sistemas. Si la olvidó, el administrador de Nodex le asigna una nueva; nadie, ni siquiera el administrador, puede ver la que usted tiene.</span></div>
+        </article>
+      </section>
+
+      <!-- TRÁMITES -->
+      <section class="parte c-tramites" id="tramites">
+        <div class="cabecera">
+          <span class="etiqueta">Nodex Trámites</span>
+          <h2>Gestión de trámites</h2>
+          <p>Desde aquí se crean las solicitudes, se asignan tramitadores, se programa, se lleva la trazabilidad y se cierran los trámites.</p>
+        </div>
+
+        <article class="tema" id="dashboard">
+          <h3>Dashboard: la lista de trámites</h3>
+          <p>Es la pantalla de inicio. Muestra los trámites en una tabla con su estado, cliente, ubicación, responsables y fechas.</p>
+          <ol>
+            <li>Use <b>Buscar</b> con el número del trámite o la identificación del cliente.</li>
+            <li>Combine filtros: placa, estado, tipo de trámite, analista, tramitador, operación y fechas de finalización.</li>
+            <li>Presione <b>Filtrar</b> (o Enter). Con <b>Limpiar</b> vuelve a ver todo.</li>
+            <li>Haga clic en el número (<span class="mono">#3758</span>) para abrir el trámite, o use el menú <b>⋮</b> de la fila para verlo o editarlo.</li>
+          </ol>
+          <p>Estados del trámite:</p>
+          <div class="chips">
+            <span class="chip gris">Sin iniciar</span>
+            <span class="chip azul">En curso</span>
+            <span class="chip ambar">En espera por novedad</span>
+            <span class="chip violeta">Novedad subsanada continuar trámite</span>
+            <span class="chip rojo">Desistido</span>
+            <span class="chip verde">Finalizado</span>
+          </div>
+          <div class="nota"><span class="ico">i</span><span><b>Analistas:</b> la lista muestra solo sus trámites asignados. Si busca por número o identificación, encuentra cualquier trámite; los que no son suyos llevan la etiqueta <b>"No asignado a ti"</b>.</span></div>
+          <div class="nota bien"><span class="ico">✓</span><span>Los filtros quedan guardados en la dirección: si entra a un trámite y vuelve, siguen aplicados, y puede compartir el enlace con los filtros puestos.</span></div>
+        </article>
+
+        <article class="tema" id="crear-tramite">
+          <h3>Crear un trámite</h3>
+          <ol>
+            <li>En el Dashboard presione <b>Nuevo trámite</b> (también está en el menú, en "Crear y cargar").</li>
+            <li>Elija cliente, tipo de trámite, operación y entidad.</li>
+            <li>En <b>Dirección</b>, escriba la dirección o el nombre del lugar (por ejemplo, "Alcaldía de Medellín") y elija una de las sugerencias de Google. También puede <b>pegar un enlace de Google Maps</b>. Así queda la ubicación exacta y el municipio se llena solo.</li>
+            <li>Escriba el <b>detalle de la solicitud</b>. Debajo verá un contador: el máximo es <b>200 caracteres</b>.</li>
+            <li>Guarde. El trámite toma automáticamente el analista del municipio.</li>
+          </ol>
+          <div class="nota"><span class="ico">i</span><span>Si una sugerencia de dirección no se deja elegir, aparece un aviso: elija otra opción, pegue el enlace de Google Maps o deje la dirección escrita a mano. El trámite se guarda igual.</span></div>
+        </article>
+
+        <article class="tema" id="detalle-tramite">
+          <h3>Detalle del trámite</h3>
+          <p>Al abrir un trámite verá su información organizada en pestañas, y a la derecha el estado con su historial, el analista asignado, la programación, la logística y la ubicación en el mapa (para las rutas de mensajeros).</p>
+          <ul>
+            <li><b>Información:</b> tipo, entidad, operación, placa o matrícula, cliente y dirección.</li>
+            <li><b>Documentos:</b> lo que han subido el equipo y el tramitador, con quién lo subió y de qué tipo es.</li>
+            <li><b>Gastos:</b> los gastos del trámite en Nodex Gastos, y el botón para pedir uno nuevo.</li>
+            <li><b>Trazabilidad:</b> las observaciones en orden. Lo que se registra aquí alimenta las notificaciones al cliente.</li>
+            <li><b>Tramitador:</b> comentarios con el tramitador y sus reportes de "realizado".</li>
+            <li><b>WhatsApp:</b> los mensajes enviados sobre el trámite.</li>
+          </ul>
+          <p>Al cambiar el estado se envían avisos automáticos: <b>Desistido</b> avisa al tramitador por WhatsApp y a quien creó el trámite por correo; <b>En espera por novedad</b> y <b>Finalizado</b> envían correo al solicitante.</p>
+        </article>
+
+        <article class="tema" id="gestion-masiva">
+          <h3>Gestión masiva <span class="quien">Torre de control</span></h3>
+          <p>Para actualizar muchos trámites a la vez, sin Excel. En el menú: <b>Gestión masiva → En pantalla</b>.</p>
+          <div class="flujo">
+            <div class="paso"><span class="n">PASO 1</span><span class="t">Elija los trámites</span><span class="d"><b>Por número:</b> pegue los números separados por coma, espacio o línea. <b>Buscar con filtros:</b> por tramitador, operación, estado y fechas (de creación, de diligencia o de finalización).</span></div>
+            <div class="paso"><span class="n">PASO 2</span><span class="t">Marque las acciones</span><span class="d">Una o varias: cambiar estado, agregar trazabilidad, programación, logística y asignar tramitador.</span></div>
+            <div class="paso"><span class="n">PASO 3</span><span class="t">Llene los valores</span><span class="d">Con <b>Mismo valor para todos</b> o fila por fila. Marque filas para aplicar un valor solo a esas.</span></div>
+            <div class="paso"><span class="n">PASO 4</span><span class="t">Guarde</span><span class="d">Se confirma un resumen y se guarda en orden: tramitador, programación, logística, trazabilidad y, al final, el estado.</span></div>
+          </div>
+          <ul>
+            <li>Un trámite solo entra en las acciones donde tiene algo que aplicar: si deja el estado vacío en una fila, a ese trámite no se le cambia el estado. La columna <b>"Se aplicará"</b> lo muestra antes de guardar.</li>
+            <li>Programación, logística y tramitador solo se guardan si cambian; así no se reenvían correos ni WhatsApp de lo que ya estaba.</li>
+            <li>Máximo 500 trámites a la vez.</li>
+          </ul>
+          <div class="nota importante"><span class="ico">!</span><span>Cambiar estado, programar y asignar tramitador envían avisos reales a clientes y tramitadores. Revise el resumen antes de confirmar.</span></div>
+        </article>
+
+        <article class="tema" id="tablero">
+          <h3>Tablero de gestión <span class="quien">Torre de control</span></h3>
+          <p>Un resumen del período: indicadores, lo que <b>requiere atención</b> (vencidos, novedades sin movimiento, realizados sin finalizar, sin tramitador, sin programación), carga por analista, desempeño por tramitador, causas de novedad, clientes y un mapa de trámites abiertos por municipio.</p>
+          <ul>
+            <li>Un trámite está <b>vencido</b> si sigue abierto más de 2 días después de su fecha de programación.</li>
+            <li>Cada analista ve <b>"Mi tablero"</b> solo con sus trámites.</li>
+            <li>Con <b>Exportar a Excel</b> descarga las listas completas con los mismos filtros.</li>
+          </ul>
+        </article>
+
+        <article class="tema" id="rutas">
+          <h3>Rutas de mensajeros <span class="quien">Torre de control</span></h3>
+          <p>Las diligencias del día de cada mensajero, según la fecha de diligencia de la programación.</p>
+          <ol>
+            <li>Elija el día y la sede.</li>
+            <li>En <b>Mapa del día</b>, marque los mensajeros que quiere ver: cada uno tiene su color y su ruta va por las calles, de la sede a las paradas y de vuelta.</li>
+            <li>En la tarjeta de cada mensajero, suba o baje paradas para cambiar el orden, o presione <b>Optimizar</b> para el mejor orden. <b>Ver en el mapa</b> deja solo a ese mensajero.</li>
+            <li><b>Abrir en Google Maps</b> le da al mensajero la ruta completa para navegar.</li>
+          </ol>
+          <p>El borde del número de cada parada indica su estado: blanco pendiente, <b>verde entregado</b>, <b>rojo no se pudo</b>. Al confirmar la visita, el mensajero deja observación, foto y su ubicación GPS.</p>
+          <div class="nota"><span class="ico">i</span><span>Si una dirección aparece como <b>"Sin ubicar"</b>, use <b>Ubicar</b> para buscarla con Google o marque el punto en el mapa.</span></div>
+        </article>
+
+        <article class="tema" id="realizados">
+          <h3>Reportados como realizados <span class="quien">Torre de control</span></h3>
+          <p>Cuando un tramitador marca en su celular que terminó la diligencia, aparece aquí. El reporte <b>no cambia el estado</b> del trámite: revíselo, márquelo como revisado y, si corresponde, finalice el trámite.</p>
+        </article>
+
+        <article class="tema" id="configuracion">
+          <h3>Configuración <span class="quien">Administradores</span></h3>
+          <ul>
+            <li><b>Catálogos y tramitadores:</b> tipos de trámite con sus subestados, operaciones, tipos de rechazo y tramitadores. Lo que está en uso se puede renombrar pero no eliminar. En <b>Tramitadores</b> se crea el acceso a la app y se marca quién es mensajero y de qué sede.</li>
+            <li><b>Asignación de analistas:</b> el analista de cada municipio (lo toman los trámites nuevos) y la reasignación de trámites entre analistas.</li>
+            <li><b>Notificaciones automáticas:</b> la hora y los días de los WhatsApp de "diligencias de hoy" y "diligencias vencidas", y un botón para enviarlos ahora.</li>
+            <li><b>Administración:</b> crear usuarios, asignar perfiles y restablecer contraseñas.</li>
+          </ul>
+        </article>
+      </section>
+
+      <!-- GASTOS -->
+      <section class="parte c-gastos" id="gastos">
+        <div class="cabecera">
+          <span class="etiqueta">Nodex Gastos</span>
+          <h2>El dinero de cada diligencia</h2>
+          <p>Desde que se pide el gasto hasta que queda contabilizado, cada área hace su parte y Nodex lleva la cuenta.</p>
+        </div>
+
+        <article class="tema" id="crear-gasto">
+          <h3>Pedir un gasto</h3>
+          <ol>
+            <li>Desde el detalle del trámite (pestaña <b>Gastos</b>) o en Nodex Gastos con <b>Nuevo gasto</b>.</li>
+            <li>Indique concepto, tipo de gasto, beneficiario, operación, placa o matrícula y el valor solicitado.</li>
+            <li>Diga si es <b>reembolsable</b> (lo legaliza el área de Legalización) o si lo asume la bolsa (lo gestiona Contabilidad).</li>
+            <li>Guarde. Tesorería recibe un correo con el gasto nuevo.</li>
+          </ol>
+          <div class="nota"><span class="ico">i</span><span>En los gastos de <b>inmuebles</b> se registra la retención en la fuente (11 % por defecto, se puede cambiar). Es <b>informativa</b>: Tesorería paga el valor solicitado completo.</span></div>
+        </article>
+
+        <article class="tema" id="estados-gasto">
+          <h3>Estados del gasto</h3>
+          <div class="cadena">
+            <span class="chip ambar">Solicitado</span><span class="flecha">→</span>
+            <span class="chip azul">Programado para pago</span><span class="flecha">→</span>
+            <span class="chip violeta">Aprobado para pago</span><span class="flecha">→</span>
+            <span class="chip azul">Pagado</span><span class="flecha">→</span>
+            <span class="chip gris">Facturado</span><span class="flecha">→</span>
+            <span class="chip violeta">En cuenta de cobro</span><span class="flecha">→</span>
+            <span class="chip verde">Legalizado</span><span class="flecha">→</span>
+            <span class="chip gris">Contabilizado</span>
+          </div>
+          <p>Un gasto también puede quedar <span class="chip rojo">Anulado</span>. Cada gasto tiene un código, por ejemplo <span class="mono">GAS-2026-000123</span>, que sirve para buscarlo.</p>
+        </article>
+
+        <article class="tema" id="pago">
+          <h3>Pago en tres pasos</h3>
+          <p>Los gastos generales se pagan con aprobación de la Dirección de Negocio:</p>
+          <div class="flujo">
+            <div class="paso"><span class="n">1</span><span class="t">Tesorería programa</span><span class="d">En <b>Por pagar</b>, selecciona los gastos y presiona <b>Programar pago</b>: bolsa, fecha y valor a pagar. Todavía no se descuenta la bolsa.</span><span class="r">Tesorería</span></div>
+            <div class="paso"><span class="n">2</span><span class="t">Dirección aprueba</span><span class="d">En <b>Aprobación de pagos</b> aprueba todos o algunos. Los rechazados (con motivo) vuelven a "Solicitado". Luego aprueba en el banco.</span><span class="r">Dirección de Negocio</span></div>
+            <div class="paso"><span class="n">3</span><span class="t">Tesorería confirma</span><span class="d">En <b>Programados</b> adjunta el <b>soporte del banco</b> (obligatorio), pone la fecha real y confirma. Ahí se descuenta la bolsa.</span><span class="r">Tesorería</span></div>
+          </div>
+          <ul>
+            <li>Cada paso avisa por correo al siguiente responsable.</li>
+            <li>Cuando se confirma el pago, se avisa a quien creó el gasto y al analista del trámite.</li>
+            <li>Tesorería puede quitar gastos de un pago programado o aprobado, con motivo.</li>
+          </ul>
+        </article>
+
+        <article class="tema" id="certificados">
+          <h3>Compras de certificados <span class="quien">Tesorería - Certificados</span></h3>
+          <p>Los gastos de <b>CTL</b> y <b>certificados de Cámara de Comercio</b> se pagan directo, sin pasar por la Dirección: en <b>Certificados</b>, seleccione los gastos y presione <b>Pagar seleccionados</b>. El soporte es opcional.</p>
+        </article>
+
+        <article class="tema" id="legalizacion">
+          <h3>Legalización</h3>
+          <ul>
+            <li><b>Gastos sin factura:</b> los pagados y reembolsables que aún no tienen factura, con el estado del trámite.</li>
+            <li><b>Registrar factura</b> uno por uno, o con <b>Carga masiva de facturas</b>: el sistema asigna cada archivo a su gasto por código, número de trámite, placa o matrícula.</li>
+            <li><b>Soportes de tramitadores:</b> revise y apruebe o rechace las facturas y soportes que suben los tramitadores desde la app. Al aprobarlos pasan a los documentos del gasto.</li>
+            <li><b>Reintegros:</b> el dinero que el tramitador devuelve. Al aprobarlo, vuelve a la bolsa.</li>
+            <li><b>Descargar documentos:</b> un archivo ZIP con los soportes de los gastos que elija.</li>
+          </ul>
+        </article>
+
+        <article class="tema" id="contabilidad">
+          <h3>Contabilidad</h3>
+          <ul>
+            <li>Contabiliza las cuentas de cobro legalizadas.</li>
+            <li><b>No reembolsables</b> (los asume la bolsa): sin factura, soportes y por contabilizar. Se contabilizan uno por uno con el número del documento contable.</li>
+            <li>Consulta la lista de egresos con los pagos confirmados.</li>
+          </ul>
+        </article>
+      </section>
+
+      <!-- TRAMITADORES -->
+      <section class="parte c-tramitadores" id="tramitadores">
+        <div class="cabecera">
+          <span class="etiqueta">Nodex Tramitadores</span>
+          <h2>La app del celular</h2>
+          <p>Para tramitadores y mensajeros: sus trámites, documentos, reintegros y la ruta del día, desde el celular.</p>
+        </div>
+
+        <article class="tema" id="instalar">
+          <h3>Instalar en el celular</h3>
+          <p>No se descarga de ninguna tienda. Abra <span class="mono">https://tramitadores.nodexgpa.com</span> en el navegador del celular y agréguela a la pantalla de inicio:</p>
+          <ul>
+            <li><b>Android (Chrome):</b> menú <b>⋮</b> → <b>Agregar a la pantalla principal</b> o <b>Instalar aplicación</b>.</li>
+            <li><b>iPhone (Safari):</b> botón <b>Compartir</b> → <b>Agregar a inicio</b>.</li>
+          </ul>
+          <p>Desde ese momento la abre con el ícono de Nodex Tramitadores, como cualquier app.</p>
+        </article>
+
+        <article class="tema" id="primer-ingreso">
+          <h3>Primer ingreso</h3>
+          <ol>
+            <li>Torre de control le entrega su <b>usuario (su cédula)</b> y una <b>contraseña temporal</b>.</li>
+            <li>Entre con esos datos. La app le pide cambiar la contraseña de inmediato.</li>
+            <li>Escriba la temporal y luego su contraseña nueva dos veces. Debe cumplir las <a href="#contrasenas">reglas de contraseña</a>.</li>
+          </ol>
+          <div class="nota importante"><span class="ico">!</span><span>Después de <b>5 intentos fallidos</b> el acceso se bloquea <b>15 minutos</b>. Si olvidó la contraseña, pídale a Torre de control que le genere una temporal nueva.</span></div>
+        </article>
+
+        <article class="tema" id="mis-tramites">
+          <h3>Mis trámites</h3>
+          <p>En el inicio verá sus <b>próximos trámites</b> y el total que tiene por reintegrar. En <b>Mis trámites</b> filtre por activos, sin factura, cerrados o todos, y busque por número.</p>
+          <p>Al abrir un trámite verá el cliente, la dirección, la diligencia, la entrega probable, la cita si la hay, y los <b>gastos de este trámite</b>. Desde ahí puede:</p>
+          <ul>
+            <li>Escribir <b>comentarios con el equipo</b> de Torre de control.</li>
+            <li><b>Marcar como realizado</b> cuando termine. Torre de control lo revisa y actualiza el estado.</li>
+            <li>Subir documentos (ver el siguiente tema).</li>
+          </ul>
+        </article>
+
+        <article class="tema" id="documentos">
+          <h3>Subir documentos y facturas</h3>
+          <ol>
+            <li>En el trámite, toque <b>Subir documentos</b>.</li>
+            <li>Tome una foto con la cámara o elija un archivo (las fotos se comprimen solas).</li>
+            <li>Elija el tipo: <b>Soporte</b>, <b>Factura</b>, <b>Boleta de reintegro</b>, <b>Ingreso</b> u <b>Otro</b>.</li>
+            <li>Si es factura o boleta de reintegro, elija a qué gasto corresponde: llega sola a ese gasto para que Legalización la revise.</li>
+          </ol>
+        </article>
+
+        <article class="tema" id="reintegros-app">
+          <h3>Reintegros</h3>
+          <p>En <b>Reintegros</b> están los gastos en los que le sobró dinero y debe devolverlo. Entre a cada uno y suba el soporte de la consignación. Tesorería recibe un aviso y Legalización lo revisa; cuando lo aprueba, el gasto deja de aparecer como pendiente.</p>
+        </article>
+
+        <article class="tema" id="mi-ruta">
+          <h3>Mi ruta <span class="quien">Mensajeros</span></h3>
+          <ol>
+            <li>Entre a <b>Mi ruta</b>: verá las paradas del día en orden. Con las flechas cambia de día.</li>
+            <li>Toque <b>Abrir ruta completa en Google Maps</b> para navegar todo el recorrido, o, en cada parada, <b>Google Maps</b> o <b>Waze</b> para ir solo a esa.</li>
+            <li>En cada parada toque <b>Confirmar visita</b>: elija <b>Entregado</b> o <b>No se pudo</b>, escriba una observación y tome una foto. La app guarda su ubicación GPS.</li>
+          </ol>
+          <div class="nota"><span class="ico">i</span><span>Permita la ubicación y la cámara cuando el celular lo pregunte; sin ellas no se puede confirmar la visita.</span></div>
+        </article>
+      </section>
+
+      <!-- PREGUNTAS -->
+      <section class="parte" id="preguntas">
+        <div class="cabecera">
+          <span class="etiqueta">Ayuda</span>
+          <h2>Preguntas frecuentes</h2>
+        </div>
+        <div class="preguntas">
+          <details class="pregunta tema">
+            <summary>Entro y me sale "Sin acceso"</summary>
+            <div class="resp"><p>Su usuario existe pero no tiene perfil asignado. Pídale al administrador de Nodex que le asigne el suyo en <b>Administración</b>.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>Olvidé mi contraseña</summary>
+            <div class="resp"><p>En Trámites y Gastos, el administrador le asigna una nueva desde Administración. En la app de tramitadores, Torre de control le genera una contraseña temporal.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>El sistema no acepta mi contraseña nueva</summary>
+            <div class="resp"><p>Le falta alguna regla: mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial. El formulario marca en verde las que ya cumple. Puede probarla en la <a href="#contrasenas">sección de contraseñas</a>.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>No encuentro un trámite en el Dashboard</summary>
+            <div class="resp"><p>Revise que no tenga filtros puestos y presione <b>Limpiar</b>. Si es analista, la lista muestra solo sus trámites: búsquelo por número o identificación para encontrar cualquiera.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>No veo la opción de Gestión masiva o de Reportados como realizados</summary>
+            <div class="resp"><p>Son opciones de Torre de control. El perfil Gestión de activos no las tiene.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>¿Por qué no puedo eliminar una operación o un tipo de trámite?</summary>
+            <div class="resp"><p>Porque está en uso en trámites o gastos. Puede cambiarle el nombre, pero no eliminarla: al pasar el mouse sobre el botón de eliminar se ve el motivo.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>El tramitador dice que terminó, pero el trámite sigue abierto</summary>
+            <div class="resp"><p>El reporte de "realizado" no cambia el estado. Revíselo en <b>Reportados como realizados</b> y finalice el trámite si corresponde.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>Tesorería no puede confirmar un pago</summary>
+            <div class="resp"><p>El pago debe estar aprobado por la Dirección de Negocio y tener adjunto el soporte del banco. El botón de confirmar se activa solo con el soporte.</p></div>
+          </details>
+          <details class="pregunta tema">
+            <summary>El celular no me deja tomar la foto o confirmar la visita</summary>
+            <div class="resp"><p>Revise que el navegador tenga permiso de cámara y ubicación (en la configuración del celular, sección de permisos del navegador) y que tenga señal.</p></div>
+          </details>
+        </div>
+        <div class="sin-resultados" id="sin-resultados" hidden>No encontramos temas con esa búsqueda. Pruebe con otra palabra, por ejemplo "estado", "factura" o "ruta".</div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="pie">
+    <span>Manual de Nodex · Trámites, Gastos y Tramitadores</span>
+    <span>Actualizado en octubre de 2026</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // Probador de contraseña: las mismas reglas del sistema
+  var reglas = {
+    largo: function (c) { return c.length >= 8 },
+    mayus: function (c) { return /[A-ZÁÉÍÓÚÑ]/.test(c) },
+    minus: function (c) { return /[a-záéíóúñ]/.test(c) },
+    numero: function (c) { return /\d/.test(c) },
+    especial: function (c) { return /[^A-Za-zÁÉÍÓÚÑáéíóúñ0-9\s]/.test(c) }
+  };
+  var entrada = document.getElementById("probar-contrasena");
+  var items = document.querySelectorAll("#reglas-demo li");
+  function revisar() {
+    var valor = entrada.value;
+    items.forEach(function (li) { li.classList.toggle("cumple", reglas[li.dataset.regla](valor)); });
+  }
+  entrada.addEventListener("input", revisar);
+  revisar();
+
+  // Buscador: muestra solo los temas que contienen las palabras escritas
+  var buscar = document.getElementById("buscar");
+  var conteo = document.getElementById("conteo");
+  var temas = Array.prototype.slice.call(document.querySelectorAll(".tema"));
+  var partes = Array.prototype.slice.call(document.querySelectorAll("section.parte"));
+  var sinResultados = document.getElementById("sin-resultados");
+  var normalizar = function (t) { return t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); };
+  var textos = temas.map(function (t) { return normalizar(t.textContent); });
+
+  function filtrar() {
+    var palabras = normalizar(buscar.value).split(/\s+/).filter(Boolean);
+    var visibles = 0;
+    temas.forEach(function (tema, i) {
+      var ok = palabras.every(function (p) { return textos[i].indexOf(p) !== -1; });
+      tema.hidden = !ok;
+      if (ok) visibles++;
+      if (ok && palabras.length && tema.tagName === "DETAILS") tema.open = true;
+    });
+    partes.forEach(function (parte) {
+      var alguno = parte.querySelector(".tema:not([hidden])");
+      parte.hidden = palabras.length > 0 && !alguno && parte.id !== "preguntas";
+    });
+    sinResultados.hidden = !(palabras.length && visibles === 0);
+    conteo.textContent = palabras.length ? visibles + (visibles === 1 ? " tema" : " temas") : "";
+  }
+  buscar.addEventListener("input", filtrar);
+})();
+</script>
+</body>
+</html>

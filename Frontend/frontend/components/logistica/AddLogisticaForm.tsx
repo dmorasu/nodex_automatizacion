@@ -3,7 +3,7 @@
 import { DialogTitle } from "@headlessui/react";
 import { useFormState } from "react-dom";
 import { useParams } from "next/navigation";
-import ErrorMessage from "../ui/ErrorMessage";
+import AvisarErrores from "../ui/AvisarErrores";
 import { useEffect } from "react";
 import { toast } from "react-toastify";
 
@@ -131,15 +131,7 @@ export default function AddLogisticaForm({
       {/* ERRORES                                           */}
       {/* ================================================= */}
 
-      {state.errors.map(error => (
-
-        <ErrorMessage
-          key={error}
-        >
-          {error}
-        </ErrorMessage>
-
-      ))}
+      <AvisarErrores errores={state.errors} />
 
 
 

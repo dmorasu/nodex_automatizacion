@@ -13,7 +13,6 @@ export default async function BolsasPage() {
   return (
     <Seccion
       titulo="Bolsas"
-      descripcion="Cada gasto se asocia a una bolsa. El saldo solo cambia con recargas, pagos y ajustes del administrador."
     >
       <GestionBolsas bolsas={bolsas} esAdmin={sesion.roles.includes(ROLES.ADMIN)} />
     </Seccion>

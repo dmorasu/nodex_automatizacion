@@ -27,3 +27,62 @@ img,
 video {
   max-width: 100%;
 }
+
+/* ── Avisos (react-toastify) para el celular: tarjeta blanca de ancho completo con margen,
+   ícono en círculo de color, franja del tipo a la izquierda y barra de tiempo delgada ── */
+:root {
+  --toastify-toast-width: 420px;
+  --toastify-toast-min-height: 64px;
+  --toastify-toast-bd-radius: 18px;
+  --toastify-toast-padding: 12px 12px 14px 14px;
+  --toastify-font-family: inherit;
+  --toastify-toast-shadow: 0 16px 36px -14px rgb(15 23 42 / 0.3), 0 2px 8px -2px rgb(15 23 42 / 0.08);
+  --toastify-color-progress-success: #10b981;
+  --toastify-color-progress-error: #ef4444;
+  --toastify-color-progress-warning: #f59e0b;
+  --toastify-color-progress-info: #6366f1;
+}
+
+/* Debajo de la zona de la cámara (notch) y con margen a los lados */
+.Toastify__toast-container {
+  top: 0 !important;
+  box-sizing: border-box !important;
+  padding: calc(env(safe-area-inset-top) + 10px) 12px 0 !important;
+}
+
+@media (max-width: 480px) {
+  .Toastify__toast-container {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    transform: none !important;
+  }
+}
+
+.Toastify__toast.aviso-nodex {
+  @apply mb-2 w-full items-center gap-3 border border-slate-200/80 bg-white text-sm font-medium leading-snug text-slate-700;
+  /* En pantallas pequeñas la librería les quita el redondeo y el margen */
+  border-radius: 18px !important;
+  margin-bottom: 8px !important;
+}
+
+.aviso-nodex .Toastify__toast-icon {
+  @apply me-0 w-auto;
+}
+
+.aviso-nodex::before {
+  content: "";
+  @apply absolute inset-y-3 left-0 w-1 rounded-r-full;
+}
+.aviso-nodex--success::before { @apply bg-emerald-500; }
+.aviso-nodex--error::before { @apply bg-red-500; }
+.aviso-nodex--warning::before { @apply bg-amber-500; }
+.aviso-nodex--info::before { @apply bg-indigo-500; }
+
+.aviso-nodex .Toastify__progress-bar {
+  height: 3px;
+  opacity: 0.55 !important;
+}
+.aviso-nodex .Toastify__progress-bar--bg {
+  opacity: 0.08 !important;
+}

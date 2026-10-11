@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'react-toastify'
 import { useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import PreviewTable from './vistaPreviaTabla'
@@ -60,7 +61,7 @@ export default function UploadPanel({ tipo }: UploadPanelProps) {
   // =========================
   const validar = async () => {
 
-    if (!file) return alert('Selecciona un archivo')
+    if (!file) return toast.error('Selecciona un archivo')
 
     setLoading(true)
 
@@ -89,7 +90,7 @@ export default function UploadPanel({ tipo }: UploadPanelProps) {
   // =========================
   const cargar = async () => {
 
-    if (!file) return alert('Selecciona un archivo')
+    if (!file) return toast.error('Selecciona un archivo')
 
     setLoading(true)
 

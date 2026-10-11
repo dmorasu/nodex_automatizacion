@@ -13,6 +13,7 @@ const enviar = async (ruta: string, metodo: "POST" | "PUT", cuerpo: object): Pro
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }
   revalidatePath("/anticipos")
   revalidatePath("/contabilidad/anticipos")
+  revalidatePath("/contabilidad/facturas")
   return { ok: true, datos: undefined }
 }
 
@@ -63,12 +64,16 @@ export async function confirmarAnticipos(anticipos: Confirmacion[]) {
   return resultado
 }
 
-// ── Clientes empresariales ──
-
-export async function guardarClienteEmpresarial(datos: { nombre?: string, activo?: boolean }, id?: number) {
-  const resultado = await enviar(id ? `/gastos/clientes-empresariales/${id}` : "/gastos/clientes-empresariales", id ? "PUT" : "POST", datos)
-  revalidatePath("/contabilidad/clientes-empresariales")
-  return resultado
+// Solicitudes de factura: confirma el pago y factura una o varias (todas o ninguna).
+// formData: datos (JSON { solicitudes: [{ id, valorRecibido, numeroFactura, observacion }] }) + pdf_<id> y xml_<id>
+export async function facturarSolicitudes(formData: FormData, ids: number[]): Promise<Resultado> {
+  const req = await fetchApi("/gastos/anticipos/facturar", { method: "POST", body: formData })
+  if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+  revalidatePath("/anticipos")
+  revalidatePath("/contabilidad/facturas")
+  ids.forEach(id => revalidatePath(`/anticipos/${id}`))
+  revalidatePath("/tesoreria/bolsas")
+  return { ok: true, datos: undefined }
 }
 
 // Estado de cuenta de un cliente en una bolsa de anticipos (panel del arqueo). Fechas YYYY-MM-DD

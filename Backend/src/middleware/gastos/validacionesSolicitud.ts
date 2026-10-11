@@ -89,7 +89,7 @@ export const validarBolsa = [
 
 export const validarCrearBolsa = [
   body('nombre').exists().withMessage('El nombre de la bolsa es obligatorio'),
-  body('tipo').optional({ values: 'falsy' }).isIn(['GENERAL', 'ANTICIPOS']).withMessage('Tipo de bolsa no válido'),
+  body('tipo').optional({ values: 'falsy' }).isIn(['GENERAL', 'ANTICIPOS', 'FACTURAS']).withMessage('Tipo de bolsa no válido'),
   ...validarBolsa
 ]
 

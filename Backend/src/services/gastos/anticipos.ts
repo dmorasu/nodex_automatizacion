@@ -12,8 +12,8 @@ import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { registrarMovimientos } from './bolsas'
 import {
-  ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_ANTICIPO, TIPOS_BOLSA, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA,
-  type EstadoAnticipo
+  BOLSA_DE_CLASE, CLASES_ANTICIPO, ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_ANTICIPO, TIPOS_DOCUMENTO,
+  TIPOS_MOVIMIENTO_BOLSA, type ClaseAnticipo, type EstadoAnticipo
 } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
@@ -27,6 +27,10 @@ import { formatoMoneda } from './formato'
 //    · o lo devuelve con novedad (NOVEDAD); el creador lo corrige y vuelve a POR_CONFIRMAR.
 // 3. El creador lo convierte en gastos no reembolsables (solicitudesGasto.ts, con anticipoId),
 //    que siguen el pago normal y al pagarse se descuentan de la bolsa y del saldo del cliente.
+//
+// SOLICITUDES DE FACTURA (clase FACTURA, código FAC-…): mismo registro y misma novedad, pero
+// Contabilidad confirma el pago y adjunta la factura (PDF y XML) en un solo paso (FACTURADO).
+// El dinero entra a una bolsa de anticipos facturados a nombre del cliente y no genera gastos.
 // =====================================
 
 export type DatosCliente = {
@@ -38,6 +42,8 @@ export type DatosCliente = {
 }
 
 export type DatosAnticipo = {
+  // Solo al crearlo (por defecto ANTICIPO); después no cambia
+  clase?: string
   tipo: string
   cliente: DatosCliente
   clienteEmpresarialId: number
@@ -58,13 +64,33 @@ export type DatosConfirmacionAnticipo = {
   observacion?: string | null
 }
 
+export type DatosFacturacion = {
+  id: number
+  valorRecibido: number
+  numeroFactura: string
+  observacion?: string | null
+}
+
+// Factura de cada solicitud: el PDF y el XML de la DIAN son obligatorios
+export type ArchivosFactura = { pdf?: Express.Multer.File, xml?: Express.Multer.File }
+
 const CARPETA = 'gastos/anticipos'
 
 const texto = (valor: unknown): string | null => String(valor ?? '').trim() || null
 const redondear = (valor: number) => Math.round(Number(valor) * 100) / 100
 const aCentavos = (valor: number | string | null | undefined) => Math.round(Number(valor ?? 0) * 100)
 
-const generarCodigo = (id: number, fecha: Date) => `ANT-${fecha.getFullYear()}-${String(id).padStart(6, '0')}`
+const PREFIJOS: Record<ClaseAnticipo, string> = { ANTICIPO: 'ANT', FACTURA: 'FAC' }
+
+// El consecutivo es el id: ANT y FAC comparten la numeración (no hay dos números iguales)
+const generarCodigo = (clase: ClaseAnticipo, id: number, fecha: Date) =>
+  `${PREFIJOS[clase]}-${fecha.getFullYear()}-${String(id).padStart(6, '0')}`
+
+const esFactura = (anticipo: { clase: string }) => anticipo.clase === CLASES_ANTICIPO.FACTURA
+
+// "el anticipo ANT-…" / "la solicitud de factura FAC-…" para los mensajes
+export const nombreAnticipo = (anticipo: { clase: string, codigo: string }) =>
+  esFactura(anticipo) ? `la solicitud de factura ${anticipo.codigo}` : `el anticipo ${anticipo.codigo}`
 
 const registrarTrazabilidad = (
   anticipoId: number,
@@ -74,6 +100,8 @@ const registrarTrazabilidad = (
   observacion: string | null,
   transaction: Transaction
 ) => TrazabilidadAnticipos.create({ anticipoId, estadoAnterior, estadoNuevo, usuarioId, observacion }, { transaction })
+
+const mayuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1)
 
 const anticipoBloqueado = async (id: number, transaction: Transaction) => {
   const anticipo = await Anticipos.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE })
@@ -104,8 +132,9 @@ const resolverCliente = async (datos: DatosCliente, transaction: Transaction) =>
   return tercero.id
 }
 
-// Valida catálogos y reglas por tipo; devuelve los campos listos para guardar
-const prepararDatos = async (datos: DatosAnticipo, transaction: Transaction) => {
+// Valida catálogos y reglas por tipo; devuelve los campos listos para guardar.
+// Cada clase solo entra a su tipo de bolsa (anticipos o anticipos facturados)
+const prepararDatos = async (datos: DatosAnticipo, clase: ClaseAnticipo, transaction: Transaction) => {
   const [bolsa, operacion, clienteEmpresarial] = await Promise.all([
     Bolsas.findByPk(datos.bolsaId, { transaction }),
     Operaciones.findByPk(datos.operacionId, { transaction }),
@@ -113,7 +142,11 @@ const prepararDatos = async (datos: DatosAnticipo, transaction: Transaction) => 
   ])
 
   if (!bolsa?.activo) throw new ErrorGastos('La bolsa no existe o está inactiva')
-  if (bolsa.tipo !== TIPOS_BOLSA.ANTICIPOS) throw new ErrorGastos(`La bolsa ${bolsa.nombre} no es de anticipos`)
+  if (bolsa.tipo !== BOLSA_DE_CLASE[clase]) {
+    throw new ErrorGastos(clase === CLASES_ANTICIPO.FACTURA
+      ? `La bolsa ${bolsa.nombre} no es de anticipos facturados`
+      : `La bolsa ${bolsa.nombre} no es de anticipos`)
+  }
   if (!operacion) throw new ErrorGastos('La operación no existe')
   if (!clienteEmpresarial?.activo) throw new ErrorGastos('El cliente empresarial no existe o está inactivo')
 
@@ -176,12 +209,17 @@ const guardarSoportes = async (anticipo: Anticipos, archivos: Express.Multer.Fil
 
 export const crearAnticipo = (datos: DatosAnticipo, archivos: Express.Multer.File[], usuarioId: number) => {
   if (!archivos.length) throw new ErrorGastos('Adjunte el soporte de la consignación')
+  const clase: ClaseAnticipo = datos.clase === CLASES_ANTICIPO.FACTURA ? CLASES_ANTICIPO.FACTURA : CLASES_ANTICIPO.ANTICIPO
 
   return db.transaction(async transaction => {
-    const campos = await prepararDatos(datos, transaction)
-    const anticipo = await Anticipos.create({ ...campos, estado: ESTADOS_ANTICIPO.POR_CONFIRMAR, creadoPor: usuarioId }, { transaction })
-    await anticipo.update({ codigo: generarCodigo(anticipo.id, anticipo.createdAt) }, { transaction })
-    await registrarTrazabilidad(anticipo.id, null, ESTADOS_ANTICIPO.POR_CONFIRMAR, usuarioId, 'Anticipo registrado', transaction)
+    const campos = await prepararDatos(datos, clase, transaction)
+    const anticipo = await Anticipos.create({ ...campos, clase, estado: ESTADOS_ANTICIPO.POR_CONFIRMAR, creadoPor: usuarioId }, { transaction })
+    await anticipo.update({ codigo: generarCodigo(clase, anticipo.id, anticipo.createdAt) }, { transaction })
+    await registrarTrazabilidad(
+      anticipo.id, null, ESTADOS_ANTICIPO.POR_CONFIRMAR, usuarioId,
+      clase === CLASES_ANTICIPO.FACTURA ? 'Solicitud de factura registrada' : 'Anticipo registrado',
+      transaction
+    )
     await guardarSoportes(anticipo, archivos, usuarioId, transaction)
     return anticipo
   })
@@ -196,7 +234,7 @@ export const actualizarAnticipo = (id: number, datos: DatosAnticipo, archivos: E
     const anticipo = await anticipoBloqueado(id, transaction)
     if (!EDITABLES.includes(anticipo.estado)) throw new ErrorGastos('Solo se puede corregir un anticipo por confirmar o con novedad')
 
-    const campos = await prepararDatos(datos, transaction)
+    const campos = await prepararDatos(datos, anticipo.clase as ClaseAnticipo, transaction)
     await guardarSoportes(anticipo, archivos, usuarioId, transaction)
     if (!(await DocumentosGasto.count({ where: { anticipoId: anticipo.id }, transaction }))) {
       throw new ErrorGastos('Adjunte el soporte de la consignación')
@@ -227,7 +265,7 @@ export const anularAnticipo = (id: number, motivo: string, usuarioId: number) =>
 export const marcarNovedad = (id: number, motivo: string, usuarioId: number) =>
   db.transaction(async transaction => {
     const anticipo = await anticipoBloqueado(id, transaction)
-    if (anticipo.estado !== ESTADOS_ANTICIPO.POR_CONFIRMAR) throw new ErrorGastos(`El anticipo ${anticipo.codigo} no está por confirmar`)
+    if (anticipo.estado !== ESTADOS_ANTICIPO.POR_CONFIRMAR) throw new ErrorGastos(`${mayuscula(nombreAnticipo(anticipo))} no está por confirmar`)
 
     await anticipo.update({ estado: ESTADOS_ANTICIPO.NOVEDAD, motivoNovedad: motivo.trim() }, { transaction })
     await registrarTrazabilidad(anticipo.id, ESTADOS_ANTICIPO.POR_CONFIRMAR, ESTADOS_ANTICIPO.NOVEDAD, usuarioId, motivo.trim(), transaction)
@@ -249,6 +287,7 @@ export const confirmarAnticipos = (lista: DatosConfirmacionAnticipo[], usuarioId
 
     const porBolsa = new Map<number, { anticipo: Anticipos, datos: DatosConfirmacionAnticipo }[]>()
     for (const anticipo of anticipos) {
+      if (esFactura(anticipo)) throw new ErrorGastos(`${anticipo.codigo} es una solicitud de factura: se confirma al facturarla`)
       if (anticipo.estado !== ESTADOS_ANTICIPO.POR_CONFIRMAR) throw new ErrorGastos(`El anticipo ${anticipo.codigo} ya no está por confirmar`)
       const datos = lista.find(a => a.id === anticipo.id)!
       if (!(redondear(datos.valorRecibido) > 0)) throw new ErrorGastos(`El valor recibido del anticipo ${anticipo.codigo} debe ser mayor a cero`)
@@ -291,6 +330,120 @@ export const confirmarAnticipos = (lista: DatosConfirmacionAnticipo[], usuarioId
 
     return anticipos.map(a => a.id)
   })
+
+// Confirma el pago y factura una o varias solicitudes de factura (todas o ninguna).
+// Cada una suma a su bolsa de anticipos facturados lo que de verdad entró, a nombre de su cliente,
+// y guarda el PDF y el XML de su factura. Si algo falla, borra de Azure lo que alcanzó a subir.
+export const facturarSolicitudes = async (lista: DatosFacturacion[], archivos: Map<number, ArchivosFactura>, usuarioId: number) => {
+  const ids = lista.map(a => a.id)
+  if (new Set(ids).size !== ids.length) throw new ErrorGastos('Hay solicitudes repetidas en la facturación')
+
+  const numeros = lista.map(a => texto(a.numeroFactura)?.toUpperCase() ?? '')
+  const repetido = numeros.find((n, i) => n && numeros.indexOf(n) !== i)
+  if (repetido) throw new ErrorGastos(`La factura ${repetido} está repetida en la facturación`)
+
+  const subidos: { rutaDirectorio: string, nombreArchivo: string }[] = []
+  try {
+    return await db.transaction(async transaction => {
+      // Se bloquean para que nadie las facture dos veces al mismo tiempo
+      const solicitudes = await Anticipos.findAll({
+        where: { id: { [Op.in]: ids } }, transaction, lock: transaction.LOCK.UPDATE, order: [['id', 'ASC']]
+      })
+      if (solicitudes.length !== ids.length) throw new ErrorGastos('Una o más solicitudes no existen')
+
+      const [tipoPdf, tipoXml] = await Promise.all([
+        TiposDocumentoGasto.findOne({ where: { codigo: TIPOS_DOCUMENTO.FACTURA_ANTICIPO }, transaction }),
+        TiposDocumentoGasto.findOne({ where: { codigo: TIPOS_DOCUMENTO.FACTURA_ANTICIPO_XML }, transaction })
+      ])
+      if (!tipoPdf || !tipoXml) throw new ErrorGastos('Faltan los tipos de documento de la factura en el catálogo', 500)
+
+      // Un número de factura no se registra dos veces
+      const yaUsadas = await Anticipos.findAll({
+        where: { numeroFactura: { [Op.in]: numeros.filter(Boolean) }, estado: ESTADOS_ANTICIPO.FACTURADO },
+        attributes: ['codigo', 'numeroFactura'],
+        transaction
+      })
+      if (yaUsadas.length) {
+        throw new ErrorGastos(`La factura ${yaUsadas[0].numeroFactura} ya está registrada en ${yaUsadas[0].codigo}`)
+      }
+
+      const porBolsa = new Map<number, { solicitud: Anticipos, datos: DatosFacturacion }[]>()
+      for (const solicitud of solicitudes) {
+        if (!esFactura(solicitud)) throw new ErrorGastos(`${solicitud.codigo} es un anticipo, no una solicitud de factura`)
+        if (solicitud.estado !== ESTADOS_ANTICIPO.POR_CONFIRMAR) throw new ErrorGastos(`La solicitud ${solicitud.codigo} ya no está por facturar`)
+        const datos = lista.find(a => a.id === solicitud.id)!
+        if (!(redondear(datos.valorRecibido) > 0)) throw new ErrorGastos(`El valor recibido de ${solicitud.codigo} debe ser mayor a cero`)
+        if (!texto(datos.numeroFactura)) throw new ErrorGastos(`Indique el número de factura de ${solicitud.codigo}`)
+        const factura = archivos.get(solicitud.id)
+        if (!factura?.pdf) throw new ErrorGastos(`Adjunte la factura en PDF de ${solicitud.codigo}`)
+        if (!factura?.xml) throw new ErrorGastos(`Adjunte el XML de la factura de ${solicitud.codigo}`)
+        porBolsa.set(solicitud.bolsaId, [...(porBolsa.get(solicitud.bolsaId) ?? []), { solicitud, datos }])
+      }
+
+      for (const [bolsaId, grupo] of porBolsa) {
+        await registrarMovimientos(bolsaId, grupo.map(({ solicitud, datos }) => ({
+          tipo: TIPOS_MOVIMIENTO_BOLSA.ANTICIPO,
+          valor: redondear(datos.valorRecibido),
+          anticipoId: solicitud.id,
+          clienteId: solicitud.clienteId,
+          observacion: `Solicitud de factura ${solicitud.codigo} · factura ${texto(datos.numeroFactura)!.toUpperCase()}`
+        })), usuarioId, transaction)
+      }
+
+      const ahora = new Date()
+      for (const solicitud of solicitudes) {
+        const datos = lista.find(a => a.id === solicitud.id)!
+        const factura = archivos.get(solicitud.id)!
+        const numeroFactura = texto(datos.numeroFactura)!.toUpperCase()
+        const valorRecibido = redondear(datos.valorRecibido)
+        const diferencia = (aCentavos(valorRecibido) - aCentavos(solicitud.valorConsignado)) / 100
+
+        const rutaDirectorio = `${CARPETA}/${solicitud.codigo}`
+        const documentos = []
+        for (const [archivo, tipoDocumentoId] of [[factura.pdf!, tipoPdf.id], [factura.xml!, tipoXml.id]] as const) {
+          const nombreArchivo = nombreSeguro(archivo.originalname)
+          await subirArchivo(rutaDirectorio, nombreArchivo, archivo.buffer)
+          subidos.push({ rutaDirectorio, nombreArchivo })
+          documentos.push({
+            anticipoId: solicitud.id,
+            tipoDocumentoId,
+            nombreOriginal: archivo.originalname,
+            nombreArchivo,
+            rutaDirectorio,
+            tipoArchivo: archivo.mimetype,
+            tamano: archivo.size,
+            subidoPor: usuarioId
+          })
+        }
+        await DocumentosGasto.bulkCreate(documentos, { transaction })
+
+        await solicitud.update({
+          estado: ESTADOS_ANTICIPO.FACTURADO,
+          valorRecibido: String(valorRecibido),
+          numeroFactura,
+          fechaFacturacion: ahora,
+          observacionContabilidad: texto(datos.observacion),
+          confirmadoPor: usuarioId,
+          fechaConfirmacion: ahora
+        }, { transaction })
+        await registrarTrazabilidad(
+          solicitud.id, ESTADOS_ANTICIPO.POR_CONFIRMAR, ESTADOS_ANTICIPO.FACTURADO, usuarioId,
+          [
+            `Pago confirmado por ${formatoMoneda(valorRecibido)} · factura ${numeroFactura}`,
+            diferencia !== 0 ? `diferencia con lo consignado: ${formatoMoneda(diferencia)}` : null,
+            texto(datos.observacion)
+          ].filter(Boolean).join(' · '),
+          transaction
+        )
+      }
+
+      return solicitudes.map(s => s.id)
+    })
+  } catch (error) {
+    await Promise.allSettled(subidos.map(a => eliminarArchivo(a.rutaDirectorio, a.nombreArchivo)))
+    throw error
+  }
+}
 
 // ── Saldos por cliente ──
 
@@ -515,6 +668,7 @@ export const avisoSaldoCliente = async (anticipoId: number) => {
 
 export type FiltrosAnticipos = {
   creadoPor?: number | null
+  clase?: string | null
   estado?: string | null
   tipo?: string | null
   bolsaId?: number | null
@@ -533,6 +687,7 @@ const INCLUDES_LISTADO = [
 export const listarAnticipos = async (filtros: FiltrosAnticipos) => {
   const condiciones: WhereOptions[] = []
   if (filtros.creadoPor) condiciones.push({ creadoPor: filtros.creadoPor })
+  if (filtros.clase) condiciones.push({ clase: filtros.clase })
   if (filtros.estado) condiciones.push({ estado: filtros.estado.split(',') })
   if (filtros.tipo) condiciones.push({ tipo: filtros.tipo })
   if (filtros.bolsaId) condiciones.push({ bolsaId: filtros.bolsaId })
@@ -543,7 +698,7 @@ export const listarAnticipos = async (filtros: FiltrosAnticipos) => {
     condiciones.push({
       [Op.or]: [
         { codigo: patron }, { placa: patron }, { matriculaInmobiliaria: patron },
-        { reciboCaja: patron }, { '$cliente.nombre$': patron }, { '$cliente.identificacion$': patron }
+        { reciboCaja: patron }, { numeroFactura: patron }, { '$cliente.nombre$': patron }, { '$cliente.identificacion$': patron }
       ]
     })
   }
@@ -566,5 +721,11 @@ export const listarAnticipos = async (filtros: FiltrosAnticipos) => {
   return { total: count, pagina: filtros.pagina, tamano: filtros.tamano, registros: rows }
 }
 
-export const contarAnticipos = (estado: EstadoAnticipo, creadoPor?: number) =>
-  Anticipos.count({ where: { estado, ...(creadoPor ? { creadoPor } : {}) } })
+export const contarAnticipos = (estado: EstadoAnticipo, filtros: { creadoPor?: number, clase?: ClaseAnticipo } = {}) =>
+  Anticipos.count({
+    where: {
+      estado,
+      ...(filtros.creadoPor ? { creadoPor: filtros.creadoPor } : {}),
+      ...(filtros.clase ? { clase: filtros.clase } : {})
+    }
+  })

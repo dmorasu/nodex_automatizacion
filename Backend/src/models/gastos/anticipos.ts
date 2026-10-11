@@ -13,23 +13,32 @@ import TrazabilidadAnticipos from './trazabilidadAnticipos'
 // revisa que el dinero haya entrado y lo confirma con el recibo de caja (CONFIRMADO: suma a la
 // bolsa de anticipos y al saldo del cliente) o lo devuelve con novedad (NOVEDAD). Ya confirmado,
 // el creador lo convierte en uno o varios gastos no reembolsables que se pagan de esa bolsa.
+// Las solicitudes de factura (clase FACTURA) siguen el mismo registro, pero Contabilidad confirma
+// el pago y adjunta la factura en un solo paso (FACTURADO) y no generan gastos.
 @Table({
   tableName: 'gastos_anticipos',
   underscored: true
 })
 class Anticipos extends Model {
 
-  // ANT-2026-000123: es el número de solicitud del anticipo. Se asigna justo después de crear el registro
+  // ANT-2026-000123 (FAC-… en las solicitudes de factura): es el número de solicitud.
+  // Se asigna justo después de crear el registro
   @Unique
   @Column({ type: DataType.STRING(20) })
   declare codigo: string
+
+  // ANTICIPO | FACTURA (constantes CLASES_ANTICIPO). Se define al crearlo y no cambia
+  @AllowNull(false)
+  @Default('ANTICIPO')
+  @Column({ type: DataType.STRING(20) })
+  declare clase: string
 
   // VEHICULO | INMUEBLE
   @AllowNull(false)
   @Column({ type: DataType.STRING(20) })
   declare tipo: string
 
-  // POR_CONFIRMAR | NOVEDAD | CONFIRMADO | ANULADO
+  // POR_CONFIRMAR | NOVEDAD | CONFIRMADO | FACTURADO | ANULADO
   @AllowNull(false)
   @Default('POR_CONFIRMAR')
   @Column({ type: DataType.STRING(20) })
@@ -104,6 +113,13 @@ class Anticipos extends Model {
 
   @Column({ type: DataType.TEXT })
   declare observacionContabilidad: string | null
+
+  // Solicitudes de factura: número de la factura que hizo Contabilidad (PDF y XML en los documentos)
+  @Column({ type: DataType.STRING(50) })
+  declare numeroFactura: string | null
+
+  @Column({ type: DataType.DATE })
+  declare fechaFacturacion: Date | null
 
   // Motivo de la última novedad (se conserva en la trazabilidad aunque se corrija)
   @Column({ type: DataType.TEXT })

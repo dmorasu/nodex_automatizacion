@@ -27,12 +27,13 @@ export class ApoyoGastosController {
   }
 
   // Bolsas activas para elegir al crear el gasto (sin saldo: eso lo ve Tesorería).
-  // ?tipo=ANTICIPOS para el formulario del anticipo; por defecto las generales (las de
-  // anticipos solo pagan gastos creados desde un anticipo)
+  // ?tipo=ANTICIPOS o FACTURAS para el formulario del anticipo o de la solicitud de factura;
+  // por defecto las generales (las de anticipos solo pagan gastos creados desde un anticipo)
   static bolsas = async (req: Request, res: Response) => {
     try {
+      const tipo = [TIPOS_BOLSA.ANTICIPOS, TIPOS_BOLSA.FACTURAS].find(t => t === req.query.tipo) ?? TIPOS_BOLSA.GENERAL
       const bolsas = await Bolsas.findAll({
-        where: { activo: true, tipo: req.query.tipo === TIPOS_BOLSA.ANTICIPOS ? TIPOS_BOLSA.ANTICIPOS : TIPOS_BOLSA.GENERAL },
+        where: { activo: true, tipo },
         attributes: ['id', 'nombre', 'lineaNegocio', 'tipo'],
         order: [['nombre', 'ASC']]
       })

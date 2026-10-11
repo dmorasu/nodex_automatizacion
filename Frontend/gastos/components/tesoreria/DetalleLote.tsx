@@ -104,7 +104,7 @@ export default async function DetalleLote({
 
       {/* Soporte del banco: se adjunta cuando Dirección aprueba; con él se confirma el pago */}
       {modo === "tesoreria" && lote.estado === "APROBADO" ? (
-        <Seccion titulo="Confirmar pago" descripcion="Adjunte el soporte del banco y la fecha del pago, y confírmelo (en un solo paso).">
+        <Seccion titulo="Confirmar pago">
           <div className="space-y-6">
             <SoportesLote
               loteId={lote.id}
@@ -118,7 +118,7 @@ export default async function DetalleLote({
           </div>
         </Seccion>
       ) : (pagado || lote.documentos.length > 0) && (
-        <Seccion titulo="Soporte de pago" descripcion="Lo ven también quienes crearon los gastos de este lote.">
+        <Seccion titulo="Soporte de pago">
           {modo === "tesoreria" && pagado ? <SoportesLote
             loteId={lote.id}
             documentos={lote.documentos}

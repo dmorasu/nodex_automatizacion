@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import { body, query } from 'express-validator'
-import { ESTADOS_ANTICIPO, TIPOS_ANTICIPO } from '../../services/gastos/constantes'
+import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, TIPOS_ANTICIPO } from '../../services/gastos/constantes'
 
 // Validan forma y tipos; las reglas de negocio están en services/gastos/anticipos.ts
 
@@ -24,6 +24,7 @@ const obligatorio = (campo: string, nombre: string, max: number) =>
 // Todos los campos son obligatorios (placa en vehículos; matrícula en inmuebles).
 // El número de solicitud es el código que asigna el sistema (ANT-…)
 export const validarAnticipo = [
+  body('clase').optional({ values: 'falsy' }).isIn(Object.values(CLASES_ANTICIPO)).withMessage('Clase de anticipo no válida'),
   body('tipo').isIn(Object.values(TIPOS_ANTICIPO)).withMessage('Indique si el anticipo es de un vehículo o de un inmueble'),
   body('cliente.tipoIdentificacion').isIn(['CC', 'NIT']).withMessage('El tipo de identificación del cliente debe ser cédula o NIT'),
   obligatorio('cliente.identificacion', 'La identificación del cliente', 30),
@@ -32,7 +33,7 @@ export const validarAnticipo = [
   obligatorio('cliente.direccion', 'La dirección del cliente', 200),
   body('clienteEmpresarialId').isInt({ min: 1 }).withMessage('Seleccione el cliente empresarial').toInt(),
   body('operacionId').isInt({ min: 1 }).withMessage('Seleccione la operación').toInt(),
-  body('bolsaId').isInt({ min: 1 }).withMessage('Seleccione la bolsa de anticipos').toInt(),
+  body('bolsaId').isInt({ min: 1 }).withMessage('Seleccione la bolsa').toInt(),
   obligatorio('concepto', 'El concepto', 200),
   body('placa').if(body('tipo').equals(TIPOS_ANTICIPO.VEHICULO)).isString().trim().notEmpty().withMessage('La placa es obligatoria').isLength({ max: 20 }),
   body('matriculaInmobiliaria').if(body('tipo').equals(TIPOS_ANTICIPO.INMUEBLE)).isString().trim().notEmpty().withMessage('La matrícula inmobiliaria es obligatoria').isLength({ max: 50 }),
@@ -56,7 +57,20 @@ export const validarConfirmacionAnticipos = [
   body('anticipos.*.observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
 ]
 
+// Contabilidad confirma el pago y factura una o varias solicitudes de factura.
+// Llega en multipart: datos = JSON con la lista; los archivos en pdf_<id> y xml_<id>
+export const validarFacturacion = [
+  body('solicitudes').isArray({ min: 1, max: 50 }).withMessage('Seleccione entre 1 y 50 solicitudes'),
+  body('solicitudes.*.id').isInt({ min: 1 }).withMessage('Solicitud no válida').toInt(),
+  body('solicitudes.*.valorRecibido').isFloat({ gt: 0 }).withMessage('El valor recibido debe ser mayor a cero').toFloat(),
+  body('solicitudes.*.numeroFactura').isString().trim()
+    .notEmpty().withMessage('Indique el número de factura')
+    .isLength({ max: 50 }).withMessage('El número de factura no puede superar 50 caracteres'),
+  body('solicitudes.*.observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
+]
+
 export const validarListadoAnticipos = [
+  query('clase').optional().isIn(Object.values(CLASES_ANTICIPO)),
   query('estado').optional().custom(valor => String(valor).split(',').every(e => (Object.values(ESTADOS_ANTICIPO) as string[]).includes(e)))
     .withMessage('Estado no válido'),
   query('tipo').optional().isIn(Object.values(TIPOS_ANTICIPO)),
@@ -65,9 +79,4 @@ export const validarListadoAnticipos = [
   query('busqueda').optional().isString().isLength({ max: 100 }),
   query('pagina').optional().isInt({ min: 1 }),
   query('tamano').optional().isInt({ min: 1, max: 200 })
-]
-
-export const validarClienteEmpresarial = [
-  body('nombre').optional().isString().trim().notEmpty().withMessage('Escriba el nombre').isLength({ max: 150 }),
-  body('activo').optional().isBoolean().withMessage('Activo debe ser verdadero o falso')
 ]

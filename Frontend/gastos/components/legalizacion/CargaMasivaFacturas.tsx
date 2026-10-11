@@ -209,9 +209,7 @@ export default function CargaMasivaFacturas({
       >
         <UploadCloud size={30} className="text-emerald-500" />
         <p className="mt-2 text-sm font-semibold text-slate-700">Arrastre aquí las facturas o haga clic para elegirlas</p>
-        <p className="mt-1 text-xs text-slate-400">
-          PDF, JPG o PNG. Si el nombre del archivo tiene el código del gasto, el N° de trámite, la placa o la matrícula, se asigna solo.
-        </p>
+        <p className="mt-1 text-xs text-slate-400">PDF, JPG o PNG</p>
         <input
           ref={entrada}
           type="file"

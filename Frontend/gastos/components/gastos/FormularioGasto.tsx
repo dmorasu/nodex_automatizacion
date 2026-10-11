@@ -304,10 +304,7 @@ export default function FormularioGasto({
       )}
 
       {/* ── TRÁMITE ── */}
-      <Seccion
-        titulo="Trámite asociado"
-        descripcion="Opcional. Si el gasto es de un trámite, cárguelo para completar los datos automáticamente."
-      >
+      <Seccion titulo="Trámite asociado">
         {datos.solicitudTramiteId ? (
           <div className="flex items-start justify-between gap-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3">
             <div className="text-xs text-slate-600">
@@ -476,7 +473,7 @@ export default function FormularioGasto({
 
 
       {/* ── BENEFICIARIO ── */}
-      <Seccion titulo="Beneficiario del pago" descripcion="A quién se le paga. Se guarda para reutilizarlo en otros gastos.">
+      <Seccion titulo="Beneficiario del pago">
         {beneficiario ? (
           <div className="flex items-start justify-between gap-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
             <div className="text-xs text-slate-600">
@@ -543,12 +540,7 @@ export default function FormularioGasto({
 
 
       {/* ── VALOR ── */}
-      <Seccion
-        titulo="Valor"
-        descripcion={llevaRetencion
-          ? "Tesorería paga el valor solicitado sin deducción; la retención es informativa. El 4x1000 se calcula cuando Legalización registre la factura real."
-          : "Valor del gasto. El 4x1000 se calcula cuando Legalización registre la factura real."}
-      >
+      <Seccion titulo="Valor">
         <div className="grid gap-4 sm:grid-cols-3">
           <Campo etiqueta="Valor solicitado" obligatorio>
             <input

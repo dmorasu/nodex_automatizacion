@@ -11,6 +11,7 @@ import {
   Users,
   BadgeCheck,
   HandCoins,
+  ListChecks,
   type LucideIcon
 } from "lucide-react"
 import { obtenerSesion } from "@/src/auth/dal"
@@ -28,7 +29,8 @@ const ASPECTO: Record<string, { Icono: LucideIcon, fondo: string, sombra: string
   "/tablero": { Icono: BarChart3, fondo: "from-indigo-400 to-indigo-600", sombra: "shadow-indigo-500/30", borde: "hover:border-indigo-300", halo: "bg-indigo-400" },
   "/reportes": { Icono: FileSpreadsheet, fondo: "from-teal-400 to-cyan-600", sombra: "shadow-teal-500/30", borde: "hover:border-teal-300", halo: "bg-teal-400" },
   "/admin": { Icono: Settings2, fondo: "from-slate-500 to-slate-700", sombra: "shadow-slate-500/30", borde: "hover:border-slate-400", halo: "bg-slate-400" },
-  "/usuarios": { Icono: Users, fondo: "from-rose-400 to-pink-600", sombra: "shadow-rose-500/30", borde: "hover:border-rose-300", halo: "bg-rose-400" }
+  "/usuarios": { Icono: Users, fondo: "from-rose-400 to-pink-600", sombra: "shadow-rose-500/30", borde: "hover:border-rose-300", halo: "bg-rose-400" },
+  "/catalogos": { Icono: ListChecks, fondo: "from-lime-400 to-green-600", sombra: "shadow-lime-500/30", borde: "hover:border-lime-300", halo: "bg-lime-400" }
 }
 
 const ASPECTO_POR_DEFECTO = ASPECTO["/admin"]
@@ -52,9 +54,9 @@ type Pendiente = { cantidad: number, texto: string }
 const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pendiente[]>> => {
   const puede = (rol: (typeof ROLES)[keyof typeof ROLES]) => tieneAcceso(roles, [rol])
 
-  // Anticipos: con novedad y confirmados sin gasto (los propios) y por confirmar (Contabilidad)
+  // Anticipos: con novedad y confirmados sin gasto (los propios); por confirmar y solicitudes por facturar (Contabilidad)
   const anticipos = fetchApi("/gastos/anticipos/resumen")
-    .then(async req => req.ok ? await req.json() as { porConfirmar: number, conNovedad: number, confirmadosSinGasto: number } : null)
+    .then(async req => req.ok ? await req.json() as { porConfirmar: number, porFacturar?: number, conNovedad: number, confirmadosSinGasto: number } : null)
     .catch(() => null)
 
   const consultas: [string, string, Promise<number>][] = [
@@ -85,6 +87,7 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
   if (puede(ROLES.CONTABILIDAD)) {
     consultas.push(
       ["/contabilidad", "anticipos por confirmar", anticipos.then(r => r?.porConfirmar ?? 0)],
+      ["/contabilidad", "solicitudes por facturar", anticipos.then(r => r?.porFacturar ?? 0)],
       ["/contabilidad", "no reembolsables sin factura", contar({ alcance: "todos", estado: "PAGADO", reembolsable: "no" })],
       ["/contabilidad", "por contabilizar", contar({ alcance: "todos", estado: "LEGALIZADO", reembolsable: "no", sinCuentaCobro: "si" })]
     )

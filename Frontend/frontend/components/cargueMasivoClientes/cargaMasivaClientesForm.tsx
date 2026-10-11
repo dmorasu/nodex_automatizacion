@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "react-toastify"
 import { useState } from "react"
 
 import {
@@ -108,7 +109,7 @@ export default function CargaMasivaClientes() {
 
       if (!res.ok) {
 
-        alert(
+        toast.error(
           json.message ||
           "Error validando archivo"
         )
@@ -136,7 +137,7 @@ export default function CargaMasivaClientes() {
 
       console.error(error)
 
-      alert(
+      toast.error(
         "Error validando archivo"
       )
 
@@ -231,7 +232,7 @@ export default function CargaMasivaClientes() {
           xhr.status !== 200
         ) {
 
-          alert(
+          toast.error(
             json.message ||
             "Error del servidor"
           )
@@ -262,7 +263,7 @@ export default function CargaMasivaClientes() {
 
         console.error(error)
 
-        alert(
+        toast.error(
           "Respuesta inválida del servidor"
         )
 
@@ -283,7 +284,7 @@ export default function CargaMasivaClientes() {
 
       setLoading(false)
 
-      alert(
+      toast.error(
         "Error en la carga"
       )
 

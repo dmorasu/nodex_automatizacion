@@ -98,7 +98,6 @@ export default function SubEstadosCombobox({
           disabled:text-slate-400
         "
 
-        required
 
         disabled={loading}
       >

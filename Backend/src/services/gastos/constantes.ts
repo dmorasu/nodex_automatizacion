@@ -93,7 +93,10 @@ export const TIPOS_DOCUMENTO = {
   // Comprobante de la consignación que hizo el cliente (anticipos)
   SOPORTE_CONSIGNACION: 'SOPORTE_CONSIGNACION',
   CUENTA_COBRO: 'CUENTA_COBRO',
-  SOPORTE_REINTEGRO: 'SOPORTE_REINTEGRO'
+  SOPORTE_REINTEGRO: 'SOPORTE_REINTEGRO',
+  // Factura que Contabilidad le hace al cliente en una solicitud de factura (PDF y XML de la DIAN)
+  FACTURA_ANTICIPO: 'FACTURA_ANTICIPO',
+  FACTURA_ANTICIPO_XML: 'FACTURA_ANTICIPO_XML'
 } as const
 
 export const PARAMETROS = {
@@ -106,12 +109,18 @@ export type ClaveParametro = typeof PARAMETROS[keyof typeof PARAMETROS]
 // GENERAL: la recarga Tesorería y paga cualquier gasto.
 // ANTICIPOS: se llena con los pagos de los clientes del banco (anticipos confirmados por
 // Contabilidad) y además lleva el saldo de cada cliente; solo paga los gastos de esos anticipos.
+// FACTURAS (anticipos facturados): se llena con las solicitudes de factura que Contabilidad
+// factura; lleva el saldo de cada cliente (inventario de quién pagó) y no paga ningún gasto.
 export const TIPOS_BOLSA = {
   GENERAL: 'GENERAL',
-  ANTICIPOS: 'ANTICIPOS'
+  ANTICIPOS: 'ANTICIPOS',
+  FACTURAS: 'FACTURAS'
 } as const
 
 export type TipoBolsa = typeof TIPOS_BOLSA[keyof typeof TIPOS_BOLSA]
+
+// Las bolsas de anticipos y de anticipos facturados llevan cada movimiento a nombre de un cliente
+export const llevaSaldoPorCliente = (tipo: string) => tipo === TIPOS_BOLSA.ANTICIPOS || tipo === TIPOS_BOLSA.FACTURAS
 
 // Anticipo (ingreso de un cliente del banco): la operación lo registra → Contabilidad
 // confirma que el dinero entró (recibo de caja) o lo devuelve con novedad → se convierte en gastos
@@ -119,10 +128,27 @@ export const ESTADOS_ANTICIPO = {
   POR_CONFIRMAR: 'POR_CONFIRMAR',
   NOVEDAD: 'NOVEDAD',           // Contabilidad lo devolvió al creador para corregirlo
   CONFIRMADO: 'CONFIRMADO',     // el dinero entró: suma a la bolsa y al saldo del cliente
+  FACTURADO: 'FACTURADO',       // solicitud de factura: el dinero entró y Contabilidad adjuntó la factura
   ANULADO: 'ANULADO'
 } as const
 
 export type EstadoAnticipo = typeof ESTADOS_ANTICIPO[keyof typeof ESTADOS_ANTICIPO]
+
+// ANTICIPO: se convierte en gastos que se pagan de la bolsa de anticipos.
+// FACTURA (solicitud de factura): Contabilidad confirma el pago y factura en un solo paso;
+// el dinero queda en la bolsa de anticipos facturados y no genera gastos.
+export const CLASES_ANTICIPO = {
+  ANTICIPO: 'ANTICIPO',
+  FACTURA: 'FACTURA'
+} as const
+
+export type ClaseAnticipo = typeof CLASES_ANTICIPO[keyof typeof CLASES_ANTICIPO]
+
+// Bolsa que recibe el dinero de cada clase
+export const BOLSA_DE_CLASE: Record<ClaseAnticipo, TipoBolsa> = {
+  ANTICIPO: TIPOS_BOLSA.ANTICIPOS,
+  FACTURA: TIPOS_BOLSA.FACTURAS
+}
 
 export const TIPOS_ANTICIPO = {
   VEHICULO: 'VEHICULO',

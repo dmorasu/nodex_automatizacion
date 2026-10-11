@@ -18,6 +18,8 @@ export default async function AnticiposContabilidadPage({ searchParams }: { sear
   const porConfirmar = estado === "POR_CONFIRMAR"
   const { total, tamano, registros } = await obtenerAnticipos({
     alcance: "todos",
+    // Las solicitudes de factura tienen su propia pestaña
+    clase: "ANTICIPO",
     estado,
     busqueda: searchParams.busqueda,
     pagina,
@@ -38,13 +40,6 @@ export default async function AnticiposContabilidadPage({ searchParams }: { sear
           </Link>
         ))}
       </div>
-
-      {porConfirmar && (
-        <p className="text-xs text-slate-500">
-          Marque los anticipos cuyo pago ya verificó en el banco y use <b>Confirmar seleccionados</b> (puede poner el mismo recibo de caja
-          a todos). Para devolver uno con novedad, ábralo.
-        </p>
-      )}
 
       <Buscador
         valor={searchParams.busqueda}

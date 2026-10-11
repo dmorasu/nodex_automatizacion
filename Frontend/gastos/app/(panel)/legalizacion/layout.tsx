@@ -9,10 +9,6 @@ export default async function LegalizacionLayout({ children }: { children: React
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Legalización</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Gastos reembolsables ya pagados: registre su factura, agrúpelos en cuentas de cobro y gestione los reintegros.
-          Los no reembolsables los lleva Contabilidad.
-        </p>
       </div>
 
       <Pestanas

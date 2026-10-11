@@ -25,10 +25,7 @@ export default async function PanelLayout({
 
           <div className="hidden md:flex flex-1 items-center justify-center gap-3 px-8">
             <div className="h-8 w-px bg-slate-200" />
-            <div>
-              <p className="text-sm font-semibold text-slate-700 leading-tight">Módulo de Gestión de Gastos</p>
-              <p className="text-xs text-slate-400 mt-0.5">Solicitudes, pagos y legalizaciones</p>
-            </div>
+            <p className="text-sm font-semibold text-slate-700">Módulo de Gestión de Gastos</p>
           </div>
 
           <MenuUsuario sesion={sesion} />

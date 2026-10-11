@@ -7,7 +7,7 @@ import { useParams } from "next/navigation"
 import { Calendar } from "lucide-react"
 import { toast } from "react-toastify"
 
-import ErrorMessage from "../ui/ErrorMessage"
+import AvisarErrores from "../ui/AvisarErrores"
 
 import CrearProgramacion from "@/actions/crear-Programacion-action"
 import { toDateInput } from "@/src/ultis"
@@ -139,13 +139,7 @@ export default function AddProgramacionForm({
       {/* ERRORES                                           */}
       {/* ================================================= */}
 
-      {state.errors.map(error => (
-
-        <ErrorMessage key={error}>
-          {error}
-        </ErrorMessage>
-
-      ))}
+      <AvisarErrores errores={state.errors} />
 
 
 

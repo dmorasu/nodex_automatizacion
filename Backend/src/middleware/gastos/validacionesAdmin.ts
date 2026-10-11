@@ -1,25 +1,20 @@
 import { body, param } from 'express-validator'
 import { contrasenaSegura } from '../../utils/politicaContrasena'
-import { CATALOGOS_EDITABLES } from '../../controllers/gastos/CatalogosGastosController'
+import { CATALOGOS } from '../../services/gastos/catalogosGastos'
 import { PARAMETROS } from '../../services/gastos/constantes'
 
-const CATALOGOS = Object.keys(CATALOGOS_EDITABLES)
+const NOMBRES_CATALOGOS = Object.keys(CATALOGOS)
 
 export const validarCatalogo =
   param('catalogo')
-    .isIn(CATALOGOS)
-    .withMessage(`Catálogo no válido. Opciones: ${CATALOGOS.join(', ')}`)
+    .isIn(NOMBRES_CATALOGOS)
+    .withMessage(`Catálogo no válido. Opciones: ${NOMBRES_CATALOGOS.join(', ')}`)
 
 export const validarCrearCatalogo = [
   validarCatalogo,
 
-  body('codigo')
-    .trim()
-    .notEmpty().withMessage('El código es obligatorio')
-    .matches(/^[A-Z0-9_]+$/).withMessage('El código solo puede tener mayúsculas, números y guion bajo')
-    .isLength({ max: 50 }).withMessage('El código no puede superar 50 caracteres'),
-
   body('nombre')
+    .isString().withMessage('El nombre es obligatorio')
     .trim()
     .notEmpty().withMessage('El nombre es obligatorio')
     .isLength({ max: 100 }).withMessage('El nombre no puede superar 100 caracteres')
@@ -40,6 +35,12 @@ export const validarActualizarCatalogo = [
   body('activo')
     .optional()
     .isBoolean().withMessage('Activo debe ser verdadero o falso')
+    .toBoolean()
+]
+
+export const validarEliminarCatalogo = [
+  validarCatalogo,
+  param('id').isInt({ min: 1 }).withMessage('Id no válido')
 ]
 
 export const validarActualizarParametro = [

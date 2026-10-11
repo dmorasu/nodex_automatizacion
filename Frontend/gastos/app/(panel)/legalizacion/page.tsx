@@ -7,9 +7,6 @@ import Buscador from "@/components/ui/Buscador"
 export default function GastosSinFacturaPage({ searchParams }: { searchParams: { busqueda?: string } }) {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
-        Pagados, sin factura todavía: el trámite sigue en curso. Revise su estado en Nodex Trámites.
-      </p>
       <Buscador valor={searchParams.busqueda} />
       <TablaGastosPorFacturar
         filtros={{ reembolsable: "si", soporteTramitador: "no" }}

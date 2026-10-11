@@ -16,7 +16,7 @@ export default async function EditarAnticipoPage({ params }: { params: { id: str
       <div>
         <Link href={`/anticipos/${anticipo.id}`} className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
           <ArrowLeft size={14} />
-          Volver al anticipo
+          {anticipo.clase === "FACTURA" ? "Volver a la solicitud" : "Volver al anticipo"}
         </Link>
         <h1 className="mt-3 text-xl font-semibold text-slate-800">
           {anticipo.estado === "NOVEDAD" ? "Corregir" : "Editar"} {anticipo.codigo}

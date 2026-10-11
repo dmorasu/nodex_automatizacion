@@ -5,11 +5,12 @@ import { requiereAcceso } from "@/src/auth/dal"
 import { ROLES } from "@/src/auth/permisos"
 import { obtenerAnticipo } from "@/src/lib/datosAnticipos"
 import { formatoFecha, formatoFechaHora, formatoMoneda } from "@/src/lib/formato"
-import { TIPOS_ANTICIPO } from "@/src/schemas/gastos"
+import { esDocumentoFactura, TIPOS_ANTICIPO } from "@/src/schemas/gastos"
 import AccionesAnticipo from "@/components/anticipos/AccionesAnticipo"
 import EstadoAnticipo from "@/components/anticipos/EstadoAnticipo"
 import SoportesAnticipo from "@/components/anticipos/SoportesAnticipo"
 import EstadoGasto from "@/components/gastos/EstadoGasto"
+import ListaDocumentos from "@/components/gastos/ListaDocumentos"
 import Seccion from "@/components/ui/Seccion"
 import Dato from "@/components/ui/Dato"
 
@@ -18,6 +19,10 @@ export default async function DetalleAnticipoPage({ params }: { params: { id: st
   const anticipo = await obtenerAnticipo(Number(params.id))
   const saldo = anticipo.saldoCliente
   const diferencia = anticipo.valorRecibido !== null ? Number(anticipo.valorRecibido) - Number(anticipo.valorConsignado) : 0
+  // Solicitud de factura: Contabilidad confirma el pago y factura en un solo paso; no genera gastos
+  const esFactura = anticipo.clase === "FACTURA"
+  const recibido = anticipo.estado === "CONFIRMADO" || anticipo.estado === "FACTURADO"
+  const factura = anticipo.documentos.filter(esDocumentoFactura)
 
   return (
     <div className="space-y-6">
@@ -34,6 +39,7 @@ export default async function DetalleAnticipoPage({ params }: { params: { id: st
               <h1 className="text-xl font-semibold text-slate-800">{anticipo.codigo}</h1>
               <EstadoAnticipo estado={anticipo.estado} />
             </div>
+            {esFactura && <p className="mt-1 text-xs font-semibold text-sky-700">Solicitud de factura</p>}
             <p className="mt-1 text-sm text-slate-500">{anticipo.concepto}</p>
             <p className="mt-1 text-xs text-slate-400">
               Registrado por {anticipo.creador?.nombreUsuario} el {formatoFechaHora(anticipo.createdAt)}
@@ -45,7 +51,11 @@ export default async function DetalleAnticipoPage({ params }: { params: { id: st
         {anticipo.estado === "NOVEDAD" && anticipo.motivoNovedad && (
           <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
             <span className="font-semibold">Novedad de Contabilidad:</span> {anticipo.motivoNovedad}
-            {anticipo.permisos.editar && <span className="block text-red-600/80">Corríjalo para que Contabilidad lo revise de nuevo.</span>}
+            {anticipo.permisos.editar && (
+              <span className="block text-red-600/80">
+                {esFactura ? "Corríjala para que Contabilidad la revise de nuevo." : "Corríjalo para que Contabilidad lo revise de nuevo."}
+              </span>
+            )}
           </div>
         )}
         {anticipo.motivoAnulacion && (
@@ -63,7 +73,7 @@ export default async function DetalleAnticipoPage({ params }: { params: { id: st
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
 
-          <Seccion titulo="Datos del anticipo">
+          <Seccion titulo={esFactura ? "Datos de la solicitud" : "Datos del anticipo"}>
             <dl className="grid gap-5 sm:grid-cols-3">
               <Dato etiqueta="Tipo" valor={TIPOS_ANTICIPO[anticipo.tipo] ?? anticipo.tipo} />
               <Dato etiqueta={anticipo.placa ? "Placa" : "Matrícula inmobiliaria"} valor={anticipo.placa ?? anticipo.matriculaInmobiliaria} />
@@ -89,12 +99,18 @@ export default async function DetalleAnticipoPage({ params }: { params: { id: st
             </Seccion>
           )}
 
+          {esFactura && anticipo.estado === "FACTURADO" && (
+            <Seccion titulo={`Factura ${anticipo.numeroFactura ?? ""}`}>
+              <ListaDocumentos documentos={factura} vacio="Sin archivos de la factura." />
+            </Seccion>
+          )}
+
           <Seccion titulo="Soporte de la consignación">
             <SoportesAnticipo anticipo={anticipo} usuarioId={sesion.id} esAdmin={sesion.roles.includes(ROLES.ADMIN)} />
           </Seccion>
 
           {anticipo.estado === "CONFIRMADO" && (
-            <Seccion titulo="Gastos creados del anticipo" descripcion="Se pagan de la bolsa de anticipos y se descuentan del saldo del cliente.">
+            <Seccion titulo="Gastos creados del anticipo">
               {anticipo.gastos.length === 0 ? (
                 <p className="py-4 text-center text-xs text-slate-400">Aún no se ha creado ningún gasto.</p>
               ) : (
@@ -126,7 +142,7 @@ export default async function DetalleAnticipoPage({ params }: { params: { id: st
           </Seccion>
 
           <Seccion titulo="Contabilidad">
-            {anticipo.estado === "CONFIRMADO" ? (
+            {recibido ? (
               <dl className="space-y-4">
                 <Dato etiqueta="Valor real ingresado" valor={<span className="text-base font-semibold text-slate-800">{formatoMoneda(anticipo.valorRecibido)}</span>} />
                 {diferencia !== 0 && (
@@ -134,30 +150,40 @@ export default async function DetalleAnticipoPage({ params }: { params: { id: st
                     Diferencia con lo consignado: {diferencia > 0 && "+"}{formatoMoneda(diferencia)}
                   </p>
                 )}
-                <Dato etiqueta="Recibo de caja" valor={anticipo.reciboCaja} />
-                <Dato etiqueta="Confirmado por" valor={anticipo.confirmador && `${anticipo.confirmador.nombreUsuario} · ${formatoFechaHora(anticipo.fechaConfirmacion!)}`} />
+                {esFactura ? (
+                  <Dato etiqueta="Factura" valor={anticipo.numeroFactura} />
+                ) : (
+                  <Dato etiqueta="Recibo de caja" valor={anticipo.reciboCaja} />
+                )}
+                <Dato etiqueta={esFactura ? "Facturado por" : "Confirmado por"} valor={anticipo.confirmador && `${anticipo.confirmador.nombreUsuario} · ${formatoFechaHora(anticipo.fechaConfirmacion!)}`} />
                 {anticipo.observacionContabilidad && <Dato etiqueta="Observación" valor={anticipo.observacionContabilidad} />}
               </dl>
             ) : (
               <p className="text-xs text-slate-400">
-                {anticipo.estado === "POR_CONFIRMAR" ? "Pendiente: Contabilidad debe verificar que el dinero entró."
+                {anticipo.estado === "POR_CONFIRMAR"
+                  ? esFactura ? "Pendiente: Contabilidad debe confirmar el pago y hacer la factura." : "Pendiente: Contabilidad debe verificar que el dinero entró."
                   : anticipo.estado === "NOVEDAD" ? "Devuelto con novedad al creador." : "Anulado."}
               </p>
             )}
           </Seccion>
 
           {saldo && (
-            <Seccion titulo="Saldo del cliente" descripcion={`En la bolsa ${anticipo.bolsa.nombre}, sumando todos sus anticipos`}>
+            <Seccion titulo="Saldo del cliente" descripcion={`En la bolsa ${anticipo.bolsa.nombre}, sumando todos sus ${esFactura ? "pagos facturados" : "anticipos"}`}>
               <dl className="space-y-3">
-                <Dato etiqueta="Pagó (anticipos confirmados)" valor={formatoMoneda(saldo.ingresado)} />
-                <Dato etiqueta="Gastos pagados" valor={formatoMoneda(saldo.pagado)} />
+                <Dato etiqueta={esFactura ? "Pagó (solicitudes facturadas)" : "Pagó (anticipos confirmados)"} valor={formatoMoneda(saldo.ingresado)} />
+                {!esFactura && <Dato etiqueta="Gastos pagados" valor={formatoMoneda(saldo.pagado)} />}
                 {saldo.otros !== 0 && <Dato etiqueta="Reintegros y ajustes" valor={formatoMoneda(saldo.otros)} />}
                 <Dato etiqueta="Saldo" valor={<b>{formatoMoneda(saldo.saldo)}</b>} />
-                <Dato etiqueta="Gastos por pagar" valor={formatoMoneda(saldo.comprometido)} />
-                <Dato
-                  etiqueta="Disponible"
-                  valor={<span className={clsx("text-base font-semibold", saldo.disponible < 0 ? "text-red-600" : "text-emerald-700")}>{formatoMoneda(saldo.disponible)}</span>}
-                />
+                {/* Las solicitudes de factura no generan gastos: no hay nada por pagar */}
+                {!esFactura && (
+                  <>
+                    <Dato etiqueta="Gastos por pagar" valor={formatoMoneda(saldo.comprometido)} />
+                    <Dato
+                      etiqueta="Disponible"
+                      valor={<span className={clsx("text-base font-semibold", saldo.disponible < 0 ? "text-red-600" : "text-emerald-700")}>{formatoMoneda(saldo.disponible)}</span>}
+                    />
+                  </>
+                )}
               </dl>
               {saldo.disponible < 0 && (
                 <p className="mt-3 flex gap-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">

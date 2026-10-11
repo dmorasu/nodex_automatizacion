@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Plus, Pencil, Check, X, Loader2, PlusCircle, SlidersHorizontal, List } from "lucide-react"
 import { guardarBolsa } from "@/actions/gastos/bolsas"
 import { formatoMoneda } from "@/src/lib/formato"
-import type { Bolsa } from "@/src/schemas/gastos"
+import { llevaSaldoPorCliente, NOMBRES_TIPO_BOLSA, type Bolsa } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseInput } from "../ui/estilos"
 import ModalSaldoBolsa from "./ModalSaldoBolsa"
 
@@ -81,6 +81,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
           >
             <option value="GENERAL">General</option>
             <option value="ANTICIPOS">Anticipos de clientes</option>
+            <option value="FACTURAS">Anticipos facturados</option>
           </select>
         )}
       </td>
@@ -133,8 +134,8 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                   <td className="px-4 py-3 font-medium text-slate-700">{bolsa.nombre}</td>
                   <td className="px-4 py-3 text-slate-600">{bolsa.lineaNegocio ?? "—"}</td>
                   <td className="px-4 py-3">
-                    {bolsa.tipo === "ANTICIPOS"
-                      ? <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">Anticipos</span>
+                    {llevaSaldoPorCliente(bolsa.tipo)
+                      ? <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">{NOMBRES_TIPO_BOLSA[bolsa.tipo]}</span>
                       : <span className="text-slate-500">General</span>}
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatoMoneda(bolsa.saldoActual)}</td>
@@ -151,7 +152,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {/* Las de anticipos se llenan con los anticipos confirmados; sus ajustes son por cliente (en el detalle) */}
-                    {bolsa.activo && bolsa.tipo !== "ANTICIPOS" && (
+                    {bolsa.activo && !llevaSaldoPorCliente(bolsa.tipo) && (
                       <button
                         type="button"
                         onClick={() => setMovimiento({ bolsa, tipo: "RECARGA" })}
@@ -162,7 +163,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                         <PlusCircle size={15} />
                       </button>
                     )}
-                    {esAdmin && bolsa.tipo !== "ANTICIPOS" && (
+                    {esAdmin && !llevaSaldoPorCliente(bolsa.tipo) && (
                       <button
                         type="button"
                         onClick={() => setMovimiento({ bolsa, tipo: "AJUSTE" })}
@@ -176,7 +177,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                     <Link
                       href={`/tesoreria/bolsas/${bolsa.id}`}
                       className="inline-block p-2 text-slate-400 hover:text-emerald-600"
-                      title={bolsa.tipo === "ANTICIPOS" ? "Ver movimientos y saldos por cliente" : "Ver movimientos"}
+                      title={llevaSaldoPorCliente(bolsa.tipo) ? "Ver movimientos y saldos por cliente" : "Ver movimientos"}
                       aria-label={`Movimientos de ${bolsa.nombre}`}
                     >
                       <List size={15} />

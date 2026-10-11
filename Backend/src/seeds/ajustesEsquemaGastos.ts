@@ -142,10 +142,27 @@ const anticiposDeClientes = async () => {
   await db.query(`CREATE INDEX IF NOT EXISTS gastos_solicitudes_anticipo ON gastos_solicitudes (anticipo_id) WHERE anticipo_id IS NOT NULL`)
 }
 
+// 2026-10-10 · Solicitudes de factura: misma tabla de anticipos con su clase y la factura que
+// adjunta Contabilidad. Los anticipos que ya existen quedan como ANTICIPO por el DEFAULT
+const solicitudesDeFactura = async () => {
+  const columnas = await columnasDe('gastos_anticipos')
+  if (!columnas) return
+  const nuevas: [string, string][] = [
+    ['clase', `VARCHAR(20) NOT NULL DEFAULT 'ANTICIPO'`],
+    ['numero_factura', 'VARCHAR(50)'],
+    ['fecha_facturacion', 'TIMESTAMP WITH TIME ZONE']
+  ]
+  for (const [columna, tipo] of nuevas) {
+    if (!columnas[columna]) await db.query(`ALTER TABLE gastos_anticipos ADD COLUMN ${columna} ${tipo}`)
+  }
+  await db.query(`CREATE INDEX IF NOT EXISTS gastos_anticipos_clase_estado ON gastos_anticipos (clase, estado)`)
+}
+
 export const ajustarEsquemaGastos = async () => {
   await retencionPasaALaFactura()
   await contabilizacionDeGastos()
   await retencionAlCrearGasto()
   await pagoProgramado()
   await anticiposDeClientes()
+  await solicitudesDeFactura()
 }

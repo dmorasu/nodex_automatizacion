@@ -28,7 +28,6 @@ export default async function GastosConFacturaPage({ searchParams }: { searchPar
 
       <Seccion
         titulo="Factura subida por el tramitador"
-        descripcion="El tramitador ya envió la factura desde su app. Revise el soporte y registre los valores de la factura."
       >
         <TablaGastosPorFacturar
           filtros={{ reembolsable: "si", soporteTramitador: "si" }}
@@ -40,7 +39,6 @@ export default async function GastosConFacturaPage({ searchParams }: { searchPar
 
       <Seccion
         titulo="Factura registrada"
-        descripcion="Listos para agregarlos a una cuenta de cobro."
       >
         {total > MAXIMO_BANDEJA && (
           <p className="mb-3 text-xs text-amber-700">

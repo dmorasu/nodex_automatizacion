@@ -8,7 +8,7 @@ import { toast } from "react-toastify"
 
 import { Receipt } from "lucide-react"
 
-import ErrorMessage from "../ui/ErrorMessage"
+import AvisarErrores from "../ui/AvisarErrores"
 
 import CrearCuentaCobro
   from "@/actions/crear-CuentaCobro-action"
@@ -146,15 +146,7 @@ export default function AddCuentaCobroForm({
       {/* ERRORES                                           */}
       {/* ================================================= */}
 
-      {state.errors.map(error => (
-
-        <ErrorMessage
-          key={error}
-        >
-          {error}
-        </ErrorMessage>
-
-      ))}
+      <AvisarErrores errores={state.errors} />
 
 
 

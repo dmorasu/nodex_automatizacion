@@ -14,12 +14,10 @@ export default async function ReportesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Reportes</h1>
-        <p className="mt-1 text-sm text-slate-400">Descargue la información de los gastos en Excel para analizarla o compartirla.</p>
       </div>
 
       <Seccion
         titulo="Reporte de gastos"
-        descripcion="Una fila por gasto con todo su recorrido: solicitud, pago, egreso, factura, retención, 4x1000, reintegro, cuenta de cobro y contabilización."
       >
         {/* Formulario GET a la ruta de descarga: el navegador baja el archivo */}
         <form action="/descargas/gastos" method="GET" className="space-y-5">

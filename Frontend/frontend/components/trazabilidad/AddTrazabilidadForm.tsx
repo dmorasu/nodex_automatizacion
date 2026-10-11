@@ -7,7 +7,7 @@ import { useEffect } from "react"
 import { toast } from "react-toastify"
 import { Activity } from "lucide-react"
 
-import ErrorMessage from "../ui/ErrorMessage"
+import AvisarErrores from "../ui/AvisarErrores"
 import CrearTrazabilidad from "@/actions/crear-Trazabilidad"
 
 
@@ -131,15 +131,7 @@ export default function AddTrazabilidadForm({
       {/* ERRORES                                           */}
       {/* ================================================= */}
 
-      {state.errors.map(error => (
-
-        <ErrorMessage
-          key={error}
-        >
-          {error}
-        </ErrorMessage>
-
-      ))}
+      <AvisarErrores errores={state.errors} />
 
 
 

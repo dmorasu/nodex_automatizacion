@@ -23,9 +23,6 @@ export default async function NoReembolsablesPage({ searchParams }: { searchPara
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
-        Gastos que asume la bolsa (no se cobran al cliente): no van a Legalización. Aquí se registra su factura y se contabilizan.
-      </p>
 
       <div className="flex flex-wrap gap-2 text-xs">
         {VISTAS.map(v => (

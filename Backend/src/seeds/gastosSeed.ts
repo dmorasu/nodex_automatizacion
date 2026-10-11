@@ -69,6 +69,8 @@ const TIPOS_DOCUMENTO_INICIALES = [
   { codigo: 'CUENTA_COBRO', nombre: 'Cuenta de cobro' },
   { codigo: 'SOPORTE_REINTEGRO', nombre: 'Soporte de reintegro' },
   { codigo: 'SOPORTE_CONSIGNACION', nombre: 'Soporte de consignación' },
+  { codigo: 'FACTURA_ANTICIPO', nombre: 'Factura del cliente (PDF)' },
+  { codigo: 'FACTURA_ANTICIPO_XML', nombre: 'Factura electrónica (XML)' },
   { codigo: 'OTRO', nombre: 'Otro' }
 ]
 

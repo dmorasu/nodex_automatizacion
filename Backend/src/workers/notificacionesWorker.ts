@@ -82,7 +82,10 @@ new Worker(
       mediaUrl,
 
       // false en los correos del módulo de gastos
-      ccTorreControl = true
+      ccTorreControl = true,
+
+      // Archivos de Azure que van adjuntos (ej: la factura de una solicitud de factura)
+      adjuntos
 
     } = job.data
 
@@ -127,7 +130,9 @@ new Worker(
 
           cc,
 
-          ccTorreControl
+          ccTorreControl,
+
+          adjuntos
 
         )
 

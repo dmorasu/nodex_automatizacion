@@ -25,10 +25,6 @@ export default function AuthLayout({
             <h2 className="text-xl font-semibold text-white">
               Módulo de Gestión de Gastos
             </h2>
-            <p className="mt-3 text-xs leading-5 text-emerald-100/80">
-              Solicitudes, pagos, legalizaciones y contabilización
-              de los gastos en un solo lugar.
-            </p>
           </div>
         </div>
       </div>

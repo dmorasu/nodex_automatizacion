@@ -57,7 +57,7 @@ export const MODULOS: Modulo[] = [
   {
     href: "/anticipos",
     nombre: "Anticipos",
-    descripcion: "Registra los pagos de clientes del banco y conviértelos en gastos",
+    descripcion: "Registra pagos de clientes",
     roles: []
   },
   {
@@ -69,7 +69,7 @@ export const MODULOS: Modulo[] = [
   {
     href: "/direccion",
     nombre: "Aprobación de pagos",
-    descripcion: "Aprueba o rechaza los pagos que programa Tesorería",
+    descripcion: "Aprueba o rechaza los pagos programados",
     roles: [ROLES.DIRECCION_NEGOCIO]
   },
   {
@@ -93,19 +93,25 @@ export const MODULOS: Modulo[] = [
   {
     href: "/reportes",
     nombre: "Reportes",
-    descripcion: "Descarga en Excel los gastos con todo su recorrido",
+    descripcion: "Descarga en Excel la data",
     roles: [ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD]
   },
   {
     href: "/admin",
     nombre: "Tablero de Control",
-    descripcion: "Todos los gastos con filtros, totales y paginación",
+    descripcion: "Administración del dato",
     roles: [ROLES.ADMIN]
   },
   {
     href: "/usuarios",
     nombre: "Usuarios",
     descripcion: "Usuarios y roles del módulo de gastos",
+    roles: [ROLES.ADMIN]
+  },
+  {
+    href: "/catalogos",
+    nombre: "Catálogos",
+    descripcion: "Clientes empresariales, tipos y formas de pago",
     roles: [ROLES.ADMIN]
   }
 ]

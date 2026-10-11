@@ -31,6 +31,59 @@ body {
   animation: latido 2s ease-in-out infinite;
 }
 
+/* ── Avisos (react-toastify): tarjeta blanca, ícono en círculo de color y barra de tiempo delgada ── */
+:root {
+  --toastify-toast-width: 380px;
+  --toastify-toast-min-height: 60px;
+  --toastify-toast-bd-radius: 14px;
+  --toastify-toast-padding: 12px 12px 14px 14px;
+  --toastify-font-family: inherit;
+  --toastify-toast-shadow: 0 12px 32px -12px rgb(15 23 42 / 0.25), 0 2px 6px -2px rgb(15 23 42 / 0.08);
+  --toastify-color-progress-success: #10b981;
+  --toastify-color-progress-error: #ef4444;
+  --toastify-color-progress-warning: #f59e0b;
+  --toastify-color-progress-info: #0ea5e9;
+}
+
+.Toastify__toast.aviso-nodex {
+  @apply w-full items-center gap-3 border border-slate-200/80 bg-white/95 text-[13px] font-medium leading-snug text-slate-700 backdrop-blur;
+}
+
+.aviso-nodex .Toastify__toast-icon {
+  @apply me-0 w-auto;
+}
+
+/* Franja de color a la izquierda según el tipo */
+.aviso-nodex::before {
+  content: "";
+  @apply absolute inset-y-3 left-0 w-[3px] rounded-r-full;
+}
+.aviso-nodex--success::before { @apply bg-emerald-500; }
+.aviso-nodex--error::before { @apply bg-red-500; }
+.aviso-nodex--warning::before { @apply bg-amber-500; }
+.aviso-nodex--info::before { @apply bg-sky-500; }
+
+.aviso-nodex .Toastify__progress-bar {
+  height: 3px;
+  opacity: 0.55 !important;
+}
+.aviso-nodex .Toastify__progress-bar--bg {
+  opacity: 0.08 !important;
+}
+
+/* En el celular ocupan el ancho con margen, en vez de pegarse al borde */
+@media (max-width: 480px) {
+  .Toastify__toast-container {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+    padding: 12px 12px 0 !important;
+  }
+  .Toastify__toast.aviso-nodex { @apply mb-2 rounded-[14px]; }
+}
+
 /* Quien pidió menos movimiento en su sistema no ve animaciones */
 @media (prefers-reduced-motion: reduce) {
   .aparecer, .latido { animation: none; }

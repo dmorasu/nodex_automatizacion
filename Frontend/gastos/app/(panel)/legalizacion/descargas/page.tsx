@@ -25,10 +25,6 @@ export default async function DescargasPage({ searchParams }: { searchParams: { 
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
-        Marque los gastos y descargue en un ZIP todos sus documentos: factura, soportes del pago, reintegros y lo que el tramitador
-        tenga por revisar. Hasta 50 gastos por descarga.
-      </p>
 
       <div className="flex flex-wrap gap-2 text-xs">
         {GRUPOS.map(g => {

@@ -5,7 +5,7 @@ import EstadosComboBox from "./EstadosCombobox";
 import CrearEstadoTramite from "@/actions/crear-estatoTramite";
 import { useFormState } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
-import ErrorMessage from "../ui/ErrorMessage";
+import AvisarErrores from "../ui/AvisarErrores";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useTiposRechazo } from "@/hooks/useTiposRechazos";
@@ -138,15 +138,7 @@ export default function AddExpenseForm({
       {/* ERRORES                                           */}
       {/* ================================================= */}
 
-      {state.errors.map((error) => (
-
-        <ErrorMessage
-          key={error}
-        >
-          {error}
-        </ErrorMessage>
-
-      ))}
+      <AvisarErrores errores={state.errors} />
 
 
 
@@ -233,7 +225,6 @@ export default function AddExpenseForm({
                 focus:ring-2
                 focus:ring-sky-100
               "
-              required
             >
 
               <option value="">

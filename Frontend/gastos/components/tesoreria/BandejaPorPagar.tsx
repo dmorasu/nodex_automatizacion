@@ -37,7 +37,7 @@ export default async function BandejaPorPagar({
 
   const { total, registros } = ListadoGastosSchema.parse(await respuesta.json())
   // Los gastos de anticipos se pagan de las bolsas de anticipos; los demás, de las generales
-  const bolsasActivas = bolsas.filter(b => b.activo && (b.tipo === "ANTICIPOS") === (tipo === "anticipos"))
+  const bolsasActivas = bolsas.filter(b => b.activo && b.tipo === (tipo === "anticipos" ? "ANTICIPOS" : "GENERAL"))
 
   return (
     <div className="space-y-4">

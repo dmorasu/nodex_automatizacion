@@ -9,14 +9,14 @@ import Anticipos from '../../models/gastos/anticipos'
 import { registrarMovimientos } from '../../services/gastos/bolsas'
 import { arqueoDeBolsa, estadoDeCuentaCliente, type FiltroArqueo, type OrdenArqueo } from '../../services/gastos/anticipos'
 import { generarExcelArqueo, generarExcelEstadoCuenta } from '../../services/gastos/excelArqueo'
-import { TIPOS_BOLSA, TIPOS_MOVIMIENTO_BOLSA } from '../../services/gastos/constantes'
+import { llevaSaldoPorCliente, TIPOS_BOLSA, TIPOS_MOVIMIENTO_BOLSA } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, responderError } from './utilidades'
 
 const bolsaDeAnticipos = async (id: number) => {
   const bolsa = await Bolsas.findByPk(id, { attributes: ['id', 'nombre', 'tipo', 'saldoActual'] })
   if (!bolsa) throw new ErrorGastos('La bolsa no existe', 404)
-  if (bolsa.tipo !== TIPOS_BOLSA.ANTICIPOS) throw new ErrorGastos('Solo las bolsas de anticipos llevan saldo por cliente')
+  if (!llevaSaldoPorCliente(bolsa.tipo)) throw new ErrorGastos('Solo las bolsas de anticipos llevan saldo por cliente')
   return bolsa
 }
 
@@ -68,8 +68,8 @@ export class BolsasController {
   static recargar = async (req: Request, res: Response) => {
     try {
       const bolsa = await Bolsas.findByPk(Number(req.params.id), { attributes: ['id', 'tipo'] })
-      if (bolsa?.tipo === TIPOS_BOLSA.ANTICIPOS) {
-        throw new ErrorGastos('Las bolsas de anticipos no se recargan: se llenan con los anticipos que confirma Contabilidad')
+      if (bolsa && llevaSaldoPorCliente(bolsa.tipo)) {
+        throw new ErrorGastos('Las bolsas de anticipos no se recargan: se llenan con lo que confirma Contabilidad')
       }
 
       const { saldoFinal } = await db.transaction(transaction =>

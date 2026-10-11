@@ -34,7 +34,7 @@ export const BolsaApoyoSchema = z.object({
   id: z.number(),
   nombre: z.string(),
   lineaNegocio: textoNulo,
-  // GENERAL | ANTICIPOS (la de anticipos lleva saldo por cliente)
+  // GENERAL | ANTICIPOS | FACTURAS (las de anticipos y anticipos facturados llevan saldo por cliente)
   tipo: z.string().default("GENERAL")
 })
 
@@ -134,7 +134,7 @@ export const DocumentoSchema = z.object({
   tamano: z.number(),
   subidoPor: z.number(),
   createdAt: z.string(),
-  tipoDocumento: z.object({ id: z.number(), nombre: z.string() }),
+  tipoDocumento: z.object({ id: z.number(), codigo: z.string().optional(), nombre: z.string() }),
   usuario: UsuarioCortoSchema
 })
 
@@ -606,10 +606,19 @@ export const ESTADOS_ANTICIPO: Record<string, { nombre: string, clase: string }>
   POR_CONFIRMAR: { nombre: "Por confirmar", clase: "border-amber-200 bg-amber-50 text-amber-800" },
   NOVEDAD: { nombre: "Con novedad", clase: "border-red-200 bg-red-50 text-red-700" },
   CONFIRMADO: { nombre: "Confirmado", clase: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  FACTURADO: { nombre: "Facturado", clase: "border-sky-200 bg-sky-50 text-sky-700" },
   ANULADO: { nombre: "Anulado", clase: "border-slate-200 bg-slate-100 text-slate-500" }
 }
 
 export const TIPOS_ANTICIPO: Record<string, string> = { VEHICULO: "Vehículo", INMUEBLE: "Inmueble" }
+
+// ANTICIPO: se convierte en gastos. FACTURA (solicitud de factura): Contabilidad confirma el pago
+// y adjunta la factura en un solo paso; no genera gastos
+export const CLASES_ANTICIPO: Record<string, string> = { ANTICIPO: "Anticipo", FACTURA: "Solicitud de factura" }
+
+// Bolsas que llevan saldo por cliente
+export const NOMBRES_TIPO_BOLSA: Record<string, string> = { GENERAL: "General", ANTICIPOS: "Anticipos", FACTURAS: "Anticipos facturados" }
+export const llevaSaldoPorCliente = (tipo: string) => tipo === "ANTICIPOS" || tipo === "FACTURAS"
 
 export const ClienteEmpresarialSchema = z.object({ id: z.number(), nombre: z.string(), activo: z.boolean().optional() })
 
@@ -630,6 +639,7 @@ export const SaldoClienteSchema = z.object({
 export const AnticipoListadoSchema = z.object({
   id: z.number(),
   codigo: z.string(),
+  clase: z.string().default("ANTICIPO"),
   tipo: z.string(),
   estado: z.string(),
   concepto: z.string(),
@@ -639,6 +649,8 @@ export const AnticipoListadoSchema = z.object({
   fechaConsignacion: z.string(),
   valorRecibido: dinero,
   reciboCaja: textoNulo,
+  numeroFactura: textoNulo,
+  fechaFacturacion: textoNulo,
   motivoNovedad: textoNulo,
   creadoPor: z.number(),
   createdAt: z.string(),
@@ -712,15 +724,25 @@ export const SaldosClientesSchema = z.object({
 
 export type Arqueo = z.infer<typeof SaldosClientesSchema>
 
-export const ResumenAnticiposSchema = z.object({ porConfirmar: z.number(), conNovedad: z.number(), confirmadosSinGasto: z.number() })
+export const ResumenAnticiposSchema = z.object({
+  porConfirmar: z.number(),
+  porFacturar: z.number().default(0),
+  conNovedad: z.number(),
+  confirmadosSinGasto: z.number()
+})
 
 export type ClienteEmpresarial = z.infer<typeof ClienteEmpresarialSchema>
 export type SaldoCliente = z.infer<typeof SaldoClienteSchema>
 export type AnticipoListado = z.infer<typeof AnticipoListadoSchema>
 export type AnticipoDetalle = z.infer<typeof AnticipoDetalleSchema>
 
+// Documentos de la factura que adjunta Contabilidad en las solicitudes de factura (PDF y XML)
+export const esDocumentoFactura = (documento: { tipoDocumento: { codigo?: string } }) =>
+  ["FACTURA_ANTICIPO", "FACTURA_ANTICIPO_XML"].includes(documento.tipoDocumento.codigo ?? "")
+
 // Lo que envía el formulario del anticipo (va como JSON en el campo "datos", con los soportes)
 export type DatosAnticipo = {
+  clase: "ANTICIPO" | "FACTURA"
   tipo: "VEHICULO" | "INMUEBLE"
   cliente: { tipoIdentificacion: "CC" | "NIT", identificacion: string, nombre: string, telefono: string, direccion: string }
   clienteEmpresarialId: number | null

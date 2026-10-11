@@ -113,7 +113,7 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
             </Seccion>
           )}
 
-          <Seccion titulo="Documentos" descripcion="Facturas, soportes y demás archivos del gasto">
+          <Seccion titulo="Documentos">
             <DocumentosGasto
               gastoId={gasto.id}
               documentos={gasto.documentos}
@@ -160,7 +160,7 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
           </Seccion>
 
           {gasto.anticipo && (
-            <Seccion titulo="Anticipo del cliente" descripcion="Se paga de la bolsa de anticipos y se descuenta del saldo del cliente">
+            <Seccion titulo="Anticipo del cliente">
               <dl className="space-y-4">
                 <Dato etiqueta="Anticipo" valor={<Link href={`/anticipos/${gasto.anticipo.id}`} className="font-semibold text-emerald-700 hover:underline">{gasto.anticipo.codigo}</Link>} />
                 <Dato etiqueta="Cliente" valor={`${gasto.anticipo.cliente.nombre} · ${gasto.anticipo.cliente.identificacion}`} />

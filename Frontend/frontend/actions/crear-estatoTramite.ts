@@ -38,6 +38,15 @@ export default async function CrearEstadoTramite(
       }
     }
 
+    // "En espera por novedad" (id 3, el mismo que usa el formulario) exige el tipo de subsanación
+    if (estadoTramiteData.estadoId === 3 && !estadoTramiteData.tipoRechazoId) {
+      return {
+        errors: ["Seleccione el tipo de subsanación"],
+        success: "",
+        requiereEvaluacion: false
+      }
+    }
+
     const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramitesId}/estadosTramites`
     
 

@@ -7,27 +7,33 @@ import Indicador from "./Indicador"
 // Mismo color que "Reintegro pendiente" en el gráfico de bolsas
 const COLOR_PENDIENTE = "#1baf7a"
 
-type Barra = { clave: string, nombre: string, valor: number, detalle: string }
+// Escala de un solo tono (claro → oscuro) para la antigüedad: lo más viejo pesa más a la vista
+const ESCALA_ANTIGUEDAD = ["#8fdcbc", "#45c08f", "#1a9a6b", "#0e6b49"]
+const colorAntiguedad = (i: number, total: number) =>
+  ESCALA_ANTIGUEDAD[total <= 1 ? ESCALA_ANTIGUEDAD.length - 1 : Math.round((i * (ESCALA_ANTIGUEDAD.length - 1)) / (total - 1))]
 
-// Barras horizontales de una sola serie con el valor escrito al lado (sin leyenda)
+type Barra = { clave: string, nombre: string, valor: number, detalle: string, color?: string }
+
+// Barras horizontales de una sola serie con el valor escrito al lado (sin leyenda).
+// En el celular el nombre y el valor van arriba y la barra ocupa todo el ancho debajo.
 function Barras({ filas }: { filas: Barra[] }) {
   const maximo = Math.max(1, ...filas.map(f => f.valor))
   return (
     <ul className="space-y-3">
       {filas.map(f => (
-        <li key={f.clave} className="grid grid-cols-[minmax(110px,160px)_1fr_auto] items-center gap-3 text-xs">
+        <li key={f.clave} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 text-xs sm:grid-cols-[minmax(110px,160px)_1fr_auto]">
           <span className="truncate font-medium text-slate-700" title={f.nombre}>{f.nombre}</span>
-          <span className="h-3" role="img" aria-label={`${f.nombre}: ${formatoMoneda(f.valor)}`}>
-            {f.valor > 0 && (
-              <span
-                className="block h-full rounded-r"
-                style={{ width: `${(f.valor / maximo) * 100}%`, minWidth: 3, background: COLOR_PENDIENTE }}
-              />
-            )}
-          </span>
-          <span className="text-right tabular-nums">
+          <span className="text-right tabular-nums sm:col-start-3 sm:row-start-1">
             <b className="text-slate-800">{formatoMoneda(f.valor)}</b>
             <span className="block text-[11px] text-slate-400">{f.detalle}</span>
+          </span>
+          <span className="col-span-2 flex h-5 items-center sm:col-span-1 sm:col-start-2 sm:row-start-1" role="img" aria-label={`${f.nombre}: ${formatoMoneda(f.valor)}`}>
+            {f.valor > 0 && (
+              <span
+                className="block h-4 rounded-r"
+                style={{ width: `${(f.valor / maximo) * 100}%`, minWidth: 3, background: f.color ?? COLOR_PENDIENTE }}
+              />
+            )}
           </span>
         </li>
       ))}
@@ -64,7 +70,6 @@ export default function ResumenReintegros({ resumen, rutaDetalle }: { resumen: R
         <Indicador
           etiqueta="Antigüedad promedio"
           valor={`${resumen.diasPromedio} días`}
-          detalle="Desde que se generó cada reintegro pendiente"
         />
       </div>
 
@@ -72,11 +77,12 @@ export default function ResumenReintegros({ resumen, rutaDetalle }: { resumen: R
         <div className="grid gap-6 lg:grid-cols-2">
           <div>
             <p className="mb-3 text-xs font-semibold text-slate-600">Antigüedad de lo pendiente</p>
-            <Barras filas={resumen.antiguedad.map(a => ({
+            <Barras filas={resumen.antiguedad.map((a, i) => ({
               clave: a.clave,
               nombre: a.nombre,
               valor: a.valor,
-              detalle: `${a.cantidad} reintegro(s)`
+              detalle: `${a.cantidad} reintegro(s)`,
+              color: colorAntiguedad(i, resumen.antiguedad.length)
             }))} />
           </div>
           <div>

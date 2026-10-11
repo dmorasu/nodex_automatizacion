@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "react-toastify"
 import { useState } from "react"
 import Link from "next/link"
 import { usePerfil } from "@/src/auth/PerfilContexto"
@@ -112,7 +113,7 @@ export default function CargaMasivaSolicitudes() {
 
       if (!res.ok) {
 
-        alert(
+        toast.error(
           json.message ||
           "Error validando archivo"
         )
@@ -141,7 +142,7 @@ export default function CargaMasivaSolicitudes() {
 
       console.error(error)
 
-      alert(
+      toast.error(
         "Error validando archivo"
       )
 
@@ -236,7 +237,7 @@ export default function CargaMasivaSolicitudes() {
           xhr.status !== 200
         ) {
 
-          alert(
+          toast.error(
             json.message ||
             "Error del servidor"
           )
@@ -270,7 +271,7 @@ export default function CargaMasivaSolicitudes() {
 
         console.error(error)
 
-        alert(
+        toast.error(
           "Respuesta inválida del servidor"
         )
 
@@ -291,7 +292,7 @@ export default function CargaMasivaSolicitudes() {
 
       setLoading(false)
 
-      alert(
+      toast.error(
         "Error en la carga"
       )
 

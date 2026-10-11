@@ -10,7 +10,7 @@ import Bolsas from '../../models/gastos/bolsas'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import Anticipos from '../../models/gastos/anticipos'
 import { cambiarEstadoGasto, codigoEstadoGasto, idEstadoGasto, registrarTrazabilidad } from './estadosGasto'
-import { ESTADOS_ANTICIPO, ESTADOS_GASTO, PARAMETROS, TIPOS_BOLSA, TIPOS_GASTO } from './constantes'
+import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, ESTADOS_GASTO, PARAMETROS, TIPOS_BOLSA, TIPOS_GASTO } from './constantes'
 import { ErrorGastos } from './errores'
 import { calcularRetencion } from './calculos'
 import { obtenerParametro } from './parametros'
@@ -129,6 +129,9 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     : null
   if (datos.anticipoId) {
     if (!anticipo) throw new ErrorGastos('El anticipo no existe')
+    if (anticipo.clase === CLASES_ANTICIPO.FACTURA) {
+      throw new ErrorGastos(`${anticipo.codigo} es una solicitud de factura: no genera gastos`)
+    }
     if (anticipo.estado !== ESTADOS_ANTICIPO.CONFIRMADO) {
       throw new ErrorGastos(`El anticipo ${anticipo.codigo} aún no está confirmado por Contabilidad`)
     }
@@ -148,6 +151,9 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
   if (!bolsa?.activo) throw new ErrorGastos('La bolsa no existe o está inactiva')
   if (!anticipo && bolsa.tipo === TIPOS_BOLSA.ANTICIPOS) {
     throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos: solo paga gastos creados desde un anticipo confirmado`)
+  }
+  if (bolsa.tipo === TIPOS_BOLSA.FACTURAS) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos facturados: no paga gastos`)
   }
 
   let tramitadorId = datos.tramitadorId ?? null

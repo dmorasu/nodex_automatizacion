@@ -15,8 +15,7 @@ import {
   EditarSolicitudTramite
 } from "@/actions/editar-Solicitud-action"
 
-import ErrorMessage
-  from "../ui/ErrorMessage"
+import AvisarErrores from "../ui/AvisarErrores"
 
 import {
   useEffect
@@ -203,27 +202,7 @@ export default function EditarSolicitudTramiteForm({
       {/* ERRORES                                       */}
       {/* ============================================= */}
 
-      {state.errors?.length > 0 && (
-
-        <div className="
-          space-y-2
-        ">
-
-          {state.errors.map(
-            (error) => (
-
-              <ErrorMessage
-                key={error}
-              >
-                {error}
-              </ErrorMessage>
-
-            )
-          )}
-
-        </div>
-
-      )}
+      <AvisarErrores errores={state.errors ?? []} />
 
 
 

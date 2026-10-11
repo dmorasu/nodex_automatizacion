@@ -3,7 +3,7 @@ import Bolsas from '../../models/gastos/bolsas'
 import MovimientosBolsa from '../../models/gastos/movimientosBolsa'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import Anticipos from '../../models/gastos/anticipos'
-import { TIPOS_BOLSA, TipoMovimientoBolsa } from './constantes'
+import { llevaSaldoPorCliente, TIPOS_BOLSA, TipoMovimientoBolsa } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
 
@@ -54,8 +54,12 @@ const conCliente = async (movimientos: Movimiento[], transaction: Transaction) =
 }
 
 // El gasto de un anticipo solo se paga desde la bolsa de su anticipo, y una bolsa de anticipos
-// solo paga gastos de anticipos (si no, se gastaría el dinero de un cliente en otro gasto)
+// solo paga gastos de anticipos (si no, se gastaría el dinero de un cliente en otro gasto).
+// La de anticipos facturados no paga ningún gasto.
 export const validarBolsaDelGasto = (gasto: SolicitudesGasto, bolsa: Bolsas) => {
+  if (bolsa.tipo === TIPOS_BOLSA.FACTURAS) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos facturados: no paga gastos`)
+  }
   if (gasto.anticipoId && gasto.bolsaId !== bolsa.id) {
     throw new ErrorGastos(`El gasto ${gasto.codigo} salió de un anticipo: solo se paga desde la bolsa de ese anticipo`)
   }
@@ -91,7 +95,7 @@ export const registrarMovimientos = async (
   }
 
   // En las bolsas generales no se lleva saldo por cliente
-  const porCliente = bolsa.tipo === TIPOS_BOLSA.ANTICIPOS
+  const porCliente = llevaSaldoPorCliente(bolsa.tipo)
     ? await conCliente(movimientos, transaction)
     : movimientos.map(m => ({ ...m, clienteId: null }))
 

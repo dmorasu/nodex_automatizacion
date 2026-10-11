@@ -1,7 +1,7 @@
 import { Table, Column, DataType, Model, AllowNull, Default, Unique } from 'sequelize-typescript'
 
 // Clientes empresariales (ej: Davivienda) a los que pertenecen los clientes que pagan anticipos.
-// Se crean desde Nodex Gastos (Contabilidad o Administración).
+// Los crea y edita el Administrador en Nodex Gastos → Catálogos.
 @Table({
   tableName: 'gastos_clientes_empresariales',
   underscored: true

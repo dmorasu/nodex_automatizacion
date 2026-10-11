@@ -59,9 +59,6 @@ export default async function TableroPage({ searchParams }: { searchParams: Filt
 
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Indicadores</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          El saldo es el actual de cada bolsa. Las demás cifras corresponden a gastos pagados en el rango de fechas elegido.
-        </p>
       </div>
 
       {/* FILTROS: una fila, arriba de todo lo que afectan */}
@@ -94,17 +91,16 @@ export default async function TableroPage({ searchParams }: { searchParams: Filt
 
       {/* INDICADORES */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Indicador etiqueta="Saldo de las bolsas" valor={formatoMoneda(totales.saldo)} detalle="Disponible hoy" destacado />
+        <Indicador etiqueta="Saldo de las bolsas" valor={formatoMoneda(totales.saldo)} destacado />
         <Indicador etiqueta="Pagado" valor={formatoMoneda(totales.pagado)} detalle={`${totales.gastosPagados} gasto(s)`} />
-        <Indicador etiqueta="Por legalizar" valor={formatoMoneda(porLegalizar)} detalle="Con factura, aún no vuelve a la bolsa" />
-        <Indicador etiqueta="Reintegros pendientes" valor={formatoMoneda(totales.reintegroPendiente)} detalle="Por devolver los tramitadores" />
+        <Indicador etiqueta="Por legalizar" valor={formatoMoneda(porLegalizar)} />
+        <Indicador etiqueta="Reintegros pendientes" valor={formatoMoneda(totales.reintegroPendiente)} />
         <Indicador etiqueta="Por pagar" valor={formatoMoneda(totales.porPagar)} detalle={`${totales.gastosPorPagar} gasto(s) solicitados`} />
       </div>
 
       {/* GRÁFICO */}
       <Seccion
         titulo="¿Dónde está el dinero pagado?"
-        descripcion="Por bolsa: lo que aún no tiene factura, lo facturado pendiente de legalizar, los reintegros por recibir, lo que ya volvió a la bolsa y lo que la bolsa asume (no reembolsables)."
       >
         <GraficoDineroPagado bolsas={bolsas} />
       </Seccion>
@@ -173,7 +169,6 @@ export default async function TableroPage({ searchParams }: { searchParams: Filt
       {/* REINTEGROS: VISTA GERENCIAL */}
       <Seccion
         titulo="Reintegros de los tramitadores"
-        descripcion="Lo que los tramitadores deben devolver (pagado − factura): cuánto es, cuánto se ha recuperado, qué tan viejo es y quiénes lo concentran."
       >
         <ResumenReintegros resumen={reintegros} rutaDetalle={rutaDetalleReintegros} />
       </Seccion>
@@ -181,7 +176,6 @@ export default async function TableroPage({ searchParams }: { searchParams: Filt
       {/* CUENTAS DE COBRO POR LEGALIZAR */}
       <Seccion
         titulo="Cuentas de cobro por legalizar"
-        descripcion="Facturas ya agrupadas en cuentas de cobro en borrador: lo que volverá a cada bolsa al legalizarlas."
       >
         {cuentasPorLegalizar.length === 0 ? (
           <p className="py-6 text-center text-xs text-slate-400">No hay cuentas de cobro en borrador.</p>

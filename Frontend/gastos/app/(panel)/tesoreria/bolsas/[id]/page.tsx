@@ -5,6 +5,7 @@ import clsx from "clsx"
 import { ArrowLeft } from "lucide-react"
 import { obtenerMovimientos } from "@/src/lib/datosTesoreria"
 import { obtenerSaldosClientes } from "@/src/lib/datosAnticipos"
+import { llevaSaldoPorCliente, NOMBRES_TIPO_BOLSA } from "@/src/schemas/gastos"
 import SaldosClientes from "@/components/tesoreria/SaldosClientes"
 import { formatoFechaHora, formatoMoneda } from "@/src/lib/formato"
 import Paginacion from "@/components/ui/Paginacion"
@@ -33,7 +34,7 @@ export default async function MovimientosBolsaPage({
   const { bolsa, total, tamano, registros } = await obtenerMovimientos(Number(params.id), pagina)
   // Bolsas de anticipos: dos pestañas, el arqueo por cliente (por defecto) y los movimientos.
   // En la del arqueo, `pagina` es la de los clientes (de los movimientos solo se usa el total)
-  const deAnticipos = bolsa.tipo === "ANTICIPOS"
+  const deAnticipos = llevaSaldoPorCliente(bolsa.tipo)
   const vista = deAnticipos && searchParams.vista !== "movimientos" ? "clientes" : "movimientos"
   const arqueo = vista === "clientes"
     ? await obtenerSaldosClientes(bolsa.id, { busqueda: searchParams.busqueda, filtro: searchParams.filtro, orden: searchParams.orden, pagina: searchParams.pagina })
@@ -50,7 +51,7 @@ export default async function MovimientosBolsaPage({
         <div>
           <h2 className="text-base font-semibold text-slate-800">{bolsa.nombre}</h2>
           <p className="text-xs text-slate-400">
-            {bolsa.tipo === "ANTICIPOS" && "Bolsa de anticipos · "}{bolsa.lineaNegocio ?? "Sin línea de negocio"} · {total} movimiento(s)
+            {deAnticipos && `Bolsa de ${NOMBRES_TIPO_BOLSA[bolsa.tipo].toLowerCase()} · `}{bolsa.lineaNegocio ?? "Sin línea de negocio"} · {total} movimiento(s)
           </p>
         </div>
         <div className="text-right">
@@ -131,7 +132,7 @@ export default async function MovimientosBolsaPage({
         </table>
 
         {registros.length === 0 && (
-          <p className="py-14 text-center text-sm text-slate-400">{bolsa.tipo === "ANTICIPOS" ? "Esta bolsa no tiene movimientos: se llena con los anticipos que confirma Contabilidad." : "Esta bolsa no tiene movimientos. Empiece con una recarga."}</p>
+          <p className="py-14 text-center text-sm text-slate-400">{deAnticipos ? "Esta bolsa no tiene movimientos: se llena con lo que confirma Contabilidad." : "Esta bolsa no tiene movimientos. Empiece con una recarga."}</p>
         )}
       </div>
 

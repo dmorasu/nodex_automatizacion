@@ -16,10 +16,6 @@ export default async function CargaFacturasPage() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
-        Suba varias facturas a la vez: asigne cada archivo a su gasto, digite los valores y regístrelas todas.
-        El reintegro (pagado − factura) se calcula solo. Si una factura tiene varias páginas en archivos distintos, asígnelos al mismo gasto.
-      </p>
       {total > 100 && <p className="text-xs text-amber-700">Hay {total} gastos sin factura; en la lista aparecen los 100 más antiguos.</p>}
 
       {registros.length === 0 ? (

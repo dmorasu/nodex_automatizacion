@@ -11,9 +11,6 @@ export default async function DireccionLayout({ children }: { children: React.Re
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Aprobación de pagos</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Revise los pagos que programó Tesorería: apruebe los que deben pagarse y rechace los demás con el motivo.
-        </p>
       </div>
 
       <Pestanas pestanas={[

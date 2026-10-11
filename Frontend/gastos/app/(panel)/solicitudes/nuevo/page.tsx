@@ -33,11 +33,6 @@ export default async function NuevoGastoPage({ searchParams }: { searchParams: {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">{anticipo ? `Nuevo gasto del anticipo ${anticipo.codigo}` : "Nuevo gasto"}</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          {anticipo
-            ? "Se paga de la bolsa de anticipos y se descuenta del saldo del cliente. Es no reembolsable (no pasa por Legalización)."
-            : "La solicitud queda en estado Solicitado hasta que Tesorería la pague."}
-        </p>
       </div>
 
       <FormularioGasto {...datosFormulario} anticipo={delAnticipo} />

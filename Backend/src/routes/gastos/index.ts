@@ -10,7 +10,8 @@ import {
   validarCrearUsuario,
   validarActualizarUsuario,
   validarRestablecerContrasena,
-  validarCatalogo
+  validarCatalogo,
+  validarEliminarCatalogo
 } from '../../middleware/gastos/validacionesAdmin'
 import { ROLES } from '../../services/gastos/constantes'
 import { FILTROS_ARQUEO, ORDENES_ARQUEO } from '../../services/gastos/anticipos'
@@ -55,13 +56,13 @@ import {
   validarListado,
   validarListadoLotes
 } from '../../middleware/gastos/validacionesSolicitud'
-import { recibirDocumentos } from '../../middleware/gastos/uploadDocumentosGasto'
+import { recibirDocumentos, recibirFacturas } from '../../middleware/gastos/uploadDocumentosGasto'
 import { AnticiposController, ClientesEmpresarialesController } from '../../controllers/gastos/AnticiposController'
 import {
   leerDatosJson,
   validarAnticipo,
-  validarClienteEmpresarial,
   validarConfirmacionAnticipos,
+  validarFacturacion,
   validarListadoAnticipos,
   validarMotivo
 } from '../../middleware/gastos/validacionesAnticipos'
@@ -129,15 +130,15 @@ router.get('/anticipos', validarListadoAnticipos, handleInputErrors, AnticiposCo
 router.get('/anticipos/resumen', AnticiposController.resumen)
 router.post('/anticipos', recibirDocumentos, leerDatosJson, validarAnticipo, handleInputErrors, AnticiposController.crear)
 router.post('/anticipos/confirmar', contabilidadAnticipos, validarConfirmacionAnticipos, handleInputErrors, AnticiposController.confirmar)
+router.post('/anticipos/facturar', contabilidadAnticipos, recibirFacturas, leerDatosJson, validarFacturacion, handleInputErrors, AnticiposController.facturar)
 router.get('/anticipos/:id', validarId, handleInputErrors, AnticiposController.detalle)
 router.put('/anticipos/:id', recibirDocumentos, leerDatosJson, validarId, validarAnticipo, handleInputErrors, AnticiposController.actualizar)
 router.post('/anticipos/:id/anular', validarId, validarMotivo, handleInputErrors, AnticiposController.anular)
 router.post('/anticipos/:id/novedad', contabilidadAnticipos, validarId, validarMotivo, handleInputErrors, AnticiposController.novedad)
 
-// Clientes empresariales (ej: Davivienda): los ve todo el que registra anticipos; los crea Contabilidad
+// Clientes empresariales (ej: Davivienda): los ve todo el que registra anticipos.
+// Los crea y edita solo el Administrador en Catálogos (/admin/catalogos/clientesEmpresariales)
 router.get('/clientes-empresariales', ClientesEmpresarialesController.listar)
-router.post('/clientes-empresariales', contabilidadAnticipos, validarClienteEmpresarial, handleInputErrors, ClientesEmpresarialesController.crear)
-router.put('/clientes-empresariales/:id', contabilidadAnticipos, validarId, validarClienteEmpresarial, handleInputErrors, ClientesEmpresarialesController.actualizar)
 
 
 // ── Documentos ──────────────────────
@@ -305,6 +306,12 @@ router.put('/admin/catalogos/:catalogo/:id',
   validarActualizarCatalogo,
   handleInputErrors,
   CatalogosGastosController.update
+)
+router.delete('/admin/catalogos/:catalogo/:id',
+  soloAdmin,
+  validarEliminarCatalogo,
+  handleInputErrors,
+  CatalogosGastosController.remove
 )
 
 router.put('/admin/parametros/:clave',

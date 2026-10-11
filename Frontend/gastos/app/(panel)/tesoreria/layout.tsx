@@ -26,11 +26,6 @@ export default async function TesoreriaLayout({ children }: { children: React.Re
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Tesorería</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          {general
-            ? "Programa los pagos, confirma los aprobados por Dirección de Negocio con el soporte del banco y controla las bolsas."
-            : "Pago de las compras de CTL y certificados de Cámara de Comercio."}
-        </p>
       </div>
 
       <Pestanas pestanas={pestanas} />

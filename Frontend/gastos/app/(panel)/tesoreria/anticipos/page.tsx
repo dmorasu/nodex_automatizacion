@@ -10,10 +10,6 @@ export default async function GastosAnticiposPage({ searchParams }: { searchPara
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
-        Gastos de anticipos de clientes por pagar. Se pagan directo (sin aprobación de Dirección de Negocio) desde la bolsa de
-        anticipos; se descuentan del saldo del cliente y se le avisa a quien creó el gasto.
-      </p>
       <BandejaPorPagar tipo="anticipos" searchParams={searchParams} />
     </div>
   )

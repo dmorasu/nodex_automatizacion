@@ -15,10 +15,6 @@ export default async function UsuariosRolesPage() {
 
   return (
     <div>
-      <p className="text-sm text-slate-400">
-        Asigna los roles del módulo de gastos. Un usuario puede tener varios.
-        Sin roles solo puede crear y ver sus propios gastos.
-      </p>
 
       <div className="mt-6">
         <TablaUsuariosRoles usuarios={usuarios} roles={roles} />

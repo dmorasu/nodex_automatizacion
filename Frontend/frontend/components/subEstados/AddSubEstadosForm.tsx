@@ -9,7 +9,7 @@ import { Flag } from "lucide-react"
 
 import CrearSubEstado from "@/actions/crear-subEstado"
 
-import ErrorMessage from "../ui/ErrorMessage"
+import AvisarErrores from "../ui/AvisarErrores"
 import SubEstadosCombobox from "./SubEstadosCombobox"
 
 
@@ -195,15 +195,7 @@ export default function AddSubEstadoForm({
       {/* ERRORES                                           */}
       {/* ================================================= */}
 
-      {state.errors.map(error => (
-
-        <ErrorMessage
-          key={error}
-        >
-          {error}
-        </ErrorMessage>
-
-      ))}
+      <AvisarErrores errores={state.errors} />
 
 
 

@@ -18,7 +18,6 @@ export default async function EditarGastoPage({ params }: { params: { id: string
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-800">Editar gasto {gasto.codigo}</h1>
-        <p className="mt-1 text-sm text-slate-400">Los valores se recalculan al guardar.</p>
       </div>
 
       <FormularioGasto

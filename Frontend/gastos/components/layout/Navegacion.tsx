@@ -17,6 +17,7 @@ import {
   BadgeCheck,
   HandCoins,
   ChevronDown,
+  ListChecks,
   type LucideIcon
 } from "lucide-react"
 import type { Modulo } from "@/src/auth/permisos"
@@ -34,15 +35,17 @@ const ICONOS: Record<string, LucideIcon> = {
   "/tablero": BarChart3,
   "/reportes": FileSpreadsheet,
   "/admin": Settings2,
-  "/usuarios": Users
+  "/usuarios": Users,
+  "/catalogos": ListChecks
 }
 
 // Módulos agrupados en menús desplegables para que el menú quepa en una fila.
 // Un grupo con un solo módulo permitido se muestra como enlace directo. Lo que no esté en un
-// grupo (Tesorería, Aprobación de pagos, Legalización, Contabilidad, Tablero de Control y Usuarios) va como enlace.
+// grupo (Tesorería, Aprobación de pagos, Legalización, Contabilidad y Tablero de Control) va como enlace.
 const GRUPOS: { nombre: string, Icono: LucideIcon, modulos: string[] }[] = [
   { nombre: "Solicitudes", Icono: Receipt, modulos: ["/solicitudes", "/anticipos"] },
-  { nombre: "Informes", Icono: BarChart3, modulos: ["/tablero", "/reportes"] }
+  { nombre: "Informes", Icono: BarChart3, modulos: ["/tablero", "/reportes"] },
+  { nombre: "Configuración", Icono: Settings2, modulos: ["/usuarios", "/catalogos"] }
 ]
 
 const claseEnlace = (activo: boolean) => clsx(
@@ -91,7 +94,7 @@ export default function Navegacion({ modulos }: { modulos: Modulo[] }) {
         </MenuButton>
         <MenuItems
           anchor="bottom start"
-          className="z-40 mt-1 w-72 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl focus:outline-none"
+          className="z-40 mt-1 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl focus:outline-none"
         >
           {delGrupo.map(m => {
             const Icono = ICONOS[m.href]
@@ -100,15 +103,12 @@ export default function Navegacion({ modulos }: { modulos: Modulo[] }) {
                 <Link
                   href={m.href}
                   className={clsx(
-                    "flex items-start gap-3 rounded-lg px-3 py-2.5 data-[focus]:bg-slate-50",
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 data-[focus]:bg-slate-50",
                     estaEn(m.href) && "bg-emerald-50/70"
                   )}
                 >
-                  {Icono && <Icono size={16} className={clsx("mt-0.5 shrink-0", estaEn(m.href) ? "text-emerald-600" : "text-slate-400")} />}
-                  <span>
-                    <span className={clsx("block text-xs font-semibold", estaEn(m.href) ? "text-emerald-700" : "text-slate-700")}>{m.nombre}</span>
-                    <span className="block text-[11px] leading-snug text-slate-400">{m.descripcion}</span>
-                  </span>
+                  {Icono && <Icono size={16} className={clsx("shrink-0", estaEn(m.href) ? "text-emerald-600" : "text-slate-400")} />}
+                  <span className={clsx("text-xs font-semibold", estaEn(m.href) ? "text-emerald-700" : "text-slate-700")}>{m.nombre}</span>
                 </Link>
               </MenuItem>
             )

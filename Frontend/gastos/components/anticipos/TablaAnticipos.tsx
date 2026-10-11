@@ -3,22 +3,26 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, FileCheck2 } from "lucide-react"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import { TIPOS_ANTICIPO, type AnticipoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario } from "../ui/estilos"
 import EstadoAnticipo from "./EstadoAnticipo"
 import ModalConfirmarAnticipos from "./ModalConfirmarAnticipos"
+import ModalFacturarSolicitudes from "./ModalFacturarSolicitudes"
 
-// Listado de anticipos. Con `seleccionable` (Contabilidad, por confirmar) se marcan varios y se
-// confirman juntos (recibo de caja masivo).
+// Listado de anticipos y solicitudes de factura. Con `seleccionable` (Contabilidad, pendientes)
+// se marcan varios y se confirman juntos (recibo de caja masivo) o, en modo "facturar",
+// se confirma el pago y se adjunta la factura de cada uno.
 export default function TablaAnticipos({
   anticipos,
   seleccionable = false,
+  modo = "confirmar",
   vacio
 }: {
   anticipos: AnticipoListado[]
   seleccionable?: boolean
+  modo?: "confirmar" | "facturar"
   vacio: string
 }) {
   const router = useRouter()
@@ -39,8 +43,8 @@ export default function TablaAnticipos({
             {seleccion.length} seleccionado(s) · {formatoMoneda(totalSeleccionado)} consignado
           </p>
           <button type="button" onClick={() => setConfirmando(true)} className={claseBotonPrimario}>
-            <CheckCircle2 size={15} />
-            Confirmar seleccionados
+            {modo === "facturar" ? <FileCheck2 size={15} /> : <CheckCircle2 size={15} />}
+            {modo === "facturar" ? "Confirmar y facturar seleccionadas" : "Confirmar seleccionados"}
           </button>
         </div>
       )}
@@ -60,7 +64,7 @@ export default function TablaAnticipos({
                   />
                 </th>
               )}
-              <th className="px-4 py-3 font-semibold">Anticipo</th>
+              <th className="px-4 py-3 font-semibold">Solicitud</th>
               <th className="px-4 py-3 font-semibold">Cliente</th>
               <th className="px-4 py-3 font-semibold">Vehículo / inmueble</th>
               <th className="px-4 py-3 font-semibold">Consignación</th>
@@ -84,7 +88,10 @@ export default function TablaAnticipos({
                 )}
                 <td className="px-4 py-3">
                   <Link href={`/anticipos/${a.id}`} className="font-semibold text-emerald-700 hover:underline">{a.codigo}</Link>
-                  <p className="text-[11px] text-slate-400">{a.operacion.nombreOperacion}</p>
+                  <p className="text-[11px] text-slate-400">
+                    {a.clase === "FACTURA" && <span className="font-medium text-sky-700">Solicitud de factura · </span>}
+                    {a.operacion.nombreOperacion}
+                  </p>
                 </td>
                 <td className="px-4 py-3">
                   <p className="font-medium text-slate-700">{a.cliente.nombre}</p>
@@ -97,6 +104,7 @@ export default function TablaAnticipos({
                 <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                   {formatoFecha(a.fechaConsignacion)}
                   {a.reciboCaja && <p className="text-[11px] text-slate-400">RC {a.reciboCaja}</p>}
+                  {a.numeroFactura && <p className="text-[11px] text-slate-400">Factura {a.numeroFactura}</p>}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <p className="font-semibold text-slate-800">{formatoMoneda(a.valorRecibido ?? a.valorConsignado)}</p>
@@ -119,7 +127,14 @@ export default function TablaAnticipos({
         {anticipos.length === 0 && <p className="py-14 text-center text-sm text-slate-400">{vacio}</p>}
       </div>
 
-      {confirmando && (
+      {confirmando && modo === "facturar" && (
+        <ModalFacturarSolicitudes
+          solicitudes={seleccionados}
+          onCerrar={() => setConfirmando(false)}
+          onFacturadas={() => { setSeleccion([]); router.refresh() }}
+        />
+      )}
+      {confirmando && modo === "confirmar" && (
         <ModalConfirmarAnticipos
           anticipos={seleccionados}
           onCerrar={() => setConfirmando(false)}

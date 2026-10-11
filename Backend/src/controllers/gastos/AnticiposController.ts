@@ -12,11 +12,12 @@ import EstadosGasto from '../../models/gastos/estadosGasto'
 import Operaciones from '../../models/operaciones'
 import Usuarios from '../../models/usuarios'
 import {
-  actualizarAnticipo, anularAnticipo, confirmarAnticipos, contarAnticipos, crearAnticipo, listarAnticipos,
+  actualizarAnticipo, anularAnticipo, confirmarAnticipos, contarAnticipos, crearAnticipo, facturarSolicitudes, listarAnticipos,
   marcarNovedad, saldoDelCliente
 } from '../../services/gastos/anticipos'
-import { notificarAnticiposConfirmados, notificarNovedadAnticipo } from '../../services/gastos/notificacionesAnticipos'
-import { ESTADOS_ANTICIPO, ROLES } from '../../services/gastos/constantes'
+import { notificarAnticiposConfirmados, notificarNovedadAnticipo, notificarSolicitudesFacturadas } from '../../services/gastos/notificacionesAnticipos'
+import { archivosPorSolicitud } from '../../middleware/gastos/uploadDocumentosGasto'
+import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, puedeVerTodos, responderError } from './utilidades'
 
@@ -37,12 +38,13 @@ const archivos = (req: Request) => (req.files ?? []) as Express.Multer.File[]
 
 export class AnticiposController {
 
-  // GET /anticipos?alcance=mios|todos&estado=A,B&tipo=&bolsaId=&busqueda=&pagina=&tamano=
+  // GET /anticipos?alcance=mios|todos&clase=&estado=A,B&tipo=&bolsaId=&busqueda=&pagina=&tamano=
   static listar = async (req: Request, res: Response) => {
     try {
       const soloMios = req.query.alcance !== 'todos' || !puedeVerTodos(req)
       res.json(await listarAnticipos({
         creadoPor: soloMios ? req.usuario.id : null,
+        clase: (req.query.clase as string) || null,
         estado: (req.query.estado as string) || null,
         tipo: (req.query.tipo as string) || null,
         bolsaId: Number(req.query.bolsaId) || null,
@@ -58,19 +60,22 @@ export class AnticiposController {
   // GET /anticipos/resumen → pendientes para la pantalla de inicio
   static resumen = async (req: Request, res: Response) => {
     try {
-      const [porConfirmar, conNovedad, confirmadosSinGasto] = await Promise.all([
-        esContabilidad(req) ? contarAnticipos(ESTADOS_ANTICIPO.POR_CONFIRMAR) : Promise.resolve(0),
-        contarAnticipos(ESTADOS_ANTICIPO.NOVEDAD, req.usuario.id),
+      const [porConfirmar, porFacturar, conNovedad, confirmadosSinGasto] = await Promise.all([
+        esContabilidad(req) ? contarAnticipos(ESTADOS_ANTICIPO.POR_CONFIRMAR, { clase: CLASES_ANTICIPO.ANTICIPO }) : Promise.resolve(0),
+        esContabilidad(req) ? contarAnticipos(ESTADOS_ANTICIPO.POR_CONFIRMAR, { clase: CLASES_ANTICIPO.FACTURA }) : Promise.resolve(0),
+        // Anticipos y solicitudes de factura devueltos al usuario
+        contarAnticipos(ESTADOS_ANTICIPO.NOVEDAD, { creadoPor: req.usuario.id }),
         // Confirmados de los que aún no se ha creado ningún gasto
         Anticipos.count({
           where: {
             creadoPor: req.usuario.id,
+            clase: CLASES_ANTICIPO.ANTICIPO,
             estado: ESTADOS_ANTICIPO.CONFIRMADO,
             id: { [Op.notIn]: Anticipos.sequelize!.literal('(SELECT g.anticipo_id FROM gastos_solicitudes g WHERE g.anticipo_id IS NOT NULL)') }
           }
         })
       ])
-      res.json({ porConfirmar, conNovedad, confirmadosSinGasto })
+      res.json({ porConfirmar, porFacturar, conNovedad, confirmadosSinGasto })
     } catch (error) {
       responderError(res, error)
     }
@@ -91,7 +96,7 @@ export class AnticiposController {
           {
             model: DocumentosGasto,
             attributes: ['id', 'nombreOriginal', 'tipoArchivo', 'tamano', 'subidoPor', 'createdAt'],
-            include: [{ model: TiposDocumentoGasto, attributes: ['id', 'nombre'] }, { model: Usuarios, attributes: ATRIBUTOS_USUARIO }]
+            include: [{ model: TiposDocumentoGasto, attributes: ['id', 'codigo', 'nombre'] }, { model: Usuarios, attributes: ATRIBUTOS_USUARIO }]
           },
           {
             model: SolicitudesGasto,
@@ -107,7 +112,8 @@ export class AnticiposController {
       }))!
 
       const editable = [ESTADOS_ANTICIPO.POR_CONFIRMAR, ESTADOS_ANTICIPO.NOVEDAD].includes(anticipo.estado as 'NOVEDAD')
-      const confirmado = anticipo.estado === ESTADOS_ANTICIPO.CONFIRMADO
+      const confirmado = anticipo.estado === ESTADOS_ANTICIPO.CONFIRMADO || anticipo.estado === ESTADOS_ANTICIPO.FACTURADO
+      const esAnticipo = anticipo.clase === CLASES_ANTICIPO.ANTICIPO
 
       res.json({
         ...anticipo.toJSON(),
@@ -117,7 +123,8 @@ export class AnticiposController {
           editar: esCreadorOAdmin(req, anticipo) && editable,
           anular: esCreadorOAdmin(req, anticipo) && editable,
           revisar: esContabilidad(req) && anticipo.estado === ESTADOS_ANTICIPO.POR_CONFIRMAR,
-          crearGasto: esCreadorOAdmin(req, anticipo) && confirmado
+          // Las solicitudes de factura no generan gastos
+          crearGasto: esCreadorOAdmin(req, anticipo) && esAnticipo && confirmado
         }
       })
     } catch (error) {
@@ -165,7 +172,7 @@ export class AnticiposController {
     try {
       const anticipo = await marcarNovedad(Number(req.params.id), req.body.motivo, req.usuario.id)
       void notificarNovedadAnticipo(anticipo.id)
-      res.json('Anticipo devuelto al creador con la novedad')
+      res.json(anticipo.clase === CLASES_ANTICIPO.FACTURA ? 'Solicitud devuelta al creador con la novedad' : 'Anticipo devuelto al creador con la novedad')
     } catch (error) {
       responderError(res, error)
     }
@@ -181,9 +188,21 @@ export class AnticiposController {
       responderError(res, error)
     }
   }
+
+  // POST /anticipos/facturar  (multipart: datos = { solicitudes: [{ id, valorRecibido, numeroFactura, observacion }] },
+  // pdf_<id> y xml_<id> = la factura de cada una). Confirma el pago y factura en un solo paso
+  static facturar = async (req: Request, res: Response) => {
+    try {
+      const ids = await facturarSolicitudes(req.body.solicitudes, archivosPorSolicitud(req), req.usuario.id)
+      void notificarSolicitudesFacturadas(ids)
+      res.json({ facturadas: ids.length })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
 }
 
-// ── Clientes empresariales (catálogo) ──
+// ── Clientes empresariales (catálogo; los administra el Admin en Catálogos) ──
 export class ClientesEmpresarialesController {
 
   // GET /clientes-empresariales?todos=si (con inactivos, para administrarlos)
@@ -194,39 +213,6 @@ export class ClientesEmpresarialesController {
         attributes: ['id', 'nombre', 'activo'],
         order: [['nombre', 'ASC']]
       }))
-    } catch (error) {
-      responderError(res, error)
-    }
-  }
-
-  static crear = async (req: Request, res: Response) => {
-    try {
-      const nombre = String(req.body.nombre ?? '').trim()
-      if (!nombre) throw new ErrorGastos('Escriba el nombre del cliente empresarial')
-      if (await ClientesEmpresariales.findOne({ where: { nombre: { [Op.iLike]: nombre } } })) {
-        throw new ErrorGastos(`Ya existe el cliente empresarial ${nombre}`, 409)
-      }
-      const cliente = await ClientesEmpresariales.create({ nombre })
-      res.status(201).json({ id: cliente.id })
-    } catch (error) {
-      responderError(res, error)
-    }
-  }
-
-  static actualizar = async (req: Request, res: Response) => {
-    try {
-      const cliente = await ClientesEmpresariales.findByPk(Number(req.params.id))
-      if (!cliente) throw new ErrorGastos('El cliente empresarial no existe', 404)
-
-      const nombre = req.body.nombre === undefined ? undefined : String(req.body.nombre).trim()
-      if (nombre && await ClientesEmpresariales.findOne({ where: { nombre: { [Op.iLike]: nombre }, id: { [Op.ne]: cliente.id } } })) {
-        throw new ErrorGastos(`Ya existe el cliente empresarial ${nombre}`, 409)
-      }
-      await cliente.update({
-        ...(nombre ? { nombre } : {}),
-        ...(req.body.activo !== undefined ? { activo: req.body.activo === true || req.body.activo === 'true' } : {})
-      })
-      res.json('Cliente empresarial actualizado')
     } catch (error) {
       responderError(res, error)
     }

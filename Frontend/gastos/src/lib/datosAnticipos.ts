@@ -14,6 +14,7 @@ import { obtenerOperaciones } from "./datosGastos"
 
 export type FiltrosAnticipos = {
   alcance?: "mios" | "todos"
+  clase?: string
   estado?: string
   busqueda?: string
   pagina?: number
@@ -45,8 +46,9 @@ export const obtenerResumenAnticipos = async () => {
 export const obtenerClientesEmpresariales = async (todos = false) =>
   z.array(ClienteEmpresarialSchema).parse(await (await fetchApi(`/gastos/clientes-empresariales${todos ? "?todos=si" : ""}`)).json())
 
-export const obtenerBolsasAnticipos = async () =>
-  z.array(BolsaApoyoSchema).parse(await (await fetchApi("/gastos/apoyo/bolsas?tipo=ANTICIPOS")).json())
+// ANTICIPOS para los anticipos; FACTURAS (anticipos facturados) para las solicitudes de factura
+export const obtenerBolsasAnticipos = async (tipo: "ANTICIPOS" | "FACTURAS" = "ANTICIPOS") =>
+  z.array(BolsaApoyoSchema).parse(await (await fetchApi(`/gastos/apoyo/bolsas?tipo=${tipo}`)).json())
 
 export type FiltrosArqueo = { busqueda?: string, filtro?: string, orden?: string, pagina?: string }
 
@@ -56,12 +58,13 @@ export const obtenerSaldosClientes = async (bolsaId: number, filtros: FiltrosArq
   return req.ok ? SaldosClientesSchema.parse(await req.json()) : null
 }
 
-// Todo lo que necesita el formulario del anticipo
+// Todo lo que necesita el formulario del anticipo o de la solicitud de factura
 export const obtenerDatosFormularioAnticipo = async () => {
-  const [operaciones, bolsas, clientesEmpresariales] = await Promise.all([
+  const [operaciones, bolsasAnticipos, bolsasFacturas, clientesEmpresariales] = await Promise.all([
     obtenerOperaciones(),
-    obtenerBolsasAnticipos(),
+    obtenerBolsasAnticipos("ANTICIPOS"),
+    obtenerBolsasAnticipos("FACTURAS"),
     obtenerClientesEmpresariales()
   ])
-  return { operaciones, bolsas, clientesEmpresariales }
+  return { operaciones, bolsas: { ANTICIPO: bolsasAnticipos, FACTURA: bolsasFacturas }, clientesEmpresariales }
 }

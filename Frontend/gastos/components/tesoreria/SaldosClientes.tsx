@@ -137,7 +137,7 @@ export default function SaldosClientes({ arqueo, esAdmin }: { arqueo: Arqueo, es
       </div>
 
       <p className="text-xs text-slate-400">
-        {arqueo.total} cliente(s){filtro || parametros.get("busqueda") ? " con estos filtros" : ""} · toque uno para ver su estado de cuenta
+        {arqueo.total} cliente(s){filtro || parametros.get("busqueda") ? " con estos filtros" : ""}
       </p>
 
       {/* Tabla con encabezado fijo al desplazarse */}

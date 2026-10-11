@@ -65,9 +65,6 @@ export default async function DetalleCuentaCobro({ id, rutaBase }: { id: number,
 
       <Seccion
         titulo="Gastos"
-        descripcion={cuenta.permisos.editar
-          ? "Ajuste el valor real de cada factura. La diferencia muestra si falta algún reintegro."
-          : undefined}
       >
         <LineasCuenta cuentaId={cuenta.id} lineas={cuenta.lineas} editable={cuenta.permisos.editar} />
 
@@ -93,7 +90,7 @@ export default async function DetalleCuentaCobro({ id, rutaBase }: { id: number,
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Seccion titulo="Documentos" descripcion="Cuenta de cobro radicada y soportes">
+        <Seccion titulo="Documentos">
           <DocumentosCuenta cuenta={cuenta} usuarioId={sesion.id} esAdmin={sesion.roles.includes(ROLES.ADMIN)} />
         </Seccion>
 

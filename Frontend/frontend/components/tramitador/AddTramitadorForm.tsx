@@ -8,7 +8,7 @@ import { useEffect } from "react"
 import { toast } from "react-toastify"
 import { User } from "lucide-react"
 
-import ErrorMessage from "../ui/ErrorMessage"
+import AvisarErrores from "../ui/AvisarErrores"
 
 import AsignarTramitadorSolicitud from "@/actions/asignar-Tramitador-action"
 import { TramitadorType } from "@/src/type/solicitudes"
@@ -136,15 +136,7 @@ export default function AddTramitadorForm({
       {/* ERRORES                                           */}
       {/* ================================================= */}
 
-      {state.errors.map(error => (
-
-        <ErrorMessage
-          key={error}
-        >
-          {error}
-        </ErrorMessage>
-
-      ))}
+      <AvisarErrores errores={state.errors} />
 
 
 

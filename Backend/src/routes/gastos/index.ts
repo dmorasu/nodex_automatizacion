@@ -66,6 +66,19 @@ import {
   validarListadoAnticipos,
   validarMotivo
 } from '../../middleware/gastos/validacionesAnticipos'
+import { CajaMenorController } from '../../controllers/gastos/CajaMenorController'
+import {
+  validarActualizarCaja,
+  validarAsignacion,
+  validarCaja,
+  validarGastosReembolso,
+  validarHistorialCaja,
+  validarLegalizacionCaja,
+  validarLegalizacionReembolso,
+  validarListadoReembolsos,
+  validarNuevoReembolso,
+  validarPagoCaja
+} from '../../middleware/gastos/validacionesCajaMenor'
 import { RevisionSoportesController } from '../../controllers/tramitadores/SoportesTramitadorController'
 import { body, param, query } from 'express-validator'
 
@@ -320,6 +333,38 @@ router.put('/admin/parametros/:clave',
   handleInputErrors,
   ParametrosGastosController.update
 )
+
+
+// =====================================
+// CAJA MENOR
+// Tesorería maneja todas las cajas; la Auxiliar de Tesorería - Caja menor, solo la suya (lo
+// verifica el controlador). Dirección de Negocio aprueba los reembolsos.
+// =====================================
+const tesoreriaCaja = requiereRol(ROLES.TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA)
+const cajaODireccion = requiereRol(ROLES.TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA, ROLES.DIRECCION_NEGOCIO)
+
+router.get('/caja-menor/cajas', tesoreriaCaja, CajaMenorController.cajas)
+router.get('/caja-menor/cajas/:id/historial', tesoreriaCaja, validarHistorialCaja, handleInputErrors, CajaMenorController.historial)
+router.get('/caja-menor/cajas/:id/historial/exportar', tesoreriaCaja, validarHistorialCaja, handleInputErrors, CajaMenorController.exportarHistorial)
+router.post('/caja-menor/cajas', soloTesoreria, validarCaja, handleInputErrors, CajaMenorController.crearCaja)
+router.put('/caja-menor/cajas/:id', soloTesoreria, validarActualizarCaja, handleInputErrors, CajaMenorController.actualizarCaja)
+router.get('/caja-menor/usuarios', soloTesoreria, CajaMenorController.usuarios)
+router.put('/caja-menor/usuarios/:usuarioId', soloTesoreria, validarAsignacion, handleInputErrors, CajaMenorController.asignar)
+
+router.post('/caja-menor/pagar', tesoreriaCaja, validarPagoCaja, handleInputErrors, CajaMenorController.pagar)
+router.post('/caja-menor/gastos/:id/legalizar', tesoreriaCaja, recibirDocumentos, leerDatosJson, validarLegalizacionCaja, handleInputErrors, CajaMenorController.legalizarGasto)
+router.post('/caja-menor/gastos/:id/deshacer', tesoreriaCaja, validarId, handleInputErrors, CajaMenorController.deshacerLegalizacion)
+
+router.get('/caja-menor/reembolsos', cajaODireccion, validarListadoReembolsos, handleInputErrors, CajaMenorController.reembolsos)
+router.post('/caja-menor/reembolsos', tesoreriaCaja, validarNuevoReembolso, handleInputErrors, CajaMenorController.crearReembolso)
+router.get('/caja-menor/reembolsos/:id', cajaODireccion, validarId, handleInputErrors, CajaMenorController.reembolso)
+router.post('/caja-menor/reembolsos/:id/agregar', tesoreriaCaja, validarGastosReembolso, handleInputErrors, CajaMenorController.agregar)
+router.post('/caja-menor/reembolsos/:id/quitar', tesoreriaCaja, validarGastosReembolso, handleInputErrors, CajaMenorController.quitar)
+router.post('/caja-menor/reembolsos/:id/enviar', tesoreriaCaja, validarId, handleInputErrors, CajaMenorController.enviar)
+router.post('/caja-menor/reembolsos/:id/anular', tesoreriaCaja, validarId, handleInputErrors, CajaMenorController.anular)
+router.post('/caja-menor/reembolsos/:id/aprobar', soloDireccion, validarId, handleInputErrors, CajaMenorController.aprobar)
+router.post('/caja-menor/reembolsos/:id/rechazar', soloDireccion, validarId, validarMotivo, handleInputErrors, CajaMenorController.rechazar)
+router.post('/caja-menor/reembolsos/:id/legalizar', tesoreriaCaja, recibirDocumentos, leerDatosJson, validarLegalizacionReembolso, handleInputErrors, CajaMenorController.legalizar)
 
 
 export default router

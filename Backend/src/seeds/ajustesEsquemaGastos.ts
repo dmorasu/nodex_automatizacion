@@ -158,6 +158,26 @@ const solicitudesDeFactura = async () => {
   await db.query(`CREATE INDEX IF NOT EXISTS gastos_anticipos_clase_estado ON gastos_anticipos (clase, estado)`)
 }
 
+// 2026-10-10 · Caja menor: fondo y tope de alerta en las bolsas de caja menor, y el comprobante
+// del reembolso en los documentos (las tablas nuevas las crea sync())
+const cajaMenor = async () => {
+  const bolsas = await columnasDe('gastos_bolsas')
+  if (bolsas) {
+    const nuevas: [string, string][] = [
+      ['fondo_asignado', 'DECIMAL(15, 2)'],
+      ['tope_alerta', 'DECIMAL(15, 2)'],
+      ['alerta_tope_enviada', 'BOOLEAN NOT NULL DEFAULT false']
+    ]
+    for (const [columna, tipo] of nuevas) {
+      if (!bolsas[columna]) await db.query(`ALTER TABLE gastos_bolsas ADD COLUMN ${columna} ${tipo}`)
+    }
+  }
+  const documentos = await columnasDe('gastos_documentos')
+  if (documentos && !documentos.reembolso_caja_id) {
+    await db.query('ALTER TABLE gastos_documentos ADD COLUMN reembolso_caja_id INTEGER REFERENCES gastos_reembolsos_caja (id) ON UPDATE CASCADE ON DELETE SET NULL')
+  }
+}
+
 export const ajustarEsquemaGastos = async () => {
   await retencionPasaALaFactura()
   await contabilizacionDeGastos()
@@ -165,4 +185,5 @@ export const ajustarEsquemaGastos = async () => {
   await pagoProgramado()
   await anticiposDeClientes()
   await solicitudesDeFactura()
+  await cajaMenor()
 }

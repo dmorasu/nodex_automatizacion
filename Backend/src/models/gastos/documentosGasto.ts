@@ -6,7 +6,7 @@ import LotesPago from './lotesPago'
 import Anticipos from './anticipos'
 
 // Archivos en Azure File Share. Un documento pertenece a UNO de:
-// un gasto, un lote de pago, una cuenta de cobro, un reintegro o un anticipo.
+// un gasto, un lote de pago, una cuenta de cobro, un reintegro, un anticipo o un reembolso de caja menor.
 @Table({
   tableName: 'gastos_documentos',
   underscored: true
@@ -50,6 +50,10 @@ class DocumentosGasto extends Model {
 
   @Column({ type: DataType.INTEGER })
   declare reintegroId: number
+
+  // Comprobante del reembolso de caja menor (la llave foránea la crea ajustesEsquemaGastos)
+  @Column({ type: DataType.INTEGER })
+  declare reembolsoCajaId: number | null
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(255) })

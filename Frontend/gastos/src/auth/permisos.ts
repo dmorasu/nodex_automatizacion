@@ -12,6 +12,8 @@ export const ROLES = {
   CONTABILIDAD: "CONTABILIDAD",
   // Aprueba los pagos que programa Tesorería
   DIRECCION_NEGOCIO: "DIRECCION_NEGOCIO",
+  // Hace el trabajo de Tesorería solo en la caja menor que tiene asignada
+  AUXILIAR_TESORERIA_CAJA: "AUXILIAR_TESORERIA_CAJA",
   ADMIN: "ADMIN"
 } as const
 
@@ -23,6 +25,7 @@ export const NOMBRES_ROL: Record<string, string> = {
   LEGALIZACION: "Legalización",
   CONTABILIDAD: "Contabilidad",
   DIRECCION_NEGOCIO: "Dirección de Negocio",
+  AUXILIAR_TESORERIA_CAJA: "Auxiliar de Tesorería - Caja menor",
   ADMIN: "Administrador",
   GESTION_ACTIVOS: "Gestión de activos (trámites)",
   TORRE_CONTROL: "Torre de control (trámites)",
@@ -64,7 +67,7 @@ export const MODULOS: Modulo[] = [
     href: "/tesoreria",
     nombre: "Tesorería",
     descripcion: "Paga gastos y administra las bolsas",
-    roles: [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS]
+    roles: [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.AUXILIAR_TESORERIA_CAJA]
   },
   {
     href: "/direccion",

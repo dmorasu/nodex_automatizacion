@@ -36,7 +36,8 @@ const TIPOS_GASTO_INICIALES = [
 const FORMAS_PAGO_INICIALES = [
   { codigo: 'TRANSFERENCIA', nombre: 'Transferencia' },
   { codigo: 'EFECTIVO', nombre: 'Efectivo' },
-  { codigo: 'TARJETA_CORPORATIVA', nombre: 'Tarjeta corporativa' }
+  { codigo: 'TARJETA_CORPORATIVA', nombre: 'Tarjeta corporativa' },
+  { codigo: 'CAJA_MENOR', nombre: 'Caja menor' }
 ]
 
 const ESTADOS_GASTO_INICIALES = [
@@ -48,6 +49,10 @@ const ESTADOS_GASTO_INICIALES = [
   { codigo: ESTADOS_GASTO.EN_CUENTA_COBRO, nombre: 'En cuenta de cobro', orden: 6 },
   { codigo: ESTADOS_GASTO.LEGALIZADO, nombre: 'Legalizado', orden: 7 },
   { codigo: ESTADOS_GASTO.CONTABILIZADO, nombre: 'Contabilizado', orden: 8 },
+  { codigo: ESTADOS_GASTO.PAGADO_CAJA, nombre: 'Pagado por caja menor', orden: 10 },
+  { codigo: ESTADOS_GASTO.PENDIENTE_REEMBOLSO, nombre: 'Pendiente por reembolso', orden: 11 },
+  { codigo: ESTADOS_GASTO.EN_REEMBOLSO, nombre: 'En reembolso', orden: 12 },
+  { codigo: ESTADOS_GASTO.LEGALIZADO_CAJA, nombre: 'Legalizado (caja menor)', orden: 13 },
   { codigo: ESTADOS_GASTO.ANULADO, nombre: 'Anulado', orden: 99 }
 ]
 
@@ -71,6 +76,8 @@ const TIPOS_DOCUMENTO_INICIALES = [
   { codigo: 'SOPORTE_CONSIGNACION', nombre: 'Soporte de consignación' },
   { codigo: 'FACTURA_ANTICIPO', nombre: 'Factura del cliente (PDF)' },
   { codigo: 'FACTURA_ANTICIPO_XML', nombre: 'Factura electrónica (XML)' },
+  { codigo: 'SOPORTE_CAJA_MENOR', nombre: 'Soporte de caja menor' },
+  { codigo: 'SOPORTE_REEMBOLSO_CAJA', nombre: 'Soporte del reembolso de caja menor' },
   { codigo: 'OTRO', nombre: 'Otro' }
 ]
 
@@ -81,6 +88,7 @@ const ROLES_INICIALES = [
   { codigo: ROLES.CONTABILIDAD, nombre: 'Contabilidad', descripcion: 'Contabiliza las cuentas de cobro legalizadas' },
   { codigo: ROLES.ADMIN, nombre: 'Administrador', descripcion: 'Acceso total al módulo de gastos' },
   { codigo: ROLES.DIRECCION_NEGOCIO, nombre: 'Dirección de Negocio', descripcion: 'Aprueba los pagos que programa Tesorería' },
+  { codigo: ROLES.AUXILIAR_TESORERIA_CAJA, nombre: 'Auxiliar de Tesorería - Caja menor', descripcion: 'Paga, legaliza y reembolsa solo la caja menor que tiene asignada' },
   { codigo: ROLES.GESTION_ACTIVOS, nombre: 'Gestión de activos', descripcion: 'Trámites: crea y edita sus propios trámites y les crea gastos' },
   { codigo: ROLES.TORRE_CONTROL, nombre: 'Torre de control', descripcion: 'Trámites: acceso completo a la gestión de trámites' },
   { codigo: ROLES.ANALISTA_TRAMITES, nombre: 'Analista de trámites', descripcion: 'Trámites: permisos de Torre de control; en el inicio ve solo sus trámites asignados' },

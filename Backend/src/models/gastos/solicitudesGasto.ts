@@ -14,6 +14,7 @@ import DocumentosGasto from './documentosGasto'
 import Reintegros from './reintegros'
 import CuentasCobroGastos from './cuentasCobroGastos'
 import FacturasGasto from './facturasGasto'
+import LegalizacionesCaja from './legalizacionesCaja'
 import Anticipos from './anticipos'
 
 // Solicitud de gasto. Nace en estado SOLICITADO por un valor solicitado y la paga Tesorería.
@@ -248,6 +249,10 @@ class SolicitudesGasto extends Model {
   // Factura real (la registra Legalización después del pago)
   @HasOne(() => FacturasGasto)
   declare factura: FacturasGasto
+
+  // Legalización en caja menor (la registra Tesorería después de entregar el efectivo)
+  @HasOne(() => LegalizacionesCaja)
+  declare legalizacionCaja: LegalizacionesCaja
 
   @HasMany(() => Reintegros)
   declare reintegros: Reintegros[]

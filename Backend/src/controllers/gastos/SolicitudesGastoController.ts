@@ -24,7 +24,10 @@ import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../servi
 import { ESTADOS_GASTO, ESTADOS_SIN_PAGO, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
-import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados } from './utilidades'
+import { ATRIBUTOS_USUARIO, esAdmin, esAuxiliarCaja, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados } from './utilidades'
+import { cajaDelUsuario } from '../../services/gastos/cajaMenor'
+import LegalizacionesCaja from '../../models/gastos/legalizacionesCaja'
+import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
 import SolicitudTramites from '../../models/solicitudTramites'
 import Anticipos from '../../models/gastos/anticipos'
 import { soloTramitesPropios } from '../../middleware/auth'
@@ -55,7 +58,9 @@ export const atributosSaldoAnticipo = (tabla = 'SolicitudesGasto'): [ReturnType<
 export const obtenerGastoConAcceso = async (req: Request, id: number) => {
   const gasto = await SolicitudesGasto.findByPk(id)
 
-  if (!gasto || (!puedeVerTodos(req) && gasto.creadoPor !== req.usuario.id)) {
+  // La auxiliar de caja menor abre los gastos de su caja
+  const deSuCaja = async () => esAuxiliarCaja(req) && (await cajaDelUsuario(req.usuario.id))?.id === gasto?.bolsaId
+  if (!gasto || (!puedeVerTodos(req) && gasto.creadoPor !== req.usuario.id && !(await deSuCaja()))) {
     throw new ErrorGastos('El gasto no existe', 404)
   }
   // Tesorería - Certificados solo abre compras de certificados (o los gastos que ella creó)
@@ -82,6 +87,8 @@ const INCLUDES_LISTADO = [
   { model: Terceros, attributes: ['id', 'identificacion', 'nombre'] },
   { model: FacturasGasto, attributes: ['id', 'numeroFactura', 'valorFactura', 'cuatroXMil', 'valorLegalizado'] },
   { model: Tramitador, attributes: ['id', 'nombreTramitador'] },
+  // Caja menor: lo que registró Tesorería al legalizar (bandejas de caja menor)
+  { model: LegalizacionesCaja, attributes: ['id', 'numeroFactura', 'fechaFactura', 'beneficiario', 'quienLegaliza', 'valorSoporte', 'diferencia', 'reembolsoCajaId'] },
   { model: Anticipos, attributes: ['id', 'codigo'] }
 ]
 
@@ -120,12 +127,22 @@ const hastaBogota = (fecha: string) => new Date(`${fecha}T23:59:59.999-05:00`)
 //  alcance=mios|todos · estado · pagados=si (todo lo ya pagado) · tipoGastoId · bolsaId · operacionId
 //  tramitadorId · creadoPor · reembolsable=si|no · sinCuentaCobro=si · soporteTramitador=si|no
 //  conTramite=si|no · reintegroPendiente=si · desde/hasta (creación) · pagoDesde/pagoHasta · busqueda
+//  cajaMenor=si|no (gastos que salen de una caja menor)
 const condicionesListado = async (req: Request) => {
   const q = req.query
   const condiciones: WhereOptions[] = []
 
-  // Sin rol solo se ven los propios, aunque pida "todos"
-  if (q.alcance !== 'todos' || !puedeVerTodos(req)) condiciones.push({ creadoPor: req.usuario.id })
+  // Sin rol solo se ven los propios, aunque pida "todos". La auxiliar de caja menor ve los de su caja
+  if (q.alcance === 'todos' && !puedeVerTodos(req) && esAuxiliarCaja(req)) {
+    condiciones.push({ bolsaId: (await cajaDelUsuario(req.usuario.id))?.id ?? -1 })
+  } else if (q.alcance !== 'todos' || !puedeVerTodos(req)) condiciones.push({ creadoPor: req.usuario.id })
+
+  // Gastos que se pagan por caja menor (cajaMenor=si) o el resto (cajaMenor=no)
+  if (q.cajaMenor === 'si' || q.cajaMenor === 'no') {
+    condiciones.push({
+      bolsaId: { [q.cajaMenor === 'si' ? Op.in : Op.notIn]: literal(`(SELECT b.id FROM gastos_bolsas b WHERE b.tipo = 'CAJA_MENOR')`) }
+    })
+  }
 
   // Compras de certificados (CTL y Cámara de Comercio): las paga Tesorería - Certificados.
   // certificados=si → solo esas · certificados=no → todas menos esas. Quien solo tiene ese rol, solo ve esas.
@@ -288,6 +305,14 @@ export class SolicitudesGastoController {
           {
             model: FacturasGasto,
             include: [{ model: Usuarios, as: 'registrador', attributes: ATRIBUTOS_USUARIO }]
+          },
+          {
+            // Legalización en caja menor y el reembolso donde está
+            model: LegalizacionesCaja,
+            include: [
+              { model: Usuarios, as: 'registrador', attributes: ATRIBUTOS_USUARIO },
+              { model: ReembolsosCaja, attributes: ['id', 'codigo', 'estado', 'fechaLegalizacion'] }
+            ]
           },
           {
             model: TrazabilidadGastos,

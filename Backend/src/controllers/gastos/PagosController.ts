@@ -15,7 +15,8 @@ import { aprobarGastos, confirmarPago, confirmarPagos, pagarDirecto, programarPa
 import { notificarGastosPagados, notificarLoteProgramado, notificarRevisionLote } from '../../services/gastos/notificacionesGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
-import { ESTADOS_LOTE, ROLES } from '../../services/gastos/constantes'
+import { ESTADOS_LOTE, FORMA_PAGO_CAJA_MENOR, ROLES } from '../../services/gastos/constantes'
+import FormasPago from '../../models/gastos/formasPago'
 
 // Las compras de certificados (CTL y Cámara de Comercio) las paga Tesorería - Certificados;
 // los demás gastos, Tesorería (también los de anticipos, aunque sean de un certificado).
@@ -48,7 +49,12 @@ const LOTES_CON_CERTIFICADOS = (ids: number[]) => literal(`(
 // gastos se programan para aprobación de Dirección
 const verificarFlujo = async (gastoIds: number[], flujo: 'directo' | 'programado') => {
   const certificados = await idsTiposCertificados()
-  const gastos = await SolicitudesGasto.findAll({ where: { id: gastoIds }, attributes: ['codigo', 'tipoGastoId', 'anticipoId'] })
+  const gastos = await SolicitudesGasto.findAll({ where: { id: gastoIds }, attributes: ['codigo', 'tipoGastoId', 'anticipoId', 'formaPagoId'] })
+
+  // Los de caja menor se pagan en efectivo desde Tesorería → Caja menor
+  const formaCaja = await FormasPago.findOne({ where: { codigo: FORMA_PAGO_CAJA_MENOR }, attributes: ['id'] })
+  const deCaja = gastos.filter(g => g.formaPagoId === formaCaja?.id)
+  if (deCaja.length) throw new ErrorGastos(`${deCaja.map(g => g.codigo).join(', ')} se paga${deCaja.length > 1 ? 'n' : ''} por caja menor (Tesorería → Caja menor)`)
   const esDirecto = (g: SolicitudesGasto) => Boolean(g.anticipoId) || certificados.includes(g.tipoGastoId)
   const fuera = gastos.filter(g => esDirecto(g) !== (flujo === 'directo'))
   if (!fuera.length) return

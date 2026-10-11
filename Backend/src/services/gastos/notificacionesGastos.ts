@@ -14,6 +14,9 @@ import Tramitador from '../../models/tramitador'
 import SoporteTramitador, { ESTADOS_SOPORTE, TIPOS_SOPORTE } from '../../models/tramitadores/soporteTramitador'
 import LotesPago from '../../models/gastos/lotesPago'
 import Roles from '../../models/gastos/roles'
+import LegalizacionesCaja from '../../models/gastos/legalizacionesCaja'
+import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
+import { correoBase, MARCAS, nota } from '../template/correoBase'
 import { ROLES } from './constantes'
 import { formatoFecha, formatoMoneda } from './formato'
 import { correoGastos, ESTADOS_CORREO, html } from './plantillaCorreo'
@@ -456,5 +459,87 @@ export const notificarRevisionLote = async (loteId: number, rechazadoIds: number
     await encolarCorreo('LOTE_APROBADO', correoTesoreria(), `Lote #${lote.id} aprobado · ${formatoMoneda(lote.total)}`, mensaje)
   } catch (error) {
     console.error(`⚠️ No se pudo enviar el correo de revisión del lote #${loteId}:`, error)
+  }
+}
+
+// ── Caja menor ──────────────────────────────
+
+// El disponible de una caja bajó del tope: se avisa una vez a Tesorería (hasta que se reponga)
+export const notificarTopeCaja = async (caja: Bolsas) => {
+  try {
+    const mensaje = correoBase({
+      marca: MARCAS.GASTOS,
+      estado: { texto: 'Saldo bajo', tono: 'alerta' },
+      titulo: `${caja.nombre}: saldo por debajo de ${formatoMoneda(caja.topeAlerta)}`,
+      saludo: 'Hola,',
+      intro: `El disponible de <strong>${html(caja.nombre)}</strong> es <strong>${formatoMoneda(caja.saldoActual)}</strong>, ` +
+        `por debajo del tope de ${formatoMoneda(caja.topeAlerta)}. Legalice los gastos pagados y arme el reembolso en Nodex Gastos (Tesorería → Caja menor).`,
+      preencabezado: `${caja.nombre}: disponible ${formatoMoneda(caja.saldoActual)}`,
+      cuerpo: nota('alerta', `Fondo asignado: ${formatoMoneda(caja.fondoAsignado)} · Disponible: ${formatoMoneda(caja.saldoActual)}`, 'Caja menor'),
+      boton: { texto: 'Abrir Nodex Gastos', url: process.env.URL_NODEX_GASTOS }
+    })
+    await encolarCorreo('CAJA_MENOR_SALDO_BAJO', correoTesoreria(), `Caja menor con saldo bajo · ${caja.nombre} · ${formatoMoneda(caja.saldoActual)}`, mensaje)
+  } catch (error) {
+    console.error(`⚠️ No se pudo enviar la alerta de saldo de ${caja.nombre}:`, error)
+  }
+}
+
+const gastosDelReembolso = (reembolsoId: number) =>
+  SolicitudesGasto.findAll({
+    include: [
+      { model: LegalizacionesCaja, where: { reembolsoCajaId: reembolsoId } },
+      { model: Usuarios, as: 'creador', attributes: ['nombreUsuario'] }
+    ],
+    order: [['id', 'ASC']]
+  })
+
+const correoReembolso = (reembolso: ReembolsosCaja, gastos: SolicitudesGasto[], estado: typeof ESTADOS_CORREO[keyof typeof ESTADOS_CORREO], titulo: string, intro: string) =>
+  correoGastos({
+    estado,
+    titulo,
+    saludo: 'Hola,',
+    intro,
+    gastos,
+    monto: g => g.legalizacionCaja?.valorSoporte,
+    etiquetaTotal: 'Total del reembolso',
+    detalles: g => [
+      ['Factura', html(g.legalizacionCaja?.numeroFactura)],
+      ['Beneficiario', html(g.legalizacionCaja?.beneficiario)],
+      ['Legalizó', html(g.legalizacionCaja?.quienLegaliza)],
+      ['Solicitado por', html(g.creador?.nombreUsuario)]
+    ]
+  })
+
+// Tesorería envió un reembolso de caja menor: se avisa a Dirección de Negocio para aprobarlo
+export const notificarReembolsoEnviado = async (reembolsoId: number) => {
+  try {
+    const destinatarios = await correosDireccion()
+    const reembolso = await ReembolsosCaja.findByPk(reembolsoId, { include: [{ model: Bolsas, attributes: ['nombre'] }] })
+    if (!reembolso || !destinatarios.length) return
+    const gastos = await gastosDelReembolso(reembolso.id)
+    const mensaje = correoReembolso(reembolso, gastos, ESTADOS_CORREO.POR_APROBAR, `Reembolso de caja menor por aprobar · ${reembolso.codigo}`,
+      `Tesorería envió el reembolso <strong>${html(reembolso.codigo)}</strong> de <strong>${html(reembolso.bolsa?.nombre)}</strong>. Revíselo en Nodex Gastos (Aprobación de pagos → Caja menor) para aprobarlo o devolverlo.`)
+    for (const correo of destinatarios) {
+      await encolarCorreo('REEMBOLSO_CAJA_POR_APROBAR', correo, `Reembolso de caja menor por aprobar · ${reembolso.codigo} · ${formatoMoneda(reembolso.total)}`, mensaje)
+    }
+  } catch (error) {
+    console.error(`⚠️ No se pudo enviar el correo del reembolso ${reembolsoId}:`, error)
+  }
+}
+
+// Dirección aprobó o devolvió el reembolso: se avisa a Tesorería
+export const notificarReembolsoRevisado = async (reembolsoId: number) => {
+  try {
+    const reembolso = await ReembolsosCaja.findByPk(reembolsoId, { include: [{ model: Bolsas, attributes: ['nombre'] }] })
+    if (!reembolso) return
+    const aprobado = reembolso.estado === 'APROBADO'
+    const gastos = await gastosDelReembolso(reembolso.id)
+    const titulo = `Reembolso de caja menor ${aprobado ? 'aprobado' : 'devuelto'} · ${reembolso.codigo}`
+    const mensaje = correoReembolso(reembolso, gastos, aprobado ? ESTADOS_CORREO.APROBADO : ESTADOS_CORREO.RECHAZADO, titulo, aprobado
+      ? `Dirección de Negocio aprobó el reembolso <strong>${html(reembolso.codigo)}</strong> de ${html(reembolso.bolsa?.nombre)}. Cuando llegue el dinero, legalícelo en Nodex Gastos con la fecha y el soporte.`
+      : `Dirección de Negocio devolvió el reembolso <strong>${html(reembolso.codigo)}</strong> de ${html(reembolso.bolsa?.nombre)}: <strong>${html(reembolso.motivoRechazo)}</strong>. Quedó en borrador para corregirlo y enviarlo de nuevo.`)
+    await encolarCorreo(aprobado ? 'REEMBOLSO_CAJA_APROBADO' : 'REEMBOLSO_CAJA_DEVUELTO', correoTesoreria(), `${titulo} · ${formatoMoneda(reembolso.total)}`, mensaje)
+  } catch (error) {
+    console.error(`⚠️ No se pudo enviar el correo de revisión del reembolso ${reembolsoId}:`, error)
   }
 }

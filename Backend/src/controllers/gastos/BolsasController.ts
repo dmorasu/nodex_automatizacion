@@ -71,6 +71,9 @@ export class BolsasController {
       if (bolsa && llevaSaldoPorCliente(bolsa.tipo)) {
         throw new ErrorGastos('Las bolsas de anticipos no se recargan: se llenan con lo que confirma Contabilidad')
       }
+      if (bolsa?.tipo === TIPOS_BOLSA.CAJA_MENOR) {
+        throw new ErrorGastos('Las cajas menores se reponen con los reembolsos (o cambiando su fondo en Tesorería → Caja menor)')
+      }
 
       const { saldoFinal } = await db.transaction(transaction =>
         registrarMovimientos(Number(req.params.id), [{

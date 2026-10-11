@@ -8,11 +8,11 @@ import type { SaldoCliente, arqueoDeBolsa, estadoDeCuentaCliente } from './antic
 
 const MONEDA = '"$"#,##0.00'
 
-const fechaHora = (iso: string | Date | null | undefined) =>
+export const fechaHora = (iso: string | Date | null | undefined) =>
   iso ? new Date(iso).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }) : ''
 
 // Hoja con encabezados en español, ancho según el contenido y formato de moneda en `moneda`
-const hoja = (filas: Record<string, unknown>[], moneda: string[], encabezado: unknown[][] = []) => {
+export const hoja = (filas: Record<string, unknown>[], moneda: string[], encabezado: unknown[][] = []) => {
   const ws = XLSX.utils.aoa_to_sheet(encabezado)
   XLSX.utils.sheet_add_json(ws, filas.length ? filas : [{ 'Sin datos': '' }], { origin: encabezado.length ? encabezado.length + 1 : 0 })
   const columnas = Object.keys(filas[0] ?? { 'Sin datos': '' })

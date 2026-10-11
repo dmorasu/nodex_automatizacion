@@ -42,17 +42,22 @@ export const obtenerGasto = async (id: number) => {
 }
 
 // Todo lo que necesita el formulario de crear/editar
+// Cajas menores activas: con forma de pago Caja menor el usuario elige de cuál sale el gasto
+export const obtenerCajasMenores = async () =>
+  z.array(BolsaApoyoSchema).parse(await (await fetchApi("/gastos/apoyo/bolsas?tipo=CAJA_MENOR")).json())
+
 export const obtenerDatosFormulario = async () => {
-  const [catalogos, operaciones, tramitadores, bolsas, tasas] = await Promise.all([
+  const [catalogos, operaciones, tramitadores, bolsas, tasas, cajas] = await Promise.all([
     obtenerCatalogos(),
     obtenerOperaciones(),
     obtenerTramitadores(),
     obtenerBolsasActivas(),
-    obtenerTasas()
+    obtenerTasas(),
+    obtenerCajasMenores()
   ])
 
   // Porcentaje de retención por defecto para los gastos de inmueble (0.11 → 11)
   const porcentajeRetencion = Math.round(tasas.retencion * 1e6) / 1e4
 
-  return { catalogos, operaciones, tramitadores, bolsas, porcentajeRetencion }
+  return { catalogos, operaciones, tramitadores, bolsas, porcentajeRetencion, cajas }
 }

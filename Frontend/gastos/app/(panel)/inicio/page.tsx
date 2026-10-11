@@ -35,6 +35,13 @@ const ASPECTO: Record<string, { Icono: LucideIcon, fondo: string, sombra: string
 
 const ASPECTO_POR_DEFECTO = ASPECTO["/admin"]
 
+// Cuántos reembolsos de caja menor hay en un estado
+const contarReembolsos = async (estado: string) => {
+  const req = await fetchApi(`/gastos/caja-menor/reembolsos?estado=${estado}&tamano=1`)
+  if (!req.ok) return 0
+  return Number((await req.json()).total ?? 0)
+}
+
 // Cuántos gastos cumplen un filtro (solo se pide el total)
 const contar = async (filtros: Record<string, string>) => {
   const req = await fetchApi(`/gastos/solicitudes?${new URLSearchParams({ ...filtros, tamano: "1" })}`)
@@ -66,13 +73,23 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
   ]
   if (puede(ROLES.TESORERIA)) {
     consultas.push(
-      ["/tesoreria", "por programar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "no", anticipo: "no" })],
+      ["/tesoreria", "por programar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "no", anticipo: "no", cajaMenor: "no" })],
       ["/tesoreria", "de anticipos por pagar", contar({ alcance: "todos", estado: "SOLICITADO", anticipo: "si" })],
       ["/tesoreria", "aprobados por confirmar", contar({ alcance: "todos", estado: "APROBADO_PAGO", certificados: "no" })]
     )
   }
+  // Caja menor: Tesorería ve todas las cajas; la auxiliar, solo la suya (lo limita el backend)
+  if (puede(ROLES.TESORERIA) || roles.includes(ROLES.AUXILIAR_TESORERIA_CAJA)) {
+    consultas.push(
+      ["/tesoreria", "por pagar en caja menor", contar({ alcance: "todos", estado: "SOLICITADO", cajaMenor: "si" })],
+      ["/tesoreria", "por legalizar en caja menor", contar({ alcance: "todos", estado: "PAGADO_CAJA", cajaMenor: "si" })]
+    )
+  }
   if (puede(ROLES.DIRECCION_NEGOCIO)) {
-    consultas.push(["/direccion", "por aprobar", contar({ alcance: "todos", estado: "PROGRAMADO" })])
+    consultas.push(
+      ["/direccion", "por aprobar", contar({ alcance: "todos", estado: "PROGRAMADO" })],
+      ["/direccion", "reembolsos de caja menor por aprobar", contarReembolsos("POR_APROBAR")]
+    )
   }
   if (puede(ROLES.TESORERIA_CERTIFICADOS)) {
     consultas.push(["/tesoreria", "certificados por pagar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "si", anticipo: "no" })])

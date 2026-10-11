@@ -10,7 +10,7 @@ import Bolsas from '../../models/gastos/bolsas'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import Anticipos from '../../models/gastos/anticipos'
 import { cambiarEstadoGasto, codigoEstadoGasto, idEstadoGasto, registrarTrazabilidad } from './estadosGasto'
-import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, ESTADOS_GASTO, PARAMETROS, TIPOS_BOLSA, TIPOS_GASTO } from './constantes'
+import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, ESTADOS_GASTO, FORMA_PAGO_CAJA_MENOR, PARAMETROS, TIPOS_BOLSA, TIPOS_GASTO } from './constantes'
 import { ErrorGastos } from './errores'
 import { calcularRetencion } from './calculos'
 import { obtenerParametro } from './parametros'
@@ -120,6 +120,24 @@ const resolverBeneficiario = async (datos: DatosGasto, transaction: Transaction 
   return tercero.id
 }
 
+// Reglas de la bolsa de un gasto nuevo o editado: con forma de pago Caja menor solo sirve una
+// caja menor (Bogotá, Medellín…, la elige quien crea el gasto); con otra forma de pago, una caja no
+function validarBolsaDelNuevoGasto(bolsa: Bolsas | null, porCajaMenor: boolean, deAnticipo: boolean): asserts bolsa is Bolsas {
+  if (!bolsa?.activo) throw new ErrorGastos(porCajaMenor ? 'Seleccione la caja menor de la que sale el gasto' : 'La bolsa no existe o está inactiva')
+  if (porCajaMenor && bolsa.tipo !== TIPOS_BOLSA.CAJA_MENOR) {
+    throw new ErrorGastos('Con forma de pago Caja menor, seleccione la caja menor de la que sale el gasto')
+  }
+  if (!deAnticipo && bolsa.tipo === TIPOS_BOLSA.ANTICIPOS) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos: solo paga gastos creados desde un anticipo confirmado`)
+  }
+  if (bolsa.tipo === TIPOS_BOLSA.FACTURAS) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos facturados: no paga gastos`)
+  }
+  if (!porCajaMenor && bolsa.tipo === TIPOS_BOLSA.CAJA_MENOR) {
+    throw new ErrorGastos(`${bolsa.nombre} es una caja menor: elija la forma de pago Caja menor`)
+  }
+}
+
 // Valida relaciones y reglas por tipo de gasto, y calcula los valores.
 // Devuelve los campos listos para guardar. Con soloValidar no escribe nada en la base de datos.
 const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloValidar = false) => {
@@ -137,24 +155,23 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     }
   }
 
-  const [tipoGasto, formaPago, operacion, bolsa] = await Promise.all([
+  const formaPago = await FormasPago.findByPk(datos.formaPagoId, { transaction })
+  if (!formaPago?.activo) throw new ErrorGastos('La forma de pago no existe o está inactiva')
+
+  const porCajaMenor = formaPago.codigo === FORMA_PAGO_CAJA_MENOR
+  if (porCajaMenor && anticipo) throw new ErrorGastos('Los gastos de anticipos no se pagan por caja menor')
+
+  const [tipoGasto, operacion, bolsa] = await Promise.all([
     TiposGasto.findByPk(datos.tipoGastoId, { transaction }),
-    FormasPago.findByPk(datos.formaPagoId, { transaction }),
     Operaciones.findByPk(datos.operacionId, { transaction }),
     // El gasto de un anticipo siempre sale de la bolsa del anticipo
     Bolsas.findByPk(anticipo?.bolsaId ?? datos.bolsaId, { transaction })
   ])
 
   if (!tipoGasto?.activo) throw new ErrorGastos('El tipo de gasto no existe')
-  if (!formaPago?.activo) throw new ErrorGastos('La forma de pago no existe o está inactiva')
   if (!operacion) throw new ErrorGastos('La operación no existe')
-  if (!bolsa?.activo) throw new ErrorGastos('La bolsa no existe o está inactiva')
-  if (!anticipo && bolsa.tipo === TIPOS_BOLSA.ANTICIPOS) {
-    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos: solo paga gastos creados desde un anticipo confirmado`)
-  }
-  if (bolsa.tipo === TIPOS_BOLSA.FACTURAS) {
-    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos facturados: no paga gastos`)
-  }
+  validarBolsaDelNuevoGasto(bolsa, porCajaMenor, Boolean(anticipo))
+
 
   let tramitadorId = datos.tramitadorId ?? null
   let placa = texto(datos.placa)?.toUpperCase() ?? null

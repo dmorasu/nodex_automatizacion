@@ -15,7 +15,8 @@ export default async function DireccionLayout({ children }: { children: React.Re
 
       <Pestanas pestanas={[
         { href: "/direccion", nombre: "Por aprobar" },
-        { href: "/direccion/historial", nombre: "Historial" }
+        { href: "/direccion/historial", nombre: "Historial" },
+        { href: "/direccion/caja-menor", nombre: "Reembolsos de caja menor" }
       ]} />
 
       {children}

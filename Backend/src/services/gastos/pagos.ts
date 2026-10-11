@@ -7,7 +7,7 @@ import DocumentosGasto from '../../models/gastos/documentosGasto'
 import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
 import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
-import { registrarMovimientos, validarBolsaDelGasto } from './bolsas'
+import { registrarMovimientos, validarBolsaDelGasto, validarQueNoSeaDeCaja } from './bolsas'
 import { cambiarEstadoGasto, codigoEstadoGasto } from './estadosGasto'
 import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
 import { ErrorGastos } from './errores'
@@ -104,6 +104,7 @@ export const programarPago = (datos: DatosProgramacion, usuarioId: number) =>
     // Se bloquean los gastos para que nadie más los programe al mismo tiempo
     const gastos = await SolicitudesGasto.findAll({ where: { id: { [Op.in]: ids } }, transaction, lock: transaction.LOCK.UPDATE })
     if (gastos.length !== ids.length) throw new ErrorGastos('Uno o más gastos no existen')
+    await validarQueNoSeaDeCaja(gastos, transaction)
 
     for (const gasto of gastos) {
       if (await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.SOLICITADO) {
@@ -221,6 +222,7 @@ export const pagarDirecto = (datos: DatosPagoDirecto, usuarioId: number) =>
 
     const gastos = await SolicitudesGasto.findAll({ where: { id: { [Op.in]: ids } }, transaction, lock: transaction.LOCK.UPDATE })
     if (gastos.length !== ids.length) throw new ErrorGastos('Uno o más gastos no existen')
+    await validarQueNoSeaDeCaja(gastos, transaction)
 
     for (const gasto of gastos) {
       if (await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.SOLICITADO) {

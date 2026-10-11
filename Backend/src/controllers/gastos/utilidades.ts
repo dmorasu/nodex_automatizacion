@@ -30,6 +30,12 @@ export const soloCertificados = (req: Request) => {
     !roles.some(rol => ([ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.ADMIN] as string[]).includes(rol))
 }
 
+// Auxiliar de Tesorería - Caja menor sin Tesorería: solo ve y maneja la caja que tiene asignada
+export const esAuxiliarCaja = (req: Request) => {
+  const roles = req.roles ?? []
+  return roles.includes(ROLES.AUXILIAR_TESORERIA_CAJA) && !roles.includes(ROLES.TESORERIA) && !roles.includes(ROLES.ADMIN)
+}
+
 // Ids de los tipos de gasto de certificados (se consultan una vez)
 let idsCertificados: Promise<number[]> | null = null
 export const idsTiposCertificados = () =>

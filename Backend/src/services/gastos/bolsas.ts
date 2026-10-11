@@ -60,11 +60,25 @@ export const validarBolsaDelGasto = (gasto: SolicitudesGasto, bolsa: Bolsas) => 
   if (bolsa.tipo === TIPOS_BOLSA.FACTURAS) {
     throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos facturados: no paga gastos`)
   }
+  // Las cajas menores pagan en Tesorería → Caja menor (efectivo), no en lotes
+  if (bolsa.tipo === TIPOS_BOLSA.CAJA_MENOR) {
+    throw new ErrorGastos(`${bolsa.nombre} es una caja menor: ${gasto.codigo} se paga en Tesorería → Caja menor`)
+  }
   if (gasto.anticipoId && gasto.bolsaId !== bolsa.id) {
     throw new ErrorGastos(`El gasto ${gasto.codigo} salió de un anticipo: solo se paga desde la bolsa de ese anticipo`)
   }
   if (!gasto.anticipoId && bolsa.tipo === TIPOS_BOLSA.ANTICIPOS) {
     throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos: no puede pagar el gasto ${gasto.codigo}, que no salió de un anticipo`)
+  }
+}
+
+// Un gasto de caja menor solo se paga en efectivo desde su caja (Tesorería → Caja menor):
+// ni se programa en un lote ni se paga directo desde otra bolsa
+export const validarQueNoSeaDeCaja = async (gastos: SolicitudesGasto[], transaction?: Transaction) => {
+  const cajas = (await Bolsas.findAll({ where: { tipo: TIPOS_BOLSA.CAJA_MENOR }, attributes: ['id'], transaction })).map(b => b.id)
+  const deCaja = gastos.filter(g => cajas.includes(g.bolsaId))
+  if (deCaja.length) {
+    throw new ErrorGastos(`${deCaja.map(g => g.codigo).join(', ')} se paga${deCaja.length > 1 ? 'n' : ''} por caja menor (Tesorería → Caja menor)`)
   }
 }
 

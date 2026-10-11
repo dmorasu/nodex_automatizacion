@@ -154,7 +154,8 @@ export default function FormularioGasto({
   bolsas,
   porcentajeRetencion,
   gasto,
-  anticipo
+  anticipo,
+  cajas = []
 }: {
   catalogos: Catalogos
   operaciones: Operacion[]
@@ -163,6 +164,8 @@ export default function FormularioGasto({
   porcentajeRetencion: number
   gasto?: GastoDetalle
   anticipo?: AnticipoDelGasto
+  // Cajas menores activas (Bogotá, Medellín…): con forma de pago Caja menor se elige una
+  cajas?: BolsaApoyo[]
 }) {
   const router = useRouter()
   const [guardando, startGuardar] = useTransition()
@@ -172,6 +175,8 @@ export default function FormularioGasto({
     ...datosIniciales(porcentajeRetencion, gasto),
     ...(anticipo && !gasto ? desdeAnticipo(anticipo, catalogos) : {})
   }))
+
+  const porCajaMenor = catalogos.formasPago.find(f => f.id === datos.formaPagoId)?.codigo === "CAJA_MENOR"
 
   // Trámite asociado (opcional)
   const [numeroTramite, setNumeroTramite] = useState(gasto?.solicitudTramiteId ? String(gasto.solicitudTramiteId) : "")
@@ -353,19 +358,22 @@ export default function FormularioGasto({
             />
           </Campo>
 
-          <Campo etiqueta="Bolsa" obligatorio>
+          <Campo etiqueta={porCajaMenor ? "Caja menor" : "Bolsa"} obligatorio>
             {anticipo ? (
               // La del anticipo: no se cambia
               <input value={anticipo.bolsa.nombre} disabled className={claseInput} aria-label="Bolsa" />
             ) : (
             <Selector
               valor={datos.bolsaId}
-              opciones={bolsas.map(b => ({
+              // Con Caja menor se elige la caja (Bogotá, Medellín…); si no, una bolsa general
+              opciones={(porCajaMenor ? cajas : bolsas).map(b => ({
                 id: b.id,
                 nombre: b.lineaNegocio ? `${b.nombre} · ${b.lineaNegocio}` : b.nombre
               }))}
               onChange={v => cambiar("bolsaId", v)}
-              vacio={bolsas.length ? "Seleccione la bolsa" : "No hay bolsas activas"}
+              vacio={porCajaMenor
+                ? cajas.length ? "Seleccione la caja menor" : "No hay cajas menores activas"
+                : bolsas.length ? "Seleccione la bolsa" : "No hay bolsas activas"}
             />
             )}
           </Campo>
@@ -375,7 +383,16 @@ export default function FormularioGasto({
           </Campo>
 
           <Campo etiqueta="Forma de pago" obligatorio>
-            <Selector valor={datos.formaPagoId} opciones={catalogos.formasPago} onChange={v => cambiar("formaPagoId", v)} />
+            <Selector
+              valor={datos.formaPagoId}
+              // Los gastos de anticipos se pagan de la bolsa del anticipo, nunca por caja menor
+              opciones={anticipo ? catalogos.formasPago.filter(f => f.codigo !== "CAJA_MENOR") : catalogos.formasPago}
+              onChange={v => {
+                const aCaja = catalogos.formasPago.find(f => f.id === v)?.codigo === "CAJA_MENOR"
+                cambiar("formaPagoId", v)
+                if (aCaja !== porCajaMenor) cambiar("bolsaId", null)
+              }}
+            />
           </Campo>
 
           <Campo etiqueta="Concepto del pago" obligatorio className="sm:col-span-2">

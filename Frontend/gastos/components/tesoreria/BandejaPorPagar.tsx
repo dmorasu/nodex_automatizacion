@@ -25,6 +25,8 @@ export default async function BandejaPorPagar({
     alcance: "todos",
     estado: "SOLICITADO",
     tamano: String(MAXIMO_BANDEJA),
+    // Los gastos de caja menor se pagan en efectivo en su propia pestaña
+    cajaMenor: "no",
     ...(tipo === "anticipos" ? { anticipo: "si" } : { anticipo: "no", certificados: tipo === "certificados" ? "si" : "no" })
   })
   if (searchParams.bolsaId) consulta.set("bolsaId", searchParams.bolsaId)

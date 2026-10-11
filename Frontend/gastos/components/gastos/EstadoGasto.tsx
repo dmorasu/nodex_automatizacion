@@ -23,7 +23,13 @@ const COLORES: Record<string, string> = {
   CONTABILIZADA: GRIS,
   ANULADA: ROJO,
   PENDIENTE: AMARILLO,
-  REINTEGRADO: VERDE
+  REINTEGRADO: VERDE,
+  // Caja menor: gasto y reembolso
+  PAGADO_CAJA: "bg-sky-50 text-sky-700 border-sky-200",
+  PENDIENTE_REEMBOLSO: "bg-orange-50 text-orange-700 border-orange-200",
+  EN_REEMBOLSO: "bg-violet-50 text-violet-700 border-violet-200",
+  LEGALIZADO_CAJA: VERDE,
+  POR_APROBAR: "bg-orange-50 text-orange-700 border-orange-200"
 }
 
 // Indicador de estado; sirve para gastos, cuentas de cobro y reintegros

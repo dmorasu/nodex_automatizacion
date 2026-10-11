@@ -44,11 +44,14 @@
     --tramitadores: #a5b4fc; --tramitadores-suave: #23264a; --aviso: #fbbf24; --aviso-suave: #33290f;
     --ok: #34d399; --ok-suave: #11302a; --rojo: #f87171; --rojo-suave: #3a1c1c; --violeta: #c4b5fd; --violeta-suave: #2a2343;
     --gris-suave: #232831; --sombra: 0 6px 24px rgba(0, 0, 0, .35);
+    --acento: #38bdf8; --acento-suave: #13293a;
     color-scheme: dark;
   }
 }
 
 * { box-sizing: border-box; }
+/* Lo oculto se oculta aunque su clase le dé display (las pestañas y los temas que no coinciden) */
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
 body { margin: 0; background: var(--bg); color: var(--texto); font: 17px/1.65 var(--f-texto); -webkit-font-smoothing: antialiased; }
@@ -166,7 +169,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
     <div class="buscador" role="search">
       <label for="buscar">Buscar en el manual</label>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-      <input id="buscar" type="search" placeholder="Ejemplo: contraseña, factura, ruta, gestión masiva" autocomplete="off">
+      <input id="buscar" type="search" placeholder="Ejemplo: caja menor, anticipo, factura, ruta, gestión masiva" autocomplete="off">
     </div>
   </header>
 
@@ -222,11 +225,13 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <div class="perfil t-tramites"><small>TRÁMITES</small><b>Analista de trámites</b><span>Igual que Torre de control; en el inicio ve solo sus trámites.</span></div>
             <div class="perfil t-tramites"><small>TRÁMITES</small><b>Administrador Torre de control</b><span>Además reasigna analistas y maneja los catálogos.</span></div>
             <div class="perfil t-tramites"><small>TRÁMITES</small><b>Gestión de activos</b><span>Crea y edita sus trámites y les pide gastos.</span></div>
-            <div class="perfil t-gastos"><small>GASTOS</small><b>Tesorería</b><span>Programa y confirma los pagos; maneja las bolsas.</span></div>
+            <div class="perfil t-gastos"><small>GASTOS</small><b>Tesorería</b><span>Programa y confirma los pagos; maneja las bolsas y las cajas menores.</span></div>
             <div class="perfil t-gastos"><small>GASTOS</small><b>Tesorería - Certificados</b><span>Paga las compras de CTL y Cámara de Comercio.</span></div>
-            <div class="perfil t-gastos"><small>GASTOS</small><b>Dirección de Negocio</b><span>Aprueba o rechaza los pagos programados.</span></div>
+            <div class="perfil t-gastos"><small>GASTOS</small><b>Auxiliar de Tesorería - Caja menor</b><span>Paga, legaliza y reembolsa solo la caja menor que tiene asignada.</span></div>
+            <div class="perfil t-gastos"><small>GASTOS</small><b>Dirección de Negocio</b><span>Aprueba los pagos programados y los reembolsos de caja menor.</span></div>
             <div class="perfil t-gastos"><small>GASTOS</small><b>Legalización</b><span>Facturas, cuentas de cobro y reintegros.</span></div>
-            <div class="perfil t-gastos"><small>GASTOS</small><b>Contabilidad</b><span>Contabiliza lo legalizado y lo que asume la bolsa.</span></div>
+            <div class="perfil t-gastos"><small>GASTOS</small><b>Contabilidad</b><span>Confirma anticipos, factura las solicitudes de factura y contabiliza.</span></div>
+            <div class="perfil t-gastos"><small>GASTOS</small><b>Administrador</b><span>Ve todo, maneja los usuarios y los catálogos.</span></div>
             <div class="perfil t-tramitadores"><small>CELULAR</small><b>Tramitador / mensajero</b><span>Sus trámites, documentos, reintegros y su ruta.</span></div>
           </div>
         </div>
@@ -302,6 +307,34 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><b>WhatsApp:</b> los mensajes enviados.</li>
           </ul>
           <div class="consejo ojo"><span class="i">!</span><span>Al cambiar el estado salen avisos reales: <b>Desistido</b> avisa al tramitador y a quien creó el trámite; <b>Novedad</b> y <b>Finalizado</b> le escriben al solicitante.</span></div>
+          <div class="consejo"><span class="i">i</span><span>Para pasar un trámite a <b>En espera por novedad</b> hay que elegir el <b>tipo de subsanación</b>; si falta, el sistema se lo avisa.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Cargue masivo de trámites</span><span class="resumen">Crear muchos trámites (y sus gastos) en una tabla en pantalla.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>Entre a <b>Cargue masivo de trámites</b>, pestaña <b>En pantalla</b>.</span></li>
+            <li><span>Llene los <b>valores comunes</b> (cliente, tipo, operación, entidad, municipio, fecha…): se aplican a todas las filas que no los cambien.</span></li>
+            <li><span>Agregue las filas: con <b>Agregar fila</b>, <b>Pegar filas desde Excel</b> o <b>Importar Excel</b> (hay una plantilla para descargar). Lo que no se reconozca queda marcado para elegirlo.</span></li>
+            <li><span>Si el trámite lleva gasto, marque la casilla <b>Gasto</b> de esa fila y llene sus datos.</span></li>
+            <li><span>Presione <b>Validar</b>: cada fila muestra sus errores y los avisos (por ejemplo, un trámite igual ya abierto).</span></li>
+            <li><span>Presione <b>Guardar</b>. Al final puede pasar a <b>Subir documentos de estos trámites</b>.</span></li>
+          </ol>
+          <div class="consejo"><span class="i">i</span><span>Se guardan <b>todos o ninguno</b> (máximo 300 filas). Si cierra la página sin guardar, la tabla queda guardada en su navegador.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Cargue masivo de documentos</span><span class="resumen">Subir muchos archivos y que cada uno llegue a su trámite.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>Entre a <b>Cargue masivo de documentos</b> y arrastre o elija los archivos (PDF, JPG o PNG).</span></li>
+            <li><span>El número del trámite sale del nombre del archivo, por ejemplo <span class="codigo">1234.pdf</span> o <span class="codigo">1234_cedula.pdf</span>. Puede corregirlo en la tabla.</span></li>
+            <li><span>Si quiere, elija el tipo de documento para todos o para cada archivo.</span></li>
+            <li><span>Presione <b>Subir archivo(s)</b>. Si alguno falla, use <b>Reintentar y subir</b>.</span></li>
+          </ol>
         </div>
       </details>
 
@@ -371,6 +404,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
           <ol class="pasos">
             <li><span>En el trámite, pestaña <b>Gastos</b>, o en Nodex Gastos con <b>Nuevo gasto</b>.</span></li>
             <li><span>Llene concepto, tipo, beneficiario, operación y valor.</span></li>
+            <li><span>Elija la <b>forma de pago</b> y la <b>bolsa</b>. Si es <b>Caja menor</b>, en lugar de la bolsa elija la caja: <b>Bogotá</b> o <b>Medellín</b>.</span></li>
             <li><span>Indique si es <b>reembolsable</b> o si lo asume la bolsa.</span></li>
             <li><span>Guarde. Tesorería recibe un aviso.</span></li>
           </ol>
@@ -386,6 +420,11 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <span class="chip gris">Facturado</span><span class="chip violeta">En cuenta de cobro</span><span class="chip verde">Legalizado</span><span class="chip gris">Contabilizado</span>
           </div>
           <p>También puede quedar <span class="chip rojo">Anulado</span>. Cada gasto tiene un código como <span class="codigo">GAS-2026-000123</span> para buscarlo.</p>
+          <p>Los gastos de <b>caja menor</b> tienen su propio camino:</p>
+          <div class="chips">
+            <span class="chip ambar">Solicitado</span><span class="chip azul">Pagado por caja menor</span><span class="chip ambar">Pendiente por reembolso</span>
+            <span class="chip violeta">En reembolso</span><span class="chip verde">Legalizado (caja menor)</span>
+          </div>
         </div>
       </details>
 
@@ -397,7 +436,67 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span><b>Aprobar:</b> en <b>Aprobación de pagos</b>, apruebe todos o algunos. Los rechazados vuelven a "Solicitado".<span class="quien">Dirección de Negocio</span></span></li>
             <li><span><b>Confirmar:</b> en <b>Programados</b>, adjunte el soporte del banco y la fecha real. Ahí se descuenta la bolsa.<span class="quien">Tesorería</span></span></li>
           </ol>
+          <div class="consejo"><span class="i">i</span><span>En <b>Programados</b> puede marcar <b>varios lotes aprobados</b> y confirmarlos juntos con un solo soporte del banco.</span></div>
           <div class="consejo"><span class="i">i</span><span>Cada paso le avisa por correo al siguiente. Al confirmar, se avisa a quien pidió el gasto y al analista del trámite.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Caja menor</span><span class="resumen">Gastos pequeños pagados en efectivo desde la caja de Bogotá o de Medellín.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span><b>Pedir:</b> cree el gasto con forma de pago <b>Caja menor</b> y elija la caja (Bogotá o Medellín).<span class="quien">Quien necesita el gasto</span></span></li>
+            <li><span><b>Entregar el efectivo:</b> en Tesorería → <b>Caja menor</b> → <b>Por pagar</b>, marque los gastos, presione <b>Entregar efectivo</b>, revise el valor y la fecha, y <b>Marcar pagado</b>. No lleva soporte.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
+            <li><span><b>Legalizar:</b> en <b>Por legalizar</b>, presione <b>Legalizar</b> en el gasto y llene la factura: número, fecha, beneficiario (CC o NIT), placa o matrícula, quién legaliza, valor del soporte y el <b>soporte</b> (obligatorio). Queda <b>Pendiente por reembolso</b>.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
+            <li><span><b>Armar el reembolso:</b> en <b>Pendientes por reembolso</b>, marque los gastos y presione <b>Armar reembolso</b>. Queda en borrador con un número como <span class="codigo">RCM-2026-000001</span>; ahí puede quitar gastos o anularlo. Luego presione <b>Enviar a aprobación</b>.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
+            <li><span><b>Aprobar:</b> en Aprobación de pagos → <b>Reembolsos de caja menor</b>, abra el reembolso, revise los gastos y sus soportes y presione <b>Aprobar</b> o <b>Devolver</b> con el motivo.<span class="quien">Dirección de Negocio</span></span></li>
+            <li><span><b>Legalizar el reembolso:</b> cuando llegue el dinero, abra el reembolso, presione <b>Legalizar reembolso</b>, ponga la fecha y adjunte el soporte (obligatorio). La caja vuelve a su fondo.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
+          </ol>
+          <ul>
+            <li><b>Saldo siempre a la vista:</b> arriba de la caja verá el disponible, el fondo, lo entregado sin legalizar, lo pendiente por reembolso y lo que está en reembolso. Si el disponible baja del tope (400.000 por defecto), se pone en rojo y le llega un correo a Tesorería.</li>
+            <li><b>Si el soporte no coincide con lo entregado:</b> el sobrante vuelve a la caja y, si fue más, la caja paga la diferencia. Mientras esté pendiente por reembolso, una legalización se puede deshacer.</li>
+            <li><b>Historial:</b> en la pestaña <b>Historial</b> busque por fechas de entrega, estado, quién legaliza, factura o número de reembolso. Arriba verá los totales y con <b>Descargar Excel</b> se lleva todo lo filtrado.</li>
+            <li><b>Historial del reembolso:</b> en el detalle de cada reembolso queda cada paso: creado, gastos agregados o quitados, enviado, devuelto (con cada motivo), aprobado y legalizado.</li>
+          </ul>
+          <div class="consejo"><span class="i">i</span><span><b>Tesorería</b> crea las cajas, cambia su fondo y su tope y asigna la caja de cada auxiliar en <b>Caja menor → Configurar cajas</b>. La <b>auxiliar</b> solo ve y maneja la caja que tiene asignada.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Anticipos de clientes</span><span class="resumen">Pagos que hace el cliente del banco antes del gasto.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span><b>Registrar:</b> en <b>Anticipos</b>, presione <b>Nuevo anticipo</b>. Llene el cliente (CC o NIT, teléfono y dirección), el cliente empresarial, la operación, la bolsa, vehículo o inmueble, el valor, la fecha de consignación y adjunte el <b>soporte de la consignación</b>.<span class="quien">Quien recibe el pago del cliente</span></span></li>
+            <li><span><b>Confirmar:</b> en Contabilidad → <b>Anticipos de clientes</b>, verifique en el banco y confirme con el <b>valor que entró</b> y el <b>recibo de caja</b> (uno o varios a la vez). Si algo no cuadra, use <b>Marcar novedad</b> y el anticipo vuelve a quien lo registró.<span class="quien">Contabilidad</span></span></li>
+            <li><span><b>Crear el gasto:</b> con el anticipo confirmado, ábralo y presione <b>Crear gasto</b>: los datos se llenan solos.<span class="quien">Quien registró el anticipo</span></span></li>
+            <li><span><b>Pagar:</b> en Tesorería → <b>Gastos de anticipos</b>, con <b>Pagar seleccionados</b> y el soporte del banco. No pasa por la Dirección.<span class="quien">Tesorería</span></span></li>
+          </ol>
+          <div class="consejo"><span class="i">i</span><span>Un anticipo puede tener varios gastos. Si los gastos superan lo que pagó el cliente, Nodex lo avisa pero deja seguir; el cliente queda con faltante.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Solicitudes de factura</span><span class="resumen">El cliente paga y Contabilidad le hace la factura.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>En <b>Anticipos</b>, presione <b>Solicitud de factura</b>. Llene los mismos datos del anticipo (inmueble viene marcado) y adjunte el soporte de la consignación. Recibe un número como <span class="codigo">FAC-2026-000001</span>.<span class="quien">Quien recibe el pago del cliente</span></span></li>
+            <li><span>En Contabilidad → <b>Solicitudes de factura</b>, marque una o varias y presione <b>Confirmar y facturar</b>: valor recibido, número de factura, el <b>PDF</b> y el <b>XML</b> de cada una. Si el pago no entró, use <b>Novedad / no pagado</b>.<span class="quien">Contabilidad</span></span></li>
+            <li><span>A quien la registró le llega un correo con la factura en PDF y XML adjuntos. También queda en la solicitud.</span></li>
+          </ol>
+          <div class="consejo"><span class="i">i</span><span>Las solicitudes de factura <b>no generan gastos</b>. El dinero queda en la bolsa de <b>Anticipos facturados</b> a nombre del cliente: así sabe quién ha pagado.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Saldos por cliente (arqueo) <span class="etq">Tesorería y Contabilidad</span></span><span class="resumen">Cuánto ha pagado y cuánto tiene disponible cada cliente.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>En Tesorería → <b>Bolsas</b>, abra una bolsa de anticipos o de anticipos facturados.</span></li>
+            <li><span>En <b>Saldos por cliente (arqueo)</b> verá lo que pagó, lo que tiene por pagar y su disponible. Use los filtros rápidos: con faltante, con gastos por pagar, con sobrante o sin movimiento.</span></li>
+            <li><span>Toque un cliente para ver su <b>estado de cuenta</b> por período.</span></li>
+            <li><span>Con <b>Exportar a Excel</b> descarga el arqueo o el estado de cuenta.</span></li>
+          </ol>
+          <div class="consejo"><span class="i">i</span><span>El arqueo cuadra cuando la <b>diferencia</b> entre el saldo de la bolsa y la suma de los clientes es <b>cero</b>.</span></div>
         </div>
       </details>
 
@@ -428,7 +527,19 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li>Contabilice las cuentas de cobro legalizadas.</li>
             <li>En <b>No reembolsables</b>, registre la factura y contabilice cada gasto con su documento contable.</li>
             <li>Consulte los egresos con los pagos confirmados.</li>
+            <li>Confirme los <b>anticipos de clientes</b> y facture las <b>solicitudes de factura</b> (ver esos temas).</li>
           </ul>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Catálogos <span class="etq">Administrador</span></span><span class="resumen">Clientes empresariales, tipos de gasto, formas de pago y tipos de documento.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>En el menú <b>Configuración → Catálogos</b>, elija la pestaña.</span></li>
+            <li><span>Cree con el botón de arriba, renombre con el lápiz o active y desactive con el botón de encendido.</span></li>
+          </ol>
+          <div class="consejo"><span class="i">i</span><span>Lo que está en uso no se elimina: desactívelo para que no salga más. Los tipos de gasto no se crean ni se eliminan, solo se renombran o se desactivan.</span></div>
         </div>
       </details>
     </div>
@@ -464,6 +575,21 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
       </details>
 
       <details class="tema">
+        <summary><span class="titulo">Notificaciones en el celular</span><span class="resumen">Avisos de trámites nuevos y de reintegros por enviar.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>En el inicio de la app toque <b>Activar notificaciones</b> y acepte cuando el celular lo pregunte. Le llega un aviso de prueba.</span></li>
+            <li><span>Desde ahí le avisamos cuando le <b>asignen un trámite</b> (al tocarlo, abre el trámite) y <b>cada día</b> mientras tenga reintegros por enviar.</span></li>
+          </ol>
+          <ul>
+            <li><b>Android:</b> funciona en Chrome, aunque no haya instalado la app.</li>
+            <li><b>iPhone:</b> primero instale la app (Safari → Compartir → <b>Agregar a inicio</b>) y actívelas desde el ícono.</li>
+          </ul>
+          <div class="consejo ojo"><span class="i">!</span><span>Si dice <b>"Notificaciones bloqueadas"</b>, actívelas en los ajustes del celular o del navegador (Notificaciones → Nodex Tramitadores).</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
         <summary><span class="titulo">Mis trámites</span><span class="resumen">Ver sus trámites, comentar y avisar que terminó.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo">
           <p>En el inicio verá sus <b>próximos trámites</b>. En <b>Mis trámites</b> filtre por activos, sin factura, cerrados o todos. Dentro de cada trámite puede:</p>
@@ -491,6 +617,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <summary><span class="titulo">Reintegros</span><span class="resumen">Devolver el dinero que sobró de un gasto.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo">
           <p>En <b>Reintegros</b> están los gastos con dinero por devolver. Entre a cada uno y suba el soporte de la consignación. Cuando Legalización lo aprueba, deja de aparecer.</p>
+          <div class="consejo"><span class="i">i</span><span>Con las notificaciones activas, le llega un recordatorio cada día mientras tenga reintegros por enviar. Deja de llegar en cuanto sube el comprobante.</span></div>
         </div>
       </details>
 
@@ -531,6 +658,18 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <div class="cuerpo"><p>Su aviso no cierra el trámite. Revíselo en <b>Reportados como realizados</b> y finalícelo.</p></div></details>
       <details class="tema"><summary><span class="titulo">Tesorería no puede confirmar un pago</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo"><p>El pago debe estar aprobado por la Dirección y tener adjunto el soporte del banco.</p></div></details>
+      <details class="tema"><summary><span class="titulo">No me deja pasar el trámite a "En espera por novedad"</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>Falta elegir el <b>tipo de subsanación</b>. Selecciónelo y guarde de nuevo.</p></div></details>
+      <details class="tema"><summary><span class="titulo">Mi anticipo o mi solicitud de factura quedó "Con novedad"</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>Contabilidad la devolvió. Ábrala en <b>Anticipos</b>, lea el motivo, presione <b>Corregir</b> y guarde: vuelve sola a Contabilidad.</p></div></details>
+      <details class="tema"><summary><span class="titulo">Al pedir un gasto por caja menor no veo las cajas</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>Primero elija la forma de pago <b>Caja menor</b>: el campo de la bolsa cambia a las cajas. Si dice que no hay cajas activas, pídale a Tesorería que las cree.</p></div></details>
+      <details class="tema"><summary><span class="titulo">Dirección devolvió un reembolso de caja menor</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>Quedó en borrador con el motivo arriba (también en su historial). Quite o corrija los gastos que hagan falta y presione <b>Enviar a aprobación</b> otra vez.</p></div></details>
+      <details class="tema"><summary><span class="titulo">¿Qué tengo por reembolsar en la caja menor?</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>En Caja menor → <b>Pendientes por reembolso</b>, o en <b>Historial</b> con el estado "Pendiente por reembolso". Ahí también ve lo ya legalizado y lo descarga en Excel.</p></div></details>
+      <details class="tema"><summary><span class="titulo">No me llegan las notificaciones al celular</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>Toque <b>Activar notificaciones</b> en el inicio de la app. En iPhone, la app debe estar agregada a la pantalla de inicio. Si salen bloqueadas, actívelas en los ajustes del celular.</p></div></details>
       <details class="tema"><summary><span class="titulo">El celular no deja tomar la foto o confirmar la visita</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo"><p>Dé permiso de cámara y ubicación al navegador en la configuración del celular, y revise que tenga señal.</p></div></details>
     </div>

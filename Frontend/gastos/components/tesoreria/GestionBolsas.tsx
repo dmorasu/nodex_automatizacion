@@ -134,7 +134,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                   <td className="px-4 py-3 font-medium text-slate-700">{bolsa.nombre}</td>
                   <td className="px-4 py-3 text-slate-600">{bolsa.lineaNegocio ?? "—"}</td>
                   <td className="px-4 py-3">
-                    {llevaSaldoPorCliente(bolsa.tipo)
+                    {bolsa.tipo !== "GENERAL"
                       ? <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">{NOMBRES_TIPO_BOLSA[bolsa.tipo]}</span>
                       : <span className="text-slate-500">General</span>}
                   </td>
@@ -152,7 +152,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {/* Las de anticipos se llenan con los anticipos confirmados; sus ajustes son por cliente (en el detalle) */}
-                    {bolsa.activo && !llevaSaldoPorCliente(bolsa.tipo) && (
+                    {bolsa.activo && bolsa.tipo === "GENERAL" && (
                       <button
                         type="button"
                         onClick={() => setMovimiento({ bolsa, tipo: "RECARGA" })}
@@ -163,7 +163,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                         <PlusCircle size={15} />
                       </button>
                     )}
-                    {esAdmin && !llevaSaldoPorCliente(bolsa.tipo) && (
+                    {esAdmin && bolsa.tipo === "GENERAL" && (
                       <button
                         type="button"
                         onClick={() => setMovimiento({ bolsa, tipo: "AJUSTE" })}

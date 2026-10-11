@@ -24,6 +24,8 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
   ])
 
   const pagado = gasto.valorRealmentePagado !== null
+  // Los gastos de caja menor no pasan por Legalización: los legaliza Tesorería en la caja
+  const deCaja = gasto.formaPago.codigo === "CAJA_MENOR"
   const esTesoreria = tieneAcceso(sesion.roles, [ROLES.TESORERIA])
 
   return (
@@ -124,7 +126,34 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
             />
           </Seccion>
 
-          {pagado && (
+          {deCaja && gasto.legalizacionCaja && (
+            <Seccion titulo="Legalización en caja menor">
+              <dl className="grid gap-5 sm:grid-cols-3">
+                <Dato etiqueta="Factura" valor={`${gasto.legalizacionCaja.numeroFactura} · ${formatoFecha(gasto.legalizacionCaja.fechaFactura)}`} />
+                <Dato etiqueta="Beneficiario" valor={`${gasto.legalizacionCaja.beneficiario} · ${gasto.legalizacionCaja.tipoIdentificacion} ${gasto.legalizacionCaja.identificacion}`} />
+                <Dato etiqueta="Valor del soporte" valor={formatoMoneda(gasto.legalizacionCaja.valorSoporte)} />
+                {(gasto.legalizacionCaja.placa || gasto.legalizacionCaja.matriculaInmobiliaria) && (
+                  <Dato etiqueta={gasto.legalizacionCaja.placa ? "Placa" : "Matrícula inmobiliaria"} valor={gasto.legalizacionCaja.placa ?? gasto.legalizacionCaja.matriculaInmobiliaria} />
+                )}
+                <Dato etiqueta="Legalizó" valor={gasto.legalizacionCaja.quienLegaliza} />
+                {Number(gasto.legalizacionCaja.diferencia) !== 0 && (
+                  <Dato
+                    etiqueta="Diferencia con lo entregado"
+                    valor={Number(gasto.legalizacionCaja.diferencia) < 0
+                      ? `Devolvió ${formatoMoneda(-Number(gasto.legalizacionCaja.diferencia))} a la caja`
+                      : `La caja pagó ${formatoMoneda(gasto.legalizacionCaja.diferencia)} más`}
+                  />
+                )}
+                <Dato etiqueta="Registró" valor={`${gasto.legalizacionCaja.registrador?.nombreUsuario ?? ""} · ${formatoFechaHora(gasto.legalizacionCaja.createdAt)}`} />
+                {gasto.legalizacionCaja.reembolso && (
+                  <Dato etiqueta="Reembolso" valor={gasto.legalizacionCaja.reembolso.codigo} />
+                )}
+                {gasto.legalizacionCaja.observacion && <Dato etiqueta="Observación" valor={gasto.legalizacionCaja.observacion} />}
+              </dl>
+            </Seccion>
+          )}
+
+          {pagado && !deCaja && (
             <SeccionLegalizacionGasto
               gasto={gasto}
               esLegalizacion={tieneAcceso(sesion.roles, [ROLES.LEGALIZACION])}

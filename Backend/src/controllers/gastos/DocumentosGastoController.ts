@@ -12,14 +12,17 @@ import { codigoEstadoGasto } from '../../services/gastos/estadosGasto'
 import { ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_DOCUMENTO, ESTADOS_LOTE } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { obtenerGastoConAcceso } from './SolicitudesGastoController'
-import { esAdmin, puedeVerTodos, responderError } from './utilidades'
+import { esAdmin, esAuxiliarCaja, puedeVerTodos, responderError } from './utilidades'
+import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
+import { cajaDelUsuario } from '../../services/gastos/cajaMenor'
 import { generarZipDocumentos } from '../../services/gastos/descargaDocumentos'
 
 const CARPETA_GASTOS = 'gastos'
 const CARPETA_LOTES = 'gastos/lotes'
 const CARPETA_CUENTAS = 'gastos/cuentas-cobro'
 
-const ESTADOS_SIN_DOCUMENTOS: string[] = [ESTADOS_GASTO.ANULADO, ESTADOS_GASTO.CONTABILIZADO]
+// (un gasto de caja menor ya reembolsado tampoco: su soporte quedó en el reembolso)
+const ESTADOS_SIN_DOCUMENTOS: string[] = [ESTADOS_GASTO.ANULADO, ESTADOS_GASTO.CONTABILIZADO, ESTADOS_GASTO.EN_REEMBOLSO, ESTADOS_GASTO.LEGALIZADO_CAJA]
 
 // "Factura Nº 12 (copia).PDF" → "1727800000000-Factura_N_12_copia.pdf"
 export const nombreSeguro = (original: string) => {
@@ -116,6 +119,15 @@ const obtenerDocumentoConAcceso = async (req: Request) => {
     }
     const editable = [ESTADOS_ANTICIPO.POR_CONFIRMAR, ESTADOS_ANTICIPO.NOVEDAD].includes(anticipo.estado as 'NOVEDAD')
     return { documento, gasto: null, anticipoCerrado: !editable }
+  }
+
+  // Soporte de un reembolso de caja menor: cualquier rol del módulo o la auxiliar de esa caja.
+  // No se elimina (queda como comprobante del reembolso legalizado)
+  if (documento?.reembolsoCajaId) {
+    const reembolso = await ReembolsosCaja.findByPk(documento.reembolsoCajaId, { attributes: ['bolsaId'] })
+    const deSuCaja = esAuxiliarCaja(req) && (await cajaDelUsuario(req.usuario.id))?.id === reembolso?.bolsaId
+    if (!reembolso || (!puedeVerTodos(req) && !deSuCaja)) throw new ErrorGastos('El documento no existe', 404)
+    return { documento, gasto: null, reembolsoCerrado: true }
   }
 
   throw new ErrorGastos('El documento no existe', 404)
@@ -258,6 +270,9 @@ export class DocumentosGastoController {
       const acceso = await obtenerDocumentoConAcceso(req)
       const { documento, gasto } = acceso
 
+      if ('reembolsoCerrado' in acceso) {
+        throw new ErrorGastos('El soporte de un reembolso de caja menor no se puede eliminar')
+      }
       if ('anticipoCerrado' in acceso && acceso.anticipoCerrado) {
         throw new ErrorGastos('El anticipo ya fue confirmado o anulado: sus soportes no se pueden eliminar')
       }

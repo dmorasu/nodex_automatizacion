@@ -106,6 +106,7 @@ export const GastoListadoSchema = z.object({
     valorLegalizado: z.string()
   }).nullable(),
   tramitador: z.object({ id: z.number(), nombreTramitador: z.string() }).nullish(),
+  legalizacionCaja: z.lazy(() => LegalizacionCajaCortaSchema).nullish(),
   // Seguimiento desde la app de tramitadores
   solicitudTramiteId: z.number().nullish(),
   soporteTramitador: z.enum(["PENDIENTE", "APROBADO", "RECHAZADO"]).nullish(),
@@ -244,6 +245,7 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
     cliente: z.object({ id: z.number(), nombre: z.string(), tipoIdentificacion: z.string(), identificacion: z.string() })
   }).nullish(),
   saldoAnticipo: z.lazy(() => SaldoClienteSchema).nullish(),
+  legalizacionCaja: z.lazy(() => LegalizacionCajaSchema).nullish(),
   permisos: z.object({
     registrarFactura: z.boolean(),
     editar: z.boolean(),
@@ -617,7 +619,7 @@ export const TIPOS_ANTICIPO: Record<string, string> = { VEHICULO: "Vehículo", I
 export const CLASES_ANTICIPO: Record<string, string> = { ANTICIPO: "Anticipo", FACTURA: "Solicitud de factura" }
 
 // Bolsas que llevan saldo por cliente
-export const NOMBRES_TIPO_BOLSA: Record<string, string> = { GENERAL: "General", ANTICIPOS: "Anticipos", FACTURAS: "Anticipos facturados" }
+export const NOMBRES_TIPO_BOLSA: Record<string, string> = { GENERAL: "General", ANTICIPOS: "Anticipos", FACTURAS: "Anticipos facturados", CAJA_MENOR: "Caja menor" }
 export const llevaSaldoPorCliente = (tipo: string) => tipo === "ANTICIPOS" || tipo === "FACTURAS"
 
 export const ClienteEmpresarialSchema = z.object({ id: z.number(), nombre: z.string(), activo: z.boolean().optional() })
@@ -799,3 +801,154 @@ export const EstadoCuentaClienteSchema = z.object({
 })
 
 export type EstadoCuentaCliente = z.infer<typeof EstadoCuentaClienteSchema>
+
+// ── Caja menor ─────────────────────────────
+
+const MontoCajaSchema = z.object({ cantidad: z.number(), valor: z.number() })
+
+// Saldo, lo comprometido y el cuadre de una caja (fondo = saldo + sin legalizar + pendiente + en reembolso)
+export const ResumenCajaSchema = z.object({
+  id: z.number(),
+  nombre: z.string(),
+  activo: z.boolean(),
+  fondo: z.number(),
+  saldo: z.number(),
+  topeAlerta: z.number(),
+  bajoTope: z.boolean(),
+  porPagar: MontoCajaSchema,
+  sinLegalizar: MontoCajaSchema,
+  pendienteReembolso: MontoCajaSchema,
+  enReembolso: MontoCajaSchema,
+  diferencia: z.number()
+})
+export type ResumenCaja = z.infer<typeof ResumenCajaSchema>
+
+export const LegalizacionCajaCortaSchema = z.object({
+  id: z.number(),
+  numeroFactura: z.string(),
+  fechaFactura: z.string(),
+  beneficiario: z.string(),
+  quienLegaliza: z.string(),
+  valorSoporte: z.string(),
+  diferencia: z.string(),
+  reembolsoCajaId: z.number().nullable()
+})
+
+export const LegalizacionCajaSchema = LegalizacionCajaCortaSchema.extend({
+  tipoIdentificacion: z.string(),
+  identificacion: z.string(),
+  placa: textoNulo,
+  matriculaInmobiliaria: textoNulo,
+  observacion: textoNulo,
+  createdAt: z.string(),
+  registrador: UsuarioCortoSchema,
+  reembolso: z.object({ id: z.number(), codigo: z.string(), estado: z.string(), fechaLegalizacion: textoNulo }).nullish()
+})
+export type LegalizacionCaja = z.infer<typeof LegalizacionCajaSchema>
+
+export const ESTADOS_REEMBOLSO: Record<string, string> = {
+  BORRADOR: "Borrador",
+  POR_APROBAR: "Por aprobar",
+  APROBADO: "Aprobado",
+  LEGALIZADO: "Legalizado",
+  ANULADO: "Anulado"
+}
+
+export const ReembolsoListadoSchema = z.object({
+  id: z.number(),
+  codigo: z.string(),
+  estado: z.string(),
+  total: z.string(),
+  observacion: textoNulo,
+  motivoRechazo: textoNulo,
+  fechaEnvio: textoNulo,
+  fechaAprobacion: textoNulo,
+  fechaLegalizacion: textoNulo,
+  createdAt: z.string(),
+  cantidadGastos: z.coerce.number().default(0),
+  bolsa: z.object({ id: z.number(), nombre: z.string() }),
+  creador: UsuarioCortoSchema,
+  aprobador: UsuarioCortoSchema
+})
+export type ReembolsoListado = z.infer<typeof ReembolsoListadoSchema>
+
+export const ListadoReembolsosSchema = z.object({
+  total: z.number(),
+  pagina: z.number(),
+  tamano: z.number(),
+  registros: z.array(ReembolsoListadoSchema)
+})
+
+export const ReembolsoDetalleSchema = ReembolsoListadoSchema.omit({ cantidadGastos: true }).extend({
+  legalizador: UsuarioCortoSchema,
+  legalizaciones: z.array(LegalizacionCajaSchema.omit({ registrador: true, reembolso: true, createdAt: true }).extend({
+    solicitudGastoId: z.number(),
+    solicitudGasto: z.object({
+      id: z.number(),
+      codigo: z.string(),
+      conceptoPago: z.string(),
+      valorRealmentePagado: dinero,
+      fechaPago: textoNulo,
+      creador: UsuarioCortoSchema
+    }),
+    documentos: z.array(DocumentoSchema)
+  })),
+  documentos: z.array(DocumentoSchema),
+  historial: z.array(z.object({
+    id: z.number(),
+    accion: z.string(),
+    detalle: textoNulo,
+    createdAt: z.string(),
+    usuario: UsuarioCortoSchema
+  })).default([]),
+  permisos: z.object({ editar: z.boolean(), aprobar: z.boolean(), legalizar: z.boolean() })
+})
+export type ReembolsoDetalle = z.infer<typeof ReembolsoDetalleSchema>
+
+export const UsuariosCajaSchema = z.object({
+  asignaciones: z.array(z.object({ usuarioId: z.number(), bolsaId: z.number() })),
+  usuarios: z.array(z.object({ id: z.number(), nombreUsuario: z.string(), correoUsuario: z.string() }))
+})
+export type UsuariosCaja = z.infer<typeof UsuariosCajaSchema>
+
+// Qué pasó en cada paso del reembolso (historial)
+export const ACCIONES_REEMBOLSO: Record<string, { nombre: string, color: string }> = {
+  CREADO: { nombre: "Creado", color: "bg-slate-400" },
+  AGREGADO: { nombre: "Gastos agregados", color: "bg-slate-400" },
+  QUITADO: { nombre: "Gastos quitados", color: "bg-amber-500" },
+  ENVIADO: { nombre: "Enviado a Dirección", color: "bg-orange-500" },
+  DEVUELTO: { nombre: "Devuelto por Dirección", color: "bg-red-500" },
+  APROBADO: { nombre: "Aprobado", color: "bg-teal-500" },
+  LEGALIZADO: { nombre: "Legalizado", color: "bg-emerald-500" },
+  ANULADO: { nombre: "Anulado", color: "bg-red-500" }
+}
+
+// Historial de una caja: gastos pagados con su legalización y su reembolso
+export const GastoHistorialCajaSchema = z.object({
+  id: z.number(),
+  codigo: z.string(),
+  conceptoPago: z.string(),
+  placa: textoNulo,
+  matriculaInmobiliaria: textoNulo,
+  valorSolicitadoPago: z.string(),
+  valorRealmentePagado: dinero,
+  fechaPago: textoNulo,
+  estado: z.object({ codigo: z.string(), nombre: z.string() }),
+  creador: UsuarioCortoSchema,
+  legalizacionCaja: LegalizacionCajaCortaSchema.extend({
+    tipoIdentificacion: z.string(),
+    identificacion: z.string(),
+    placa: textoNulo,
+    matriculaInmobiliaria: textoNulo,
+    reembolso: z.object({ id: z.number(), codigo: z.string(), estado: z.string(), fechaLegalizacion: textoNulo }).nullish()
+  }).nullish()
+})
+export type GastoHistorialCaja = z.infer<typeof GastoHistorialCajaSchema>
+
+export const HistorialCajaSchema = z.object({
+  totales: z.object({ cantidad: z.number(), entregado: z.number(), soporte: z.number(), sinLegalizar: z.number() }),
+  total: z.number(),
+  pagina: z.number(),
+  tamano: z.number(),
+  registros: z.array(GastoHistorialCajaSchema)
+})

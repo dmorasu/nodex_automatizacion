@@ -105,12 +105,12 @@ export default async function TableroGestionPage({ searchParams }: { searchParam
 
           <TablaTramitadores filas={tablero.porTramitador} reintegrosDisponibles={tablero.reintegrosDisponibles} />
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
             <TendenciaSemanal tendencia={tablero.tendencia} />
             <Antiguedad antiguedad={tablero.antiguedad} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
             <CausasNovedad causas={tablero.causasNovedad} />
             <TablaClientes filas={tablero.porCliente} />
           </div>

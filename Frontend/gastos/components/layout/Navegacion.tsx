@@ -24,7 +24,7 @@ import type { Modulo } from "@/src/auth/permisos"
 
 // Los íconos van aquí (y no en MODULOS) porque un componente no se puede
 // pasar del servidor al cliente como prop
-const ICONOS: Record<string, LucideIcon> = {
+export const ICONOS: Record<string, LucideIcon> = {
   "/inicio": Home,
   "/solicitudes": Receipt,
   "/anticipos": HandCoins,

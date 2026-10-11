@@ -2,6 +2,7 @@ import Link from "next/link"
 import LogoEncabezado from "@/components/ui/LogoEncabezado"
 import Navegacion from "@/components/layout/Navegacion"
 import MenuUsuario from "@/components/layout/MenuUsuario"
+import MenuMovil from "@/components/layout/MenuMovil"
 import { obtenerSesion } from "@/src/auth/dal"
 import { modulosPermitidos } from "@/src/auth/permisos"
 
@@ -28,10 +29,14 @@ export default async function PanelLayout({
             <p className="text-sm font-semibold text-slate-700">Módulo de Gestión de Gastos</p>
           </div>
 
-          <MenuUsuario sesion={sesion} />
+          <div className="flex items-center gap-2">
+            <MenuUsuario sesion={sesion} />
+            <MenuMovil modulos={modulos} />
+          </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-2">
+        {/* En el celular el menú va en el botón ☰ (MenuMovil) */}
+        <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-2">
           <Navegacion modulos={modulos} />
         </div>
       </header>

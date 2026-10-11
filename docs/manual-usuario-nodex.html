@@ -137,6 +137,23 @@ details.tema[open] summary .flecha { transform: rotate(180deg); background: var(
 .pasos li::before { content: counter(p); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 800 14px/1 var(--f-titulo); background: var(--c-suave, var(--acento-suave)); color: var(--c, var(--acento)); }
 .pasos li .quien { display: block; font-size: .85rem; color: var(--tenue); }
 
+/* Ruta rápida: pasos en fila con flecha (en el celular, uno debajo de otro) */
+.cuerpo ol.ruta { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; list-style: none; padding: 0 !important; margin: 0; }
+.cuerpo ol.ruta li { flex: 1 1 140px; display: grid; gap: 2px; align-content: start; padding: 10px 12px; border-radius: 12px; background: var(--suave); position: relative; }
+.ruta li small { font: 800 11px/1 var(--f-titulo); letter-spacing: .05em; color: var(--c, var(--acento)); }
+.ruta li b { font-family: var(--f-titulo); font-size: .98rem; }
+.ruta li span { font-size: .86rem; color: var(--tenue); line-height: 1.4; }
+.ruta li:not(:last-child)::after { content: "→"; position: absolute; right: -8px; top: 50%; transform: translate(50%, -50%); font-weight: 800; color: var(--tenue); z-index: 1; }
+@media (max-width: 620px) { .cuerpo ol.ruta li { flex-basis: 100%; } .ruta li:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -8px; transform: translate(50%, 50%); } }
+
+/* Comparación lado a lado (pagos y reembolsos) */
+.comparar { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.comparar .lado { border: 1px solid var(--linea); border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+.comparar .lado h4 { margin: 0; font: 800 1.02rem/1.3 var(--f-titulo); color: var(--c, var(--texto)); }
+.comparar dl { margin: 0; display: grid; gap: 8px; }
+.comparar dt { font: 700 11px/1 var(--f-texto); letter-spacing: .05em; text-transform: uppercase; color: var(--tenue); }
+.comparar dd { margin: 2px 0 0; font-size: .93rem; }
+
 /* Perfiles */
 .perfiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
 .perfil { padding: 12px 14px; border-radius: 12px; background: var(--suave); display: grid; gap: 2px; }
@@ -442,6 +459,47 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
       </details>
 
       <details class="tema">
+        <summary><span class="titulo">Aprobar pagos y reembolsos <span class="etq">Dirección de Negocio</span></span><span class="resumen">Todo lo que espera su aprobación, en un solo lugar.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <p>Todo está en el menú <b>Aprobación de pagos</b>. El <b>inicio</b> le muestra cuántos pagos y cuántos reembolsos de caja menor tiene por aprobar, y le llega un <b>correo</b> cada vez que Tesorería le envía uno.</p>
+
+          <ol class="ruta t-gastos">
+            <li><small>1</small><b>Le avisan</b><span>Correo o el contador del inicio.</span></li>
+            <li><small>2</small><b>Abra la lista</b><span>Aprobación de pagos → la pestaña que corresponde.</span></li>
+            <li><small>3</small><b>Revise</b><span>Abra el lote o el reembolso y mire los gastos.</span></li>
+            <li><small>4</small><b>Decida</b><span>Apruebe, o rechace / devuelva con el motivo.</span></li>
+          </ol>
+
+          <div class="comparar">
+            <div class="lado t-gastos">
+              <h4>Pagos programados</h4>
+              <dl>
+                <div><dt>Dónde</dt><dd>Pestaña <b>Por aprobar</b>. Cada fila es un lote que programó Tesorería.</dd></div>
+                <div><dt>Qué revisar</dt><dd>Cada gasto: solicitante, beneficiario, valor solicitado y valor a pagar. En gastos de anticipos, si el cliente queda con faltante.</dd></div>
+                <div><dt>Qué hacer</dt><dd><b>Aprobar todos</b>, o marque algunos y <b>Aprobar seleccionados</b>. Para no pagar uno, márquelo y <b>Rechazar</b> con el motivo.</dd></div>
+                <div><dt>Qué pasa después</dt><dd>Lo rechazado vuelve a Por pagar en Tesorería con su motivo. Con todo aprobado, apruebe también en la <b>plataforma del banco</b>; Tesorería confirma el pago con el soporte.</dd></div>
+              </dl>
+            </div>
+            <div class="lado t-gastos">
+              <h4>Reembolsos de caja menor</h4>
+              <dl>
+                <div><dt>Dónde</dt><dd>Pestaña <b>Reembolsos de caja menor</b>, filtro <b>Por aprobar</b>. Cada reembolso tiene un número <span class="codigo">RCM-…</span>.</dd></div>
+                <div><dt>Qué revisar</dt><dd>Cada gasto con su factura, beneficiario, quién lo legalizó, lo entregado frente al soporte, y el <b>soporte</b> para abrirlo ahí mismo.</dd></div>
+                <div><dt>Qué hacer</dt><dd><b>Aprobar</b> el reembolso completo, o <b>Devolver</b> con el motivo si algo no está bien.</dd></div>
+                <div><dt>Qué pasa después</dt><dd>Devuelto, vuelve a Tesorería en borrador para corregirlo. Aprobado, Tesorería lo legaliza cuando llega el dinero y la caja se repone.</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <ul>
+            <li><b>Lo que ya aprobó:</b> los pagos en la pestaña <b>Historial</b>; los reembolsos con los filtros <b>Aprobados</b> o <b>Devueltos o en borrador</b>.</li>
+            <li><b>Historial de cada reembolso:</b> en su detalle verá cada paso, con fecha y usuario: cuándo se envió, cada devolución con su motivo y la aprobación.</li>
+          </ul>
+          <div class="consejo"><span class="i">i</span><span>Para ir rápido: abra el correo, entre por el botón <b>Abrir Nodex Gastos</b> y empiece por el contador del inicio. Así no tiene que buscar nada.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
         <summary><span class="titulo">Caja menor</span><span class="resumen">Gastos pequeños pagados en efectivo desde la caja de Bogotá o de Medellín.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo">
           <ol class="pasos">
@@ -664,6 +722,8 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <div class="cuerpo"><p>Contabilidad la devolvió. Ábrala en <b>Anticipos</b>, lea el motivo, presione <b>Corregir</b> y guarde: vuelve sola a Contabilidad.</p></div></details>
       <details class="tema"><summary><span class="titulo">Al pedir un gasto por caja menor no veo las cajas</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo"><p>Primero elija la forma de pago <b>Caja menor</b>: el campo de la bolsa cambia a las cajas. Si dice que no hay cajas activas, pídale a Tesorería que las cree.</p></div></details>
+      <details class="tema"><summary><span class="titulo">Soy de Dirección: ¿dónde veo lo que tengo por aprobar?</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>En <b>Aprobación de pagos</b>: los pagos en <b>Por aprobar</b> y los reembolsos en <b>Reembolsos de caja menor</b>. El inicio le muestra cuántos tiene. Paso a paso en <b>Gastos → Aprobar pagos y reembolsos</b>.</p></div></details>
       <details class="tema"><summary><span class="titulo">Dirección devolvió un reembolso de caja menor</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo"><p>Quedó en borrador con el motivo arriba (también en su historial). Quite o corrija los gastos que hagan falta y presione <b>Enviar a aprobación</b> otra vez.</p></div></details>
       <details class="tema"><summary><span class="titulo">¿Qué tengo por reembolsar en la caja menor?</span><span class="flecha" aria-hidden="true">⌄</span></summary>

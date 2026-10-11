@@ -294,8 +294,18 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
   ```
 - En el log debe salir además `⏰ Reintegros por enviar: 09:00 …` (el recordatorio push sí corre en el ensayo: solo llega a celulares que lo activaron en la app del ensayo).
 - Comprobar la base: `sudo -u postgres psql -d nodex_pruebas -c "\dt gastos_anticipos*" -c "\dt gastos_clientes_empresariales" -c "\dt tramitadores_suscripciones_push"`.
-- En pantalla, una vez: Tesorería → Bolsas → **Nueva bolsa** de tipo **Anticipos de clientes**; Contabilidad → **Clientes empresariales** (ej. Davivienda).
+- En pantalla, una vez: Tesorería → Bolsas → **Nueva bolsa** de tipo **Anticipos de clientes**; **Configuración → Catálogos → Clientes empresariales** (ej. Davivienda; desde el commit `49bf242d` los crea el Administrador, ya no Contabilidad).
 - Pruebas: cargue masivo de trámites "En pantalla" (con una fila con gasto) y "Subir documentos de estos trámites"; anticipo → confirmar en Contabilidad → Crear gasto → pagar en Tesorería → **Gastos de anticipos** → arqueo y estado de cuenta en la bolsa; dos lotes generales aprobados confirmados juntos en **Programados**; en el celular, **Activar notificaciones** en la app de tramitadores y asignarle un trámite. Recargar con Ctrl+F5 para ver los íconos nuevos.
+
+**Commits `49bf242d`, `15185c64` y `a9e59dc4` (2026-10-10: solicitudes de factura, catálogos de Gastos, avisos nuevos, caja menor, vista en el celular)** — cambian el backend, Gastos, Trámites y Tramitadores (solo los avisos).
+- **Sin variables nuevas obligatorias ni dependencias nuevas.** Opcional pero recomendado: `URL_NODEX_GASTOS=https://gastos.nodexgpa.com` en `Backend/.env` (pone el botón "Abrir Nodex Gastos" en los correos; reiniciar también el worker).
+- El arranque crea solo lo nuevo: columnas `clase`, `numero_factura` y `fecha_facturacion` en `gastos_anticipos`; tablas `gastos_usuarios_caja`, `gastos_legalizaciones_caja`, `gastos_reembolsos_caja` y `gastos_trazabilidad_reembolsos_caja`; columnas de caja en `gastos_bolsas` y `reembolso_caja_id` en `gastos_documentos`; forma de pago **Caja menor**, 4 estados de gasto, el rol **Auxiliar de Tesorería - Caja menor** y 4 tipos de documento.
+- Comprobar la base:
+  ```bash
+  sudo -u postgres psql -d nodex_pruebas -c "\dt gastos_*caja*" -c "SELECT codigo FROM gastos_formas_pago WHERE codigo = 'CAJA_MENOR'" -c "SELECT codigo FROM gastos_roles WHERE codigo = 'AUXILIAR_TESORERIA_CAJA'" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'gastos_anticipos' AND column_name = 'clase'"
+  ```
+- En pantalla, una vez: Tesorería → Bolsas → **Nueva bolsa** de tipo **Anticipos facturados**; Tesorería → **Caja menor → Configurar cajas**: crear "Caja menor Medellín" y "Caja menor Bogotá" (fondo 15.000.000, tope 400.000); dar el rol **Auxiliar de Tesorería - Caja menor** a la asistente de Bogotá y asignarle esa caja en "Auxiliares de cada caja".
+- Pruebas: solicitud de factura → Contabilidad → **Confirmar y facturar** (PDF y XML) → correo con adjuntos en `CORREO_ENSAYO`; gasto con forma de pago **Caja menor** → entregar efectivo → legalizar con soporte → armar reembolso → aprobar con Dirección de Negocio → legalizar el reembolso → revisar el **Historial** y el Excel; Catálogos con el Administrador; abrir Gastos y Trámites desde un celular (menú ☰ en Gastos; Dashboard y Tablero de gestión sin zoom). Recargar con Ctrl+F5.
 
 ## Si algo sale mal
 

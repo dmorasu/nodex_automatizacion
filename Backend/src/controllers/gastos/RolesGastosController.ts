@@ -150,7 +150,8 @@ export class RolesGastosController {
       if (!usuario) throw new ErrorGastos('Usuario no encontrado', 404)
       await verificarUsuarioDeTramites(req, usuario.id)
 
-      await usuario.update({ contrasena: await hashcontrasena(req.body.contrasena) })
+      // Contraseña nueva y fuera de todas sus sesiones abiertas (por si alguien más la conocía)
+      await usuario.update({ contrasena: await hashcontrasena(req.body.contrasena), versionSesion: usuario.versionSesion + 1 })
       // Con la contraseña nueva puede entrar de una vez, aunque estuviera bloqueado
       desbloquearCuenta(usuario.correoUsuario)
 

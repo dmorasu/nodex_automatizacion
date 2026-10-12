@@ -20,6 +20,8 @@ router.post('/login',
     AuthController.login)
 
 
+router.post('/logout', autenticacion, AuthController.cerrarSesion)
+
 router.get('/user',
     autenticacion,
     AuthController.usuario

@@ -80,6 +80,8 @@ connectDB().then(() => {
 })
 
 const app = express()
+// No anunciar con qué está hecho el servidor (encabezado X-Powered-By)
+app.disable('x-powered-by')
 
 app.use(morgan('dev'))
 

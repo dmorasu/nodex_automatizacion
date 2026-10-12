@@ -82,9 +82,19 @@ const ubicacionYMensajeros = async () => {
   }
 }
 
+// 2026-10-12 · Versión de sesión del usuario: va dentro del token y se sube al cambiar o
+// restablecer la contraseña o al cerrar sesión, así esos tokens dejan de servir de inmediato
+const versionSesion = async () => {
+  const usuarios = await columnasDe('Usuarios')
+  if (usuarios && !usuarios.versionSesion) {
+    await db.query(`ALTER TABLE "Usuarios" ADD COLUMN "versionSesion" INTEGER NOT NULL DEFAULT 0`)
+  }
+}
+
 export const ajustarEsquemaTramites = async () => {
   await analistaAsignado()
   await ubicacionYMensajeros()
+  await versionSesion()
 }
 
 // Después de sync(): la sede del mensajero (mensajeria_sedes ya existe)

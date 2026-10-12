@@ -58,7 +58,11 @@ export async function autenticacion(prevState:ActionStateType, formData:FormData
         name:'TOKEN',
         value: json,
         httpOnly:true,
-        path:'/'
+        path:'/',
+        // Solo por HTTPS en producción, no se envía desde otros sitios y dura lo mismo que el token
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60
 
     })
     redirect('/center/dashboard')

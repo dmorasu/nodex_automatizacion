@@ -35,9 +35,16 @@ export class AuthController{
         }
 
         registrarExito(correoUsuario)
-        res.json(generateJWT(usuario.id))
+        res.json(generateJWT(usuario.id, usuario.versionSesion))
     }
 
+
+    // POST /auth/logout → cierra la sesión en todos los equipos y apps (Trámites y Gastos):
+    // sube la versión de sesión y los tokens emitidos antes dejan de servir
+    static cerrarSesion = async (req: Request, res: Response) => {
+        await Usuarios.increment('versionSesion', { where: { id: req.usuario.id } })
+        res.json('Sesión cerrada')
+    }
 
     static usuario =async (req: Request, res:Response) =>{
         res.json(req.usuario)
@@ -58,8 +65,10 @@ export class AuthController{
         }
 
         usuario.contrasena= await hashcontrasena(contrasena)
+        // Las sesiones abiertas (incluida esta) dejan de servir: debe entrar con la contraseña nueva
+        usuario.versionSesion = usuario.versionSesion + 1
         await usuario.save()
-        res.json(" La contraseña se modifico")
+        res.json("La contraseña se modificó. Inicie sesión de nuevo")
 
 
 

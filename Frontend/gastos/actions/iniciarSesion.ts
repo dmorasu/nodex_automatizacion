@@ -41,7 +41,11 @@ export async function iniciarSesion(estadoAnterior: EstadoFormulario, formData: 
     name: NOMBRE_COOKIE,
     value: json,
     httpOnly: true,
-    path: "/"
+    path: "/",
+    // Solo por HTTPS en producción, no se envía desde otros sitios y dura lo mismo que el token
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60
   })
 
   redirect("/inicio")

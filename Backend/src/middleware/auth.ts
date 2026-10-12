@@ -52,7 +52,7 @@ export const autenticacion = async (
     }
 
     const usuario = await Usuarios.findByPk(decoded.id, {
-      attributes: ["id", "nombreUsuario", "correoUsuario"],
+      attributes: ["id", "nombreUsuario", "correoUsuario", "versionSesion"],
       include: [{
         model: Roles,
         attributes: ["codigo"],
@@ -61,6 +61,17 @@ export const autenticacion = async (
         through: { attributes: [] }
       }]
     })
+
+    // Sesión cerrada o contraseña cambiada después de emitir el token. Los tokens sin versión
+    // (anteriores a 2026-10-12, o de la versión 4.5 que comparte la clave) tampoco sirven.
+    if (usuario && decoded.v !== usuario.versionSesion) {
+      return res.status(401).json({
+        message: "La sesión ya no es válida: inicie sesión de nuevo",
+        totalProcesados: 0,
+        creados: [],
+        errores: []
+      })
+    }
 
     if (!usuario) {
       return res.status(401).json({

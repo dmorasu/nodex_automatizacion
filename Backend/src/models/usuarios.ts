@@ -45,6 +45,15 @@ class Usuarios extends Model {
   declare area: string;
 
 
+  // Va en el token (campo v): si no coincide, la sesión ya no sirve (ver utils/jwt.ts)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  })
+  declare versionSesion: number;
+
+
   @HasMany(() => SolicitudTramites, {
     onUpdate: "CASCADE",
     onDelete: "CASCADE"

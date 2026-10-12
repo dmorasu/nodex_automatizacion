@@ -282,6 +282,19 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Commits del 2026-10-11 y 2026-10-12 (avisos del tramitador, login protegido, sesiones de 7 días, dependencias y encabezados)** — cambian el backend y las tres apps.
+- `npm ci` en Backend y en Nodex Trámites baja `xlsx` desde `https://cdn.sheetjs.com` (el servidor necesita salida a ese dominio).
+- Al arrancar se crea `Usuarios.versionSesion`: **todos vuelven a iniciar sesión** (los tokens anteriores dejan de servir).
+- Encabezados de seguridad en Nginx (solo los bloques de nodexgpa.com; la 4.5 no se toca):
+  ```bash
+  cp /home/desarrolloti/nodex5.0/deploy/nginx-seguridad-nodexgpa.conf /etc/nginx/snippets/seguridad-nodexgpa.conf
+  SITIO=$(readlink -f /etc/nginx/sites-enabled/nodexgpa) && cp "$SITIO" /root/nodexgpa.nginx.antes
+  grep -q "seguridad-nodexgpa" "$SITIO" || sed -i '/server_name [a-z]*\.nodexgpa\.com;/a\    include snippets/seguridad-nodexgpa.conf;' "$SITIO"
+  nginx -t && systemctl reload nginx     # si nginx -t falla: cp /root/nodexgpa.nginx.antes "$SITIO"
+  curl -sI https://tramites.nodexgpa.com/auth/login | grep -iE "strict-transport|x-frame|x-content|referrer|server:|x-powered"
+  ```
+- Pruebas: 6 contraseñas malas seguidas → "Demasiados intentos fallidos"; desbloquear desde Administración; cerrar sesión en Gastos → Trámites también pide entrar; `/auth/register` ya no existe.
+
 **Commit `0659fe27` (2026-10-07: anticipos, arqueo, push, cargue masivo en pantalla)** — cambian el backend y las tres apps.
 - Generar **una sola vez** las claves de las notificaciones push y agregarlas a `Backend/.env`. **Guardarlas en el gestor de contraseñas: son las mismas que van a producción** (si cambian, cada celular debe volver a activar las notificaciones):
   ```bash

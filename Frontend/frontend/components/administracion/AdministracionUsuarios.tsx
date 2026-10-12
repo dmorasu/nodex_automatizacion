@@ -5,11 +5,12 @@ import { toast } from "react-toastify"
 import { errorContrasena } from "@/src/auth/politicaContrasena"
 import RequisitosContrasena from "@/components/auth/RequisitosContrasena"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { ChevronLeft, ChevronRight, Eye, EyeOff, KeyRound, Loader2, Pencil, Plus, Save, Search, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Eye, EyeOff, KeyRound, Loader2, LockOpen, Pencil, Plus, Save, Search, X } from "lucide-react"
 import {
   actualizarUsuario,
   asignarPerfiles,
   crearUsuario,
+  desbloquearUsuario,
   restablecerContrasena
 } from "@/actions/administracion-action"
 
@@ -20,6 +21,8 @@ export type UsuarioAdmin = {
   correoUsuario: string
   area: string | null
   roles: { codigo: string }[]
+  // Minutos que le faltan para poder entrar tras varios intentos fallidos (0 = no está bloqueado)
+  minutosBloqueo?: number
 }
 
 // Los perfiles se muestran agrupados por módulo
@@ -265,6 +268,7 @@ function FilaUsuario({ usuario, roles, esUsted, soloTramites, onEditar, onContra
   const inicial = usuario.roles.map(r => r.codigo)
   const [seleccion, setSeleccion] = useState<string[]>(inicial)
   const { procesando, ejecutar } = useAccion()
+  const { procesando: desbloqueando, ejecutar: ejecutarDesbloqueo } = useAccion()
 
   const huboCambios = seleccion.length !== inicial.length || seleccion.some(c => !inicial.includes(c))
   const sinPerfilTramites = !seleccion.some(c => PERFILES_TRAMITES.includes(c))
@@ -277,6 +281,20 @@ function FilaUsuario({ usuario, roles, esUsted, soloTramites, onEditar, onContra
         <p className="text-xs font-medium text-slate-700">{usuario.nombreUsuario}{esUsted && <span className="ml-1 text-[10px] text-sky-600">(usted)</span>}</p>
         <p className="text-[11px] text-slate-400">{usuario.correoUsuario}{usuario.area && ` · ${usuario.area}`}</p>
         {sinPerfilTramites && <p className="mt-0.5 text-[10px] text-amber-600">Sin acceso a trámites</p>}
+        {!!usuario.minutosBloqueo && (
+          <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-medium text-red-600">
+            Bloqueado por intentos fallidos · {usuario.minutosBloqueo} min
+            <button
+              type="button"
+              onClick={() => ejecutarDesbloqueo(() => desbloquearUsuario(usuario.id), `${usuario.nombreUsuario} desbloqueado`)}
+              disabled={desbloqueando}
+              className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 font-semibold hover:bg-red-100 disabled:opacity-50"
+            >
+              {desbloqueando ? <Loader2 size={11} className="animate-spin" /> : <LockOpen size={11} />}
+              Desbloquear
+            </button>
+          </p>
+        )}
       </td>
 
       {roles.map(rol => (

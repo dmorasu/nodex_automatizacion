@@ -295,6 +295,7 @@ router.get('/admin/usuarios', administraUsuarios, RolesGastosController.getUsuar
 router.post('/admin/usuarios', administraUsuarios, validarCrearUsuario, handleInputErrors, RolesGastosController.crearUsuario)
 router.put('/admin/usuarios/:usuarioId', administraUsuarios, validarActualizarUsuario, handleInputErrors, RolesGastosController.actualizarUsuario)
 router.put('/admin/usuarios/:usuarioId/contrasena', administraUsuarios, validarRestablecerContrasena, handleInputErrors, RolesGastosController.restablecerContrasena)
+router.post('/admin/usuarios/:usuarioId/desbloquear', administraUsuarios, RolesGastosController.desbloquear)
 router.put('/admin/usuarios/:usuarioId/roles',
   administraUsuarios,
   validarAsignarRoles,

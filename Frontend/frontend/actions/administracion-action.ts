@@ -43,3 +43,7 @@ export const restablecerContrasena = async (id: number, contrasena: string) =>
 
 export const asignarPerfiles = async (id: number, roles: string[]) =>
   llamar(`/usuarios/${id}/roles`, "PUT", { roles })
+
+// Quita el bloqueo por intentos fallidos en el login
+export const desbloquearUsuario = async (id: number) =>
+  llamar(`/usuarios/${id}/desbloquear`, "POST", {})

@@ -14,7 +14,7 @@ const MAXIMO_POR_CUENTA = 5
 // de varias personas no bloqueen a todos
 const MAXIMO_POR_IP = 30
 
-type Contador = { fallos: number, desde: number, bloqueadoHasta: number }
+type Contador = { fallos: number, desde: number, bloqueadoHasta: number, ultimaIp?: string }
 
 const porCuenta = new Map<string, Contador>()
 const porIp = new Map<string, Contador>()
@@ -57,12 +57,27 @@ const sumarFallo = (mapa: Map<string, Contador>, llave: string, maximo: number) 
 export const registrarFallo = (correo: string, ip: string) => {
   sumarFallo(porCuenta, clave(correo), MAXIMO_POR_CUENTA)
   sumarFallo(porIp, ip, MAXIMO_POR_IP)
+  // Se recuerda desde dónde falló la cuenta para poder liberar también esa IP al desbloquear
+  porCuenta.get(clave(correo))!.ultimaIp = ip
 }
 
 // Entró bien: se olvidan los fallos de la cuenta (los de la IP siguen, para no premiar a quien
 // prueba cuentas ajenas mezclando con la suya)
 export const registrarExito = (correo: string) => {
   porCuenta.delete(clave(correo))
+}
+
+// ── Administración ──
+
+// Minutos que le faltan a la cuenta para poder entrar (0 = no está bloqueada)
+export const minutosBloqueoCuenta = (correo: string) => minutosRestantes(porCuenta.get(clave(correo)))
+
+// El administrador desbloquea la cuenta: se borran sus fallos y, si la IP desde la que falló
+// quedó bloqueada, también se libera (si no, el usuario seguiría sin poder entrar desde ahí)
+export const desbloquearCuenta = (correo: string) => {
+  const contador = porCuenta.get(clave(correo))
+  porCuenta.delete(clave(correo))
+  if (contador?.ultimaIp && minutosRestantes(porIp.get(contador.ultimaIp)) > 0) porIp.delete(contador.ultimaIp)
 }
 
 // Limpieza de contadores viejos para que la memoria no crezca

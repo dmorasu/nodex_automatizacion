@@ -8,6 +8,7 @@ import { correoIgual, hashcontrasena } from '../../utils/auth'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { esAdmin, responderError } from './utilidades'
 import { ROLES_TRAMITES } from '../../services/gastos/constantes'
+import { desbloquearCuenta, minutosBloqueoCuenta } from '../../utils/intentosLogin'
 
 // El Administrador de Torre de control (sin ADMIN) solo maneja perfiles de trámites:
 // no asigna ni quita perfiles de Gastos o Administración, y no edita ni cambia la contraseña
@@ -68,7 +69,8 @@ export class RolesGastosController {
         order: [['nombreUsuario', 'ASC']]
       })
 
-      res.json(usuarios)
+      // Minutos de bloqueo por intentos fallidos en el login (0 = puede entrar)
+      res.json(usuarios.map(u => ({ ...u.toJSON(), minutosBloqueo: minutosBloqueoCuenta(u.correoUsuario) })))
     } catch (error) {
       console.log(error)
       res.status(500).json({ error: 'Hubo un error' })
@@ -149,8 +151,24 @@ export class RolesGastosController {
       await verificarUsuarioDeTramites(req, usuario.id)
 
       await usuario.update({ contrasena: await hashcontrasena(req.body.contrasena) })
+      // Con la contraseña nueva puede entrar de una vez, aunque estuviera bloqueado
+      desbloquearCuenta(usuario.correoUsuario)
 
       res.json(`Contraseña de ${usuario.nombreUsuario} restablecida`)
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /admin/usuarios/:usuarioId/desbloquear → quita el bloqueo por intentos fallidos del login.
+  // No cambia nada del usuario, por eso también lo puede hacer el Administrador de Torre de control
+  // con cualquier usuario.
+  static desbloquear = async (req: Request, res: Response) => {
+    try {
+      const usuario = await Usuarios.findByPk(Number(req.params.usuarioId), { attributes: ['id', 'nombreUsuario', 'correoUsuario'] })
+      if (!usuario) throw new ErrorGastos('Usuario no encontrado', 404)
+      desbloquearCuenta(usuario.correoUsuario)
+      res.json(`${usuario.nombreUsuario} desbloqueado`)
     } catch (error) {
       responderError(res, error)
     }

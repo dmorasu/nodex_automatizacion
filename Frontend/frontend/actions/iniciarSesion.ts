@@ -1,5 +1,5 @@
 "use server"
-import {cookies} from 'next/headers'
+import {cookies, headers} from 'next/headers'
 import {redirect} from 'next/navigation'
 import { ErrorResponoseSchema, inicioSesionSchema } from "@/src/schemas"
 
@@ -32,6 +32,8 @@ export async function autenticacion(prevState:ActionStateType, formData:FormData
         method:'POST',
         headers:{
             'Content-Type': 'application/json',
+            // IP real del navegador (la pone Nginx) para el límite de intentos del backend
+            'X-IP-Cliente': headers().get('x-real-ip') ?? '',
         },
         body: JSON.stringify({
             contrasena:auth.data.contrasena,

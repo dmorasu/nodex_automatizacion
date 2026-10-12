@@ -1,25 +1,4 @@
 import { z } from 'zod'
-import { errorContrasena } from '@/src/auth/politicaContrasena'
-
-export const RegistroSchema = z.object({
-        correoUsuario: z.string().
-                min(1, { message: 'El correo es obligatorio' })
-                .email({ message: 'email no valido' }),
-        nombreUsuario: z.string()
-                .min(1, { message: 'El nombre no puede estar vacio' }),
-        contrasena: z.string().superRefine((valor, ctx) => {
-                const error = errorContrasena(valor)
-                if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, message: error })
-        }),
-        confirmacion_contrasena: z.string()
-
-
-}).refine((data) => data.contrasena === data.confirmacion_contrasena, {
-        message: 'Las contraseña no coincide',
-        path: ['confirmacion_contrasena']
-
-
-})
 
 export const inicioSesionSchema = z.object({
         correoUsuario: z.string()

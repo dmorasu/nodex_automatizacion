@@ -261,6 +261,13 @@ _Actualizado: 2026-10-10_
 - Las apps muestran los requisitos mientras se escribe y los marcan al cumplirse: `components/auth/RequisitosContrasena.tsx` (Trámites: registro y Administración; Tramitadores: cambio de contraseña), con copias de la regla en `Frontend/frontend/src/auth/politicaContrasena.ts` y `Frontend/tramitadores/src/politicaContrasena.ts`. Nodex Gastos no tiene formularios de contraseña.
 - **Las contraseñas ya guardadas siguen sirviendo** hasta que se cambien (no se pueden revisar: están cifradas). Pendiente opcional: pedir el cambio al iniciar sesión si la contraseña no cumple.
 
+### Login protegido y sin registro público (2026-10-11)
+- **Límite de intentos** en `POST /auth/login` (Trámites y Gastos), `utils/intentosLogin.ts`: 5 fallos por cuenta → 15 min bloqueada (como la app de tramitadores) y 30 fallos por IP en 15 min → IP bloqueada 15 min. Responde 429 "Demasiados intentos fallidos…". En memoria (una sola instancia; un reinicio limpia los contadores).
+- **IP real:** el login llega desde el servidor de Next (127.0.0.1); las acciones `iniciarSesion` de Trámites y Gastos reenvían `X-Real-IP` (de Nginx) como `X-IP-Cliente`, y el backend solo la acepta si la petición viene de 127.0.0.1.
+- **Mismo mensaje** "Correo o contraseña incorrectos" (401) si el correo no existe o la contraseña no coincide; si no existe se compara contra un hash de relleno para que tarde lo mismo.
+- **Sin registro público:** se quitaron `POST /auth/create-account`, la página `/auth/register`, `RegisterForm`, `actions/crear-cuenta.ts` y `RegistroSchema`. Los usuarios los crea el administrador en Administración.
+- Probado contra la base de desarrollo con un script aislado (mensajes iguales, bloqueo al 5.º fallo, IP falsa desde fuera ignorada).
+
 ### Corrección: índices de `mensajeria_paradas` (2026-10-04)
 - El arranque fallaba en `db.sync()` con `column "solicitudTramiteId" does not exist`: el modelo tiene `underscored: true` y `@Index` en la propiedad le pasa a Postgres el nombre del atributo, no el de la columna (`solicitud_tramite_id`).
 - Los índices `mensajeria_paradas_tramite_fecha` (único) y `mensajeria_paradas_fecha_tramitador` pasaron a `@Table({ indexes })` con los nombres reales de columna (`models/mensajeria/paradaMensajeria.ts`). Ya se crearon en la base de desarrollo.
@@ -618,7 +625,7 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
     - **`JWT_SECRET`** (huella `3c1fbf68fbc7effc`, la misma en producción 4.5, ensayo y desarrollo): con ella se podía fabricar una sesión de cualquier usuario. **Cambiada el 2026-10-06** en producción y ensayo (misma clave nueva, huella `5bc922936cdef7d9`) y en el `.env` de desarrollo (huella `21cead99b03a53d1`). Efecto: todos vuelven a iniciar sesión.
     - **`DB_PASSWORD`** del usuario `desarrolloti` (la usan producción, ensayo y desarrollo; también quedó escrita en el chat): **sin cambiar por decisión del usuario.** La protege que el 5432 está cerrado en el NSG. Para cambiarla: listar los `.env` que usan `desarrolloti` (`grep -rlE desarrolloti /home/desarrolloti --include=".env*" --exclude-dir=node_modules`), `\password desarrolloti` en psql, actualizar cada `.env` (y el de desarrollo y pgAdmin) y reiniciar esas apps. Los respaldos no se afectan (usan el usuario `postgres` del sistema).
     - `TWILIO_SID` igual (sin el token no sirve); `SENDGRID_API_KEY` y `TWILIO_AUTH_TOKEN` ya eran otras.
-    - **Pendiente:** confirmar que el repositorio quedó **privado** (GitHub → Settings → Danger Zone → Change visibility). Opcional: borrar el `.env` del historial con `git filter-repo` (con el repositorio privado y las claves cambiadas no es urgente).
+    - **Repositorio privado desde el 2026-10-11** (verificado: la API de GitHub sin credenciales responde 404). El historial con los `.env` (`Backend/.env` en 32 commits, `Frontend/frontend/.env`) **se deja así por decisión del usuario** (no se reescribe con `git filter-repo`). Por eso sigue pendiente cambiar la contraseña de `desarrolloti`.
 17. **Protección del repositorio (recomendado):** reglas de rama en `main` y `desarrollo` sin *force push* ni borrado, verificación en dos pasos en la cuenta y mover el repositorio a una organización de GitHub de la empresa (hoy está en una cuenta personal). Guardar los valores de los `.env` en un gestor de contraseñas: no están en git ni en los respaldos.
 18. **SAS de los respaldos vence en un año** (octubre de 2027): renovarlo antes (contenedor `respaldos-nodex` → Tokens de acceso compartido; Lectura, Agregar, Crear, Escribir, Lista; **sin** Eliminar y **sin** restricción de IP) y actualizar `/root/.respaldo-nodex.env`. Si vence, los respaldos dejan de subirse.
 
@@ -629,7 +636,7 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
     - **Falta:** ejemplos reales de guías (5-10 de Envía, 2-3 de Servientrega, Coordinadora e Inter; PDF y fotos de celular) en `docs/guias-ejemplo/` (no subir a git) para escribir y medir las reglas.
 
 ## Próximos pasos sugeridos
-- **Seguridad:** confirmar el repositorio privado; decidir cuándo cambiar la contraseña de la base; generar la `API_KEY_EXTERNA` definitiva; probar una restauración de un respaldo en una base aparte (`nodex_revision`).
+- **Seguridad:** decidir cuándo cambiar la contraseña de la base; generar la `API_KEY_EXTERNA` definitiva; probar una restauración de un respaldo en una base aparte (`nodex_revision`).
 - **Ensayo (fase 7):** pruebas con un usuario de cada perfil (guía de ensayo, paso 10): pago en tres pasos, certificados, trámites (desistir, finalizar, programar), correos solo a `CORREO_ENSAYO`, WhatsApp "NO enviado", mapa de rutas con Google, autocompletado de dirección, API externa y la app de tramitadores desde un celular.
 - **Paso a producción:** cuando el ensayo pase, seguir `deploy/GUIA_PASO_A_PRODUCCION.md` (anotar antes lo configurado en las pantallas del ensayo que se quiera conservar).
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.

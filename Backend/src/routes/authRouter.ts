@@ -9,13 +9,7 @@ import { contrasenaSegura } from '../utils/politicaContrasena'
 
 const router = Router()
 
-router.post('/create-account',
-    body('nombreUsuario').notEmpty().withMessage('El nombre no puede estar vacio'),
-    contrasenaSegura(),
-    body('correoUsuario')
-        .isEmail().withMessage('Correo no valido'),
-    handleInputErrors,
-    AuthController.createAccount)
+// /create-account se quitó (2026-10-11): no hay registro público, los usuarios los crea el administrador
 
 router.post('/login',
     body('correoUsuario')

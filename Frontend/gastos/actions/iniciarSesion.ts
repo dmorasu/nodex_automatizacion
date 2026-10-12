@@ -1,6 +1,6 @@
 "use server"
 
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { ErrorRespuestaSchema, InicioSesionSchema } from "@/src/schemas"
 import { NOMBRE_COOKIE } from "@/src/auth/dal"
@@ -25,7 +25,8 @@ export async function iniciarSesion(estadoAnterior: EstadoFormulario, formData: 
 
   const req = await fetch(`${process.env.API_URL}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    // IP real del navegador (la pone Nginx) para el límite de intentos del backend
+    headers: { "Content-Type": "application/json", "X-IP-Cliente": headers().get("x-real-ip") ?? "" },
     body: JSON.stringify(credenciales.data)
   })
 

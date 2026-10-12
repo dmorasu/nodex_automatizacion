@@ -3,60 +3,39 @@ import type { Request,Response } from "express"
 import Usuarios from "../models/usuarios";
 import { checkContrasena, correoIgual, hashcontrasena } from "../utils/auth";
 import { generateJWT } from "../utils/jwt";
+import { ipCliente, minutosBloqueo, registrarExito, registrarFallo } from "../utils/intentosLogin";
+
+let rellenoPromesa: Promise<string> | null = null
+const hashDeRelleno = () => (rellenoPromesa ??= hashcontrasena('relleno-para-igualar-tiempos'))
 
 
 
 
 export class AuthController{
-    static createAccount = async (req:Request, res: Response) =>{
-
-        const {correoUsuario}=req.body
-
-        // El correo se compara sin importar mayúsculas/minúsculas
-        const usuarioExists= await Usuarios.findOne({where: correoIgual(correoUsuario)})
-        if (usuarioExists){
-            const error = new Error('El usuario ya existe')
-            return res.status(409).json({error:error.message})
-        }
-
-        try {
-            const usuario = new Usuarios(req.body)
-            usuario.contrasena =await hashcontrasena(req.body.contrasena)
-            usuario.save()
-            res.json("Registro Creado Correctamente")
-        } catch (error) {
-            //console.log(error);
-            res.status(500).json({error:'Ocurrrio un error'})
-            
-            
-        }
-    }
-
-
+    // Sin registro público (2026-10-11): los usuarios los crea el administrador en Administración.
+    // Mismo mensaje si el correo no existe o la contraseña no coincide, para no revelar qué
+    // correos son usuarios, y límite de intentos por cuenta y por IP (utils/intentosLogin.ts).
     static login =async (req: Request, res:Response) =>{
-
-
         const {correoUsuario,contrasena}=req.body
+        const ip = ipCliente(req)
+
+        const minutos = minutosBloqueo(correoUsuario, ip)
+        if (minutos > 0) {
+            return res.status(429).json({error:`Demasiados intentos fallidos. Intente de nuevo en ${minutos} minuto(s)`})
+        }
 
         // El correo se compara sin importar mayúsculas/minúsculas
-        const usuarioExists= await Usuarios.findOne({where: correoIgual(correoUsuario)})
-        if (!usuarioExists){
-            const error = new Error('Usuario no encontrado')
-            return res.status(409).json({error:error.message})
+        const usuario= await Usuarios.findOne({where: correoIgual(correoUsuario)})
+        // Si el correo no existe se compara igual contra un hash de relleno: así la respuesta
+        // tarda lo mismo y no delata si el correo está registrado
+        const contrasenaCorrecta= await checkContrasena(contrasena, usuario?.contrasena ?? await hashDeRelleno())
+        if(!usuario || !contrasenaCorrecta){
+            registrarFallo(correoUsuario, ip)
+            return res.status(401).json({error:'Correo o contraseña incorrectos'})
         }
-        
 
-        const contrasenaCorrecta= await checkContrasena(contrasena,usuarioExists.contrasena)
-        if(!contrasenaCorrecta){
-            const error = new Error('Contraseña incorrecta')
-            return  res.status(401).json({error:error.message})
-        }
-        const token=generateJWT(usuarioExists.id)
-
-        res.json(token)
-        
-        
-
+        registrarExito(correoUsuario)
+        res.json(generateJWT(usuario.id))
     }
 
 

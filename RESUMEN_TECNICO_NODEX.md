@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-10_
+_Actualizado: 2026-10-12_
 
 ## Arquitectura
 
@@ -457,7 +457,21 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 - **Limpieza hecha:** se quitaron de PM2 las entradas detenidas `api4.2`, `worker4.2`, `Nodex4.2`, `api_Nodex_4.3` y `Nodex4.3`, y se borraron `/home/desarrolloti/Nodex`, `Nodex2.0`, `nodex3.0` y `apps` (copias viejas que no usaba PM2, Nginx ni cron). Su código (sin `node_modules`, `.next` ni `dist`, con sus `.env`) quedó en Azure en `respaldos-nodex/archivo-servidor/` y se borra solo a los 30 días. El disco quedó en **59 %** (13 GB libres).
 - **Cuando la 5.0 pase a producción:** archivar igual y borrar `nodex4.0` (1,2 GB) después de la semana de espera de la guía.
 
-## Estado del código y del despliegue (2026-10-07)
+## Estado del código y del despliegue (2026-10-12)
+- **Rama `desarrollo`, commit `b08852ce`** (subido a GitHub). Commits del 2026-10-11/12, en orden:
+  - `939635a9`: push al tramitador por mensajes del equipo y correos al analista.
+  - `1a44bf69`: login con límite de intentos, mismo mensaje y sin registro público.
+  - `2dae0e90`: desbloquear usuarios desde Administración.
+  - `b08852ce`: sesiones de 7 días con versión, cookies, dependencias y encabezados de Nginx.
+  
+  El anterior era `601a2765`.
+- **Ensayo actualizado a `b08852ce` (2026-10-12)** con la guía ("Variables por versión" → commits del 2026-10-11 y 2026-10-12). Encabezados de Nginx verificados con `curl -sI` (HSTS, X-Frame-Options, nosniff, Referrer-Policy, `Server: nginx` sin versión, sin `X-Powered-By`). **Falta probar en el navegador:** bloqueo y desbloqueo, cerrar sesión en las dos apps, `/auth/register` sin página, y push y correos del tramitador.
+- **Push en el ensayo:** la prueba fallaba con "VAPID private key should be 32 bytes long when decoded" (`VAPID_PRIVATE_KEY` mal copiada en el `.env`). Se indicó generar un par nuevo. **Confirmar que llegan** y guardar las claves nuevas en el gestor de contraseñas (son las de producción).
+- **En el servidor, git y los builds van como `root`** (`sudo -i`): la carpeta `nodex5.0` es de root y como `desarrolloti` git responde "dubious ownership". No agregar `safe.directory` ni cambiar el dueño.
+- **GitHub:** el repositorio es **privado** desde el 2026-10-11.
+- **Por decidir con el usuario:** si la confirmación de visitas de "Mi ruta" debe mandar correo al analista (se dejó por fuera por volumen; opción: solo cuando sea "No se pudo").
+
+## Estado del código y del despliegue (2026-10-07, histórico)
 - **Rama `desarrollo`, commit `0659fe27`** (subido a GitHub): incluye todo lo del 2026-10-07 (raíz de Trámites al Dashboard, notificaciones push, anticipos con arqueo y estado de cuenta, pago directo de gastos de anticipos, confirmación de varios lotes, menú de Gastos, íconos, cargue masivo en pantalla y de documentos). El commit anterior era `5003f5ca` (para volver atrás).
 - **Ensayo:** pendiente de actualizar por el usuario con `deploy/GUIA_DESPLIEGUE_ENSAYO.md` → "Actualizar el ensayo con cambios nuevos" → "Variables por versión" (commit `0659fe27`: generar las claves VAPID una vez).
 - **Datos que se necesitan para producción** (no están en git; guardarlos en el gestor de contraseñas):
@@ -648,7 +662,19 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
     - **Falta:** ejemplos reales de guías (5-10 de Envía, 2-3 de Servientrega, Coordinadora e Inter; PDF y fotos de celular) en `docs/guias-ejemplo/` (no subir a git) para escribir y medir las reglas.
 
 ## Próximos pasos sugeridos
-- **Seguridad:** decidir cuándo cambiar la contraseña de la base; generar la `API_KEY_EXTERNA` definitiva; probar una restauración de un respaldo en una base aparte (`nodex_revision`).
+- **Seguridad**:
+  - **Hecho el 2026-10-11/12:** repositorio privado, límite de intentos en el login, desbloqueo desde Administración, sin registro público, sesiones de 7 días que se cortan al cerrar sesión o restablecer la contraseña, cookies `secure`, dependencias del backend corregidas, `xlsx` 0.20.3 y encabezados de Nginx.
+  - **Servidor** (lo hace el usuario):
+    - `ufw` (deny incoming; permitir OpenSSH y Nginx Full).
+    - SSH solo con llave, sin root, y el puerto 22 solo desde la oficina.
+    - `unattended-upgrades`.
+    - Lista de IPs permitidas en Nginx para Trámites y Gastos.
+  - **Claves:**
+    - Cambiar la contraseña de `desarrolloti`.
+    - `JWT_SECRET` distinto en el ensayo y en producción.
+    - `API_KEY_EXTERNA` definitiva.
+  - **Respaldos:** probar una restauración en una base aparte (`nodex_revision`).
+  - **Proyecto aparte:** actualizar Next.js 14 → 15/16 en las tres apps (falla crítica de denegación de servicio sin corrección en la 14). Las demás fallas de las apps son de herramientas que solo se usan al compilar.
 - **Ensayo (fase 7):** pruebas con un usuario de cada perfil (guía de ensayo, paso 10): pago en tres pasos, certificados, trámites (desistir, finalizar, programar), correos solo a `CORREO_ENSAYO`, WhatsApp "NO enviado", mapa de rutas con Google, autocompletado de dirección, API externa y la app de tramitadores desde un celular.
 - **Paso a producción:** cuando el ensayo pase, seguir `deploy/GUIA_PASO_A_PRODUCCION.md` (anotar antes lo configurado en las pantallas del ensayo que se quiera conservar).
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.

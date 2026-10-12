@@ -295,7 +295,7 @@ const crearSoporte = async (
         tamano: archivo.size
       })), { transaction })
 
-      return { id: soporte.id, tipo: soporte.tipo, solicitudTramiteId: gasto.solicitudTramiteId ?? null }
+      return { id: soporte.id, tipo: soporte.tipo, solicitudTramiteId: gasto.solicitudTramiteId ?? null, codigoGasto: gasto.codigo }
     })
   } catch (error) {
     // No dejar archivos sueltos en Azure si algo falló

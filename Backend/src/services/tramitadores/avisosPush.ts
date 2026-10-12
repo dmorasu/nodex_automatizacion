@@ -5,6 +5,7 @@ import SuscripcionPush from '../../models/tramitadores/suscripcionPush'
 import SolicitudTramites from '../../models/solicitudTramites'
 import Tramite from '../../models/tramite'
 import Municipios from '../../models/municipios'
+import Usuarios from '../../models/usuarios'
 import { ESTADOS_GASTO, ESTADOS_REINTEGRO } from '../gastos/constantes'
 import { ESTADOS_SOPORTE, TIPOS_SOPORTE } from '../../models/tramitadores/soporteTramitador'
 import { ErrorGastos as ErrorNegocio } from '../gastos/errores'
@@ -128,6 +129,32 @@ export const avisarTramiteAsignado = async (solicitudTramiteId: number, tramitad
     })
   } catch (error) {
     console.error(`❌ Push de trámite asignado (${solicitudTramiteId}):`, error)
+  }
+}
+
+// ── Mensaje del equipo en la pestaña Tramitador ──
+
+// Se llama después de guardar el comentario; si el trámite no tiene tramitador no avisa a nadie.
+// Los mensajes de un mismo trámite comparten etiqueta: el celular muestra el último y vuelve a sonar.
+export const avisarComentarioEquipo = async (solicitudTramiteId: number, usuarioId: number, comentario: string) => {
+  try {
+    if (!configuracion()) return
+    const [tramite, usuario] = await Promise.all([
+      SolicitudTramites.findByPk(solicitudTramiteId, { attributes: ['id', 'tramitadorId'] }),
+      Usuarios.findByPk(usuarioId, { attributes: ['nombreUsuario'] })
+    ])
+    if (!tramite?.tramitadorId) return
+
+    const texto = comentario.trim()
+    const autor = usuario?.nombreUsuario?.trim() || 'Nodex Trámites'
+    await enviarAvisoTramitador(Number(tramite.tramitadorId), {
+      titulo: `Mensaje sobre el trámite #${tramite.id}`,
+      cuerpo: `${autor}: ${texto.length > 140 ? `${texto.slice(0, 140)}…` : texto}`,
+      url: `/tramites/${tramite.id}`,
+      etiqueta: `comentario-${tramite.id}`
+    })
+  } catch (error) {
+    console.error(`❌ Push de comentario (${solicitudTramiteId}):`, error)
   }
 }
 

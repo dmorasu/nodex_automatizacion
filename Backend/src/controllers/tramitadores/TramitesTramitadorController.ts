@@ -15,6 +15,8 @@ import {
 } from '../../services/tramitadores/tramitesTramitador'
 import { ESTADOS_REPORTE } from '../../models/tramitadores/reporteRealizado'
 import { soloTramitesPropios } from '../../middleware/auth'
+import { notificarOperacionTramitador } from '../../services/tramitadores/correosTramitador'
+import { TIPOS_DOCUMENTO_TRAMITE } from '../../services/tramitadores/nombresDocumento'
 import { responderError } from '../gastos/utilidades'
 
 const textoOpcional = (valor: unknown) => (typeof valor === 'string' && valor.trim()) || null
@@ -47,8 +49,11 @@ export class TramitesTramitadorController {
   // POST /tramites/:id/comentarios  { comentario }
   static comentar = async (req: Request, res: Response) => {
     try {
-      await comentarComoTramitador(req.sesionTramitador!.tramitadorId, Number(req.params.id), req.body.comentario)
+      const tramitadorId = req.sesionTramitador!.tramitadorId
+      await comentarComoTramitador(tramitadorId, Number(req.params.id), req.body.comentario)
       res.status(201).json('Comentario agregado')
+      // Correo al analista con copia a la torre de control (después de responder; nunca lanza)
+      void notificarOperacionTramitador(Number(req.params.id), tramitadorId, { tipo: 'COMENTARIO', comentario: req.body.comentario })
     } catch (error) {
       responderError(res, error)
     }
@@ -57,16 +62,26 @@ export class TramitesTramitadorController {
   // POST /tramites/:id/documentos  (multipart: archivos[], tipoDocumento = SOPORTE | FACTURA | OTRO)
   static subirDocumentos = async (req: Request, res: Response) => {
     try {
+      const tramitadorId = req.sesionTramitador!.tramitadorId
+      const tipoDocumento = req.body.tipoDocumento as TipoDocumentoTramite
+      const archivos = (req.files ?? []) as Express.Multer.File[]
       const { cantidad, gasto } = await subirDocumentosTramite(
-        req.sesionTramitador!.tramitadorId,
+        tramitadorId,
         Number(req.params.id),
-        req.body.tipoDocumento as TipoDocumentoTramite,
-        (req.files ?? []) as Express.Multer.File[],
+        tipoDocumento,
+        archivos,
         req.body.solicitudGastoId ? Number(req.body.solicitudGastoId) : null
       )
       res.status(201).json(gasto
         ? `${cantidad} documento(s) cargado(s) al trámite y enviado(s) a Legalización con el gasto ${gasto}`
         : `${cantidad} documento(s) cargado(s) al trámite`)
+      // Un solo correo por cargue, aunque traiga varios archivos
+      void notificarOperacionTramitador(Number(req.params.id), tramitadorId, {
+        tipo: 'DOCUMENTOS',
+        tipoDocumento: TIPOS_DOCUMENTO_TRAMITE[tipoDocumento] ?? tipoDocumento,
+        archivos: archivos.map(a => a.originalname),
+        gasto
+      })
     } catch (error) {
       responderError(res, error)
     }
@@ -90,8 +105,10 @@ export class TramitesTramitadorController {
   // POST /tramites/:id/realizado  { observacion }
   static reportarRealizado = async (req: Request, res: Response) => {
     try {
-      await reportarRealizado(req.sesionTramitador!.tramitadorId, Number(req.params.id), req.body.observacion)
+      const tramitadorId = req.sesionTramitador!.tramitadorId
+      await reportarRealizado(tramitadorId, Number(req.params.id), req.body.observacion)
       res.status(201).json('Trámite reportado como realizado. Queda pendiente de revisión')
+      void notificarOperacionTramitador(Number(req.params.id), tramitadorId, { tipo: 'REALIZADO', observacion: req.body.observacion })
     } catch (error) {
       responderError(res, error)
     }

@@ -14,6 +14,8 @@ import {
 import { ESTADOS_SOPORTE, TIPOS_SOPORTE } from '../../models/tramitadores/soporteTramitador'
 import { esAdmin, puedeGestionarFactura, responderError } from '../gastos/utilidades'
 import { ErrorGastos } from '../../services/gastos/errores'
+import { notificarOperacionTramitador } from '../../services/tramitadores/correosTramitador'
+import { NOMBRES_TIPO_SOPORTE } from '../../services/tramitadores/nombresDocumento'
 
 const textoOpcional = (valor: unknown) => (typeof valor === 'string' && valor.trim()) || null
 
@@ -54,17 +56,25 @@ export class GastosTramitadorController {
   // POST /gastos/:id/soportes  (multipart: archivos[], tipo, reintegroId?, observacion?)
   static subirSoporte = async (req: Request, res: Response) => {
     try {
-      await subirSoporte(
-        req.sesionTramitador!.tramitadorId,
+      const tramitadorId = req.sesionTramitador!.tramitadorId
+      const tipo = req.body.tipo as typeof TIPOS_SOPORTE[keyof typeof TIPOS_SOPORTE]
+      const observacion = textoOpcional(req.body.observacion)
+      const archivos = (req.files ?? []) as Express.Multer.File[]
+      const soporte = await subirSoporte(
+        tramitadorId,
         Number(req.params.id),
-        {
-          tipo: req.body.tipo as typeof TIPOS_SOPORTE[keyof typeof TIPOS_SOPORTE],
-          reintegroId: req.body.reintegroId ? Number(req.body.reintegroId) : null,
-          observacion: textoOpcional(req.body.observacion)
-        },
-        (req.files ?? []) as Express.Multer.File[]
+        { tipo, reintegroId: req.body.reintegroId ? Number(req.body.reintegroId) : null, observacion },
+        archivos
       )
       res.status(201).json('Soporte enviado. Queda pendiente de revisión por Legalización')
+      // Correo al analista del trámite del gasto (o a la torre de control si no tiene)
+      void notificarOperacionTramitador(soporte.solicitudTramiteId, tramitadorId, {
+        tipo: 'SOPORTE_GASTO',
+        tipoSoporte: NOMBRES_TIPO_SOPORTE[tipo] ?? tipo,
+        gasto: soporte.codigoGasto,
+        archivos: archivos.map(a => a.originalname),
+        observacion
+      })
     } catch (error) {
       responderError(res, error)
     }

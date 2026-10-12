@@ -23,6 +23,7 @@ import { obtenerArchivo } from '../azureFileStorage'
 import { type TipoDocumentoTramite } from './nombresDocumento'
 import { registrarDocumentosTramite } from './documentosTramite'
 import { gastosDelTramite, subirSoporte } from './soportesTramitador'
+import { avisarComentarioEquipo } from './avisosPush'
 
 // Estados en los que el trámite ya terminó: no se puede reportar como realizado
 export const ESTADOS_CERRADOS = ['Finalizado', 'Desistido']
@@ -340,7 +341,10 @@ export const comentarComoUsuario = async (
   usuarioId: number, solicitudTramiteId: number, comentario: string, soloDelUsuario: number | null
 ) => {
   await tramiteVisibleParaUsuario(solicitudTramiteId, soloDelUsuario)
-  return ComentarioTramite.create({ solicitudTramiteId, usuarioId, comentario: comentario.trim() })
+  const creado = await ComentarioTramite.create({ solicitudTramiteId, usuarioId, comentario: comentario.trim() })
+  // Push al tramitador en segundo plano: no frena la respuesta y nunca lanza
+  void avisarComentarioEquipo(solicitudTramiteId, usuarioId, comentario)
+  return creado
 }
 
 // Bandeja de trámites reportados como realizados

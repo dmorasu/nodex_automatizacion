@@ -7,7 +7,7 @@ import { enviarPruebaPush, guardarSuscripcionPush } from "@/actions/notificacion
 import { datosSuscripcion, estadoPush, navegadorActual, suscribir, type EstadoPush } from "@/src/lib/push"
 import { claseBotonPrimario } from "@/components/ui/estilos"
 
-// Tarjeta del inicio para activar los avisos en el celular (trámites nuevos y reintegros).
+// Tarjeta del inicio para activar los avisos en el celular (trámites nuevos, mensajes y reintegros).
 // Si ya están activas no muestra nada, pero vuelve a registrar el celular en el backend: así,
 // si otro tramitador inicia sesión en el mismo celular, los avisos pasan a él.
 export default function ActivarNotificaciones({ clavePublica }: { clavePublica: string }) {
@@ -47,9 +47,11 @@ export default function ActivarNotificaciones({ clavePublica }: { clavePublica: 
         return
       }
       setEstado("activas")
-      toast.success("Notificaciones activadas")
-      // Prueba para que vea cómo le llegan
-      await enviarPruebaPush()
+      // Prueba para que vea cómo le llegan; si el servidor no logra enviarla, se avisa
+      // (antes decía "activadas" aunque el aviso nunca saliera)
+      const prueba = await enviarPruebaPush()
+      if (prueba.ok) toast.success("Notificaciones activadas")
+      else toast.error(prueba.errores[0])
     } catch {
       toast.error("No se pudieron activar las notificaciones en este celular")
     } finally {
@@ -80,7 +82,7 @@ export default function ActivarNotificaciones({ clavePublica }: { clavePublica: 
 
   return (
     <Aviso Icono={BellRing} titulo="Active las notificaciones">
-      Le avisaremos cuando le asignen un trámite y cada día mientras tenga reintegros por enviar.
+      Le avisaremos cuando le asignen un trámite, cuando le escriban sobre uno y cada día mientras tenga reintegros por enviar.
       <button type="button" onClick={activar} disabled={activando} className={`${claseBotonPrimario} mt-3 w-full`}>
         {activando ? <Loader2 size={17} className="animate-spin" /> : <BellRing size={17} />}
         Activar notificaciones

@@ -7,7 +7,8 @@ import { obtenerReintegrosPorTramitador } from './gastos/reintegrosTramitador'
 // Criterios acordados con los líderes (2026-10-03):
 //   · Abierto: estado actual distinto de Finalizado y Desistido (sin estado = Sin iniciar).
 //   · Vencido: abierto y pasaron más de DIAS_GRACIA días desde la fecha de programación
-//     (fecha de diligencia). No hay tiempo meta por tipo de trámite.
+//     (fecha de diligencia). No hay tiempo meta por tipo de trámite. Los que están en espera
+//     por novedad no cuentan (2026-10-13): dependen de un tercero y tienen su propia alerta.
 //   · A tiempo: finalizado a más tardar DIAS_GRACIA días después de la fecha de programación.
 //   · Alertas de "sin movimiento": más de DIAS_GRACIA días sin trazabilidad ni cambio de estado.
 // =====================================
@@ -203,7 +204,7 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
 
   const abiertos = filas.filter(f => !f.cerrado)
   const diasVencido = (f: Fila) => (f.fechaProgramada ? diasEntre(f.fechaProgramada, hoy) - DIAS_GRACIA : 0)
-  const esVencido = (f: Fila) => !f.cerrado && diasVencido(f) > 0
+  const esVencido = (f: Fila) => !f.cerrado && f.estado !== EN_NOVEDAD && diasVencido(f) > 0
   const enPeriodo = (fecha: string | null) => !!fecha && fecha >= filtros.desde && fecha <= filtros.hasta
   // Los desistidos no cuentan como finalizados
   const finalizadoEnPeriodo = (f: Fila) => f.estado === 'Finalizado' && enPeriodo(f.finalizado)

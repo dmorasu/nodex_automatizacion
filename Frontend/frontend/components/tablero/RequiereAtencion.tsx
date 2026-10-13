@@ -19,7 +19,7 @@ const ALERTAS: Definicion[] = [
   {
     clave: "vencidos",
     nombre: "Vencidos",
-    descripcion: d => `Pasaron más de ${d} días desde la fecha de programación y no están finalizados.`,
+    descripcion: d => `Pasaron más de ${d} días desde la fecha de programación y no están finalizados (sin contar los que están en espera por novedad).`,
     dias: t => `${t.diasAtraso} días de atraso`
   },
   {

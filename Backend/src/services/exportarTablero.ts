@@ -46,7 +46,7 @@ export const generarExcelTablero = (t: TableroTramites, alcance: string) => {
     { Indicador: 'Período', Valor: `${t.filtros.desde} a ${t.filtros.hasta}` },
     { Indicador: 'Generado', Valor: t.hoy },
     { Indicador: 'Abiertos', Valor: i.abiertos },
-    { Indicador: `Vencidos (más de ${t.diasGracia} días desde la programación)`, Valor: i.vencidos },
+    { Indicador: `Vencidos (más de ${t.diasGracia} días desde la programación, sin contar los de novedad)`, Valor: i.vencidos },
     { Indicador: 'En espera por novedad', Valor: i.enNovedad },
     { Indicador: 'Finalizados en el período', Valor: i.finalizados },
     { Indicador: '% a tiempo', Valor: i.porcentajeATiempo === null ? '' : `${i.porcentajeATiempo} %` },

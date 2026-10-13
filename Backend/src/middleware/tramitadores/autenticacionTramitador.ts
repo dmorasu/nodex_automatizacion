@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import Tramitador from '../../models/tramitador'
 import AccesoTramitador from '../../models/tramitadores/accesoTramitador'
 import { TIPO_TOKEN_TRAMITADOR } from '../../services/tramitadores/accesoTramitadores'
+import { ejecutarConContexto } from '../../utils/contextoPeticion'
 
 export type SesionTramitador = {
   tramitadorId: number
@@ -55,7 +56,10 @@ export const autenticacionTramitador = async (req: Request, res: Response, next:
       esMensajero: acceso.tramitador.esMensajero,
       acceso
     }
-    next()
+    ejecutarConContexto(
+      { usuarioId: null, tramitadorId: acceso.tramitadorId, nombre: acceso.tramitador.nombreTramitador?.trim(), origen: 'APP_TRAMITADOR' },
+      next
+    )
   } catch {
     return noAutorizado(res)
   }

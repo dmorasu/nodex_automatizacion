@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Wallet,
   HardHat,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -17,6 +18,8 @@ import SeguimientoTramitador from "@/components/tramitador/SeguimientoTramitador
 import type { Seguimiento } from "@/src/seguimientoTramitador"
 import NotificacionesWhatsApp from "@/components/solicitudTramites/NotificacionesWhatsApp"
 import GastosTramite from "@/components/gastos/GastosTramite"
+import HistorialTramite from "@/components/solicitudTramites/HistorialTramite"
+import type { EventoHistorial } from "@/src/historialTramite"
 import type { GastoTramite } from "@/src/gastos/datosGastos"
 import Seccion from "@/components/ui/Seccion"
 import Dato from "@/components/ui/Dato"
@@ -51,9 +54,11 @@ interface Props {
   accionGasto?: React.ReactNode;
   // Pestaña Tramitador (app Nodex Tramitadores)
   seguimiento: Seguimiento;
+  // Pestaña Historial (línea de tiempo); null = no se pudo cargar
+  historial: EventoHistorial[] | null;
 }
 
-type ClavePestana = "informacion" | "documentos" | "gastos" | "trazabilidad" | "tramitador" | "whatsapp"
+type ClavePestana = "informacion" | "historial" | "documentos" | "gastos" | "trazabilidad" | "tramitador" | "whatsapp"
 
 
 // Columna principal del detalle del trámite: información general y pestañas.
@@ -66,6 +71,7 @@ export default function DetalleSolicitudTabs({
   urlGastos,
   accionGasto,
   seguimiento,
+  historial,
 }: Props) {
 
   const [tabActiva, setTabActiva] = useState<ClavePestana>("informacion");
@@ -75,6 +81,7 @@ export default function DetalleSolicitudTabs({
 
   const pestanas: { clave: ClavePestana, nombre: string, Icono: LucideIcon, insignia?: React.ReactNode }[] = [
     { clave: "informacion", nombre: "Información", Icono: Info },
+    { clave: "historial", nombre: "Historial", Icono: Clock },
     { clave: "documentos", nombre: "Documentos", Icono: FileText },
     { clave: "gastos", nombre: "Gastos", Icono: Wallet, insignia: gastos.length > 0 && gastos.length },
     { clave: "trazabilidad", nombre: "Trazabilidad", Icono: History, insignia: trazabilidad.length > 0 && trazabilidad.length },
@@ -158,6 +165,14 @@ export default function DetalleSolicitudTabs({
             </Seccion>
           )}
         </>
+      )}
+
+
+      {/* HISTORIAL */}
+      {tabActiva === "historial" && (
+        <Seccion titulo="Historial">
+          <HistorialTramite eventos={historial} />
+        </Seccion>
       )}
 
 

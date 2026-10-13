@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken"
 import Usuarios from "../models/usuarios"
 import Roles from "../models/gastos/roles"
 import { ROLES, ROLES_CON_TORRE_CONTROL } from "../services/gastos/constantes"
+import { ejecutarConContexto, origenDeRuta } from "../utils/contextoPeticion"
 
 declare global {
   namespace Express {
@@ -89,7 +90,11 @@ export const autenticacion = async (
       roles.push(ROLES.TORRE_CONTROL)
     }
     req.roles = roles
-    next()
+    // El historial del trámite registra quién hizo cada cambio (ver utils/contextoPeticion)
+    ejecutarConContexto(
+      { usuarioId: usuario.id, tramitadorId: null, nombre: usuario.nombreUsuario, origen: origenDeRuta(req.originalUrl) },
+      next
+    )
 
   } catch (error) {
     return res.status(401).json({

@@ -16,6 +16,7 @@ import { SolicitudAPIRespuestaSchema } from '@/src/schemas';
 import { verificacionSesion } from '@/src/auth/dal';
 import { obtenerGastosDeTramite, obtenerOpcionesGasto } from '@/src/gastos/datosGastos';
 import { obtenerSeguimiento } from '@/src/seguimientoTramitador';
+import { obtenerHistorial } from '@/src/historialTramite';
 import { formatoFechaFinaizacion, formatoFechaSinZona, formatoMoneda } from '@/src/ultis';
 
 import DetalleSolicitudTabs from '@/components/solicitudTramites/DetalleSolicitudTabs';
@@ -71,10 +72,11 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
 
   // Gastos del trámite (Nodex Gastos) y, para Gestión de activos, opciones para crear uno
   // y lo que reporta el tramitador desde su app
-  const [gastos, opcionesGasto, seguimiento] = await Promise.all([
+  const [gastos, opcionesGasto, seguimiento, historial] = await Promise.all([
     obtenerGastosDeTramite(solicitudTramite.id, token),
     esGestionActivos ? obtenerOpcionesGasto(token) : Promise.resolve(null),
-    obtenerSeguimiento(solicitudTramite.id)
+    obtenerSeguimiento(solicitudTramite.id),
+    obtenerHistorial(solicitudTramite.id)
   ]);
 
   const botonCrearGasto = opcionesGasto && (
@@ -177,6 +179,7 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
             urlGastos={process.env.GASTOS_URL ?? null}
             accionGasto={botonCrearGasto}
             seguimiento={seguimiento}
+            historial={historial}
           />
         </div>
 

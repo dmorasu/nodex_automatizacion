@@ -19,6 +19,7 @@ import { validateProgramacionInput, validateProgramacionExits } from '../middlew
 import { validateCuentaCobroInput, validateCuentaCobroExits } from '../middleware/cuentaCobro'
 import { SubEstadosSolicitudController } from '../controllers/SubEstadosSolicitudController'
 import { requiereRol } from '../middleware/gastos/requiereRol'
+import { obtenerHistorial } from '../services/historialTramites'
 
 // La sesión y el perfil (Gestión de activos o Torre de control) se exigen en server.ts.
 // Estas acciones son solo de Torre de control:
@@ -92,6 +93,15 @@ router.post('/',
 )
 
 router.get('/:solicitudTramitesId', SolicitudTramitesController.getById)
+// Línea de tiempo: estados, programación, logística, asignaciones, documentos... con quién y cuándo
+router.get('/:solicitudTramitesId/historial', async (req, res) => {
+  try {
+    res.json(await obtenerHistorial(req.solicitudTramites.id))
+  } catch (error) {
+    console.error('ERROR HISTORIAL DEL TRÁMITE:', error)
+    res.status(500).json({ error: 'No se pudo cargar el historial' })
+  }
+})
 router.put('/:solicitudTramitesId',
   validateSolicitudTramitesInput,
   handleInputErrors,

@@ -50,8 +50,11 @@ import { iniciarNotificacionesProgramadas } from "./services/notificacionesProgr
 import { modoEnsayo } from "./utils/modoEnsayo"
 import { autenticacion } from "./middleware/auth"
 import { requiereRol } from "./middleware/gastos/requiereRol"
+import { activarHistorialTramites } from "./services/historialTramites"
 
 
+// Bitácora de cambios de los trámites (hooks de los modelos): antes de atender peticiones
+activarHistorialTramites()
 
 async function connectDB() {
     try {

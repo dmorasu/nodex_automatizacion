@@ -1,6 +1,7 @@
 import { QueryTypes } from 'sequelize'
 import { db } from '../config/db'
 import { obtenerReintegrosPorTramitador } from './gastos/reintegrosTramitador'
+import { sumarDiasHabiles } from '../utils/diasHabiles'
 
 // =====================================
 // TABLERO DE GESTIÓN DE TRÁMITES (Torre de control)
@@ -11,6 +12,16 @@ import { obtenerReintegrosPorTramitador } from './gastos/reintegrosTramitador'
 //     por novedad no cuentan (2026-10-13): dependen de un tercero y tienen su propia alerta.
 //   · A tiempo: finalizado a más tardar DIAS_GRACIA días después de la fecha de programación.
 //   · Alertas de "sin movimiento": más de DIAS_GRACIA días sin trazabilidad ni cambio de estado.
+//   · Última gestión (2026-10-13): lo más reciente que se hizo en el trámite (estado, trazabilidad,
+//     programación, logística, subestado, documento, asignación o edición). Solo se muestra: las
+//     alertas de "sin movimiento" siguen con el criterio acordado (trazabilidad o cambio de estado).
+//   · En espera por novedad (2026-10-13): todos los que están en novedad, con los días que llevan.
+//   · Programación en plazo (2026-10-13, por analista): de los trámites creados en el período,
+//     cuántos se programaron (se les puso fecha de diligencia) a más tardar el día hábil siguiente
+//     a su creación (sin fines de semana ni festivos de Colombia). Los que aún están dentro del
+//     plazo sin programar, y los desistidos sin programar, no cuentan.
+//   · Vencen hoy (2026-10-13): abiertos cuya fecha de entrega del resultado (la que se pone al
+//     crear el trámite) es hoy. Es la lista del día a día de las analistas.
 // =====================================
 
 export const DIAS_GRACIA = 2
@@ -27,6 +38,8 @@ export type FiltrosTablero = {
   tramitadorId?: number
   operacionId?: number
   tramiteId?: number
+  // Estado actual (id de Estados). "Sin Iniciar" incluye los que no tienen estado
+  estadoId?: number
 }
 
 type Fila = {
@@ -50,8 +63,13 @@ type Fila = {
   longitud: number | null
   valor: number            // valor trámite + viáticos de la programación
   fechaProgramada: string | null   // YYYY-MM-DD
+  fechaEntrega: string | null      // YYYY-MM-DD: entrega del resultado prometida al crear el trámite
   finalizado: string | null        // YYYY-MM-DD (Bogotá)
   ultimaActividad: string          // YYYY-MM-DD (Bogotá)
+  ultimoEstado: string | null      // YYYY-MM-DD (Bogotá): último cambio de estado
+  programadoEl: string | null      // YYYY-MM-DD (Bogotá): día en que se le puso fecha de diligencia
+  ultimaGestion: string            // YYYY-MM-DD HH:MI (Bogotá)
+  ultimaGestionTipo: string        // Qué fue: Cambio de estado, Trazabilidad, Programación...
   reportadoRealizado: boolean
 }
 
@@ -80,6 +98,8 @@ const condicionesFiltro = (filtros: FiltrosTablero, replacements: Record<string,
   if (filtros.tramitadorId) { condiciones.push('s."tramitadorId" = :tramitadorId'); replacements.tramitadorId = filtros.tramitadorId }
   if (filtros.operacionId) { condiciones.push('s."operacionesId" = :operacionId'); replacements.operacionId = filtros.operacionId }
   if (filtros.tramiteId) { condiciones.push('s."tramiteId" = :tramiteId'); replacements.tramiteId = filtros.tramiteId }
+  // Sin estado = Sin Iniciar (id 1), como lo muestra el tablero
+  if (filtros.estadoId) { condiciones.push('COALESCE(s."estadoActualTramite", 1) = :estadoId'); replacements.estadoId = filtros.estadoId }
   return condiciones
 }
 
@@ -113,10 +133,17 @@ const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
         -- Se guarda como medianoche UTC del día programado (así la muestra también el frontend)
         to_char(p."fechaProbableEntrega" AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS "fechaProgramada",
         to_char(p."fechaFinalizacionServicio" AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS finalizado,
-        s."createdAt"
+        -- El formulario la guarda a medianoche UTC y el cargue masivo a medianoche de Bogotá
+        -- (05:00 UTC): leída en UTC, las dos dan el mismo día
+        to_char(s."fechaEntregaResultado" AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS "fechaEntrega",
+        s."createdAt",
+        p."updatedAt" AS "programacionActualizada",
+        p."createdAt" AS "programacionCreada",
+        l."updatedAt" AS "logisticaActualizada"
       FROM "SolicitudTramites" s
       LEFT JOIN "Estados" e ON e.id = s."estadoActualTramite"
       LEFT JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
+      LEFT JOIN "Logistica" l ON l."solicitudTramiteId" = s.id
       LEFT JOIN "Usuarios" u ON u.id = s."analistaAsignado"
       LEFT JOIN "Tramitador" t ON t.id = s."tramitadorId"
       LEFT JOIN "Clientes" c ON c.id = s."clienteId"
@@ -128,11 +155,59 @@ const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
       b.*,
       -- Última actividad: el más reciente entre creación, trazabilidad y cambio de estado
       to_char(GREATEST(b."createdAt", z.ultima, x.ultima) AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "ultimaActividad",
+      to_char(x.ultima AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "ultimoEstado",
+      -- Cuándo se programó: la bitácora dice el momento exacto en que la fecha de diligencia pasó
+      -- de vacía a tener valor; antes de la bitácora, la creación de la programación (si tiene fecha)
+      to_char(COALESCE(hp.primera, CASE WHEN b."fechaProgramada" IS NOT NULL THEN b."programacionCreada" END)
+        AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "programadoEl",
+      to_char(g.fecha AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI') AS "ultimaGestion",
+      g.tipo AS "ultimaGestionTipo",
       (r.solicitud_tramite_id IS NOT NULL) AS "reportadoRealizado"
     FROM base b
     LEFT JOIN (SELECT "solicitudTramiteId", MAX("createdAt") AS ultima FROM "Trazabilidad" GROUP BY 1) z ON z."solicitudTramiteId" = b.id
     LEFT JOIN (SELECT "solicitudTramiteId", MAX("createdAt") AS ultima FROM "EstadosTramites" GROUP BY 1) x ON x."solicitudTramiteId" = b.id
-    LEFT JOIN (SELECT DISTINCT solicitud_tramite_id FROM tramitadores_reportes_realizado) r ON r.solicitud_tramite_id = b.id
+    LEFT JOIN (
+      SELECT solicitud_tramite_id, MIN(created_at) AS primera FROM historial_tramites
+      WHERE seccion = 'PROGRAMACION'
+        AND EXISTS (SELECT 1 FROM jsonb_array_elements(cambios) c WHERE c->>'campo' = 'Fecha de diligencia' AND c->>'antes' IS NULL)
+      GROUP BY 1
+    ) hp ON hp.solicitud_tramite_id = b.id
+    LEFT JOIN (SELECT "solicitudTramiteId", MAX("createdAt") AS ultima FROM "SubEstadosSolicitud" GROUP BY 1) se ON se."solicitudTramiteId" = b.id
+    LEFT JOIN (SELECT "solicitudTramiteId", MAX("createdAt") AS ultima FROM "DocumentosSolicitud" GROUP BY 1) d ON d."solicitudTramiteId" = b.id
+    -- Bitácora (desde 2026-10-13): asignaciones, ediciones, cuenta de cobro... con su sección
+    LEFT JOIN (
+      SELECT DISTINCT ON (solicitud_tramite_id) solicitud_tramite_id, created_at AS ultima, seccion
+      FROM historial_tramites ORDER BY solicitud_tramite_id, created_at DESC
+    ) h ON h.solicitud_tramite_id = b.id
+    -- Última gestión: la más reciente de todas las fuentes (programación y logística por su
+    -- última modificación, así cuentan también los cambios anteriores a la bitácora)
+    LEFT JOIN LATERAL (
+      SELECT v.fecha, v.tipo
+      FROM (VALUES
+        (b."createdAt", 'Creación'),
+        (x.ultima, 'Cambio de estado'),
+        (z.ultima, 'Trazabilidad'),
+        (b."programacionActualizada", 'Programación'),
+        (b."logisticaActualizada", 'Logística'),
+        (se.ultima, 'Subestado'),
+        (d.ultima, 'Documento'),
+        (h.ultima, CASE h.seccion
+          WHEN 'TRAMITADOR' THEN 'Asignación de tramitador'
+          WHEN 'ANALISTA' THEN 'Asignación de analista'
+          WHEN 'DATOS' THEN 'Edición del trámite'
+          WHEN 'CUENTA_COBRO' THEN 'Cuenta de cobro'
+          WHEN 'PROGRAMACION' THEN 'Programación'
+          WHEN 'LOGISTICA' THEN 'Logística'
+          WHEN 'ESTADO' THEN 'Cambio de estado'
+          WHEN 'SUBESTADO' THEN 'Subestado'
+          ELSE 'Trazabilidad' END)
+      ) AS v(fecha, tipo)
+      WHERE v.fecha IS NOT NULL
+      ORDER BY v.fecha DESC
+      LIMIT 1
+    ) g ON true
+    -- Un reporte devuelto al tramitador no cuenta: el trámite vuelve a estar en sus manos
+    LEFT JOIN (SELECT DISTINCT solicitud_tramite_id FROM tramitadores_reportes_realizado WHERE estado <> 'DEVUELTO') r ON r.solicitud_tramite_id = b.id
     WHERE NOT b.cerrado OR b.creado >= :inicio OR b.finalizado >= :inicio
   `, { type: QueryTypes.SELECT, replacements })
 
@@ -182,6 +257,9 @@ const resumenTramite = <E extends object = {}>(f: Fila, extra?: E) => ({
   tramitador: f.tramitador,
   municipio: f.municipio,
   fechaProgramada: f.fechaProgramada,
+  fechaEntrega: f.fechaEntrega,
+  ultimaGestion: f.ultimaGestion,
+  ultimaGestionTipo: f.ultimaGestionTipo,
   ...(extra as E)
 })
 
@@ -244,13 +322,15 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   // ── Requiere atención ──
   const sinMovimiento = (f: Fila) => diasEntre(f.ultimaActividad, hoy)
   const atencion = {
+    vencenHoy: alerta(abiertos.filter(f => f.fechaEntrega === hoy).map(f => resumenTramite(f))),
     vencidos: alerta(abiertos.filter(esVencido)
       .map(f => resumenTramite(f, { diasAtraso: diasVencido(f) }))
       .sort((a, b) => b.diasAtraso - a.diasAtraso)),
-    novedadSinMovimiento: alerta(abiertos
-      .filter(f => f.estado === EN_NOVEDAD && sinMovimiento(f) > DIAS_GRACIA)
-      .map(f => resumenTramite(f, { diasSinMovimiento: sinMovimiento(f) }))
-      .sort((a, b) => b.diasSinMovimiento - a.diasSinMovimiento)),
+    // Todos los que están en novedad (ya no cuentan como vencidos), los que más llevan primero
+    enNovedad: alerta(abiertos
+      .filter(f => f.estado === EN_NOVEDAD)
+      .map(f => resumenTramite(f, { diasEnNovedad: f.ultimoEstado ? diasEntre(f.ultimoEstado, hoy) : 0 }))
+      .sort((a, b) => b.diasEnNovedad - a.diasEnNovedad)),
     realizadoSinFinalizar: alerta(abiertos.filter(f => f.reportadoRealizado).map(f => resumenTramite(f))),
     sinTramitador: alerta(abiertos.filter(f => !f.tramitadorId).map(f => resumenTramite(f))),
     sinProgramacion: alerta(abiertos.filter(f => !f.fechaProgramada).map(f => resumenTramite(f))),
@@ -262,9 +342,29 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   }
 
   // ── Por analista ──
+  // Programación en plazo: creados en el período que ya se pueden evaluar
+  const programacionEnPlazo = (grupo: Fila[]) => {
+    let evaluados = 0, enPlazo = 0
+    for (const f of grupo) {
+      if (!enPeriodo(f.creado)) continue
+      const plazo = sumarDiasHabiles(f.creado, 1)
+      if (f.programadoEl) {
+        evaluados++
+        if (f.programadoEl <= plazo) enPlazo++
+      } else if (f.estado !== 'Desistido' && plazo < hoy) {
+        evaluados++ // venció el plazo sin programar
+      }
+    }
+    return {
+      programacionEvaluados: evaluados,
+      programacionEnPlazo: enPlazo,
+      porcentajeProgramacionEnPlazo: evaluados ? redondear1((enPlazo / evaluados) * 100) : null
+    }
+  }
+
   const porAnalista = agrupar(f => f.analistaId).map(grupo => {
     const { valorFinalizado, finalizadosConFecha, ...metricas } = desempeno(grupo)
-    return { analistaId: grupo[0].analistaId, analista: grupo[0].analista ?? 'Sin analista', ...metricas }
+    return { analistaId: grupo[0].analistaId, analista: grupo[0].analista ?? 'Sin analista', ...metricas, ...programacionEnPlazo(grupo) }
   }).sort((a, b) => b.abiertos - a.abiertos)
 
   // ── Por tramitador (con reintegros pendientes de Nodex Gastos) ──

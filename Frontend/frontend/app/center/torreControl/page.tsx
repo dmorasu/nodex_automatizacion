@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "Nodex - Tablero de gestión",
 }
 
-const FILTROS = ["desde", "hasta", "analistaId", "tramitadorId", "operacionId", "tramiteId"] as const
+const FILTROS = ["desde", "hasta", "analistaId", "tramitadorId", "operacionId", "tramiteId", "estadoId"] as const
 
 // Tablero de gestión de Torre de control. El Administrador de Torre de control y Admin ven
 // todos los trámites (y la carga por analista); cada analista ve solo los suyos.
@@ -40,12 +40,13 @@ export default async function TableroGestionPage({ searchParams }: { searchParam
     if (valor) consulta.set(clave, valor)
   }
 
-  const [tablero, analistas, tramitadores, operaciones, tramites] = await Promise.all([
+  const [tablero, analistas, tramitadores, operaciones, tramites, estados] = await Promise.all([
     leer<Tablero | null>(`/solicitudTramites/tablero?${consulta}`, null),
     esAnalista ? Promise.resolve([]) : leer<{ id: number, nombreUsuario: string }[]>("/solicitudTramites/analistas", []),
     leer<{ id: number, nombreTramitador: string }[]>("/tramitador/tramitadores", []),
     leer<{ id: number, nombreOperacion: string }[]>("/operaciones", []),
-    leer<{ id: number, nombreTramite: string }[]>("/tramites", [])
+    leer<{ id: number, nombreTramite: string }[]>("/tramites", []),
+    leer<{ id: number, nombreEstado: string }[]>("/estados", [])
   ])
 
   const opciones = <T,>(lista: T[], nombre: (x: T) => string, id: (x: T) => number): OpcionFiltro[] =>
@@ -94,6 +95,8 @@ export default async function TableroGestionPage({ searchParams }: { searchParam
             tramitadores={opciones(tramitadores, t => t.nombreTramitador, t => t.id)}
             operaciones={opciones(operaciones, o => o.nombreOperacion, o => o.id)}
             tramites={opciones(tramites, t => t.nombreTramite, t => t.id)}
+            // En el orden del proceso (Sin Iniciar, En Curso, novedad...), no alfabético
+            estados={(Array.isArray(estados) ? estados : []).map(e => ({ id: e.id, nombre: e.nombreEstado })).sort((a, b) => a.id - b.id)}
             mostrarAnalista={!esAnalista}
           />
 
@@ -118,7 +121,7 @@ export default async function TableroGestionPage({ searchParams }: { searchParam
           <MapaMunicipios municipios={tablero.porMunicipio} />
 
           <p className="text-[11px] text-slate-400">
-            Vencido: más de {tablero.diasGracia} días desde la fecha de programación sin finalizar. A tiempo: finalizado a más tardar {tablero.diasGracia} días
+            Vencido: más de {tablero.diasGracia} días desde la fecha de programación sin finalizar (los que están en espera por novedad no cuentan; se ven en su propia lista). A tiempo: finalizado a más tardar {tablero.diasGracia} días
             después de la fecha programada. Finalizados, % a tiempo, ciclo, valor y causas de novedad se calculan en el período elegido; abiertos, vencidos,
             alertas y mapa son a hoy.
           </p>

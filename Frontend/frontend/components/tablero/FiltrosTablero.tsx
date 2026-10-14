@@ -17,7 +17,7 @@ const restarDias = (fecha: string, dias: number) =>
   new Date(Date.parse(`${fecha}T00:00:00Z`) - dias * 86400000).toISOString().slice(0, 10)
 
 // Filtros en una fila sobre todo el tablero; quedan en la URL (se pueden compartir)
-export default function FiltrosTablero({ hoy, desde, hasta, analistas, tramitadores, operaciones, tramites, mostrarAnalista }: {
+export default function FiltrosTablero({ hoy, desde, hasta, analistas, tramitadores, operaciones, tramites, estados, mostrarAnalista }: {
   hoy: string
   desde: string
   hasta: string
@@ -25,6 +25,7 @@ export default function FiltrosTablero({ hoy, desde, hasta, analistas, tramitado
   tramitadores: OpcionFiltro[]
   operaciones: OpcionFiltro[]
   tramites: OpcionFiltro[]
+  estados: OpcionFiltro[]
   // El analista solo ve lo suyo: no filtra por analista
   mostrarAnalista: boolean
 }) {
@@ -76,6 +77,7 @@ export default function FiltrosTablero({ hoy, desde, hasta, analistas, tramitado
       {selector("tramitadorId", "Todos los tramitadores", tramitadores)}
       {selector("operacionId", "Todas las operaciones", operaciones)}
       {selector("tramiteId", "Todos los tipos de trámite", tramites)}
+      {selector("estadoId", "Todos los estados", estados)}
 
       {parametros.toString() && (
         <button type="button" onClick={() => router.push("/center/torreControl")} className="h-9 px-2 text-xs font-medium text-slate-500 hover:text-slate-700 hover:underline">

@@ -10,15 +10,20 @@ export type TramiteAlerta = {
   tramitador: string | null
   municipio: string | null
   fechaProgramada: string | null
+  fechaEntrega: string | null
+  ultimaGestion: string | null      // YYYY-MM-DD HH:MI (Bogotá)
+  ultimaGestionTipo: string | null
   diasAtraso?: number
+  diasEnNovedad?: number
   diasSinMovimiento?: number
 }
 
 export type ListaAlerta = { total: number, items: TramiteAlerta[] }
 
 export type ClaveAlerta =
+  | "vencenHoy"
   | "vencidos"
-  | "novedadSinMovimiento"
+  | "enNovedad"
   | "realizadoSinFinalizar"
   | "sinTramitador"
   | "sinProgramacion"
@@ -34,6 +39,10 @@ export type FilaAnalista = {
   finalizados: number
   porcentajeATiempo: number | null
   cicloPromedioDias: number | null
+  // Creados en el período programados a más tardar el día hábil siguiente
+  programacionEvaluados: number
+  programacionEnPlazo: number
+  porcentajeProgramacionEnPlazo: number | null
 }
 
 export type FilaTramitador = {
@@ -112,6 +121,14 @@ export type Tablero = {
 
 export type OpcionFiltro = { id: number, nombre: string }
 
-// "2026-09-28" → "28 sep"
-export const fechaCorta = (fecha: string) =>
-  new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-CO", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "")
+// 1234 → "1.234" sin toLocaleString: el servidor y Safari agrupan distinto y React da error de hidratación
+export const miles = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+// "2026-09-28" → "28 sep". Sin toLocaleDateString: el servidor y algunos navegadores (Safari)
+// abrevian distinto ("sep" / "sept.") y React da error de hidratación
+export const fechaCorta = (fecha: string) => {
+  const [, mes, dia] = fecha.slice(0, 10).split("-").map(Number)
+  return `${dia} ${MESES[mes - 1]}`
+}

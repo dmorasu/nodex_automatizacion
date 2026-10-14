@@ -7,8 +7,9 @@ import type { TableroTramites } from './tableroTramites'
 // =====================================
 
 const NOMBRES_ALERTA: Record<string, string> = {
+  vencenHoy: 'Vencen hoy',
   vencidos: 'Vencidos',
-  novedadSinMovimiento: 'Novedad sin movimiento',
+  enNovedad: 'En espera por novedad',
   realizadoSinFinalizar: 'Realizado sin finalizar',
   sinTramitador: 'Sin tramitador',
   sinProgramacion: 'Sin programación',
@@ -65,6 +66,10 @@ export const generarExcelTablero = (t: TableroTramites, alcance: string) => {
       'Analista': x.analista ?? '',
       'Tramitador': x.tramitador ?? '',
       'Fecha programada': x.fechaProgramada ?? '',
+      'Entrega del resultado': x.fechaEntrega ?? '',
+      'Última gestión': x.ultimaGestion ?? '',
+      'Tipo de última gestión': x.ultimaGestionTipo ?? '',
+      ...(x.diasEnNovedad !== undefined ? { 'Días en novedad': x.diasEnNovedad } : {}),
       ...(x.diasAtraso !== undefined ? { 'Días de atraso': x.diasAtraso } : {}),
       ...(x.diasSinMovimiento !== undefined ? { 'Días sin movimiento': x.diasSinMovimiento } : {})
     }))), NOMBRES_ALERTA[clave] ?? clave)
@@ -77,8 +82,11 @@ export const generarExcelTablero = (t: TableroTramites, alcance: string) => {
     'En novedad': a.enNovedad,
     'Finalizados': a.finalizados,
     '% a tiempo': porcentaje(a.porcentajeATiempo),
-    'Ciclo promedio (días)': a.cicloPromedioDias ?? ''
-  })), ['% a tiempo']), 'Por analista')
+    'Ciclo promedio (días)': a.cicloPromedioDias ?? '',
+    '% programación en plazo (1 día hábil)': porcentaje(a.porcentajeProgramacionEnPlazo),
+    'Programados en plazo': a.programacionEnPlazo,
+    'Evaluados': a.programacionEvaluados
+  })), ['% a tiempo', '% programación en plazo (1 día hábil)']), 'Por analista')
 
   XLSX.utils.book_append_sheet(libro, hoja(t.porTramitador.map(x => ({
     'Tramitador': x.tramitador,

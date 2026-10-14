@@ -5,11 +5,15 @@ import Link from "next/link"
 import clsx from "clsx"
 import { CheckCircle2, ChevronRight } from "lucide-react"
 import EstadoTramite from "@/components/solicitudTramites/EstadoTramite"
-import { fechaCorta, type ClaveAlerta, type Tablero, type TramiteAlerta } from "@/src/tablero"
+import { fechaCorta, miles, type ClaveAlerta, type Tablero, type TramiteAlerta } from "@/src/tablero"
+
+// Semáforo: rojo = urgente, amarillo = revisar, verde = solo falta cerrarlo
+type Nivel = "rojo" | "amarillo" | "verde"
 
 type Definicion = {
   clave: ClaveAlerta
   nombre: string
+  nivel: Nivel
   descripcion: (diasGracia: number) => string
   // Columna de días que se resalta en la lista
   dias?: (t: TramiteAlerta) => string
@@ -17,44 +21,77 @@ type Definicion = {
 
 const ALERTAS: Definicion[] = [
   {
+    clave: "vencenHoy",
+    nivel: "rojo",
+    nombre: "Vencen hoy",
+    descripcion: () => "Trámites abiertos cuya fecha de entrega del resultado es hoy."
+  },
+  {
     clave: "vencidos",
+    nivel: "rojo",
     nombre: "Vencidos",
     descripcion: d => `Pasaron más de ${d} días desde la fecha de programación y no están finalizados (sin contar los que están en espera por novedad).`,
     dias: t => `${t.diasAtraso} días de atraso`
   },
   {
-    clave: "novedadSinMovimiento",
-    nombre: "Novedad sin movimiento",
-    descripcion: d => `En espera por novedad y más de ${d} días sin trazabilidad ni cambio de estado.`,
-    dias: t => `${t.diasSinMovimiento} días sin movimiento`
+    clave: "enNovedad",
+    nivel: "amarillo",
+    nombre: "En espera por novedad",
+    descripcion: () => "Trámites en espera por novedad (no cuentan como vencidos). Primero los que llevan más días.",
+    dias: t => `${t.diasEnNovedad} días en novedad`
   },
   {
     clave: "realizadoSinFinalizar",
+    nivel: "verde",
     nombre: "Realizado sin finalizar",
     descripcion: () => "El tramitador lo reportó como realizado en su app, pero el trámite sigue abierto."
   },
   {
     clave: "sinTramitador",
+    nivel: "amarillo",
     nombre: "Sin tramitador",
     descripcion: () => "Trámites abiertos sin tramitador asignado."
   },
   {
     clave: "sinProgramacion",
+    nivel: "amarillo",
     nombre: "Sin programación",
     descripcion: () => "Trámites abiertos sin fecha de diligencia."
   },
   {
     clave: "sinMovimiento",
+    nivel: "amarillo",
     nombre: "Sin movimiento",
     descripcion: d => `Abiertos (sin contar novedades) con más de ${d} días sin trazabilidad ni cambio de estado.`,
     dias: t => `${t.diasSinMovimiento} días sin movimiento`
   },
   {
     clave: "sinAnalista",
+    nivel: "amarillo",
     nombre: "Sin analista",
     descripcion: () => "Trámites abiertos sin analista asignado."
   }
 ]
+
+// Con trámites: borde y fondo del color del nivel; seleccionada: más intensa. En 0: gris.
+// Contadores con texto oscuro sobre amarillo (el blanco no se lee sobre ese tono)
+const COLORES: Record<Nivel, { inactiva: string, activa: string, contador: string }> = {
+  rojo: {
+    inactiva: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
+    activa: "border-red-500 bg-red-100 text-red-800 ring-2 ring-red-200",
+    contador: "bg-red-600 text-white"
+  },
+  amarillo: {
+    inactiva: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100",
+    activa: "border-amber-500 bg-amber-100 text-amber-900 ring-2 ring-amber-200",
+    contador: "bg-amber-400 text-amber-950"
+  },
+  verde: {
+    inactiva: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+    activa: "border-emerald-500 bg-emerald-100 text-emerald-800 ring-2 ring-emerald-200",
+    contador: "bg-emerald-600 text-white"
+  }
+}
 
 // Lo que hay que atender: cada alerta lista sus trámites con enlace al detalle
 export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tablero: Tablero, mostrarSinAnalista: boolean }) {
@@ -77,23 +114,27 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
       <div className="flex flex-wrap gap-1.5 border-b border-slate-100 px-5 py-3">
         {alertas.map(a => {
           const total = tablero.atencion[a.clave].total
+          const colores = COLORES[a.nivel]
+          const seleccionada = activa === a.clave
           return (
             <button
               key={a.clave}
               type="button"
               onClick={() => setActiva(a.clave)}
-              aria-pressed={activa === a.clave}
+              aria-pressed={seleccionada}
               className={clsx(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition",
-                activa === a.clave ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                total > 0
+                  ? (seleccionada ? colores.activa : colores.inactiva)
+                  : (seleccionada ? "border-slate-400 bg-slate-100 text-slate-700 ring-2 ring-slate-200" : "border-slate-200 text-slate-500 hover:bg-slate-50")
               )}
             >
               {a.nombre}
               <span className={clsx(
-                "rounded-full px-1.5 text-[10px]",
-                total > 0 ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-400"
+                "rounded-full px-1.5 text-[10px] font-bold",
+                total > 0 ? colores.contador : "bg-slate-100 text-slate-400"
               )}>
-                {total.toLocaleString("es-CO")}
+                {miles(total)}
               </span>
             </button>
           )
@@ -125,6 +166,12 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
                         {t.fechaProgramada && ` · Programado ${fechaCorta(t.fechaProgramada)}`}
                       </span>
                     </span>
+                    {t.ultimaGestion && (
+                      <span className="w-36 shrink-0 text-[11px] leading-4">
+                        <span className="block text-slate-600">Últ. gestión {fechaCorta(t.ultimaGestion)} {t.ultimaGestion.slice(11, 16)}</span>
+                        <span className="block truncate text-slate-400">{t.ultimaGestionTipo}</span>
+                      </span>
+                    )}
                     <EstadoTramite nombre={t.estado} />
                     {definicion.dias && (
                       <span className="w-36 shrink-0 text-right font-semibold text-slate-700">{definicion.dias(t)}</span>
@@ -136,7 +183,7 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
             </ul>
             {lista.total > lista.items.length && (
               <p className="mt-2 text-[11px] text-slate-400">
-                Se muestran los {lista.items.length} primeros de {lista.total.toLocaleString("es-CO")}. Use los filtros para acotar.
+                Se muestran los {lista.items.length} primeros de {miles(lista.total)}. Use los filtros para acotar.
               </p>
             )}
           </>

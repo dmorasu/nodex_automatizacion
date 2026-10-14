@@ -76,7 +76,8 @@ const filtrosTablero = (req: Request) => {
       analistaId,
       tramitadorId: id(req.query.tramitadorId),
       operacionId: id(req.query.operacionId),
-      tramiteId: id(req.query.tramiteId)
+      tramiteId: id(req.query.tramiteId),
+      estadoId: id(req.query.estadoId)
     }
   }
 }

@@ -234,6 +234,7 @@ export default function DashboardPageClient() {
 
             {solicitudes.map(s => {
               const estado: string | undefined = s.estadosTramites?.[0]?.estado?.nombreEstado
+              const subestado: string | undefined = s.subEstadosSolicitud?.[0]?.subEstado?.nombre
               const finalizado = fechaCorta(s.programacion?.fechaFinalizacionServicio)
               const entrega = fechaCorta(s.fechaEntregaResultado, true)
               const identificador = s.placa || s.matriculaInmobiliaria
@@ -265,6 +266,9 @@ export default function DashboardPageClient() {
 
                   <td className="px-3 py-3">
                     <EstadoTramite nombre={estado} />
+                    {subestado && (
+                      <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500" title="Subestado">{subestado}</p>
+                    )}
                   </td>
 
                   <td className="px-3 py-3">

@@ -387,6 +387,14 @@ static getAll = async (req: Request, res: Response) => {
             as: "estadoActual",
             attributes: ["id", "nombreEstado"]
           },
+          // Subestados, del más reciente al más antiguo (el primero es el actual)
+          {
+            model: SubEstadosSolicitud,
+            separate: true,
+            order: [["createdAt", "DESC"]],
+            attributes: ["id", "observacion", "createdAt", "solicitudTramiteId", "subEstadoId"],
+            include: [{ model: SubEstados, attributes: ["nombre"] }]
+          },
 
           // 🔹 Relaciones 1–1 ya corregidas
           {
@@ -600,7 +608,7 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
           [Op.in]: literal(`(
             SELECT et."solicitudTramiteId"
             FROM "EstadosTramites" et
-            WHERE et."estadoId" = ${estadoId}
+            WHERE et."estadoId" = ${Number(estadoId) || 0}
             AND et."createdAt" = (
               SELECT MAX(et2."createdAt")
               FROM "EstadosTramites" et2
@@ -656,6 +664,15 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
           limit: 1,
           order: [['createdAt', 'DESC']],
           include: [{ model: Estados }]
+        },
+        // Subestado actual (el último registrado)
+        {
+          model: SubEstadosSolicitud,
+          separate: true,
+          limit: 1,
+          order: [['createdAt', 'DESC']],
+          attributes: ['id', 'observacion', 'createdAt', 'solicitudTramiteId', 'subEstadoId'],
+          include: [{ model: SubEstados, attributes: ['nombre'] }]
         },
         {
           model: Usuarios,

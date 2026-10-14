@@ -105,6 +105,8 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
     <SubsanarNovedad solicitudTramiteId={solicitudTramite.id} novedad={novedadActual?.tipoRechazo?.nombre ?? null} />
   );
 
+  const subestadoActual = solicitudTramite.subEstadosSolicitud?.[0] ?? null;
+
   const programacion = solicitudTramite.programacion;
   const logistica = solicitudTramite.logistica;
 
@@ -148,20 +150,20 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
                   <Pencil size={15} />
                   Editar trámite
                 </Link>
+                {botonSubsanar}
                 {botonCrearGasto}
               </>
             ) : (
               <>
+                {botonSubsanar}
                 <AddEstadosBoton />
                 <AddTramitadorBoton />
                 <AddProgramacionBoton />
                 <AddLogisticatoBoton />
-                {botonSubsanar}
                 <AddSubEstadoBoton />
                 <AddCuentaCobroBoton />
                 <AddTrazabilidadBoton />
                 <Link href="/center/torreControl" className={claseBotonEnlace}>
-                {botonSubsanar}
                   <Radar size={16} className="text-emerald-500" />
                   Tablero de gestión
                 </Link>
@@ -204,6 +206,17 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
               <EstadoTramite nombre={estadoActual} grande />
               {ultimoCambio && <span className="text-[11px] text-slate-400">desde {formatoFechaFinaizacion(ultimoCambio)}</span>}
             </div>
+
+            {subestadoActual && (
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Subestado</p>
+                <p className="mt-0.5 text-xs font-semibold text-slate-700">{subestadoActual.subEstado?.nombre ?? "—"}</p>
+                {subestadoActual.observacion && (
+                  <p className="mt-1 whitespace-pre-line text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]">{subestadoActual.observacion}</p>
+                )}
+                <p className="mt-1 text-[11px] text-slate-400">desde {formatoFechaFinaizacion(subestadoActual.createdAt)}</p>
+              </div>
+            )}
 
             {historialEstados.length > 0 && (
               <div className="mt-5 border-t border-slate-100 pt-4">

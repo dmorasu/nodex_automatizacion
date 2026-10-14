@@ -316,6 +316,14 @@ tramiteId: z.number(),
 
   estadosTramites: z.array(estadosTramites).optional(),
 
+  // Subestados del más reciente al más antiguo (el primero es el actual)
+  subEstadosSolicitud: z.array(z.object({
+    id: z.number(),
+    observacion: z.string().nullable().optional(),
+    createdAt: z.string(),
+    subEstado: z.object({ nombre: z.string() }).nullable().optional()
+  })).optional(),
+
   trazabilidad: z.array(Trazabilidad).optional(),
 
   programacion: Programacion.optional().nullable(),

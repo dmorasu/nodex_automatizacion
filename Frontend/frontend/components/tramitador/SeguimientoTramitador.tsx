@@ -6,6 +6,7 @@ import { CircleCheckBig, HardHat, Loader2, MessagesSquare, Send, User } from "lu
 import { comentarAlTramitador } from "@/actions/seguimiento-tramitador-action"
 import type { Seguimiento } from "@/src/seguimientoTramitador"
 import RevisarReporte from "./RevisarReporte"
+import DevolverReporte from "./DevolverReporte"
 import { usePerfil } from "@/src/auth/PerfilContexto"
 
 const formatoFechaHora = (fecha: string) =>
@@ -56,7 +57,7 @@ export default function SeguimientoTramitador({
             {seguimiento.reportes.map(r => (
               <div
                 key={r.id}
-                className={`rounded-lg border p-4 text-xs ${r.estado === "PENDIENTE" ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-slate-50"}`}
+                className={`rounded-lg border p-4 text-xs ${r.estado === "PENDIENTE" ? "border-amber-200 bg-amber-50" : r.estado === "DEVUELTO" ? "border-red-200 bg-red-50" : "border-gray-200 bg-slate-50"}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -65,8 +66,8 @@ export default function SeguimientoTramitador({
                     </p>
                     <p className="text-gray-500">{formatoFechaHora(r.fecha)}</p>
                   </div>
-                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${r.estado === "PENDIENTE" ? "border-amber-300 bg-white text-amber-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
-                    {r.estado === "PENDIENTE" ? "Pendiente de revisión" : "Revisado"}
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${r.estado === "PENDIENTE" ? "border-amber-300 bg-white text-amber-700" : r.estado === "DEVUELTO" ? "border-red-200 bg-white text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+                    {r.estado === "PENDIENTE" ? "Pendiente de revisión" : r.estado === "DEVUELTO" ? "Devuelto" : "Revisado"}
                   </span>
                 </div>
 
@@ -79,8 +80,16 @@ export default function SeguimientoTramitador({
                     <p className="mb-2 text-[11px] text-amber-800">
                       El estado del trámite no cambia solo: revíselo y, si corresponde, actualice el estado a Finalizado.
                     </p>
-                    <RevisarReporte reporteId={r.id} solicitudTramiteId={solicitudTramiteId} />
+                    <div className="flex flex-wrap items-start gap-2">
+                      <RevisarReporte reporteId={r.id} solicitudTramiteId={solicitudTramiteId} />
+                      <DevolverReporte reporteId={r.id} solicitudTramiteId={solicitudTramiteId} />
+                    </div>
                   </div>
+                ) : r.estado === "DEVUELTO" ? (
+                  <p className="mt-2 text-[11px] text-red-800">
+                    Devuelto por {r.revisor ?? "—"}{r.fechaRevision && ` el ${formatoFechaHora(r.fechaRevision)}`}
+                    {r.notaRevision && <>: <span className="text-gray-700">{r.notaRevision}</span></>}
+                  </p>
                 ) : (
                   <p className="mt-2 text-[11px] text-gray-500">
                     Revisado por {r.revisor ?? "—"}{r.fechaRevision && ` el ${formatoFechaHora(r.fechaRevision)}`}

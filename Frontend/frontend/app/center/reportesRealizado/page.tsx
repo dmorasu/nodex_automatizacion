@@ -3,6 +3,7 @@ import Link from "next/link"
 import { CircleCheckBig } from "lucide-react"
 import { obtenerReportes } from "@/src/seguimientoTramitador"
 import RevisarReporte from "@/components/tramitador/RevisarReporte"
+import DevolverReporte from "@/components/tramitador/DevolverReporte"
 
 export const metadata: Metadata = {
   title: "Nodex - Reportados como realizados",
@@ -14,7 +15,7 @@ const formatoFechaHora = (fecha: string) =>
 // Trámites que los tramitadores reportaron como realizados desde la app.
 // El reporte no cambia el estado: aquí se revisan y se actualiza el estado en el trámite.
 export default async function ReportesRealizadoPage({ searchParams }: { searchParams: { estado?: string } }) {
-  const estado = searchParams.estado === "REVISADO" ? "REVISADO" : "PENDIENTE"
+  const estado = searchParams.estado === "REVISADO" || searchParams.estado === "DEVUELTO" ? searchParams.estado : "PENDIENTE"
   const reportes = await obtenerReportes(estado)
 
   return (
@@ -32,7 +33,7 @@ export default async function ReportesRealizadoPage({ searchParams }: { searchPa
       </div>
 
       <div className="flex gap-2 text-xs">
-        {([["PENDIENTE", "Pendientes de revisión"], ["REVISADO", "Revisados"]] as const).map(([codigo, nombre]) => (
+        {([["PENDIENTE", "Pendientes de revisión"], ["REVISADO", "Revisados"], ["DEVUELTO", "Devueltos"]] as const).map(([codigo, nombre]) => (
           <Link
             key={codigo}
             href={`/center/reportesRealizado?estado=${codigo}`}
@@ -52,7 +53,7 @@ export default async function ReportesRealizadoPage({ searchParams }: { searchPa
               <th className="px-4 py-3 font-semibold">Reportado</th>
               <th className="px-4 py-3 font-semibold">Observación</th>
               <th className="px-4 py-3 font-semibold">Estado del trámite</th>
-              <th className="px-4 py-3 font-semibold">{estado === "PENDIENTE" ? "" : "Revisión"}</th>
+              <th className="px-4 py-3 font-semibold">{estado === "PENDIENTE" ? "" : estado === "DEVUELTO" ? "Devolución" : "Revisión"}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -71,7 +72,10 @@ export default async function ReportesRealizadoPage({ searchParams }: { searchPa
                 <td className="px-4 py-3 text-slate-600">{r.tramite.estado}</td>
                 <td className="px-4 py-3 text-slate-500">
                   {r.estado === "PENDIENTE" ? (
-                    <RevisarReporte reporteId={r.id} solicitudTramiteId={r.tramite.id} />
+                    <div className="flex flex-col items-start gap-2">
+                      <RevisarReporte reporteId={r.id} solicitudTramiteId={r.tramite.id} />
+                      <DevolverReporte reporteId={r.id} solicitudTramiteId={r.tramite.id} />
+                    </div>
                   ) : (
                     <>
                       <p>{r.revisor ?? "—"}{r.fechaRevision && ` · ${formatoFechaHora(r.fechaRevision)}`}</p>
@@ -85,7 +89,7 @@ export default async function ReportesRealizadoPage({ searchParams }: { searchPa
         </table>
         {reportes.length === 0 && (
           <p className="py-12 text-center text-sm text-slate-400">
-            {estado === "PENDIENTE" ? "No hay trámites pendientes de revisión." : "No hay reportes revisados."}
+            {estado === "PENDIENTE" ? "No hay trámites pendientes de revisión." : estado === "DEVUELTO" ? "No hay trámites devueltos." : "No hay reportes revisados."}
           </p>
         )}
       </div>

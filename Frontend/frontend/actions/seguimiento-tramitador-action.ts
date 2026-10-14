@@ -37,3 +37,14 @@ export async function revisarReporteRealizado(reporteId: number, solicitudTramit
   }
   return resultado
 }
+
+// Devuelve el trámite al tramitador (el reporte de realizado no se acepta), con el motivo.
+// Le llega un aviso push y lo ve en la app; puede volver a reportarlo cuando lo corrija
+export async function devolverReporteRealizado(reporteId: number, solicitudTramiteId: number, motivo: string): Promise<Resultado> {
+  const resultado = await enviar(`/reportes-realizado/${reporteId}/devolver`, { motivo }, "No se pudo devolver el trámite")
+  if (resultado.ok) {
+    revalidatePath(`/center/solicitudTramites/${solicitudTramiteId}`)
+    revalidatePath("/center/reportesRealizado")
+  }
+  return resultado
+}

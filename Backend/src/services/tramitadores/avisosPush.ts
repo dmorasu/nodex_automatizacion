@@ -132,6 +132,24 @@ export const avisarTramiteAsignado = async (solicitudTramiteId: number, tramitad
   }
 }
 
+// ── Trámite devuelto (el reporte de realizado no se aceptó) ──
+
+export const avisarTramiteDevuelto = async (solicitudTramiteId: number, tramitadorId: number, usuarioId: number, motivo: string) => {
+  try {
+    if (!configuracion()) return
+    const usuario = await Usuarios.findByPk(usuarioId, { attributes: ['nombreUsuario'] })
+    const texto = motivo.trim()
+    await enviarAvisoTramitador(tramitadorId, {
+      titulo: `Trámite #${solicitudTramiteId} devuelto`,
+      cuerpo: `${usuario?.nombreUsuario?.trim() || 'Nodex Trámites'}: ${texto.length > 140 ? `${texto.slice(0, 140)}…` : texto}`,
+      url: `/tramites/${solicitudTramiteId}`,
+      etiqueta: `devuelto-${solicitudTramiteId}`
+    })
+  } catch (error) {
+    console.error(`❌ Push de trámite devuelto (${solicitudTramiteId}):`, error)
+  }
+}
+
 // ── Mensaje del equipo en la pestaña Tramitador ──
 
 // Se llama después de guardar el comentario; si el trámite no tiene tramitador no avisa a nadie.

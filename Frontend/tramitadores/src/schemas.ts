@@ -116,7 +116,7 @@ const ComentarioSchema = z.object({
 const ReporteSchema = z.object({
   id: z.number(),
   observacion: z.string(),
-  estado: z.enum(["PENDIENTE", "REVISADO"]),
+  estado: z.enum(["PENDIENTE", "REVISADO", "DEVUELTO"]),
   fecha: z.string(),
   revisor: z.string().nullable(),
   fechaRevision: z.string().nullable(),

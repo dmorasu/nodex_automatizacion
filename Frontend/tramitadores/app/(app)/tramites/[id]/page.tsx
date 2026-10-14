@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, CircleCheckBig, FileText, Image as ImageIcon, Phone } from "lucide-react"
+import { ArrowLeft, CircleCheckBig, FileText, Image as ImageIcon, Phone, Undo2 } from "lucide-react"
 import { obtenerDatos } from "@/src/lib/api"
 import { formatoFecha, formatoFechaHora } from "@/src/lib/formato"
 import { DetalleTramiteSchema } from "@/src/schemas"
@@ -22,6 +22,8 @@ export default async function DetalleTramitePage({ params }: { params: { id: str
   const estado = tramite.estadoActual?.nombreEstado ?? "Sin Iniciar"
   const cerrado = ESTADOS_CERRADOS.includes(estado)
   const reportePendiente = reportes.find(r => r.estado === "PENDIENTE")
+  // Los reportes vienen del más reciente al más antiguo: si el último se devolvió, se muestra el motivo
+  const devuelto = !reportePendiente && reportes[0]?.estado === "DEVUELTO" ? reportes[0] : null
   const programacion = tramite.programacion
   const telefonos = [tramite.clientes?.telefonoMovil, tramite.clientes?.telefono].filter(Boolean) as string[]
 
@@ -58,7 +60,19 @@ export default async function DetalleTramitePage({ params }: { params: { id: str
           <p className="mt-2 whitespace-pre-line text-xs text-amber-800">{reportePendiente.observacion}</p>
         </div>
       ) : !cerrado && (
-        <ReportarRealizado tramiteId={tramite.id} />
+        <>
+          {devuelto && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+              <p className="flex items-center gap-2 font-semibold"><Undo2 size={17} /> Trámite devuelto</p>
+              <p className="mt-1 text-xs">
+                {devuelto.revisor ?? "El equipo"}{devuelto.fechaRevision && ` · ${formatoFechaHora(devuelto.fechaRevision)}`}
+              </p>
+              {devuelto.notaRevision && <p className="mt-2 whitespace-pre-line text-sm text-red-800">{devuelto.notaRevision}</p>}
+              <p className="mt-2 text-xs text-red-700">Corrija lo indicado y vuelva a marcarlo como realizado.</p>
+            </div>
+          )}
+          <ReportarRealizado tramiteId={tramite.id} />
+        </>
       )}
 
       {/* GASTOS DEL TRÁMITE: la factura y la boleta de reintegro se suben aquí y llegan al gasto */}

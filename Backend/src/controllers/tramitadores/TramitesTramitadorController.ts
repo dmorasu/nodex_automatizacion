@@ -9,6 +9,7 @@ import {
   obtenerTramiteDelTramitador,
   reportarRealizado,
   revisarReporte,
+  devolverReporte,
   seguimientoParaUsuario,
   type FiltroTramites,
   type TipoDocumentoTramite
@@ -143,7 +144,9 @@ export class SeguimientoTramitadorController {
   // GET /reportes-realizado?estado=PENDIENTE|REVISADO
   static reportes = async (req: Request, res: Response) => {
     try {
-      const estado = req.query.estado === ESTADOS_REPORTE.REVISADO ? ESTADOS_REPORTE.REVISADO : ESTADOS_REPORTE.PENDIENTE
+      const estado = req.query.estado === ESTADOS_REPORTE.REVISADO || req.query.estado === ESTADOS_REPORTE.DEVUELTO
+        ? req.query.estado
+        : ESTADOS_REPORTE.PENDIENTE
       res.json(await listarReportes(estado, limiteDeUsuario(req)))
     } catch (error) {
       responderError(res, error)
@@ -155,6 +158,16 @@ export class SeguimientoTramitadorController {
     try {
       await revisarReporte(Number(req.params.id), req.usuario.id, textoOpcional(req.body.nota), limiteDeUsuario(req))
       res.json('Reporte marcado como revisado')
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /reportes-realizado/:id/devolver  { motivo } → el trámite vuelve al tramitador
+  static devolver = async (req: Request, res: Response) => {
+    try {
+      await devolverReporte(Number(req.params.id), req.usuario.id, String(req.body.motivo ?? ''), limiteDeUsuario(req))
+      res.json('Trámite devuelto al tramitador')
     } catch (error) {
       responderError(res, error)
     }

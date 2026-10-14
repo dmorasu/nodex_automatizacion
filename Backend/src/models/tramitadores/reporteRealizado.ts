@@ -3,7 +3,9 @@ import SolicitudTramites from '../solicitudTramites'
 import Tramitador from '../tramitador'
 import Usuarios from '../usuarios'
 
-export const ESTADOS_REPORTE = { PENDIENTE: 'PENDIENTE', REVISADO: 'REVISADO' } as const
+// DEVUELTO (2026-10-13): Torre de control lo devuelve al tramitador con el motivo (en notaRevision);
+// el tramitador puede volver a reportarlo cuando lo corrija
+export const ESTADOS_REPORTE = { PENDIENTE: 'PENDIENTE', REVISADO: 'REVISADO', DEVUELTO: 'DEVUELTO' } as const
 
 // El tramitador reporta que hizo el trámite. NO cambia el estado oficial:
 // Gestión de activos o Torre de control lo revisan y, si corresponde, lo pasan a Finalizado.

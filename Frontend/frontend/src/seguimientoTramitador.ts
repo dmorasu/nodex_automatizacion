@@ -18,7 +18,7 @@ const ComentarioSchema = z.object({
 const ReporteSchema = z.object({
   id: z.number(),
   observacion: z.string(),
-  estado: z.enum(["PENDIENTE", "REVISADO"]),
+  estado: z.enum(["PENDIENTE", "REVISADO", "DEVUELTO"]),
   fecha: z.string(),
   tramitador: z.string().nullable(),
   revisor: z.string().nullable(),
@@ -58,7 +58,7 @@ export const obtenerSeguimiento = async (solicitudTramiteId: number): Promise<Se
   return resultado.success ? resultado.data : SIN_SEGUIMIENTO
 }
 
-export const obtenerReportes = async (estado: "PENDIENTE" | "REVISADO"): Promise<ReporteBandeja[]> => {
+export const obtenerReportes = async (estado: "PENDIENTE" | "REVISADO" | "DEVUELTO"): Promise<ReporteBandeja[]> => {
   const req = await fetch(`${process.env.API_URL}/seguimiento-tramitador/reportes-realizado?estado=${estado}`, {
     headers: encabezadosSesion(),
     cache: "no-store"

@@ -26,7 +26,7 @@ router.post('/tramites/:id/comentarios',
 
 router.get('/reportes-realizado',
   soloTorreControl,
-  query('estado').optional().isIn(['PENDIENTE', 'REVISADO']).withMessage('Estado no válido'),
+  query('estado').optional().isIn(['PENDIENTE', 'REVISADO', 'DEVUELTO']).withMessage('Estado no válido'),
   handleInputErrors,
   SeguimientoTramitadorController.reportes
 )
@@ -37,6 +37,16 @@ router.post('/reportes-realizado/:id/revisar',
   body('nota').optional({ values: 'falsy' }).isString().isLength({ max: 1000 }).withMessage('La nota no puede superar 1000 caracteres'),
   handleInputErrors,
   SeguimientoTramitadorController.revisar
+)
+
+router.post('/reportes-realizado/:id/devolver',
+  soloTorreControl,
+  id,
+  body('motivo').isString().trim()
+    .notEmpty().withMessage('Escriba el motivo de la devolución')
+    .isLength({ max: 1000 }).withMessage('El motivo no puede superar 1000 caracteres'),
+  handleInputErrors,
+  SeguimientoTramitadorController.devolver
 )
 
 export default router

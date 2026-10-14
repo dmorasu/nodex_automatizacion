@@ -446,7 +446,7 @@ export const obtenerHistorial = async (solicitudTramiteId: number): Promise<Even
         clave: `realizado-revision-${r.id}`,
         fecha: fechaISO(r.fechaRevision),
         tipo: 'REALIZADO',
-        titulo: 'Revisó el reporte de realizado',
+        titulo: r.estado === 'DEVUELTO' ? 'Devolvió el trámite al tramitador' : 'Revisó el reporte de realizado',
         detalle: r.notaRevision || null,
         cambios: [],
         usuario: r.revisor?.nombreUsuario ?? null,

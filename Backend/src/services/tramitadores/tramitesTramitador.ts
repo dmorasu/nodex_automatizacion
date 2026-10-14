@@ -23,7 +23,7 @@ import { obtenerArchivo } from '../azureFileStorage'
 import { type TipoDocumentoTramite } from './nombresDocumento'
 import { registrarDocumentosTramite } from './documentosTramite'
 import { gastosDelTramite, subirSoporte } from './soportesTramitador'
-import { avisarComentarioEquipo } from './avisosPush'
+import { avisarComentarioEquipo, avisarTramiteDevuelto } from './avisosPush'
 
 // Estados en los que el trámite ya terminó: no se puede reportar como realizado
 export const ESTADOS_CERRADOS = ['Finalizado', 'Desistido']
@@ -404,5 +404,26 @@ export const revisarReporte = async (reporteId: number, usuarioId: number, nota:
     fechaRevision: new Date(),
     notaRevision: nota?.trim() || null
   })
+  return reporte
+}
+
+// Devolver el trámite al tramitador: el reporte de realizado no se acepta. El motivo es
+// obligatorio, le llega por push y lo ve en la app; puede volver a reportarlo cuando lo corrija.
+export const devolverReporte = async (reporteId: number, usuarioId: number, motivo: string, soloDelUsuario: number | null) => {
+  const texto = motivo?.trim()
+  if (!texto) throw new ErrorNegocio('Escriba el motivo de la devolución')
+  const reporte = await ReporteRealizado.findByPk(reporteId)
+  if (!reporte) throw new ErrorNegocio('Reporte no encontrado', 404)
+  await tramiteVisibleParaUsuario(reporte.solicitudTramiteId, soloDelUsuario)
+  if (reporte.estado !== ESTADOS_REPORTE.PENDIENTE) throw new ErrorNegocio('El reporte ya fue revisado o devuelto')
+
+  await reporte.update({
+    estado: ESTADOS_REPORTE.DEVUELTO,
+    revisadoPor: usuarioId,
+    fechaRevision: new Date(),
+    notaRevision: texto
+  })
+  // En segundo plano: no frena la respuesta y nunca lanza
+  void avisarTramiteDevuelto(reporte.solicitudTramiteId, reporte.tramitadorId, usuarioId, texto)
   return reporte
 }

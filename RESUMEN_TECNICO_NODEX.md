@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-12_
+_Actualizado: 2026-10-13_
 
 ## Arquitectura
 
@@ -150,12 +150,40 @@ _Actualizado: 2026-10-12_
 - **Línea de tiempo** (`GET /solicitudTramites/:id/historial`, mismas reglas de acceso del detalle): une la bitácora con lo que ya existía (creación, `EstadosTramites`, `Trazabilidad`, `SubEstadosSolicitud`, `DocumentosSolicitud`, reportes de realizado y su revisión). **Lo anterior al 2026-10-13 sale sin usuario** (salvo trazabilidad, documentos y reportes, que ya lo guardaban) y los cambios viejos de programación, logística, cuenta de cobro, tramitador y analista no existen (se sobrescribían).
 - **Probado contra la base de desarrollo (2026-10-13):** la tabla `historial_tramites` ya está creada. Cambio de programación en transacción, update en bloque, mismo valor sin registro, transacción revertida sin registro, estado y trazabilidad con usuario; por HTTP con la sesión real: el cambio queda con el usuario del token y origen WEB, `GET /historial` 200, sin sesión 401, trámite inexistente 404. Un trámite viejo de 25 eventos responde en ~0,24 s. Datos de prueba restaurados y borrados. **Falta probar en el navegador.**
 
+### Nodex Trámites: novedad subsanada por el creador (2026-10-13)
+- Cuando el trámite está "En espera por novedad" (estado 3), **quien lo creó** ve en el detalle el botón **Novedad subsanada** (`components/estados/SubsanarNovedad.tsx`, acción `actions/subsanar-novedad-action.ts`). Pide **qué se subsanó** (obligatorio) y la **nueva fecha de entrega del resultado** (obligatoria, desde hoy). Es el único cambio de estado que puede hacer Gestión de activos (`POST /estadosTramites` sigue siendo solo Torre de control).
+- Backend `POST /solicitudTramites/:id/subsanar-novedad` → `services/novedadSubsanada.ts`: exige ser el creador (403) y que el estado actual sea 3 (409); en una transacción con bloqueo de la fila cambia `fechaEntregaResultado` (medianoche UTC), guarda la trazabilidad "Novedad subsanada: …" con el nombre del creador y registra el estado 4 "Novedad Subsanada Continuar Trámite" con `registrarEstado` (extraído de `cambiarEstadoTramite` en `services/estadoTramite.ts` para usarlo dentro de otra transacción).
+- La fecha anterior queda en el **historial** ("Editó el trámite · Entrega del resultado: anterior → nueva", etiqueta Creador).
+- **Correo** `NOVEDAD_SUBSANADA` al analista asignado con copia a la torre de control (sin analista o sin correo: a `CORREO_TORRE_CONTROL`): novedad (tipo de rechazo), quién subsanó, qué subsanó, entrega nueva y anterior, botón al trámite.
+- Probado contra la base de desarrollo por HTTP (trámite 3722): otro usuario 403, sin observación 400, fecha pasada 400, creador 200, repetir 409; estado 4, trazabilidad, historial y correo en la cola para el analista con copia a la torre. Todo restaurado y el trabajo de la cola borrado (no se envió). **Falta probar en el navegador y la entrega real del correo.**
+
+### Nodex Trámites: subestado en el Dashboard y en el detalle (2026-10-13)
+- **Dashboard:** bajo el estado de cada trámite sale su subestado actual (el último de `SubEstadosSolicitud`). `filtrarSolicitudes` lo trae con un include `separate` + `limit: 1`; los `attributes` deben incluir `subEstadoId` (la unión con `SubEstados` lo necesita; sin él fallaba solo con varios trámites).
+- **Detalle:** en la sección Estado, recuadro "Subestado" con nombre, observación y desde cuándo (`getById` trae todos los subestados, el más reciente primero; el historial completo está en la pestaña Historial).
+- **Seguridad:** el filtro `estadoId` del Dashboard se pegaba al SQL tal como venía en la URL (inyección SQL); ahora se convierte a número (`"2) OR (1=1"` → 0 resultados).
+- Probado contra el backend de desarrollo (trámite 3243: subestado "Radicacion" en el Dashboard y en el detalle) y en Chrome sin errores.
+
+### Nodex Trámites: devolver el trámite al tramitador (2026-10-13)
+- En **Reportados como realizados** (y en la pestaña Tramitador del detalle), junto a "Marcar revisado", el botón **Devolver trámite** (`components/tramitador/DevolverReporte.tsx`) pide el **motivo** (obligatorio, máx. 1000) y deja el reporte en el estado nuevo **`DEVUELTO`** (`ESTADOS_REPORTE`; el motivo va en `nota_revision`, con quién y cuándo). Pestaña nueva **Devueltos** en la bandeja.
+- Backend `POST /seguimiento-tramitador/reportes-realizado/:id/devolver` (Torre de control) → `devolverReporte` en `services/tramitadores/tramitesTramitador.ts`: solo reportes pendientes (devolver o revisar uno ya devuelto → 400).
+- **Aviso al tramitador:** push "Trámite #id devuelto" con quién y el motivo (`avisarTramiteDevuelto` en `avisosPush.ts`; abre el trámite en la app). En la app (`Frontend/tramitadores`, detalle del trámite) sale un recuadro rojo "Trámite devuelto" con el motivo y el botón para volver a marcarlo como realizado (un reporte devuelto no bloquea uno nuevo).
+- **Tablero:** un trámite con el reporte devuelto ya no cuenta en "Realizado sin finalizar". **Historial:** "Devolvió el trámite al tramitador" con el motivo.
+- Probado contra el backend de desarrollo (reporte 3, trámite 3765): sin motivo 400, devolver 200, repetir 400, bandeja Devueltos, Pendientes sin él, tablero 2 → 1, historial y API de la app con el estado y el motivo; pantallas en Chrome sin errores. Restaurado a pendiente. **El push no se probó:** el `.env` de desarrollo no tiene claves VAPID (sin ellas no se envía nada); probarlo en el ensayo con un celular.
+
 ### Nodex Trámites: tablero de gestión (2026-10-03)
 - Reemplaza la página `/center/torreControl` (nadie la usaba). Menú: "Tablero de gestión". Se borraron `components/torreControl/*`, `hooks/usePanelControl.ts`, `hooks/useTorreControl.ts` y los endpoints `/solicitudTramites/torre-control` y `/panel-control`. La vista `vw_torre_control` queda en la base sin uso (se puede eliminar después).
 - Backend: `services/tableroTramites.ts` (`obtenerTablero`) + `GET /solicitudTramites/tablero` (Torre de control). Una consulta trae los abiertos y los creados/finalizados desde el inicio del período o de la tendencia; los cálculos se hacen en JS (~0,4 s en desarrollo).
-- **Criterios** (acordados con los líderes): vencido = abierto, no "En espera por novedad" (excluidos el 2026-10-13: tienen su alerta "Novedad sin movimiento") y más de `DIAS_GRACIA` (2) días calendario desde la fecha de programación; a tiempo = finalizado ≤ 2 días después de la fecha programada; sin movimiento = más de 2 días sin trazabilidad ni cambio de estado. No hay tiempo meta por tipo de trámite.
+- **Criterios** (acordados con los líderes): vencido = abierto, no "En espera por novedad" (excluidos el 2026-10-13: tienen su propia ficha "En espera por novedad") y más de `DIAS_GRACIA` (2) días calendario desde la fecha de programación; a tiempo = finalizado ≤ 2 días después de la fecha programada; sin movimiento = más de 2 días sin trazabilidad ni cambio de estado. No hay tiempo meta por tipo de trámite.
 - **Vistas:** Administrador de Torre de control y Admin ven todo (filtro por analista y tabla por analista); el analista ve "Mi tablero" solo con sus trámites (el backend fuerza `analistaId`).
-- Secciones: filtros (período con presets, analista, tramitador, operación, tipo), indicadores, "Requiere atención" (vencidos, novedad sin movimiento, realizado sin finalizar, sin tramitador, sin programación, sin movimiento, sin analista), carga por analista, creados vs finalizados (12 semanas) y antigüedad de los abiertos.
+- Secciones: filtros (período con presets, analista, tramitador, operación, tipo), indicadores, "Requiere atención" (**vencen hoy** —abiertos con `fechaEntregaResultado` = hoy, agregada el 2026-10-13; la fecha se lee en UTC porque el formulario la guarda a medianoche UTC y el cargue a medianoche de Bogotá; probado en desarrollo: 2.448 fechas a 00:00 UTC y 1.076 a 05:00 UTC, el conteo coincide con SQL directo, filtro de analista y hoja del Excel—, vencidos, en espera por novedad, realizado sin finalizar, sin tramitador, sin programación, sin movimiento, sin analista), carga por analista, creados vs finalizados (12 semanas) y antigüedad de los abiertos.
+- **Cambios del 2026-10-13:**
+  - **Filtro por estado actual** (`estadoId`; "Sin Iniciar" incluye los que no tienen estado, `COALESCE(estadoActualTramite, 1)`), en pantalla y en el Excel.
+  - **Ficha "En espera por novedad"** en Requiere atención: todos los trámites en novedad con los días que llevan (desde el último cambio de estado), los más viejos primero. Ya no cuentan como vencidos. Reemplaza a la alerta "Novedad sin movimiento", que se quitó (a pedido del usuario).
+  - **Última gestión** en cada fila de las alertas y en el Excel: fecha/hora y tipo de lo más reciente que se hizo (creación, cambio de estado, trazabilidad, programación y logística por su `updatedAt`, subestado, documento y la bitácora `historial_tramites`: asignaciones, edición, cuenta de cobro). Solo se muestra: las alertas de "sin movimiento" siguen con el criterio acordado (trazabilidad o cambio de estado).
+  - **Programación en plazo por analista** (columna en "Carga y desempeño por analista" y en la hoja "Por analista" del Excel): de los creados en el período, % programados (se les puso fecha de diligencia) a más tardar el **día hábil siguiente** a la creación. Días hábiles sin sábados, domingos ni festivos de Colombia: `utils/diasHabiles.ts` (`festivosColombia`, `sumarDiasHabiles`; fijos, Ley Emiliani y Pascua; validado contra los calendarios oficiales 2025 y 2026). Cuándo se programó: la bitácora (primer cambio de "Fecha de diligencia" de vacía a un valor); antes de la bitácora, `Programacion.createdAt` si tiene fecha. No cuentan los que siguen dentro del plazo sin programar ni los desistidos sin programar; los que pasaron el plazo sin programar cuentan como fuera de plazo. Probado en desarrollo (15/07–13/10): Johan 63,5 % (162/255), Maria Orlinda 76,7 % (145/189), Jenny 97 % (421/434), igual al cálculo independiente.
+  - **Pestañas de Requiere atención con colores de semáforo** (`nivel` en `ALERTAS` de `RequiereAtencion.tsx`): rojo = vencen hoy y vencidos; amarillo = en novedad, sin movimiento, sin programación, sin tramitador y sin analista; verde = realizado sin finalizar. En 0 quedan grises. Los totales se formatean sin `toLocaleString` (hidratación).
+  - `fechaCorta` (`src/tablero.ts`) con meses fijos en vez de `toLocaleDateString`: Node y Safari abrevian distinto y React daba error de hidratación.
+  - Probado contra el backend de desarrollo con un Administrador de Torre de control: 222 abiertos, 105 en novedad (igual al indicador), 0 en novedad dentro de vencidos, filtros de estado correctos (Sin Iniciar 14 = SQL), última gestión igual a la calculada aparte; pantalla sin errores en Chrome.
 - Gráficas en HTML/CSS (`components/tablero/*`); paleta validada con el validador de dataviz: creados `#0284c7`, finalizados `#7c3aed`.
 - **Fase 2 (hecha):**
   - Desempeño por tramitador, con "realizado sin finalizar" y reintegros pendientes de Nodex Gastos (reutiliza `obtenerReintegrosPorTramitador`; si Gastos falla, el tablero sigue y lo avisa con `reintegrosDisponibles: false`).
@@ -465,7 +493,23 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 - **Limpieza hecha:** se quitaron de PM2 las entradas detenidas `api4.2`, `worker4.2`, `Nodex4.2`, `api_Nodex_4.3` y `Nodex4.3`, y se borraron `/home/desarrolloti/Nodex`, `Nodex2.0`, `nodex3.0` y `apps` (copias viejas que no usaba PM2, Nginx ni cron). Su código (sin `node_modules`, `.next` ni `dist`, con sus `.env`) quedó en Azure en `respaldos-nodex/archivo-servidor/` y se borra solo a los 30 días. El disco quedó en **59 %** (13 GB libres).
 - **Cuando la 5.0 pase a producción:** archivar igual y borrar `nodex4.0` (1,2 GB) después de la semana de espera de la guía.
 
-## Estado del código y del despliegue (2026-10-12)
+## Estado del código y del despliegue (2026-10-13)
+- **Rama `desarrollo`, commit `d2516e6d`** (subido a GitHub). Commits del 2026-10-13, en orden:
+  - `e13964de`: los trámites en espera por novedad no cuentan como vencidos.
+  - `ec30e2ca`: historial del trámite (línea de tiempo con quién cambió qué; tabla `historial_tramites`).
+  - `ca23b28d`: tablero de gestión (vencen hoy, filtro de estado, ficha "En espera por novedad" en lugar de "Novedad sin movimiento", última gestión, semáforo y programación en plazo por analista con días hábiles de Colombia).
+  - `20736040`: novedad subsanada por el creador del trámite, con correo al analista.
+  - `41bb2ba4`: subestado actual en el Dashboard y en el detalle; filtro `estadoId` del Dashboard sin inyección SQL.
+  - `d2516e6d`: devolver el trámite al tramitador desde "Reportados como realizados" (reporte `DEVUELTO`, push con el motivo).
+
+  El anterior era `5c7fec50`. Los tres commits del tablero, la novedad y el subestado se compilaron uno por uno (backend y Nodex Trámites).
+- **Ensayo sin actualizar** (sigue en `b08852ce`). Al actualizarlo: el arranque crea la tabla `historial_tramites` (la crea `sync()`); no hay variables nuevas. Los estados de reporte `DEVUELTO` y el correo `NOVEDAD_SUBSANADA` no requieren cambios en la base.
+- **Manual de usuario** (`docs/manual-usuario-nodex.html`) actualizado el 2026-10-13: Historial y subestado en el detalle, Novedad subsanada, tablero de gestión, devolver trámite, avisos y trámites devueltos en la app del tramitador, y dos preguntas frecuentes nuevas.
+- **Falta probar en el ensayo:** pestaña Historial; botón Novedad subsanada con un usuario de Gestión de activos y el correo al analista; tablero (vencen hoy, filtro de estado, novedad, programación en plazo); subestado en el Dashboard; devolver un trámite y que el push llegue al celular del tramitador (en desarrollo no hay claves VAPID).
+- **Ojo en desarrollo:** el backend local corre con nodemon y vigila `Backend/src`; los scripts de prueba van fuera de esa carpeta (si no, lo reinician). El usuario de prueba "Diego Alejandro Mora Suarez" tiene en desarrollo el perfil de analista: su tablero solo muestra sus trámites (0).
+- **Posible causa del error de hidratación reportado:** fechas y números formateados con `toLocale*` en componentes de cliente (Node y Safari abrevian/agrupan distinto). Corregido en el tablero; si vuelve a salir, pedir la pantalla y el detalle "Server/Client" del aviso de Next.
+
+## Estado del código y del despliegue (2026-10-12, histórico)
 - **Rama `desarrollo`, commit `b08852ce`** (subido a GitHub). Commits del 2026-10-11/12, en orden:
   - `939635a9`: push al tramitador por mensajes del equipo y correos al analista.
   - `1a44bf69`: login con límite de intentos, mismo mensaje y sin registro público.

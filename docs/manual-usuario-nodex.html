@@ -295,6 +295,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <span class="chip gris">Sin iniciar</span><span class="chip azul">En curso</span><span class="chip ambar">En espera por novedad</span>
             <span class="chip violeta">Novedad subsanada</span><span class="chip rojo">Desistido</span><span class="chip verde">Finalizado</span>
           </div>
+          <p>Debajo del estado de cada trámite aparece su <b>subestado</b> actual, si tiene uno.</p>
           <div class="consejo"><span class="i">i</span><span><b>Analistas:</b> la lista muestra solo sus trámites. Buscando por número o identificación encuentra cualquiera; los que no son suyos dicen <b>"No asignado a ti"</b>.</span></div>
         </div>
       </details>
@@ -317,14 +318,31 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <div class="cuerpo">
           <ul>
             <li><b>Información:</b> los datos del trámite y del cliente.</li>
+            <li><b>Historial:</b> todo lo que ha pasado en el trámite, día por día: cambios de estado, programación, logística, asignaciones, ediciones, documentos y trazabilidad. Cada cambio dice quién lo hizo, a qué hora y qué valor tenía antes. La etiqueta <b>Creador</b> marca lo que hizo quien creó el trámite. Use los filtros de arriba para ver solo un tipo de cambio.</li>
             <li><b>Documentos:</b> lo que han subido el equipo y el tramitador.</li>
             <li><b>Gastos:</b> los gastos del trámite y el botón para pedir uno nuevo.</li>
             <li><b>Trazabilidad:</b> las observaciones; alimentan las notificaciones al cliente.</li>
             <li><b>Tramitador:</b> comentarios y reportes de "realizado".</li>
             <li><b>WhatsApp:</b> los mensajes enviados.</li>
           </ul>
+          <p>A la derecha, la sección <b>Estado</b> muestra el estado actual, el <b>subestado</b> (con su observación y desde cuándo) y el historial de estados.</p>
+          <div class="consejo"><span class="i">i</span><span>El historial completo se registra desde el 13 de octubre de 2026. En los cambios anteriores puede faltar quién los hizo.</span></div>
           <div class="consejo ojo"><span class="i">!</span><span>Al cambiar el estado salen avisos reales: <b>Desistido</b> avisa al tramitador y a quien creó el trámite; <b>Novedad</b> y <b>Finalizado</b> le escriben al solicitante.</span></div>
           <div class="consejo"><span class="i">i</span><span>Para pasar un trámite a <b>En espera por novedad</b> hay que elegir el <b>tipo de subsanación</b>; si falta, el sistema se lo avisa.</span></div>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Avisar que la novedad está subsanada <span class="etq">Quien creó el trámite</span></span><span class="resumen">Cuando Torre de control pone su trámite en espera por novedad.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>Abra el trámite. Mientras esté <span class="chip ambar">En espera por novedad</span> verá el botón verde <b>Novedad subsanada</b>.</span></li>
+            <li><span>Escriba <b>qué se subsanó</b>, por ejemplo "Se cargó el poder firmado".</span></li>
+            <li><span>Elija la <b>nueva fecha de entrega del resultado</b> (desde hoy).</span></li>
+            <li><span>Presione <b>Marcar como subsanada</b>.</span></li>
+          </ol>
+          <p>El trámite pasa a <span class="chip violeta">Novedad subsanada</span> y al analista le llega un correo (con copia a Torre de control) con lo que se subsanó y la nueva fecha. La fecha anterior queda en el <b>Historial</b>.</p>
+          <div class="consejo"><span class="i">i</span><span>Solo lo ve quien creó el trámite. Es el único cambio de estado que puede hacer Gestión de activos; los demás los hace Torre de control.</span></div>
         </div>
       </details>
 
@@ -371,7 +389,18 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
       <details class="tema">
         <summary><span class="titulo">Tablero de gestión <span class="etq">Torre de control</span></span><span class="resumen">Qué requiere atención hoy y cómo va el equipo.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo">
-          <p>Muestra los trámites <b>vencidos</b> (abiertos más de 2 días después de la fecha programada), las novedades sin movimiento, los realizados sin finalizar y la carga de cada analista y tramitador. Cada analista ve <b>"Mi tablero"</b> con sus trámites. Con <b>Exportar a Excel</b> descarga todo.</p>
+          <p>Cada analista ve <b>"Mi tablero"</b> con sus trámites; el Administrador de Torre de control ve todos. Arriba están los filtros: período, analista, tramitador, operación, tipo de trámite y <b>estado</b>.</p>
+          <p><b>Requiere atención</b> tiene una pestaña por cada tipo de pendiente, con colores de semáforo:</p>
+          <ul>
+            <li><span class="chip rojo">Vencen hoy</span> abiertos cuya fecha de entrega del resultado es hoy.</li>
+            <li><span class="chip rojo">Vencidos</span> abiertos que pasaron más de 2 días desde la fecha de diligencia programada. Los que están en espera por novedad no cuentan aquí.</li>
+            <li><span class="chip ambar">En espera por novedad</span> todos los trámites en novedad, con los días que llevan; primero los más antiguos.</li>
+            <li><span class="chip ambar">Sin movimiento, sin programación, sin tramitador, sin analista</span> lo que le falta a cada trámite.</li>
+            <li><span class="chip verde">Realizado sin finalizar</span> el tramitador lo reportó hecho; solo falta revisarlo y cerrarlo.</li>
+          </ul>
+          <p>Las pestañas en 0 se ven en gris. Cada trámite de la lista muestra su <b>última gestión</b>: la fecha, la hora y qué fue lo último que se hizo (un cambio de estado, una trazabilidad, la programación, un documento…).</p>
+          <p>En <b>Carga y desempeño por analista</b>, la columna <b>Programación en plazo</b> dice qué porcentaje de los trámites creados en el período se programó a más tardar el <b>día hábil siguiente</b> a su creación (sin contar sábados, domingos ni festivos). Por ejemplo, <b>"85 % · 34/40"</b>.</p>
+          <div class="consejo"><span class="i">i</span><span>Con <b>Exportar a Excel</b> descarga todo con los mismos filtros, incluidas las listas completas de cada alerta.</span></div>
         </div>
       </details>
 
@@ -390,7 +419,12 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
       <details class="tema">
         <summary><span class="titulo">Reportados como realizados <span class="etq">Torre de control</span></span><span class="resumen">Cuando el tramitador avisa que terminó.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo">
-          <p>El aviso del tramitador <b>no cierra el trámite</b>. Revíselo aquí, márquelo como revisado y, si corresponde, finalice el trámite.</p>
+          <p>El aviso del tramitador <b>no cierra el trámite</b>. En cada reporte pendiente tiene dos opciones:</p>
+          <ul>
+            <li><b>Marcar revisado:</b> el trabajo está bien. Después finalice el trámite si corresponde.</li>
+            <li><b>Devolver trámite:</b> falta algo. Escriba el <b>motivo</b> (es obligatorio) y presione <b>Devolver</b>. Al tramitador le llega un aviso en el celular con el motivo y, cuando lo corrija, puede volver a reportarlo como realizado.</li>
+          </ul>
+          <p>Las pestañas <b>Pendientes de revisión</b>, <b>Revisados</b> y <b>Devueltos</b> separan los reportes. Lo mismo se puede hacer desde la pestaña <b>Tramitador</b> del detalle del trámite.</p>
         </div>
       </details>
 
@@ -637,7 +671,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <div class="cuerpo">
           <ol class="pasos">
             <li><span>En el inicio de la app toque <b>Activar notificaciones</b> y acepte cuando el celular lo pregunte. Le llega un aviso de prueba.</span></li>
-            <li><span>Desde ahí le avisamos cuando le <b>asignen un trámite</b> (al tocarlo, abre el trámite) y <b>cada día</b> mientras tenga reintegros por enviar.</span></li>
+            <li><span>Desde ahí le avisamos cuando le <b>asignen un trámite</b>, cuando el equipo le <b>escriba un mensaje</b>, cuando le <b>devuelvan un trámite</b> (al tocar el aviso, se abre el trámite) y <b>cada día</b> mientras tenga reintegros por enviar.</span></li>
           </ol>
           <ul>
             <li><b>Android:</b> funciona en Chrome, aunque no haya instalado la app.</li>
@@ -654,6 +688,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
           <ul>
             <li>Escribir <b>comentarios</b> al equipo.</li>
             <li>Tocar <b>Marcar como realizado</b> cuando termine.</li>
+            <li>Si el equipo le <b>devuelve el trámite</b>, verá un recuadro rojo <b>"Trámite devuelto"</b> con el motivo. Corrija lo que le piden y vuelva a tocar <b>Marcar como realizado</b>.</li>
             <li>Ver los gastos del trámite y subir documentos.</li>
           </ul>
         </div>
@@ -713,7 +748,11 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
       <details class="tema"><summary><span class="titulo">No puedo eliminar una operación o un tipo de trámite</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo"><p>Está en uso. Puede cambiarle el nombre, pero no eliminarla.</p></div></details>
       <details class="tema"><summary><span class="titulo">El tramitador terminó, pero el trámite sigue abierto</span><span class="flecha" aria-hidden="true">⌄</span></summary>
-        <div class="cuerpo"><p>Su aviso no cierra el trámite. Revíselo en <b>Reportados como realizados</b> y finalícelo.</p></div></details>
+        <div class="cuerpo"><p>Su aviso no cierra el trámite. Revíselo en <b>Reportados como realizados</b> y finalícelo. Si le falta algo, use <b>Devolver trámite</b> con el motivo.</p></div></details>
+      <details class="tema"><summary><span class="titulo">Mi trámite está en novedad: ¿cómo aviso que ya lo corregí?</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>Abra el trámite y presione <b>Novedad subsanada</b>: escriba qué corrigió y la nueva fecha de entrega. El analista recibe un correo. Si no ve el botón, revise que usted haya creado el trámite y que siga en espera por novedad.</p></div></details>
+      <details class="tema"><summary><span class="titulo">Me devolvieron un trámite que reporté como realizado</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo"><p>Abra el trámite en la app: el recuadro rojo dice el motivo. Corrija lo que le piden y toque de nuevo <b>Marcar como realizado</b>.</p></div></details>
       <details class="tema"><summary><span class="titulo">Tesorería no puede confirmar un pago</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo"><p>El pago debe estar aprobado por la Dirección y tener adjunto el soporte del banco.</p></div></details>
       <details class="tema"><summary><span class="titulo">No me deja pasar el trámite a "En espera por novedad"</span><span class="flecha" aria-hidden="true">⌄</span></summary>

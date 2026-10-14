@@ -1,3 +1,4 @@
+import type { Transaction } from 'sequelize'
 import { db } from '../config/db'
 import SolicitudTramites from '../models/solicitudTramites'
 import EstadosTramites from '../models/estadosTramites'
@@ -24,7 +25,8 @@ import { notificarFacturasParaLegalizacion } from './gastos/notificacionesGastos
 //     En espera por novedad y Finalizado (correo)
 // =====================================
 
-const ESTADO_EN_ESPERA_POR_NOVEDAD = 3
+export const ESTADO_EN_ESPERA_POR_NOVEDAD = 3
+export const ESTADO_NOVEDAD_SUBSANADA = 4
 const ESTADO_DESISTIDO = 5
 const ESTADO_FINALIZADO = 6
 
@@ -34,40 +36,46 @@ export type CambioEstado = {
   tipoRechazoId?: number | null
 }
 
-export const cambiarEstadoTramite = async ({ solicitudTramiteId, estadoId, tipoRechazoId }: CambioEstado) => {
+// Guarda el estado dentro de la transacción que se le pase (para quien necesite cambiar el
+// estado junto con otros datos, como la novedad subsanada). Sin notificaciones.
+export const registrarEstado = async ({ solicitudTramiteId, estadoId, tipoRechazoId }: CambioEstado, transaction: Transaction) => {
   const estadoNumero = Number(estadoId)
+  const registro = await EstadosTramites.create({
+    solicitudTramiteId,
+    estadoId: estadoNumero,
+    tipoRechazoId: tipoRechazoId || null
+  }, { transaction })
+
+  await SolicitudTramites.update(
+    { estadoActualTramite: estadoNumero },
+    { where: { id: solicitudTramiteId }, transaction }
+  )
+
+  const estado = await Estados.findByPk(estadoNumero, { transaction })
+  const esFinalizado = estadoNumero === ESTADO_FINALIZADO
+    || estado?.nombreEstado?.toLowerCase().trim() === 'finalizado'
+
+  const solicitud = await SolicitudTramites.findByPk(solicitudTramiteId, {
+    include: [Usuarios, Tramitador, Municipios, Operaciones, Tramite, Clientes],
+    transaction
+  })
+  if (!solicitud) throw new Error('No se encontró la solicitud del trámite')
+
+  if (esFinalizado) {
+    const programacion = await Programacion.findOne({ where: { solicitudTramiteId }, transaction })
+    if (programacion) await programacion.update({ fechaFinalizacionServicio: new Date() }, { transaction })
+    else await Programacion.create({ solicitudTramiteId, fechaFinalizacionServicio: new Date() }, { transaction })
+  }
+
+  return { registro, solicitud, esFinalizado }
+}
+
+export const cambiarEstadoTramite = async (cambio: CambioEstado) => {
+  const { solicitudTramiteId } = cambio
+  const estadoNumero = Number(cambio.estadoId)
 
   // ── 1. Guardar (en una transacción) ──────────────
-  const { registro, solicitud, esFinalizado } = await db.transaction(async transaction => {
-    const registro = await EstadosTramites.create({
-      solicitudTramiteId,
-      estadoId: estadoNumero,
-      tipoRechazoId: tipoRechazoId || null
-    }, { transaction })
-
-    await SolicitudTramites.update(
-      { estadoActualTramite: estadoNumero },
-      { where: { id: solicitudTramiteId }, transaction }
-    )
-
-    const estado = await Estados.findByPk(estadoNumero, { transaction })
-    const esFinalizado = estadoNumero === ESTADO_FINALIZADO
-      || estado?.nombreEstado?.toLowerCase().trim() === 'finalizado'
-
-    const solicitud = await SolicitudTramites.findByPk(solicitudTramiteId, {
-      include: [Usuarios, Tramitador, Municipios, Operaciones, Tramite, Clientes],
-      transaction
-    })
-    if (!solicitud) throw new Error('No se encontró la solicitud del trámite')
-
-    if (esFinalizado) {
-      const programacion = await Programacion.findOne({ where: { solicitudTramiteId }, transaction })
-      if (programacion) await programacion.update({ fechaFinalizacionServicio: new Date() }, { transaction })
-      else await Programacion.create({ solicitudTramiteId, fechaFinalizacionServicio: new Date() }, { transaction })
-    }
-
-    return { registro, solicitud, esFinalizado }
-  })
+  const { registro, solicitud, esFinalizado } = await db.transaction(transaction => registrarEstado(cambio, transaction))
 
   // ── 2. Notificaciones (después de confirmar; un fallo aquí no deshace el cambio) ──
   try {

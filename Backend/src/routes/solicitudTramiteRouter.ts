@@ -20,6 +20,7 @@ import { validateCuentaCobroInput, validateCuentaCobroExits } from '../middlewar
 import { SubEstadosSolicitudController } from '../controllers/SubEstadosSolicitudController'
 import { requiereRol } from '../middleware/gastos/requiereRol'
 import { obtenerHistorial } from '../services/historialTramites'
+import { ErrorNovedadSubsanada, subsanarNovedad } from '../services/novedadSubsanada'
 
 // La sesión y el perfil (Gestión de activos o Torre de control) se exigen en server.ts.
 // Estas acciones son solo de Torre de control:
@@ -134,6 +135,23 @@ router.delete('/:solicitudTramitesId/trazabilidad/:trazabilidadId',
 
 
 // ================= ESTADOS =================
+// Quien creó el trámite marca la novedad como subsanada (el único estado que puede cambiar).
+// Gestión de activos llega aquí porque la ruta admite su perfil; el servicio exige ser el creador.
+router.post('/:solicitudTramitesId/subsanar-novedad', async (req, res) => {
+  try {
+    await subsanarNovedad({
+      solicitudTramiteId: req.solicitudTramites.id,
+      usuario: { id: req.usuario.id, nombreUsuario: req.usuario.nombreUsuario },
+      fechaEntregaResultado: String(req.body?.fechaEntregaResultado ?? ''),
+      observacion: String(req.body?.observacion ?? '')
+    })
+    res.json('Novedad subsanada')
+  } catch (error) {
+    if (error instanceof ErrorNovedadSubsanada) return res.status(error.status).json({ error: error.message })
+    console.error('ERROR SUBSANAR NOVEDAD:', error)
+    res.status(500).json({ error: 'No se pudo marcar la novedad como subsanada' })
+  }
+})
 router.post('/:solicitudTramitesId/estadosTramites',
   soloTorreControl,
   validateEstadosTramitesInput,

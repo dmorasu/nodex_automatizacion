@@ -26,6 +26,7 @@ import CambiarAnalista from '@/components/analistas/CambiarAnalista';
 import Seccion from '@/components/ui/Seccion';
 import Dato from '@/components/ui/Dato';
 import UbicacionTramite from '@/components/rutas/UbicacionTramite';
+import SubsanarNovedad from '@/components/estados/SubsanarNovedad';
 
 
 const ModalContainer = dynamic(
@@ -57,7 +58,7 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
   const solicitudTramiteId = params.id;
 
   // Con la sesión: el backend responde 404 si Gestión de activos abre un trámite ajeno
-  const { token, perfil } = await verificacionSesion();
+  const { token, perfil, usuario } = await verificacionSesion();
   const esGestionActivos = perfil === 'GESTION_ACTIVOS';
 
   const req = await fetch(`${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}`, {
@@ -97,6 +98,12 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   const estadoActual = solicitudTramite.estadoActual?.nombreEstado ?? historialEstados[0]?.estado.nombreEstado ?? null;
   const ultimoCambio = historialEstados[0]?.createdAt ?? null;
+
+  // Quien creó el trámite lo puede marcar como subsanado cuando está en espera por novedad
+  const novedadActual = historialEstados[0]?.estado.nombreEstado === "En espera por novedad" ? historialEstados[0] : null;
+  const botonSubsanar = estadoActual === "En espera por novedad" && solicitudTramite.usuario?.id === usuario.id && (
+    <SubsanarNovedad solicitudTramiteId={solicitudTramite.id} novedad={novedadActual?.tipoRechazo?.nombre ?? null} />
+  );
 
   const programacion = solicitudTramite.programacion;
   const logistica = solicitudTramite.logistica;
@@ -149,10 +156,12 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
                 <AddTramitadorBoton />
                 <AddProgramacionBoton />
                 <AddLogisticatoBoton />
+                {botonSubsanar}
                 <AddSubEstadoBoton />
                 <AddCuentaCobroBoton />
                 <AddTrazabilidadBoton />
                 <Link href="/center/torreControl" className={claseBotonEnlace}>
+                {botonSubsanar}
                   <Radar size={16} className="text-emerald-500" />
                   Tablero de gestión
                 </Link>

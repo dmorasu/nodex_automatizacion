@@ -58,7 +58,7 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
   const solicitudTramiteId = params.id;
 
   // Con la sesión: el backend responde 404 si Gestión de activos abre un trámite ajeno
-  const { token, perfil, usuario } = await verificacionSesion();
+  const { token, perfil } = await verificacionSesion();
   const esGestionActivos = perfil === 'GESTION_ACTIVOS';
 
   const req = await fetch(`${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}`, {

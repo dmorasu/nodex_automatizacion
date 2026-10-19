@@ -24,6 +24,7 @@ export default function BandejaLegalizacion({ gastos, borradores }: { gastos: Ga
           { titulo: "Factura", valor: g => g.factura?.numeroFactura ?? "—" },
           { titulo: "Pagado", alinearDerecha: true, valor: g => formatoMoneda(g.valorRealmentePagado) },
           { titulo: "Valor factura", alinearDerecha: true, valor: g => formatoMoneda(g.factura?.valorFactura) },
+          { titulo: "4x1000", alinearDerecha: true, valor: g => formatoMoneda(g.factura?.cuatroXMil) },
           { titulo: "A legalizar", alinearDerecha: true, valor: g => <b className="text-slate-800">{formatoMoneda(g.factura?.valorLegalizado)}</b> }
         ]}
         accion={seleccionados => (

@@ -34,8 +34,9 @@ export function EstadoTramiteNodex({
 
   return (
     <div className="flex flex-wrap gap-1">
-      <span className={`${clase} ${finalizado ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
-        Trámite #{tramiteId} · {estado ?? "Sin Iniciar"}
+      <span className={`${clase} border-slate-200 bg-white text-slate-600`}>Trámite #{tramiteId}</span>
+      <span className={`${clase} ${finalizado ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-sky-200 bg-sky-50 text-sky-700"}`}>
+        {estado ?? "Sin Iniciar"}
       </span>
       {reporteRealizado && !finalizado && (
         <span className={`${clase} border-amber-200 bg-amber-50 text-amber-800`}>

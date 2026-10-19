@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { Op, Order, WhereOptions, col, fn, literal } from 'sequelize'
+import { Op, Order, WhereOptions, col, fn, literal, where } from 'sequelize'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import EstadosGasto from '../../models/gastos/estadosGasto'
 import TiposGasto from '../../models/gastos/tiposGasto'
@@ -21,7 +21,7 @@ import FacturasGasto from '../../models/gastos/facturasGasto'
 import { actualizarGasto, anularGasto, crearGasto } from '../../services/gastos/solicitudesGasto'
 import { registrarFactura } from '../../services/gastos/facturas'
 import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../services/gastos/estadosGasto'
-import { ESTADOS_GASTO, ESTADOS_SIN_PAGO, ROLES } from '../../services/gastos/constantes'
+import { ESTADOS_GASTO, ESTADOS_SIN_PAGO, PARAMETROS, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
 import { ATRIBUTOS_USUARIO, esAdmin, esAuxiliarCaja, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados } from './utilidades'
@@ -35,6 +35,7 @@ import { avisoSaldoCliente, saldoDelCliente } from '../../services/gastos/antici
 import { obtenerAnticipoConAcceso } from './AnticiposController'
 import { tiposDocumentoDelGasto } from '../../services/gastos/tiposDocumento'
 import { programacionDelGasto } from '../../services/gastos/programacionPago'
+import { obtenerParametro } from '../../services/gastos/parametros'
 
 // Gastos de anticipos: saldo del cliente en la bolsa y lo que tiene por pagar (incluido este
 // gasto), para avisar en Tesorería y en Dirección de Negocio si no le alcanza. null si no es de anticipo.
@@ -108,8 +109,14 @@ const ATRIBUTOS_SEGUIMIENTO_TRAMITADOR: [ReturnType<typeof literal>, string][] =
     WHERE s.solicitud_gasto_id = "SolicitudesGasto"."id" AND s.tipo = 'FACTURA'
     ORDER BY s.created_at DESC LIMIT 1
   )`), 'soporteTramitador'],
+  // Estado actual del trámite; si no lo tiene (trámites viejos o cargados), el último de su historial
   [literal(`(
-    SELECT COALESCE(e."nombreEstado", 'Sin Iniciar') FROM "SolicitudTramites" t
+    SELECT COALESCE(
+      e."nombreEstado",
+      (SELECT e2."nombreEstado" FROM "EstadosTramites" et JOIN "Estados" e2 ON e2.id = et."estadoId"
+       WHERE et."solicitudTramiteId" = t.id ORDER BY et."createdAt" DESC LIMIT 1),
+      'Sin Iniciar'
+    ) FROM "SolicitudTramites" t
     LEFT JOIN "Estados" e ON e.id = t."estadoActualTramite"
     WHERE t.id = "SolicitudesGasto"."solicitud_tramite_id"
   )`), 'estadoTramite'],
@@ -134,6 +141,7 @@ const hastaBogota = (fecha: string) => new Date(`${fecha}T23:59:59.999-05:00`)
 //  tramitadorId · creadoPor · reembolsable=si|no · sinCuentaCobro=si · soporteTramitador=si|no
 //  conTramite=si|no · reintegroPendiente=si · desde/hasta (creación) · pagoDesde/pagoHasta · busqueda
 //  cajaMenor=si|no (gastos que salen de una caja menor)
+//  codigoBpr · placa · matricula (contienen el texto, sin importar mayúsculas, espacios ni guiones)
 //  Sin rol (o en "mis gastos") se ven los propios; al buscar o filtrar por operación, también los
 //  que crearon los de su misma área
 const condicionesListado = async (req: Request) => {
@@ -172,6 +180,16 @@ const condicionesListado = async (req: Request) => {
 
   if (q.tipoGastoId) condiciones.push({ tipoGastoId: Number(q.tipoGastoId) })
   if (q.bolsaId) condiciones.push({ bolsaId: Number(q.bolsaId) })
+  // "abc-123", "ABC 123" y "abc123" encuentran la placa ABC123 (igual el código BPR/FTF y la matrícula)
+  for (const [parametro, columna] of [['codigoBpr', 'codigo_bpr'], ['placa', 'placa'], ['matricula', 'matricula_inmobiliaria']]) {
+    const texto = String(q[parametro] ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+    if (texto) {
+      condiciones.push(where(
+        fn('regexp_replace', fn('upper', col(`SolicitudesGasto.${columna}`)), '[^A-Z0-9]', '', 'g'),
+        { [Op.like]: `%${texto}%` }
+      ))
+    }
+  }
   if (q.operacionId) condiciones.push({ operacionId: Number(q.operacionId) })
   if (q.tramitadorId) condiciones.push({ tramitadorId: Number(q.tramitadorId) })
   if (q.creadoPor) condiciones.push({ creadoPor: Number(q.creadoPor) })
@@ -235,6 +253,22 @@ const condicionesListado = async (req: Request) => {
   return condiciones
 }
 
+// ── Exportar el listado a CSV (Legalización: informes y validaciones) ──
+
+const MAXIMO_FILAS_EXPORTAR = 20000
+
+// CSV para Excel en español: separado por ";", decimales con coma y con BOM (tildes bien)
+const celdaCsv = (valor: unknown) => {
+  const texto = valor === null || valor === undefined ? '' : String(valor)
+  return /[;"\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto
+}
+const numeroCsv = (valor: unknown) => (valor === null || valor === undefined || valor === '' ? '' : Number(valor).toFixed(2).replace('.', ','))
+const fechaCsv = (valor: unknown) =>
+  !valor ? '' : valor instanceof Date ? valor.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : String(valor).slice(0, 10)
+
+const SOPORTE_TRAMITADOR: Record<string, string> = { PENDIENTE: 'Pendiente de revisión', APROBADO: 'Aprobada', RECHAZADO: 'Rechazada' }
+const REPORTE_REALIZADO: Record<string, string> = { PENDIENTE: 'Por revisar', REVISADO: 'Revisado' }
+
 const ORDENES: Record<string, Order> = {
   recientes: [['createdAt', 'DESC']],
   antiguos: [['createdAt', 'ASC']],
@@ -294,6 +328,73 @@ export class SolicitudesGastoController {
           }
         })
       })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // GET /solicitudes/exportar  (mismos filtros que GET /solicitudes) → CSV con todo lo filtrado
+  // (no solo la página), hasta 20.000 filas. El 4x1000 de los gastos sin factura registrada es
+  // estimado sobre lo pagado (columna "4x1000 estimado")
+  static exportar = async (req: Request, res: Response) => {
+    try {
+      const [gastos, tasaGmf] = await Promise.all([
+        SolicitudesGasto.findAll({
+          where: { [Op.and]: await condicionesListado(req) },
+          include: [...INCLUDES_LISTADO, { model: FormasPago, attributes: ['nombre'] }],
+          attributes: { include: ATRIBUTOS_SEGUIMIENTO_TRAMITADOR },
+          order: ORDENES[String(req.query.orden)] ?? ORDENES.recientes,
+          limit: MAXIMO_FILAS_EXPORTAR
+        }),
+        obtenerParametro(PARAMETROS.GMF)
+      ])
+
+      const columnas: [string, (g: SolicitudesGasto) => unknown][] = [
+        ['Código', g => g.codigo],
+        ['Fecha de creación', g => fechaCsv(g.createdAt)],
+        ['Estado', g => g.estado?.nombre],
+        ['Operación', g => g.operacion?.nombreOperacion],
+        ['Centro de costos', g => g.operacion?.centroDeCostos],
+        ['Bolsa', g => g.bolsa?.nombre],
+        ['Tipo de gasto', g => g.tipoGasto?.nombre],
+        ['Forma de pago', g => g.formaPago?.nombre],
+        ['Concepto', g => g.conceptoPago],
+        ['Placa', g => g.placa],
+        ['Matrícula inmobiliaria', g => g.matriculaInmobiliaria],
+        ['Código BPR/FTF', g => g.codigoBpr],
+        ['Cliente', g => g.nombreClienteBanco],
+        ['Identificación del cliente', g => g.identificacionClienteBanco],
+        ['Contrato', g => g.contrato],
+        ['Reembolsable', g => (g.reembolsable ? 'Sí' : 'No')],
+        ['Trámite', g => g.solicitudTramiteId],
+        ['Estado del trámite', g => (g.solicitudTramiteId ? g.get('estadoTramite') : '')],
+        ['Reporte realizado del tramitador', g => REPORTE_REALIZADO[String(g.get('reporteRealizado'))] ?? ''],
+        ['Factura del tramitador', g => SOPORTE_TRAMITADOR[String(g.get('soporteTramitador'))] ?? ''],
+        ['Tramitador', g => g.tramitador?.nombreTramitador],
+        ['Beneficiario', g => g.beneficiario?.nombre],
+        ['Identificación del beneficiario', g => g.beneficiario?.identificacion],
+        ['Creado por', g => g.creador?.nombreUsuario],
+        ['Valor solicitado', g => numeroCsv(g.valorSolicitadoPago)],
+        ['Fecha de pago', g => fechaCsv(g.fechaPago)],
+        ['Valor pagado', g => numeroCsv(g.valorRealmentePagado)],
+        ['Lote de pago', g => g.lotePagoId],
+        ['Número de factura', g => g.factura?.numeroFactura],
+        ['Valor de la factura', g => numeroCsv(g.factura?.valorFactura)],
+        ['4x1000', g => numeroCsv(g.factura ? g.factura.cuatroXMil : g.valorRealmentePagado !== null ? Math.round(Number(g.valorRealmentePagado) * 100 * tasaGmf) / 100 : null)],
+        ['4x1000 estimado', g => (g.factura || g.valorRealmentePagado === null ? 'No' : 'Sí')],
+        ['Valor a legalizar', g => numeroCsv(g.factura?.valorLegalizado)]
+      ]
+
+      const csv = [
+        columnas.map(([titulo]) => celdaCsv(titulo)).join(';'),
+        ...gastos.map(g => columnas.map(([, valor]) => celdaCsv(valor(g))).join(';'))
+      ].join('\r\n')
+
+      const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+      res.setHeader('Content-Disposition', `attachment; filename="gastos-${fecha}.csv"`)
+      res.setHeader('X-Filas', String(gastos.length))
+      res.send(`\uFEFF${csv}\r\n`)
     } catch (error) {
       responderError(res, error)
     }

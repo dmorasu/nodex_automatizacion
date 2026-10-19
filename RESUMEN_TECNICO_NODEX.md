@@ -425,6 +425,11 @@ Reemplaza la búsqueda "de cualquier usuario" del 2026-10-15 (commit `c6f1bee8`)
 - **Aviso:** `avisarGastoCreado()` (`components/gastos/avisoProgramacion.tsx` en Gastos y en Trámites): con `siguienteDiaHabil` muestra un aviso con ícono de calendario, 12 s: "¡Listo! El gasto GAS-… quedó guardado. Como se registró después de las 9:00 a. m. (o en un día no hábil), Tesorería lo programará para pago el martes, 20 de octubre, el siguiente día hábil." Si no, el aviso normal. En el formulario de Gastos y en "Crear gasto" del trámite.
 - **Probado:** lunes 8:59 (mismo día), lunes 9:00 y 15:00 (martes), viernes 10:00 y sábado 8:00 (lunes), viernes 30 oct 10:00 con el lunes 2 nov festivo (martes 3 nov), domingo 11:30 p. m. (lunes); captura del aviso en Chrome.
 
+### Nodex Gastos: filtros de Legalización (2026-10-19)
+- **Backend** (`condicionesListado`): filtros `codigoBpr`, `placa` y `matricula` (contienen el texto; se comparan en mayúsculas y sin espacios, guiones ni otros signos: "iyo-063" encuentra IYO063). `bolsaId` ya existía.
+- **Pantalla:** `components/legalizacion/FiltrosLegalizacion.tsx` (formulario GET: buscador, Bolsa con búsqueda, Código BPR/FTF, Placa, Matrícula inmobiliaria, "Limpiar") en **Gastos sin factura**, **Gastos con factura** (las dos tablas) y **Descargar documentos** (al cambiar de grupo se conservan los filtros). `filtrosActivos()` suma a la consulta solo los que tienen valor.
+- **Probado** contra la base de desarrollo: placa con guion y minúsculas, placa parcial, matrícula, bolsa, bolsa + placa, sin resultados y con totales. El de Código BPR/FTF no tiene datos en desarrollo (mismo código que placa y matrícula).
+
 ### Nodex Gastos: PDF de pago unificado y ZIP sin carpetas en Descargar documentos (2026-10-19)
 - **Por operación:** `Operaciones.descargaPagoUnificada` (ajuste `descargaPagoUnificada()` en `ajustesEsquemaTramites.ts`; al crear la columna marca la de centro de costos **1301**, Finalizaciones Leasing Vehículos). Se activa o desactiva en Nodex Trámites → Catálogos → Operaciones (etiqueta "PDF de pago unificado: sí/no" bajo el nombre).
 - **Descarga** (`generarZipDocumentos`, `services/gastos/descargaDocumentos.ts`; Legalización → Descargar documentos y el botón de la cuenta de cobro): **todo en la raíz del ZIP, sin carpetas** (decisión del usuario).
@@ -432,6 +437,14 @@ Reemplaza la búsqueda "de cualquier usuario" del 2026-10-15 (commit `c6f1bee8`)
   - Los demás gastos: cada documento con el código adelante (`GAS2026000123_factura.pdf`, `GAS2026000123_pago_…` para el soporte del lote, `GAS2026000123_tramitador-por-revisar_…`).
   - Avisos (gasto sin documentos, sin liquidación ni soporte, archivo que no se pudo leer) en `LEEME - avisos.txt`. Tipo `LIQUIDACION_PAGO` agregado a `TIPOS_DOCUMENTO` (lo usa la lógica: ya no se desactiva ni se elimina en Catálogos).
 - **Probado** contra la base de desarrollo (Azure simulado): migración (dos veces), gasto 1301 con soporte PNG subido antes que la liquidación PDF de 2 páginas → un PDF de 3 páginas en orden liquidación → soporte con el nombre esperado; gasto 1301 sin documentos y gasto de otra operación → avisos y nombres con el código; ZIP sin carpetas.
+
+### Nodex Gastos: exportar a Excel (CSV) en Legalización (2026-10-19)
+- **Backend:** `GET /gastos/solicitudes/exportar` (antes de `/solicitudes/:id`) con **los mismos filtros** de `GET /solicitudes` (`condicionesListado`, incluida la regla de área) → CSV de todo lo filtrado, hasta 20.000 filas. Para Excel en español: separador `;`, decimales con coma, fechas `AAAA-MM-DD` y BOM UTF-8. 33 columnas: código, fechas, estado, operación y centro de costos, bolsa, tipo, forma de pago, concepto, placa, matrícula, Código BPR/FTF, cliente, contrato, reembolsable, trámite y su estado, reporte realizado y factura del tramitador, tramitador, beneficiario, creador, valores solicitado y pagado, lote, factura (número, valor, 4x1000, valor a legalizar) y "4x1000 estimado" (Sí cuando no hay factura registrada: valor pagado × GMF).
+- **Pantalla:** `ExportarCsv` ("Exportar a Excel (CSV)", ruta `app/descargas/gastos-csv/route.ts`) encima de cada tabla: Gastos sin factura, Gastos con factura (sus dos tablas) y Descargar documentos (también en las tablas de Contabilidad que usan `TablaGastosPorFacturar`). Exporta con los filtros de la pantalla, sin el tope de 100.
+- **Probado** contra la base de desarrollo: 13 filas pagadas reembolsables, 33 columnas, BOM, valores con coma; con filtro de placa, 1 fila.
+
+### Nodex Gastos: columna 4x1000 en Legalización (2026-10-19)
+- "Factura registrada" (`BandejaLegalizacion`): el `cuatroXMil` guardado en la factura. "Gastos sin factura" y "Factura subida por el tramitador" (`TablaGastosPorFacturar`, también en Contabilidad): sin factura registrada se muestra **estimado** = valor pagado × parámetro GMF (marcado "estimado"; el definitivo se calcula sobre el valor de la factura al registrarla).
 
 ### Nodex Gastos: elegir qué lleva el PDF de pago unificado (2026-10-19)
 - En la 1301 unos gastos se legalizan con **liquidación + soporte de pago** y otros con **liquidación + factura**. Decisión del usuario: Legalización **revisa y elige** antes de descargar. Solo cuenta la **factura que registró Legalización** (documento tipo FACTURA del gasto), no la del tramitador sin registrar.

@@ -2,7 +2,8 @@ import Link from "next/link"
 import { fetchApi } from "@/src/lib/api"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import BandejaDescargaDocumentos from "@/components/legalizacion/BandejaDescargaDocumentos"
-import Buscador from "@/components/ui/Buscador"
+import ExportarCsv from "@/components/legalizacion/ExportarCsv"
+import FiltrosLegalizacion, { filtrosActivos, type FiltrosLegalizacion as Filtros } from "@/components/legalizacion/FiltrosLegalizacion"
 
 const MAXIMO_BANDEJA = 100
 
@@ -15,12 +16,13 @@ const GRUPOS = [
   { codigo: "legalizados", nombre: "Legalizados", filtros: { estado: "LEGALIZADO" } }
 ] as const
 
-// Seleccione los gastos y descargue todos sus documentos en un ZIP (una carpeta por gasto)
-export default async function DescargasPage({ searchParams }: { searchParams: { grupo?: string, busqueda?: string } }) {
+// Seleccione los gastos y descargue todos sus documentos en un ZIP, sin carpetas (las operaciones
+// con descarga de pago unificada bajan un solo PDF de pago por gasto)
+export default async function DescargasPage({ searchParams }: { searchParams: Filtros & { grupo?: string } }) {
   const grupo = GRUPOS.find(g => g.codigo === (searchParams.grupo ?? "")) ?? GRUPOS[0]
+  const filtros = filtrosActivos(searchParams)
 
-  const consulta = new URLSearchParams({ alcance: "todos", reembolsable: "si", tamano: String(MAXIMO_BANDEJA), ...grupo.filtros })
-  if (searchParams.busqueda) consulta.set("busqueda", searchParams.busqueda)
+  const consulta = new URLSearchParams({ alcance: "todos", reembolsable: "si", tamano: String(MAXIMO_BANDEJA), ...grupo.filtros, ...filtros })
   const { total, registros } = ListadoGastosSchema.parse(await (await fetchApi(`/gastos/solicitudes?${consulta}`)).json())
 
   return (
@@ -28,7 +30,8 @@ export default async function DescargasPage({ searchParams }: { searchParams: { 
 
       <div className="flex flex-wrap gap-2 text-xs">
         {GRUPOS.map(g => {
-          const parametros = new URLSearchParams(Object.entries({ grupo: g.codigo, busqueda: searchParams.busqueda }).filter(([, v]) => v) as [string, string][])
+          // Al cambiar de grupo se conservan los filtros
+          const parametros = new URLSearchParams(Object.entries({ grupo: g.codigo, ...filtros }).filter(([, v]) => v) as [string, string][])
           return (
             <Link
               key={g.codigo}
@@ -41,11 +44,14 @@ export default async function DescargasPage({ searchParams }: { searchParams: { 
         })}
       </div>
 
-      <Buscador valor={searchParams.busqueda} ocultos={{ grupo: grupo.codigo }} />
+      <FiltrosLegalizacion valores={searchParams} ocultos={{ grupo: grupo.codigo }} limpiar={grupo.codigo ? `/legalizacion/descargas?grupo=${grupo.codigo}` : "/legalizacion/descargas"} />
 
-      {total > MAXIMO_BANDEJA && (
-        <p className="text-xs text-amber-700">Se muestran {MAXIMO_BANDEJA} de {total} gastos. Use la búsqueda para encontrar los demás.</p>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-amber-700">
+          {total > MAXIMO_BANDEJA && `Se muestran ${MAXIMO_BANDEJA} de ${total} gastos. Use los filtros o exporte el listado completo.`}
+        </p>
+        {total > 0 && <ExportarCsv consulta={consulta} />}
+      </div>
 
       <BandejaDescargaDocumentos gastos={registros} />
     </div>

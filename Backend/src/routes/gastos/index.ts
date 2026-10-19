@@ -130,6 +130,8 @@ router.post('/cargue-masivo/cargar', cargueMasivo, recibirExcel, CargueMasivoGas
 // Cualquier usuario crea gastos; ver todos, editar y anular se valida en el controlador
 router.get('/solicitudes', validarListado, handleInputErrors, SolicitudesGastoController.getAll)
 router.post('/solicitudes', validarGasto, handleInputErrors, SolicitudesGastoController.create)
+// Antes de /solicitudes/:id: CSV con los mismos filtros del listado
+router.get('/solicitudes/exportar', validarListado, handleInputErrors, SolicitudesGastoController.exportar)
 router.get('/solicitudes/:id', validarId, handleInputErrors, SolicitudesGastoController.getById)
 router.put('/solicitudes/:id', validarId, validarGasto, handleInputErrors, SolicitudesGastoController.update)
 router.post('/solicitudes/:id/anular', validarAnulacion, handleInputErrors, SolicitudesGastoController.anular)

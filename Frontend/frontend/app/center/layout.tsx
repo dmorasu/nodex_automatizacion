@@ -14,7 +14,9 @@ export default async function CenterLayout({
   const { usuario, perfil, esAdmin, esAnalista, puedeAsignarAnalistas, puedeConfigurarNotificaciones } = await verificacionSesion();
 
   return (
-    <>
+    // Un solo contenedor para encabezado, contenido y pie: Headless UI toma cada hijo directo de
+    // <body> distinto al del menú como "otra ventana" y un clic ahí no cerraba el menú de arriba
+    <div>
 
       {/* ===================================================== */}
       {/* HEADER                                                */}
@@ -214,6 +216,6 @@ export default async function CenterLayout({
 
       </footer>
 
-    </>
+    </div>
   );
 }

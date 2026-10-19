@@ -12,11 +12,18 @@ export const ItemCatalogoSchema = z.object({
   nombre: z.string()
 })
 
+// Tipo de documento con el servicio para el que se sube (pago, legalización, reintegro)
+export const TipoDocumentoSchema = ItemCatalogoSchema.extend({
+  paraPago: z.boolean().optional(),
+  paraLegalizacion: z.boolean().optional(),
+  paraReintegro: z.boolean().optional()
+})
+
 export const CatalogosSchema = z.object({
   tiposGasto: z.array(ItemCatalogoSchema),
   formasPago: z.array(ItemCatalogoSchema),
   estadosGasto: z.array(ItemCatalogoSchema),
-  tiposDocumento: z.array(ItemCatalogoSchema)
+  tiposDocumento: z.array(TipoDocumentoSchema)
 })
 
 export const ParametrosSchema = z.array(z.object({
@@ -245,6 +252,8 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
     cliente: z.object({ id: z.number(), nombre: z.string(), tipoIdentificacion: z.string(), identificacion: z.string() })
   }).nullish(),
   saldoAnticipo: z.lazy(() => SaldoClienteSchema).nullish(),
+  // Tipos de documento que se pueden subir en la etapa actual del gasto
+  tiposDocumento: z.array(ItemCatalogoSchema).default([]),
   legalizacionCaja: z.lazy(() => LegalizacionCajaSchema).nullish(),
   permisos: z.object({
     registrarFactura: z.boolean(),

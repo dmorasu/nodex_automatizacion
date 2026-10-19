@@ -42,6 +42,10 @@ function FormularioNombre({ inicial = "", onGuardar, onCancelar }: {
   )
 }
 
+// Tipos de documento: en qué cargues aparece cada uno
+const USOS = [["paraPago", "Pago"], ["paraLegalizacion", "Legalización"], ["paraReintegro", "Reintegro"]] as const
+type Uso = typeof USOS[number][0]
+
 const claseIcono = "rounded-md p-1.5 text-slate-400 transition disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
 
 // Un catálogo de Nodex Gastos: crear, renombrar, activar o desactivar y eliminar lo que no se usa.
@@ -66,7 +70,9 @@ export default function AdministrarCatalogo({
 
   const usoTexto = (n: number) => (n === 0 ? "Sin uso" : `${n.toLocaleString("es-CO")} ${n === 1 ? usoUno : usoVarios}`)
 
-  const guardar = async (datos: { nombre?: string, activo?: boolean }, id?: number) => {
+  const conUsos = catalogo === "tiposDocumento"
+
+  const guardar = async (datos: { nombre?: string, activo?: boolean } & Partial<Record<Uso, boolean>>, id?: number) => {
     const resultado = await guardarEnCatalogo(catalogo, datos, id)
     if (!resultado.ok) {
       resultado.errores.forEach(error => toast.error(error))
@@ -75,6 +81,9 @@ export default function AdministrarCatalogo({
     toast.success(id ? "Cambios guardados" : "Registro creado")
     return true
   }
+
+  const alternarUso = (registro: RegistroCatalogo, uso: Uso) =>
+    startOcupado(async () => { await guardar({ [uso]: !registro[uso] }, registro.id) })
 
   const alternarActivo = (registro: RegistroCatalogo) =>
     startOcupado(async () => { await guardar({ activo: !registro.activo }, registro.id) })
@@ -116,6 +125,7 @@ export default function AdministrarCatalogo({
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3 font-semibold">Nombre</th>
+              {conUsos && <th className="px-4 py-3 font-semibold">Se sube en</th>}
               <th className="hidden px-4 py-3 font-semibold sm:table-cell">Uso</th>
               <th className="w-28 px-4 py-3"><span className="sr-only">Acciones</span></th>
             </tr>
@@ -124,7 +134,7 @@ export default function AdministrarCatalogo({
             {visibles.map(r => (
               <tr key={r.id} className={clsx("hover:bg-slate-50/70", !r.activo && "bg-slate-50/50")}>
                 {editando === r.id ? (
-                  <td colSpan={3} className="px-4 py-2.5">
+                  <td colSpan={conUsos ? 4 : 3} className="px-4 py-2.5">
                     <FormularioNombre inicial={r.nombre} onGuardar={nombre => guardar({ nombre }, r.id)} onCancelar={() => setEditando(null)} />
                   </td>
                 ) : (
@@ -133,6 +143,27 @@ export default function AdministrarCatalogo({
                       <span className={clsx("font-medium", r.activo ? "text-slate-700" : "text-slate-400 line-through")}>{r.nombre}</span>
                       {!r.activo && <span className="ml-2 rounded-full bg-slate-100 px-1.5 py-px text-[10px] text-slate-500">Inactivo</span>}
                     </td>
+                    {conUsos && (
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {USOS.map(([uso, etiqueta]) => (
+                            <button
+                              key={uso}
+                              type="button"
+                              onClick={() => alternarUso(r, uso)}
+                              disabled={ocupado}
+                              aria-pressed={Boolean(r[uso])}
+                              className={clsx(
+                                "rounded-full border px-2 py-0.5 text-[11px] font-medium transition disabled:opacity-50",
+                                r[uso] ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                              )}
+                            >
+                              {etiqueta}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
                     <td className="hidden px-4 py-2.5 text-slate-500 sm:table-cell">{usoTexto(r.uso)}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex justify-end gap-1">

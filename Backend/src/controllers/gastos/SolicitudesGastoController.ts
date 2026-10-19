@@ -33,6 +33,7 @@ import Anticipos from '../../models/gastos/anticipos'
 import { creadoresPermitidos, usuariosDeMiArea } from '../../middleware/auth'
 import { avisoSaldoCliente, saldoDelCliente } from '../../services/gastos/anticipos'
 import { obtenerAnticipoConAcceso } from './AnticiposController'
+import { tiposDocumentoDelGasto } from '../../services/gastos/tiposDocumento'
 
 // Gastos de anticipos: saldo del cliente en la bolsa y lo que tiene por pagar (incluido este
 // gasto), para avisar en Tesorería y en Dirección de Negocio si no le alcanza. null si no es de anticipo.
@@ -413,6 +414,8 @@ export class SolicitudesGastoController {
         documentosPago,
         // Gasto de un anticipo: cómo va el saldo del cliente en la bolsa
         saldoAnticipo: gasto.anticipo ? await saldoDelCliente(gasto.anticipo.bolsaId, gasto.anticipo.clienteId) : null,
+        // Tipos de documento que se pueden subir en la etapa actual del gasto
+        tiposDocumento: gestiona ? await tiposDocumentoDelGasto(gasto) : [],
         permisos: {
           // La factura se registra o corrige mientras el gasto no esté en una cuenta de cobro
           registrarFactura: esLegalizacion && (

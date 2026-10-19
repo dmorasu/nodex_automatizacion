@@ -27,7 +27,11 @@ export const RegistroCatalogoSchema = z.object({
   // Cuántos registros lo usan: lo que está en uso no se elimina (se desactiva)
   uso: z.number(),
   // Lo usa la lógica del sistema: no se elimina (ni se desactiva, salvo los tipos de gasto)
-  delSistema: z.boolean()
+  delSistema: z.boolean(),
+  // Tipos de documento: para qué servicio se sube
+  paraPago: z.boolean().optional(),
+  paraLegalizacion: z.boolean().optional(),
+  paraReintegro: z.boolean().optional()
 })
 
 export const CatalogoAdminSchema = z.object({

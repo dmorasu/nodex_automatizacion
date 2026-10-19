@@ -30,7 +30,8 @@ export class CatalogosGastosController {
         EstadosGasto.findAll({ ...soloActivos, attributes: [...ATRIBUTOS, 'orden'], order: [['orden', 'ASC']] }),
         EstadosCuentaCobro.findAll({ ...soloActivos, attributes: [...ATRIBUTOS, 'orden'], order: [['orden', 'ASC']] }),
         EstadosReintegro.findAll({ ...soloActivos, attributes: ATRIBUTOS, order: [['id', 'ASC']] }),
-        TiposDocumentoGasto.findAll({ ...soloActivos, attributes: ATRIBUTOS, order: [['nombre', 'ASC']] })
+        // Con sus usos: el formulario del gasto ofrece solo los de pago
+        TiposDocumentoGasto.findAll({ ...soloActivos, attributes: [...ATRIBUTOS, 'paraPago', 'paraLegalizacion', 'paraReintegro'], order: [['nombre', 'ASC']] })
       ])
 
       res.json({

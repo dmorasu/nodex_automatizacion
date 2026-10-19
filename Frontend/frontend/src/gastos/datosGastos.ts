@@ -25,6 +25,8 @@ export type OpcionesGasto = {
   bolsas: { id: number, nombre: string, lineaNegocio: string | null }[]
   tiposGasto: { id: number, codigo: string, nombre: string }[]
   formasPago: { id: number, codigo: string, nombre: string }[]
+  // Tipos de documento que se pueden subir al crear el gasto (los de pago, en Catálogos de Gastos)
+  tiposDocumentoPago: { id: number, nombre: string }[]
   // Porcentaje de retención por defecto para gastos de inmueble (ej: 11)
   porcentajeRetencion: number
 }
@@ -48,9 +50,11 @@ export const obtenerGastosDeTramite = (tramiteId: number, token: string) =>
 export const obtenerOpcionesGasto = async (token: string): Promise<OpcionesGasto> => {
   const [bolsas, catalogos, parametros] = await Promise.all([
     leer<OpcionesGasto["bolsas"]>("/gastos/apoyo/bolsas", token, []),
-    leer<{ tiposGasto: OpcionesGasto["tiposGasto"], formasPago: OpcionesGasto["formasPago"] }>(
-      "/gastos/catalogos", token, { tiposGasto: [], formasPago: [] }
-    ),
+    leer<{
+      tiposGasto: OpcionesGasto["tiposGasto"]
+      formasPago: OpcionesGasto["formasPago"]
+      tiposDocumento: { id: number, nombre: string, paraPago?: boolean }[]
+    }>("/gastos/catalogos", token, { tiposGasto: [], formasPago: [], tiposDocumento: [] }),
     leer<{ clave: string, valor: string }[]>("/gastos/parametros", token, [])
   ])
 
@@ -58,5 +62,11 @@ export const obtenerOpcionesGasto = async (token: string): Promise<OpcionesGasto
   const retencion = parametros.find(p => p.clave === "RETENCION_FUENTE")
   const porcentajeRetencion = retencion ? Math.round(Number(retencion.valor) * 1e6) / 1e4 : 11
 
-  return { bolsas, tiposGasto: catalogos.tiposGasto, formasPago: catalogos.formasPago, porcentajeRetencion }
+  return {
+    bolsas,
+    tiposGasto: catalogos.tiposGasto,
+    formasPago: catalogos.formasPago,
+    tiposDocumentoPago: (catalogos.tiposDocumento ?? []).filter(t => t.paraPago).map(({ id, nombre }) => ({ id, nombre })),
+    porcentajeRetencion
+  }
 }

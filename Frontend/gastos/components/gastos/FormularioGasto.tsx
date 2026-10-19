@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import { AlertTriangle, HandCoins, Link2, X, Save, Loader2 } from "lucide-react"
-import { consultarTramite, guardarGasto } from "@/actions/gastos/gastos"
+import { consultarTramite, guardarGasto, subirDocumentos } from "@/actions/gastos/gastos"
 import type {
   BolsaApoyo,
   Catalogos,
@@ -17,6 +17,7 @@ import type {
 } from "@/src/schemas/gastos"
 import { formatoMoneda } from "@/src/lib/formato"
 import BuscadorBeneficiario from "./BuscadorBeneficiario"
+import DocumentosNuevoGasto, { type DocumentoPendiente } from "./DocumentosNuevoGasto"
 import Seccion from "../ui/Seccion"
 import {
   claseBotonPrimario,
@@ -25,6 +26,32 @@ import {
   claseLabel,
   claseTextarea
 } from "../ui/estilos"
+
+
+// Sube los documentos del gasto recién creado, por tipo y de a 10 (límite del backend).
+// Si alguno falla el gasto ya quedó creado: se avisa para subirlos desde el detalle
+const subirDocumentosDelGasto = async (gastoId: number, documentos: DocumentoPendiente[]) => {
+  const grupos: DocumentoPendiente[][] = []
+  for (const tipo of [...new Set(documentos.map(d => d.tipoDocumentoId))]) {
+    const delTipo = documentos.filter(d => d.tipoDocumentoId === tipo)
+    for (let i = 0; i < delTipo.length; i += 10) grupos.push(delTipo.slice(i, i + 10))
+  }
+
+  let fallidos = 0
+  for (const grupo of grupos) {
+    const datos = new FormData()
+    datos.append("tipoDocumentoId", String(grupo[0].tipoDocumentoId))
+    grupo.forEach(d => datos.append("archivos", d.archivo))
+    const resultado = await subirDocumentos(gastoId, datos)
+    if (!resultado.ok) {
+      fallidos += grupo.length
+      resultado.errores.forEach(error => toast.error(error))
+    }
+  }
+
+  if (fallidos) toast.warning(`El gasto se creó, pero ${fallidos} documento(s) no se cargaron: súbalos desde el detalle del gasto`, { autoClose: 10000 })
+  else toast.success(`${documentos.length} documento(s) cargado(s)`)
+}
 
 
 // =====================================
@@ -170,6 +197,9 @@ export default function FormularioGasto({
   const router = useRouter()
   const [guardando, startGuardar] = useTransition()
   const [consultando, startConsultar] = useTransition()
+  // Documentos opcionales al crear el gasto (solo tipos de pago)
+  const [documentos, setDocumentos] = useState<DocumentoPendiente[]>([])
+  const tiposPago = catalogos.tiposDocumento.filter(t => t.paraPago)
 
   const [datos, setDatos] = useState<DatosGasto>(() => ({
     ...datosIniciales(porcentajeRetencion, gasto),
@@ -280,6 +310,7 @@ export default function FormularioGasto({
       }
 
       toast.success(gasto ? "Gasto actualizado" : "Gasto creado")
+      if (!gasto && documentos.length) await subirDocumentosDelGasto(resultado.datos.id, documentos)
       if (resultado.datos.avisoSaldo) toast.warning(resultado.datos.avisoSaldo, { autoClose: 10000 })
       router.push(`/solicitudes/${resultado.datos.id}`)
       router.refresh()
@@ -621,6 +652,14 @@ export default function FormularioGasto({
           </div>
         )}
       </Seccion>
+
+
+      {/* ── DOCUMENTOS (solo al crear) ── */}
+      {!gasto && (
+        <Seccion titulo="Documentos (opcional)">
+          <DocumentosNuevoGasto tipos={tiposPago} documentos={documentos} onCambiar={setDocumentos} />
+        </Seccion>
+      )}
 
 
       {/* ── OBSERVACIÓN ── */}

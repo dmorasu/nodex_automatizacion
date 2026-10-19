@@ -12,8 +12,10 @@ const enviar = async (ruta: string, metodo: "POST" | "PUT" | "DELETE", cuerpo?: 
   return { ok: true }
 }
 
-// Crea (sin id) o renombra / activa / desactiva (con id) un registro del catálogo
-export async function guardarEnCatalogo(catalogo: string, datos: { nombre?: string, activo?: boolean }, id?: number) {
+type DatosRegistro = { nombre?: string, activo?: boolean, paraPago?: boolean, paraLegalizacion?: boolean, paraReintegro?: boolean }
+
+// Crea (sin id) o renombra / activa / desactiva / cambia los usos (con id) un registro del catálogo
+export async function guardarEnCatalogo(catalogo: string, datos: DatosRegistro, id?: number) {
   return enviar(id ? `${catalogo}/${id}` : catalogo, id ? "PUT" : "POST", datos)
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { Loader2, Plus, Search, UserPlus, X } from "lucide-react"
+import { FileText, Loader2, Plus, Search, UserPlus, X } from "lucide-react"
 import { buscarTercerosGasto, crearGastoDesdeTramite, type TerceroGasto } from "@/actions/gastos-tramite-action"
 import type { OpcionesGasto } from "@/src/gastos/datosGastos"
 
@@ -14,6 +14,33 @@ const claseInput = `
   focus:border-sky-400 focus:ring-2 focus:ring-sky-100
 `
 const claseLabel = "block mb-1.5 text-xs font-medium text-slate-600"
+
+// Documentos opcionales del gasto nuevo (mismos límites del backend de Gastos)
+type DocumentoPendiente = { tipoDocumentoId: number, archivo: File }
+const TIPOS_ARCHIVO = ["application/pdf", "image/jpeg", "image/png"]
+const MAX_MB = 15
+
+// Sube los documentos al gasto recién creado (por el proxy, que lleva la sesión), por tipo y de a 10.
+// Devuelve cuántos no se cargaron: el gasto ya quedó creado y se pueden subir desde Nodex Gastos
+const subirDocumentosDelGasto = async (gastoId: number, documentos: DocumentoPendiente[]) => {
+  let fallidos = 0
+  for (const tipo of [...new Set(documentos.map(d => d.tipoDocumentoId))]) {
+    const delTipo = documentos.filter(d => d.tipoDocumentoId === tipo)
+    for (let i = 0; i < delTipo.length; i += 10) {
+      const grupo = delTipo.slice(i, i + 10)
+      const datos = new FormData()
+      datos.append("tipoDocumentoId", String(tipo))
+      grupo.forEach(d => datos.append("archivos", d.archivo))
+      const respuesta = await fetch(`/api/backend/gastos/solicitudes/${gastoId}/documentos`, { method: "POST", body: datos }).catch(() => null)
+      if (!respuesta?.ok) {
+        fallidos += grupo.length
+        const json = await respuesta?.json().catch(() => null)
+        if (json?.error) toast.error(json.error)
+      }
+    }
+  }
+  return fallidos
+}
 
 const BENEFICIARIO_VACIO = { tipoIdentificacion: "NIT", identificacion: "", nombre: "", banco: "", tipoCuenta: "", numeroCuenta: "" }
 
@@ -71,6 +98,22 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
   const [nuevo, setNuevo] = useState<typeof BENEFICIARIO_VACIO | null>(null)
   const [busqueda, setBusqueda] = useState("")
   const [resultados, setResultados] = useState<TerceroGasto[]>([])
+  const [documentos, setDocumentos] = useState<DocumentoPendiente[]>([])
+  const [tipoDocumentoId, setTipoDocumentoId] = useState(opciones.tiposDocumentoPago.length === 1 ? String(opciones.tiposDocumentoPago[0].id) : "")
+  const [entradaArchivos, setEntradaArchivos] = useState(0) // reinicia el campo de archivos al agregarlos
+
+  const agregarArchivos = (archivos: File[]) => {
+    if (!tipoDocumentoId) return toast.error("Seleccione el tipo de documento")
+    const validos = archivos.filter(archivo => {
+      const error = !TIPOS_ARCHIVO.includes(archivo.type) ? `"${archivo.name}" no es PDF, JPG ni PNG`
+        : archivo.size > MAX_MB * 1024 * 1024 ? `"${archivo.name}" pesa más de ${MAX_MB} MB`
+          : null
+      if (error) toast.error(error)
+      return !error
+    })
+    setDocumentos(actuales => [...actuales, ...validos.map(archivo => ({ tipoDocumentoId: Number(tipoDocumentoId), archivo }))])
+    setEntradaArchivos(n => n + 1)
+  }
 
   const cambiar = <K extends keyof ReturnType<typeof inicial>>(campo: K, valor: ReturnType<typeof inicial>[K]) =>
     setDatos(actuales => ({ ...actuales, [campo]: valor }))
@@ -101,6 +144,7 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
     setBeneficiario(null)
     setNuevo(null)
     setBusqueda("")
+    setDocumentos([])
   }
 
   const guardar = () => {
@@ -147,6 +191,12 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
       }
 
       toast.success(`Gasto ${resultado.datos.codigo} creado. Queda pendiente de pago en Tesorería.`)
+      if (documentos.length) {
+        const fallidos = await subirDocumentosDelGasto(resultado.datos.id, documentos)
+        if (fallidos) toast.warning(`${fallidos} documento(s) no se cargaron: súbalos desde el gasto en Nodex Gastos`, { autoClose: 10000 })
+        else toast.success(`${documentos.length} documento(s) cargado(s)`)
+      }
+      setDocumentos([])
       setAbierto(false)
       setDatos(inicial())
       setBeneficiario(null)
@@ -317,6 +367,47 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                     </div>
                   )}
                 </div>
+
+                {/* DOCUMENTOS (opcional): solo los tipos de pago */}
+                {opciones.tiposDocumentoPago.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Documentos (opcional)</p>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <Campo etiqueta="Tipo de documento" className="min-w-[200px]">
+                        <select value={tipoDocumentoId} onChange={e => setTipoDocumentoId(e.target.value)} className={claseInput}>
+                          <option value="">Seleccione</option>
+                          {opciones.tiposDocumentoPago.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                        </select>
+                      </Campo>
+                      <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                        <Plus size={15} /> Agregar archivos
+                        <input
+                          key={entradaArchivos}
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={e => agregarArchivos(Array.from(e.target.files ?? []))}
+                          className="sr-only"
+                        />
+                      </label>
+                      <span className="pb-2.5 text-[11px] text-slate-400">PDF, JPG o PNG · máx. {MAX_MB} MB c/u</span>
+                    </div>
+                    {documentos.length > 0 && (
+                      <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                        {documentos.map((d, i) => (
+                          <li key={`${d.archivo.name}-${i}`} className="flex items-center gap-3 px-3 py-2 text-xs">
+                            <FileText size={15} className="shrink-0 text-slate-400" />
+                            <span className="min-w-0 flex-1 truncate text-slate-700">{d.archivo.name}</span>
+                            <span className="shrink-0 text-slate-400">{opciones.tiposDocumentoPago.find(t => t.id === d.tipoDocumentoId)?.nombre}</span>
+                            <button type="button" onClick={() => setDocumentos(documentos.filter((_, j) => j !== i))} className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label={`Quitar ${d.archivo.name}`}>
+                              <X size={14} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo etiqueta="Observación" className="sm:col-span-2">

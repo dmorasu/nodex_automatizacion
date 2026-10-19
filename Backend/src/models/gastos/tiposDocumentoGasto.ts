@@ -18,6 +18,23 @@ class TiposDocumentoGasto extends Model {
   @Default(true)
   @Column({ type: DataType.BOOLEAN })
   declare activo: boolean
+
+  // Para qué servicio se sube: así cada cargue muestra solo los tipos que le corresponden
+  // (al crear el gasto y antes de pagarlo: pago; ya pagado: legalización; con reintegro pendiente: reintegro)
+  @Default(false)
+  @AllowNull(false)
+  @Column({ type: DataType.BOOLEAN })
+  declare paraPago: boolean
+
+  @Default(false)
+  @AllowNull(false)
+  @Column({ type: DataType.BOOLEAN })
+  declare paraLegalizacion: boolean
+
+  @Default(false)
+  @AllowNull(false)
+  @Column({ type: DataType.BOOLEAN })
+  declare paraReintegro: boolean
 }
 
 export default TiposDocumentoGasto

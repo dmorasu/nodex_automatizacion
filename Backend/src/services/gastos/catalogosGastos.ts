@@ -14,6 +14,7 @@ import { ErrorGastos } from './errores'
 //   vehículo, inmueble, CTL, Cámara de Comercio…); solo se renombran o se desactivan.
 // · Tipos de documento que usa el sistema (soporte de pago, factura…): no se desactivan
 //   ni se eliminan.
+// · Tipos de documento: además dicen para qué servicio se suben (pago, legalización, reintegro).
 // El código de los registros nuevos sale del nombre (lo usa la lógica, no la pantalla).
 // =====================================
 
@@ -28,7 +29,12 @@ type Catalogo = {
   uso: { tabla: string, columna: string }
   // Códigos que la lógica necesita: no se desactivan ni se eliminan
   delSistema: string[]
+  // Tipos de documento: para qué servicio se sube cada uno
+  conUsos?: boolean
 }
+
+const USOS = ['paraPago', 'paraLegalizacion', 'paraReintegro'] as const
+type DatosRegistro = { nombre?: string, activo?: boolean } & Partial<Record<typeof USOS[number], boolean>>
 
 export const CATALOGOS: Record<string, Catalogo> = {
   clientesEmpresariales: {
@@ -59,7 +65,8 @@ export const CATALOGOS: Record<string, Catalogo> = {
     permiteCrear: true,
     uso: { tabla: 'gastos_documentos', columna: 'tipo_documento_id' },
     // FACTURA y OTRO los usa la app de tramitadores
-    delSistema: [...Object.values(TIPOS_DOCUMENTO), 'FACTURA', 'OTRO']
+    delSistema: [...Object.values(TIPOS_DOCUMENTO), 'FACTURA', 'OTRO'],
+    conUsos: true
   }
 }
 
@@ -98,7 +105,7 @@ export const listarCatalogo = async (nombre: string) => {
   const config = catalogo(nombre)
   const [registros, uso] = await Promise.all([
     modelo(config).findAll({
-      attributes: ['id', ...(config.conCodigo ? ['codigo'] : []), 'nombre', 'activo'],
+      attributes: ['id', ...(config.conCodigo ? ['codigo'] : []), 'nombre', 'activo', ...(config.conUsos ? USOS : [])],
       order: [['activo', 'DESC'], ['nombre', 'ASC']]
     }),
     usos(config)
@@ -139,7 +146,7 @@ export const crearEnCatalogo = async (nombre: string, datos: { nombre: string })
   return registro.id
 }
 
-export const actualizarEnCatalogo = async (nombre: string, id: number, datos: { nombre?: string, activo?: boolean }) => {
+export const actualizarEnCatalogo = async (nombre: string, id: number, datos: DatosRegistro) => {
   const config = catalogo(nombre)
   const registro = await modelo(config).findByPk(id)
   if (!registro) throw new ErrorGastos('El registro no existe', 404)
@@ -152,7 +159,8 @@ export const actualizarEnCatalogo = async (nombre: string, id: number, datos: { 
 
   await registro.update({
     ...(texto ? { nombre: texto } : {}),
-    ...(datos.activo !== undefined ? { activo: datos.activo } : {})
+    ...(datos.activo !== undefined ? { activo: datos.activo } : {}),
+    ...(config.conUsos ? Object.fromEntries(USOS.filter(uso => datos[uso] !== undefined).map(uso => [uso, datos[uso]])) : {})
   })
 }
 

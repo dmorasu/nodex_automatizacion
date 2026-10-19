@@ -68,17 +68,19 @@ const ESTADOS_REINTEGRO_INICIALES = [
   { codigo: ESTADOS_REINTEGRO.REINTEGRADO, nombre: 'Reintegrado' }
 ]
 
+// paraPago / paraLegalizacion / paraReintegro: en qué cargues aparece (se cambian en Catálogos)
 const TIPOS_DOCUMENTO_INICIALES = [
-  { codigo: 'FACTURA', nombre: 'Factura' },
-  { codigo: 'SOPORTE_PAGO', nombre: 'Soporte de pago' },
+  { codigo: 'FACTURA', nombre: 'Factura', paraLegalizacion: true },
+  { codigo: 'SOPORTE_PAGO', nombre: 'Soporte de pago', paraPago: true },
+  { codigo: 'LIQUIDACION_PAGO', nombre: 'Liquidación de pago', paraPago: true },
   { codigo: 'CUENTA_COBRO', nombre: 'Cuenta de cobro' },
-  { codigo: 'SOPORTE_REINTEGRO', nombre: 'Soporte de reintegro' },
+  { codigo: 'SOPORTE_REINTEGRO', nombre: 'Soporte de reintegro', paraReintegro: true },
   { codigo: 'SOPORTE_CONSIGNACION', nombre: 'Soporte de consignación' },
   { codigo: 'FACTURA_ANTICIPO', nombre: 'Factura del cliente (PDF)' },
   { codigo: 'FACTURA_ANTICIPO_XML', nombre: 'Factura electrónica (XML)' },
   { codigo: 'SOPORTE_CAJA_MENOR', nombre: 'Soporte de caja menor' },
   { codigo: 'SOPORTE_REEMBOLSO_CAJA', nombre: 'Soporte del reembolso de caja menor' },
-  { codigo: 'OTRO', nombre: 'Otro' }
+  { codigo: 'OTRO', nombre: 'Otro', paraLegalizacion: true, paraReintegro: true }
 ]
 
 const ROLES_INICIALES = [

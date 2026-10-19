@@ -119,7 +119,7 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
             <DocumentosGasto
               gastoId={gasto.id}
               documentos={gasto.documentos}
-              tiposDocumento={catalogos.tiposDocumento}
+              tiposDocumento={gasto.tiposDocumento}
               puedeSubir={gasto.permisos.subirDocumentos}
               usuarioId={sesion.id}
               esAdmin={sesion.roles.includes(ROLES.ADMIN)}

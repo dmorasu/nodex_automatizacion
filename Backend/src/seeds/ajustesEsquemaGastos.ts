@@ -186,4 +186,22 @@ export const ajustarEsquemaGastos = async () => {
   await anticiposDeClientes()
   await solicitudesDeFactura()
   await cajaMenor()
+  await usosDeTiposDocumento()
+}
+
+// 2026-10-19 · Cada tipo de documento dice para qué servicio se sube (pago, legalización,
+// reintegro): los cargues muestran solo los que corresponden. Solo al crear las columnas se marcan
+// los tipos que ya existían (Liquidación de pago la crea el seed ya marcada); el resto, en Catálogos.
+const usosDeTiposDocumento = async () => {
+  const columnas = await columnasDe('gastos_tipos_documento_gasto')
+  if (!columnas || columnas.para_pago) return
+
+  await db.transaction(async transaction => {
+    for (const columna of ['para_pago', 'para_legalizacion', 'para_reintegro']) {
+      await db.query(`ALTER TABLE gastos_tipos_documento_gasto ADD COLUMN ${columna} BOOLEAN NOT NULL DEFAULT false`, { transaction })
+    }
+    await db.query(`UPDATE gastos_tipos_documento_gasto SET para_pago = true WHERE codigo IN ('SOPORTE_PAGO', 'LIQUIDACION_PAGO')`, { transaction })
+    await db.query(`UPDATE gastos_tipos_documento_gasto SET para_legalizacion = true WHERE codigo IN ('FACTURA', 'OTRO')`, { transaction })
+    await db.query(`UPDATE gastos_tipos_documento_gasto SET para_reintegro = true WHERE codigo IN ('SOPORTE_REINTEGRO', 'OTRO')`, { transaction })
+  })
 }

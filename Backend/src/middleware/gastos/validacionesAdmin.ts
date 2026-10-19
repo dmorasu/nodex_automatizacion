@@ -35,6 +35,12 @@ export const validarActualizarCatalogo = [
   body('activo')
     .optional()
     .isBoolean().withMessage('Activo debe ser verdadero o falso')
+    .toBoolean(),
+
+  // Tipos de documento: para qué servicio se sube
+  body(['paraPago', 'paraLegalizacion', 'paraReintegro'])
+    .optional()
+    .isBoolean().withMessage('El uso debe ser verdadero o falso')
     .toBoolean()
 ]
 

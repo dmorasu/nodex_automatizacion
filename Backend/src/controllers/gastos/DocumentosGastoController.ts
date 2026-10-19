@@ -16,6 +16,7 @@ import { esAdmin, esAuxiliarCaja, puedeVerTodos, responderError } from './utilid
 import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
 import { cajaDelUsuario } from '../../services/gastos/cajaMenor'
 import { generarZipDocumentos } from '../../services/gastos/descargaDocumentos'
+import { tiposDocumentoDelGasto } from '../../services/gastos/tiposDocumento'
 
 const CARPETA_GASTOS = 'gastos'
 const CARPETA_LOTES = 'gastos/lotes'
@@ -145,8 +146,9 @@ export class DocumentosGastoController {
         throw new ErrorGastos('No se pueden agregar documentos a un gasto anulado o contabilizado')
       }
 
-      const tipoDocumento = await TiposDocumentoGasto.findByPk(Number(req.body.tipoDocumentoId))
-      if (!tipoDocumento?.activo) throw new ErrorGastos('Debe seleccionar el tipo de documento')
+      // Solo los tipos de la etapa del gasto (pago, legalización o reintegro)
+      const tipoDocumento = (await tiposDocumentoDelGasto(gasto)).find(t => t.id === Number(req.body.tipoDocumentoId))
+      if (!tipoDocumento) throw new ErrorGastos('Seleccione uno de los tipos de documento de esta etapa del gasto')
 
       const cantidad = await guardarArchivos(
         req,

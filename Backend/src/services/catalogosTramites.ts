@@ -4,10 +4,11 @@ import Tramite from '../models/tramite'
 import Operaciones from '../models/operaciones'
 import SubEstados from '../models/subEstados'
 import TiposRechazo from '../models/tiposRechazos'
+import Areas from '../models/areas'
 
 // =====================================
 // CATÁLOGOS DE TRÁMITES (Nodex Trámites → Catálogos)
-// Tipos de trámite (con sus subestados), operaciones y tipos de rechazo.
+// Tipos de trámite (con sus subestados), operaciones, tipos de rechazo y áreas de los usuarios.
 // Solo se borra lo que nada usa: la relación Operaciones → SolicitudTramites tiene
 // onDelete CASCADE en el modelo, así que borrar una operación en uso podría arrastrar trámites.
 // =====================================
@@ -18,7 +19,7 @@ export class ErrorCatalogo extends Error {
   }
 }
 
-export type TipoCatalogo = 'tramites' | 'operaciones' | 'subestados' | 'rechazos'
+export type TipoCatalogo = 'tramites' | 'operaciones' | 'subestados' | 'rechazos' | 'areas'
 
 // Texto obligatorio, sin espacios de más y con largo máximo de la columna
 const texto = (valor: unknown, etiqueta: string, maximo: number, obligatorio = true) => {
@@ -39,7 +40,7 @@ const revisarDuplicado = async (tabla: string, columna: string, valor: string, i
 
 // ── Listado con el uso de cada registro ──
 export const listarCatalogos = async () => {
-  const [tramites, subestados, operaciones, rechazos] = await Promise.all([
+  const [tramites, subestados, operaciones, rechazos, areas] = await Promise.all([
     db.query(`
       SELECT t.id, t."nombreTramite" AS nombre, t.responsable,
         (SELECT COUNT(*) FROM "SolicitudTramites" s WHERE s."tramiteId" = t.id)::int AS uso
@@ -60,10 +61,18 @@ export const listarCatalogos = async () => {
       SELECT r.id, r.nombre,
         (SELECT COUNT(*) FROM "EstadosTramites" e WHERE e."tipoRechazoId" = r.id)::int AS uso
       FROM "TiposRechazo" r ORDER BY r.nombre
-    `, { type: QueryTypes.SELECT })
+    `, { type: QueryTypes.SELECT }),
+    listarAreas()
   ])
-  return { tramites, subestados, operaciones, rechazos }
+  return { tramites, subestados, operaciones, rechazos, areas }
 }
+
+// Áreas con cuántos usuarios tiene cada una (también para el formulario de usuarios)
+export const listarAreas = () =>
+  db.query<{ id: number, nombre: string, uso: number }>(`
+    SELECT a.id, a.nombre, (SELECT COUNT(*) FROM "Usuarios" u WHERE u."areaId" = a.id)::int AS uso
+    FROM "Areas" a ORDER BY a.nombre
+  `, { type: QueryTypes.SELECT })
 
 // ── Crear o editar (sin id = crear) ──
 export const guardarCatalogo = async (tipo: TipoCatalogo, datos: Record<string, unknown>, id?: number) => {
@@ -100,6 +109,17 @@ export const guardarCatalogo = async (tipo: TipoCatalogo, datos: Record<string, 
       return id
         ? (await existente(porId.rechazos, id)).update({ nombre })
         : TiposRechazo.create({ nombre })
+    }
+    case 'areas': {
+      const nombre = texto(datos.nombre, 'El nombre', 100)!
+      await revisarDuplicado('Areas', 'nombre', nombre, id)
+      if (!id) return Areas.create({ nombre })
+      // Usuarios.area guarda el nombre en texto (lo lee la 4.5): se renombra también ahí
+      return db.transaction(async transaction => {
+        const area = await (await existente(porId.areas, id)).update({ nombre }, { transaction })
+        await db.query(`UPDATE "Usuarios" SET area = :nombre WHERE "areaId" = :id`, { replacements: { nombre, id }, transaction })
+        return area
+      })
     }
   }
 }
@@ -148,6 +168,10 @@ const usoDe = async (tipo: TipoCatalogo, id: number) => {
       const n = await contar(`SELECT COUNT(*)::int n FROM "EstadosTramites" WHERE "tipoRechazoId" = :id`)
       return n ? `lo usan ${plural(n, 'cambio de estado', 'cambios de estado')}` : ''
     }
+    case 'areas': {
+      const n = await contar(`SELECT COUNT(*)::int n FROM "Usuarios" WHERE "areaId" = :id`)
+      return n ? `la tienen ${plural(n, 'usuario', 'usuarios')} (cámbieles el área primero)` : ''
+    }
   }
 }
 
@@ -162,5 +186,6 @@ const porId = {
   tramites: (id: number) => Tramite.findByPk(id),
   operaciones: (id: number) => Operaciones.findByPk(id),
   subestados: (id: number) => SubEstados.findByPk(id),
-  rechazos: (id: number) => TiposRechazo.findByPk(id)
+  rechazos: (id: number) => TiposRechazo.findByPk(id),
+  areas: (id: number) => Areas.findByPk(id)
 }

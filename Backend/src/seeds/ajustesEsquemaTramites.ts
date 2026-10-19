@@ -95,6 +95,61 @@ export const ajustarEsquemaTramites = async () => {
   await analistaAsignado()
   await ubicacionYMensajeros()
   await versionSesion()
+  await areasDeUsuarios()
+}
+
+// Áreas iniciales del catálogo (después se crean, renombran y eliminan en Catálogos → Áreas)
+const AREAS_INICIALES = [
+  'Vehículos', 'TI', 'Gestión de activos', 'Talento humano', 'Torre de control',
+  'Administración', 'Contabilidad', 'Tesorería', 'GPA Legal', 'Tutelas'
+]
+
+// "Gestión de activos", "gestion_activos" y "GESTION ACTIVOS" → "gestionactivos"
+const claveArea = (texto: string) =>
+  texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\bde\b/g, '').replace(/\s/g, '')
+
+// 2026-10-19 · Catálogo de áreas (tabla Areas y Usuarios.areaId). Hasta hoy el área era un texto
+// libre (Usuarios.area, con valores como "gestion_activos", "TORRE CONTROL" o "Torre de control").
+// Solo la primera vez (al crear la columna): crea las áreas y pasa cada usuario a la suya por el
+// texto; los textos que no corresponden a ninguna quedan sin área (se listan en el log).
+const areasDeUsuarios = async () => {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS "Areas" (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    )
+  `)
+
+  const usuarios = await columnasDe('Usuarios')
+  if (!usuarios || usuarios.areaId) return
+
+  await db.transaction(async transaction => {
+    await db.query(`
+      ALTER TABLE "Usuarios"
+      ADD COLUMN "areaId" INTEGER REFERENCES "Areas" (id) ON UPDATE CASCADE ON DELETE SET NULL
+    `, { transaction })
+    await db.query(`CREATE INDEX IF NOT EXISTS "usuarios_area_id" ON "Usuarios" ("areaId")`, { transaction })
+
+    const ids = new Map<string, number>()
+    for (const nombre of AREAS_INICIALES) {
+      const [[fila]] = await db.query(`INSERT INTO "Areas" (nombre) VALUES (:nombre) RETURNING id`, { replacements: { nombre }, transaction }) as [{ id: number }[], unknown]
+      ids.set(claveArea(nombre), fila.id)
+    }
+
+    const [textos] = await db.query(`SELECT DISTINCT area FROM "Usuarios" WHERE TRIM(COALESCE(area, '')) <> ''`, { transaction }) as [{ area: string }[], unknown]
+    const sinArea: string[] = []
+    for (const { area } of textos) {
+      const areaId = ids.get(claveArea(area))
+      if (!areaId) { sinArea.push(area); continue }
+      await db.query(
+        `UPDATE "Usuarios" SET "areaId" = :areaId, area = (SELECT nombre FROM "Areas" WHERE id = :areaId) WHERE area = :area`,
+        { replacements: { areaId, area }, transaction }
+      )
+    }
+    if (sinArea.length) console.log(`Áreas: usuarios sin área por texto no reconocido: ${sinArea.join(', ')}`)
+  })
 }
 
 // Después de sync(): la sede del mensajero (mensajeria_sedes ya existe)

@@ -3,6 +3,7 @@ import { Op } from 'sequelize'
 import { db } from '../../config/db'
 import Usuarios from '../../models/usuarios'
 import Roles from '../../models/gastos/roles'
+import Areas from '../../models/areas'
 import UsuarioRoles from '../../models/gastos/usuarioRoles'
 import { correoIgual, hashcontrasena } from '../../utils/auth'
 import { ErrorGastos } from '../../services/gastos/errores'
@@ -22,6 +23,14 @@ const codigosDelUsuario = async (usuarioId: number) => {
     include: [{ model: Roles, attributes: ['codigo'], through: { attributes: [] } }]
   })
   return (usuario?.roles ?? []).map(r => r.codigo)
+}
+
+// Área elegida del catálogo → { areaId, area }. `area` guarda el nombre en texto (lo lee la 4.5)
+const areaDelUsuario = async (areaId: unknown) => {
+  if (areaId === null || areaId === undefined || areaId === '') return { areaId: null, area: null }
+  const area = await Areas.findByPk(Number(areaId))
+  if (!area) throw new ErrorGastos('El área no existe')
+  return { areaId: area.id, area: area.nombre }
 }
 
 const verificarUsuarioDeTramites = async (req: Request, usuarioId: number) => {
@@ -60,7 +69,7 @@ export class RolesGastosController {
   static getUsuarios = async (req: Request, res: Response) => {
     try {
       const usuarios = await Usuarios.findAll({
-        attributes: ['id', 'nombreUsuario', 'correoUsuario', 'area'],
+        attributes: ['id', 'nombreUsuario', 'correoUsuario', 'area', 'areaId'],
         include: [{
           model: Roles,
           attributes: ['id', 'codigo', 'nombre'],
@@ -77,7 +86,7 @@ export class RolesGastosController {
     }
   }
 
-  // POST /admin/usuarios  { nombreUsuario, correoUsuario, area, contrasena, roles? }
+  // POST /admin/usuarios  { nombreUsuario, correoUsuario, areaId, contrasena, roles? }
   // La contraseña se guarda cifrada (bcrypt), igual que en el registro de cuenta
   static crearUsuario = async (req: Request, res: Response) => {
     try {
@@ -96,12 +105,13 @@ export class RolesGastosController {
         ? await Roles.findAll({ where: { codigo: { [Op.in]: codigos }, activo: true } })
         : []
       if (roles.length !== new Set(codigos).size) throw new ErrorGastos('Uno o más roles no existen')
+      const area = await areaDelUsuario(req.body.areaId)
 
       const usuario = await db.transaction(async transaction => {
         const nuevo = await Usuarios.create({
           nombreUsuario: String(req.body.nombreUsuario).trim(),
           correoUsuario: correo,
-          area: req.body.area?.trim() || null,
+          ...area,
           contrasena: await hashcontrasena(req.body.contrasena)
         }, { transaction })
 
@@ -118,7 +128,7 @@ export class RolesGastosController {
     }
   }
 
-  // PUT /admin/usuarios/:usuarioId  { nombreUsuario, correoUsuario, area }
+  // PUT /admin/usuarios/:usuarioId  { nombreUsuario, correoUsuario, areaId }
   static actualizarUsuario = async (req: Request, res: Response) => {
     try {
       const usuario = await Usuarios.findByPk(Number(req.params.usuarioId))
@@ -130,11 +140,13 @@ export class RolesGastosController {
         where: { [Op.and]: [correoIgual(correo), { id: { [Op.ne]: usuario.id } }] }
       })
       if (repetido) throw new ErrorGastos(`Ya existe otro usuario con el correo ${correo}`, 409)
+      // Sin areaId en la petición, el área no cambia
+      const area = 'areaId' in req.body ? await areaDelUsuario(req.body.areaId) : {}
 
       await usuario.update({
         nombreUsuario: String(req.body.nombreUsuario).trim(),
         correoUsuario: correo,
-        area: req.body.area?.trim() || null
+        ...area
       })
 
       res.json('Usuario actualizado')

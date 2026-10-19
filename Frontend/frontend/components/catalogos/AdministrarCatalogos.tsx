@@ -7,13 +7,14 @@ import { Check, ChevronDown, ChevronRight, ListTree, Loader2, Pencil, Plus, Sear
 import { llamarApi } from "@/src/lib/apiCliente"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/components/ui/estilos"
 
-type TipoCatalogo = "tramites" | "operaciones" | "subestados" | "rechazos"
+type TipoCatalogo = "tramites" | "operaciones" | "subestados" | "rechazos" | "areas"
 
 type TipoTramite = { id: number, nombre: string, responsable: string | null, uso: number }
 type SubEstado = { id: number, nombre: string, tramiteId: number, uso: number }
 type Operacion = { id: number, nombre: string, centroDeCostos: string | null, usoTramites: number, usoGastos: number }
 type Rechazo = { id: number, nombre: string, uso: number }
-type Catalogos = { tramites: TipoTramite[], subestados: SubEstado[], operaciones: Operacion[], rechazos: Rechazo[] }
+type Area = { id: number, nombre: string, uso: number }
+type Catalogos = { tramites: TipoTramite[], subestados: SubEstado[], operaciones: Operacion[], rechazos: Rechazo[], areas: Area[] }
 
 // Campos de cada catálogo (el backend recibe `nombre` y los extras con estas claves)
 type Campo = { clave: string, etiqueta: string, maximo: number, obligatorio?: boolean, ancho?: string }
@@ -28,7 +29,8 @@ const CAMPOS: Record<TipoCatalogo, Campo[]> = {
     { clave: "centroDeCostos", etiqueta: "Centro de costos", maximo: 10, ancho: "sm:w-40" }
   ],
   subestados: [{ clave: "nombre", etiqueta: "Nombre del subestado", maximo: 200, obligatorio: true }],
-  rechazos: [{ clave: "nombre", etiqueta: "Nombre del tipo de rechazo", maximo: 200, obligatorio: true }]
+  rechazos: [{ clave: "nombre", etiqueta: "Nombre del tipo de rechazo", maximo: 200, obligatorio: true }],
+  areas: [{ clave: "nombre", etiqueta: "Nombre del área", maximo: 100, obligatorio: true }]
 }
 
 const sinTildes = (texto: string) => texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -105,10 +107,10 @@ function AccionesFila({ enUso, motivo, onEditar, onEliminar }: {
   )
 }
 
-export type PestanaCatalogo = "tramites" | "operaciones" | "rechazos"
+export type PestanaCatalogo = "tramites" | "operaciones" | "rechazos" | "areas"
 
 // Administración de catálogos de Nodex Trámites: tipos de trámite (con sus subestados),
-// operaciones y tipos de rechazo. Lo que está en uso se puede editar pero no eliminar.
+// operaciones, tipos de rechazo y áreas de los usuarios. Lo que está en uso se puede editar pero no eliminar.
 // La pestaña la elige la página (/center/catalogos?pestana=...).
 export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCatalogo }) {
   const [datos, setDatos] = useState<Catalogos | null>(null)
@@ -161,6 +163,7 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
     coincide(t.nombre) || coincide(t.responsable) || (subestadosPorTramite.get(t.id) ?? []).some(s => coincide(s.nombre)))
   const operaciones = (datos?.operaciones ?? []).filter(o => coincide(o.nombre) || coincide(o.centroDeCostos))
   const rechazos = (datos?.rechazos ?? []).filter(r => coincide(r.nombre))
+  const areas = (datos?.areas ?? []).filter(a => coincide(a.nombre))
 
   const alternar = (id: number) => setAbiertos(actual => {
     const nuevo = new Set(actual)
@@ -173,7 +176,7 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
     return <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">No se pudieron cargar los catálogos: {error}</p>
   }
 
-  const textoNuevo = { tramites: "Nuevo tipo de trámite", operaciones: "Nueva operación", rechazos: "Nuevo tipo de rechazo" }[pestana]
+  const textoNuevo = { tramites: "Nuevo tipo de trámite", operaciones: "Nueva operación", rechazos: "Nuevo tipo de rechazo", areas: "Nueva área" }[pestana]
 
   return (
     <div className="space-y-4">
@@ -345,11 +348,33 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
                   )}
                 </tr>
               ))}
+
+              {/* ÁREAS DE LOS USUARIOS */}
+              {pestana === "areas" && areas.map(a => (
+                <tr key={a.id} className="hover:bg-slate-50/70">
+                  {editando === `areas:${a.id}` ? (
+                    <td colSpan={3} className="px-4 py-2.5">
+                      <FormularioCatalogo tipo="areas" inicial={{ nombre: a.nombre }}
+                        onGuardar={v => guardar("areas", v, a.id)} onCancelar={() => setEditando(null)} />
+                    </td>
+                  ) : (
+                    <>
+                      <td className="px-4 py-2.5 font-medium text-slate-700">{a.nombre}</td>
+                      <td className="hidden px-4 py-2.5 text-slate-500 sm:table-cell">{usoTexto(a.uso, "usuario", "usuarios")}</td>
+                      <td className="px-4 py-2.5">
+                        <AccionesFila enUso={a.uso > 0} motivo={`${usoTexto(a.uso, "usuario", "usuarios")} (cámbieles el área primero)`}
+                          onEditar={() => { setEditando(`areas:${a.id}`); setCreando(false) }}
+                          onEliminar={() => eliminar("areas", a.id, a.nombre)} />
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
         )}
 
-        {datos && { tramites, operaciones, rechazos }[pestana].length === 0 && (
+        {datos && { tramites, operaciones, rechazos, areas }[pestana].length === 0 && (
           <p className="py-12 text-center text-sm text-slate-400">
             {filtro.trim() ? "Nada coincide con la búsqueda." : "No hay registros todavía."}
           </p>

@@ -39,7 +39,7 @@ export default async function SolicitudesPage({ searchParams }: { searchParams: 
   if (searchParams.operacionId) consulta.set("operacionId", searchParams.operacionId)
   if (searchParams.busqueda) consulta.set("busqueda", searchParams.busqueda)
 
-  // Por operación, número de gasto, placa o matrícula salen también gastos de otros usuarios
+  // Al buscar o filtrar por operación salen también los gastos de los usuarios de su área
   const buscando = Boolean(searchParams.operacionId || searchParams.busqueda)
 
   const [catalogos, operaciones, respuesta] = await Promise.all([

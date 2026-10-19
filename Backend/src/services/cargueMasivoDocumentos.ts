@@ -14,9 +14,9 @@ import { ErrorGastos } from './gastos/errores'
 
 export const MAXIMO_TRAMITES = 500
 
-// Datos para mostrar a qué trámite va cada archivo. `soloDe` = usuario (Gestión de activos solo
-// sube a sus propios trámites): los demás aparecen como no encontrados
-export const tramitesParaDocumentos = async (ids: number[], soloDe: number | null) => {
+// Datos para mostrar a qué trámite va cada archivo. `soloDe` = usuarios (Gestión de activos solo
+// sube a los trámites que crearon él o los de su área): los demás aparecen como no encontrados
+export const tramitesParaDocumentos = async (ids: number[], soloDe: number[] | null) => {
   const unicos = [...new Set(ids.filter(id => Number.isInteger(id) && id > 0))].slice(0, MAXIMO_TRAMITES)
   if (!unicos.length) return []
 
@@ -28,7 +28,7 @@ export const tramitesParaDocumentos = async (ids: number[], soloDe: number | nul
     LEFT JOIN "Tramites" tr ON tr.id = t."tramiteId"
     LEFT JOIN "Clientes" c ON c.id = t."clienteId"
     LEFT JOIN "Estados" e ON e.id = t."estadoActualTramite"
-    WHERE t.id IN (:ids) ${soloDe ? 'AND t."usuarioId" = :soloDe' : ''}
+    WHERE t.id IN (:ids) ${soloDe ? 'AND t."usuarioId" IN (:soloDe)' : ''}
   `, { replacements: { ids: unicos, soloDe }, type: QueryTypes.SELECT })
 }
 

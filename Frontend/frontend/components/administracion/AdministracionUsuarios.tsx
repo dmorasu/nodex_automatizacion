@@ -15,11 +15,13 @@ import {
 } from "@/actions/administracion-action"
 
 export type Rol = { id: number, codigo: string, nombre: string }
+export type Area = { id: number, nombre: string }
 export type UsuarioAdmin = {
   id: number
   nombreUsuario: string
   correoUsuario: string
   area: string | null
+  areaId: number | null
   roles: { codigo: string }[]
   // Minutos que le faltan para poder entrar tras varios intentos fallidos (0 = no está bloqueado)
   minutosBloqueo?: number
@@ -123,11 +125,11 @@ const validarContrasenas = (contrasena: string, confirmacion: string) => {
 
 // ── Crear o editar usuario ─────────────────────────────
 
-function ModalUsuario({ usuario, roles, grupos, onCerrar }: { usuario: UsuarioAdmin | null, roles: Rol[], grupos: typeof GRUPOS, onCerrar: () => void }) {
+function ModalUsuario({ usuario, roles, areas, grupos, onCerrar }: { usuario: UsuarioAdmin | null, roles: Rol[], areas: Area[], grupos: typeof GRUPOS, onCerrar: () => void }) {
   const [datos, setDatos] = useState({
     nombreUsuario: usuario?.nombreUsuario ?? "",
     correoUsuario: usuario?.correoUsuario ?? "",
-    area: usuario?.area ?? ""
+    areaId: usuario?.areaId ?? null as number | null
   })
   const [contrasena, setContrasena] = useState("")
   const [confirmacion, setConfirmacion] = useState("")
@@ -165,7 +167,10 @@ function ModalUsuario({ usuario, roles, grupos, onCerrar }: { usuario: UsuarioAd
       </label>
       <label className="block">
         <span className={claseLabel}>Área</span>
-        <input value={datos.area} onChange={e => setDatos({ ...datos, area: e.target.value })} maxLength={100} className={claseInput} />
+        <select value={datos.areaId ?? ""} onChange={e => setDatos({ ...datos, areaId: e.target.value ? Number(e.target.value) : null })} className={claseInput}>
+          <option value="">Sin área</option>
+          {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+        </select>
       </label>
 
       {!usuario && (
@@ -332,9 +337,11 @@ function FilaUsuario({ usuario, roles, esUsted, soloTramites, onEditar, onContra
 
 // ── Pantalla ───────────────────────────────────────────
 
-export default function AdministracionUsuarios({ usuarios, roles, usuarioActualId, soloTramites = false }: {
+export default function AdministracionUsuarios({ usuarios, roles, areas, usuarioActualId, soloTramites = false }: {
   usuarios: UsuarioAdmin[]
   roles: Rol[]
+  // Catálogo de áreas (Catálogos → Áreas)
+  areas: Area[]
   usuarioActualId: number
   // Administrador de Torre de control: solo ve y asigna perfiles de trámites
   soloTramites?: boolean
@@ -351,23 +358,12 @@ export default function AdministracionUsuarios({ usuarios, roles, usuarioActualI
   const grupos = soloTramites ? GRUPOS.slice(0, 1) : GRUPOS
   const rolesOrdenados = grupos.flatMap(g => g.codigos).map(c => roles.find(r => r.codigo === c)).filter(Boolean) as Rol[]
 
-  // Áreas que existen, sin repetir (sin distinguir mayúsculas ni espacios)
-  const areas = useMemo(() => {
-    const unicas = new Map<string, string>()
-    for (const u of usuarios) {
-      const nombre = u.area?.trim()
-      if (nombre && !unicas.has(nombre.toLowerCase())) unicas.set(nombre.toLowerCase(), nombre)
-    }
-    return [...unicas.values()].sort((a, b) => a.localeCompare(b, "es"))
-  }, [usuarios])
-
   // El filtro por perfil usa los perfiles guardados (no los marcados sin guardar)
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
     return usuarios.filter(u => {
       if (texto && ![u.nombreUsuario, u.correoUsuario, u.area].some(v => v?.toLowerCase().includes(texto))) return false
-      const areaUsuario = u.area?.trim().toLowerCase() ?? ""
-      if (area === SIN_AREA ? areaUsuario !== "" : area && areaUsuario !== area.toLowerCase()) return false
+      if (area === SIN_AREA ? u.areaId !== null : area && u.areaId !== Number(area)) return false
       const codigos = u.roles.map(r => r.codigo)
       if (perfil === SIN_PERFILES) return codigos.length === 0
       if (perfil === SIN_TRAMITES) return !codigos.some(c => PERFILES_TRAMITES.includes(c))
@@ -402,7 +398,7 @@ export default function AdministracionUsuarios({ usuarios, roles, usuarioActualI
           </select>
           <select value={area} onChange={e => { setArea(e.target.value); setPagina(1) }} className={`${claseInput} w-full sm:w-48`} aria-label="Filtrar por área">
             <option value="">Todas las áreas</option>
-            {areas.map(a => <option key={a} value={a}>{a}</option>)}
+            {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
             <option value={SIN_AREA}>Sin área</option>
           </select>
         </div>
@@ -468,7 +464,7 @@ export default function AdministracionUsuarios({ usuarios, roles, usuarioActualI
       </div>
 
       {editando !== undefined && (
-        <ModalUsuario key={editando?.id ?? "nuevo"} usuario={editando} roles={rolesOrdenados} grupos={grupos} onCerrar={() => setEditando(undefined)} />
+        <ModalUsuario key={editando?.id ?? "nuevo"} usuario={editando} roles={rolesOrdenados} areas={areas} grupos={grupos} onCerrar={() => setEditando(undefined)} />
       )}
       {contrasena && <ModalContrasena usuario={contrasena} onCerrar={() => setContrasena(null)} />}
     </div>

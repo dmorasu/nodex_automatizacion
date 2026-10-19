@@ -50,7 +50,7 @@ type Fila = { numero: number, valores: Record<string, string> }
 
 // Si se indican trámites, la plantilla viene con una fila por trámite (número, operación,
 // placa/matrícula y tipo sugerido) para completar solo los que tengan gasto
-export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: number | null) => {
+export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: number[] | null) => {
   const [bolsas, tipos, formas, operaciones, tramites] = await Promise.all([
     Bolsas.findAll({ where: { activo: true }, attributes: ['id', 'nombre', 'lineaNegocio'], order: [['nombre', 'ASC']] }),
     TiposGasto.findAll({ where: { activo: true }, attributes: ['id', 'codigo', 'nombre'], order: [['id', 'ASC']] }),
@@ -248,7 +248,7 @@ const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null
 }
 
 // Lee y valida todo el archivo sin escribir nada en la base de datos
-const validarArchivo = async (buffer: Buffer, soloPropiosDe: number | null) => {
+const validarArchivo = async (buffer: Buffer, soloPropiosDe: number[] | null) => {
   const filas = await leerArchivo(buffer)
 
   if (filas.length === 0) throw new ErrorGastos('El archivo no tiene gastos para cargar')
@@ -288,13 +288,13 @@ const validarArchivo = async (buffer: Buffer, soloPropiosDe: number | null) => {
   return { total: filas.length, errores, gastos }
 }
 
-export const validarCargue = async (buffer: Buffer, soloPropiosDe: number | null) => {
+export const validarCargue = async (buffer: Buffer, soloPropiosDe: number[] | null) => {
   const { total, errores } = await validarArchivo(buffer, soloPropiosDe)
   return { total, errores }
 }
 
 // Carga todos los gastos en una sola transacción, solo si ninguna fila tiene error
-export const cargarGastos = async (buffer: Buffer, usuarioId: number, soloPropiosDe: number | null) => {
+export const cargarGastos = async (buffer: Buffer, usuarioId: number, soloPropiosDe: number[] | null) => {
   const { total, errores, gastos } = await validarArchivo(buffer, soloPropiosDe)
 
   if (errores.length) return { ok: false as const, total, errores }

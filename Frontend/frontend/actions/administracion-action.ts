@@ -11,7 +11,8 @@ type Resultado = { ok: true } | { ok: false, errores: string[] }
 export type DatosUsuario = {
   nombreUsuario: string
   correoUsuario: string
-  area: string
+  // Área del catálogo (null = sin área)
+  areaId: number | null
 }
 
 const llamar = async (ruta: string, metodo: string, cuerpo: unknown): Promise<Resultado> => {

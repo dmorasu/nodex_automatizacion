@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { param, validationResult, body } from "express-validator";
 import SolicitudTramites from "../models/solicitudTramites";
 import DocumentoSolicitud from "../models/documentosSolicitud";
-import { soloTramitesPropios } from "./auth";
+import { creadoresPermitidos, soloTramitesPropios } from "./auth";
 
 export const validateSolicitudTramiteExits = async (
   req: Request,
@@ -30,8 +30,10 @@ export const validateSolicitudTramiteExits = async (
     // 4️⃣ Buscar en DB
     const solicitudTramites = await SolicitudTramites.findByPk(idNumber);
 
-    // Gestión de activos solo accede a los trámites que creó (a los demás, como si no existieran)
-    if (!solicitudTramites || (soloTramitesPropios(req) && solicitudTramites.usuarioId !== req.usuario.id)) {
+    // Gestión de activos solo accede a los trámites que creó él o alguien de su área
+    // (a los demás, como si no existieran)
+    const permitidos = solicitudTramites && await creadoresPermitidos(req)
+    if (!solicitudTramites || (permitidos && !permitidos.includes(solicitudTramites.usuarioId))) {
       return res.status(404).json({
         error: "La solicitud buscada no se encuentra en la base de datos",
       });
@@ -91,15 +93,16 @@ export const validateSolicitudTramitesId = async (
 
 // =====================================================
 // ACCESO DE GESTIÓN DE ACTIVOS A RECURSOS DEL TRÁMITE
-// Gestión de activos solo accede a lo de los trámites que creó.
+// Gestión de activos solo accede a lo de los trámites que creó él o alguien de su área.
 // Se responde 404 (como si no existiera) para no revelar trámites ajenos.
 // =====================================================
 
 export const puedeAccederTramite = async (req: Request, tramiteId: unknown) => {
-  if (!soloTramitesPropios(req)) return true
+  const permitidos = await creadoresPermitidos(req)
+  if (!permitidos) return true
 
   const tramite = await SolicitudTramites.findByPk(Number(tramiteId), { attributes: ["id", "usuarioId"] })
-  return !!tramite && tramite.usuarioId === req.usuario.id
+  return !!tramite && permitidos.includes(tramite.usuarioId)
 }
 
 const responderNoEncontrado = (res: Response) =>

@@ -1,12 +1,12 @@
 import { Router, type NextFunction, type Request, type Response } from 'express'
 import { puedeAsignarAnalistas } from '../middleware/auth'
-import { borrarCatalogo, ErrorCatalogo, guardarCatalogo, listarCatalogos, type TipoCatalogo } from '../services/catalogosTramites'
+import { borrarCatalogo, ErrorCatalogo, guardarCatalogo, listarAreas, listarCatalogos, type TipoCatalogo } from '../services/catalogosTramites'
 
 // Catálogos de Nodex Trámites (/api/catalogos-tramites): tipos de trámite, subestados,
-// operaciones y tipos de rechazo. Los administra el Administrador de Torre de control o Admin.
+// operaciones, tipos de rechazo y áreas. Los administra el Administrador de Torre de control o Admin.
 const router = Router()
 
-const TIPOS: TipoCatalogo[] = ['tramites', 'operaciones', 'subestados', 'rechazos']
+const TIPOS: TipoCatalogo[] = ['tramites', 'operaciones', 'subestados', 'rechazos', 'areas']
 
 const responder = (res: Response, error: unknown) => {
   if (error instanceof ErrorCatalogo) return res.status(error.status).json({ error: error.message })
@@ -27,6 +27,15 @@ router.param('tipo', (req: Request, res: Response, next: NextFunction, tipo: str
 router.get('/', async (_req: Request, res: Response) => {
   try {
     res.json(await listarCatalogos())
+  } catch (error) {
+    responder(res, error)
+  }
+})
+
+// Solo las áreas (para elegir el área en el formulario de usuarios)
+router.get('/areas', async (_req: Request, res: Response) => {
+  try {
+    res.json(await listarAreas())
   } catch (error) {
     responder(res, error)
   }

@@ -41,11 +41,13 @@ const fechaDeEntrega = (valor: Date | string | null) =>
 export type DatosSubsanacion = {
   solicitudTramiteId: number
   usuario: { id: number, nombreUsuario: string }
+  // Quien lo marca y los de su área (el trámite debe haberlo creado uno de ellos)
+  usuariosDelArea: number[]
   fechaEntregaResultado: string   // YYYY-MM-DD
   observacion: string
 }
 
-export const subsanarNovedad = async ({ solicitudTramiteId, usuario, fechaEntregaResultado, observacion }: DatosSubsanacion) => {
+export const subsanarNovedad = async ({ solicitudTramiteId, usuario, usuariosDelArea, fechaEntregaResultado, observacion }: DatosSubsanacion) => {
   const texto = observacion?.trim() ?? ''
   if (!texto) throw new ErrorNovedadSubsanada('Escriba qué se subsanó')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEntregaResultado ?? '') || isNaN(Date.parse(`${fechaEntregaResultado}T00:00:00Z`))) {
@@ -59,8 +61,8 @@ export const subsanarNovedad = async ({ solicitudTramiteId, usuario, fechaEntreg
     // Bloqueo de la fila: dos clics seguidos no registran dos veces la subsanación
     const solicitud = await SolicitudTramites.findByPk(solicitudTramiteId, { transaction, lock: transaction.LOCK.UPDATE })
     if (!solicitud) throw new ErrorNovedadSubsanada('El trámite no existe', 404)
-    if (solicitud.usuarioId !== usuario.id) {
-      throw new ErrorNovedadSubsanada('Solo quien creó el trámite puede marcar la novedad como subsanada', 403)
+    if (!usuariosDelArea.includes(solicitud.usuarioId)) {
+      throw new ErrorNovedadSubsanada('Solo quien creó el trámite o alguien de su área puede marcar la novedad como subsanada', 403)
     }
     if (Number(solicitud.get('estadoActualTramite')) !== ESTADO_EN_ESPERA_POR_NOVEDAD) {
       throw new ErrorNovedadSubsanada('El trámite no está en espera por novedad', 409)

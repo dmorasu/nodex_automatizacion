@@ -99,9 +99,9 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
   const estadoActual = solicitudTramite.estadoActual?.nombreEstado ?? historialEstados[0]?.estado.nombreEstado ?? null;
   const ultimoCambio = historialEstados[0]?.createdAt ?? null;
 
-  // Quien creó el trámite lo puede marcar como subsanado cuando está en espera por novedad
+  // Quien creó el trámite (o alguien de su área) lo puede marcar como subsanado cuando está en espera por novedad
   const novedadActual = historialEstados[0]?.estado.nombreEstado === "En espera por novedad" ? historialEstados[0] : null;
-  const botonSubsanar = estadoActual === "En espera por novedad" && solicitudTramite.usuario?.id === usuario.id && (
+  const botonSubsanar = estadoActual === "En espera por novedad" && solicitudTramite.delMismoArea && (
     <SubsanarNovedad solicitudTramiteId={solicitudTramite.id} novedad={novedadActual?.tipoRechazo?.nombre ?? null} />
   );
 

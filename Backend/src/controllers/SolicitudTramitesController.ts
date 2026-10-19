@@ -20,7 +20,7 @@ import { crearNotificacion } from '../services/notificacionesServices'
 import SubEstadosSolicitud from "../models/subEstadosSolicitud"
 import SubEstados from "../models/subEstados"
 import TiposRechazo from "../models/tiposRechazos"
-import { esAnalistaTramites, puedeAsignarAnalistas, soloTramitesPropios } from '../middleware/auth'
+import { esAnalistaTramites, puedeAsignarAnalistas, soloTramitesPropios, usuariosDeMiArea } from '../middleware/auth'
 import { ATRIBUTO_NOMBRE_ANALISTA } from '../services/analistasTramites'
 import { obtenerTablero } from '../services/tableroTramites'
 import { generarExcelTablero } from '../services/exportarTablero'
@@ -98,8 +98,8 @@ static obtenerSolicitudes = async (req: Request, res: Response) => {
 
     const where:any = {}
 
-    // Gestión de activos solo ve los trámites que creó
-    if (soloTramitesPropios(req)) where.usuarioId = req.usuario.id
+    // Gestión de activos ve los trámites que creó; al buscar, también los de su área
+    if (soloTramitesPropios(req)) where.usuarioId = search ? await usuariosDeMiArea(req) : req.usuario.id
 
     // El analista ve en el inicio solo sus trámites; al buscar, encuentra cualquiera
     if (esAnalistaTramites(req) && !search) where.analistaAsignado = req.usuario.id
@@ -433,7 +433,9 @@ static getAll = async (req: Request, res: Response) => {
       }
     )
 
-    res.json(solicitudTramites)
+    // Lo creó él o alguien de su área: puede marcar la novedad como subsanada
+    const delMismoArea = (await usuariosDeMiArea(req)).includes(solicitudTramites.usuarioId)
+    res.json({ ...solicitudTramites.toJSON(), delMismoArea })
 
   } catch (error) {
     console.error("ERROR GET SOLICITUD:", error)
@@ -509,8 +511,12 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
     const where: any = {}
     const whereProgramacion: any = {}
 
-    // Gestión de activos solo ve los trámites que creó
-    if (soloTramitesPropios(req)) where.usuarioId = req.usuario.id
+    // Gestión de activos ve los trámites que creó; al buscar o filtrar, también los de su área
+    if (soloTramitesPropios(req)) {
+      const buscando = [search, estadoId, tramiteId, tramitadorId, operacionesId, analistaId, placa, fechaFinalizacionDesde, fechaFinalizacionHasta]
+        .some(valor => String(valor ?? '').trim())
+      where.usuarioId = buscando ? await usuariosDeMiArea(req) : req.usuario.id
+    }
 
     // ==================================================
     // 🔍 BÚSQUEDA POR ID SOLICITUD O IDENTIFICACIÓN CLIENTE

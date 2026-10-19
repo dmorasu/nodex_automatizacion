@@ -59,7 +59,7 @@ const datosUsuario = [
   body('correoUsuario')
     .isEmail().withMessage('Correo no válido')
     .isLength({ max: 100 }).withMessage('El correo no puede superar 100 caracteres'),
-  body('area').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
+  body('areaId').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('Área no válida').toInt()
 ]
 
 // Misma política del registro y del cambio de contraseña (utils/politicaContrasena.ts)

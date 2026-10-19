@@ -2,7 +2,7 @@ import { Metadata } from "next"
 import { ShieldCheck } from "lucide-react"
 import { verificacionSesion } from "@/src/auth/dal"
 import { encabezadosSesion } from "@/src/lib/sesionApi"
-import AdministracionUsuarios, { type Rol, type UsuarioAdmin } from "@/components/administracion/AdministracionUsuarios"
+import AdministracionUsuarios, { type Area, type Rol, type UsuarioAdmin } from "@/components/administracion/AdministracionUsuarios"
 
 export const metadata: Metadata = {
   title: "Nodex - Administración",
@@ -11,13 +11,15 @@ export const metadata: Metadata = {
 export default async function AdministracionPage() {
   const { usuario, esAdmin } = await verificacionSesion()
 
-  const [reqUsuarios, reqRoles] = await Promise.all([
+  const [reqUsuarios, reqRoles, reqAreas] = await Promise.all([
     fetch(`${process.env.API_URL}/gastos/admin/usuarios`, { headers: encabezadosSesion(), cache: "no-store" }),
-    fetch(`${process.env.API_URL}/gastos/admin/roles`, { headers: encabezadosSesion(), cache: "no-store" })
+    fetch(`${process.env.API_URL}/gastos/admin/roles`, { headers: encabezadosSesion(), cache: "no-store" }),
+    fetch(`${process.env.API_URL}/catalogos-tramites/areas`, { headers: encabezadosSesion(), cache: "no-store" })
   ])
 
   const usuarios: UsuarioAdmin[] = reqUsuarios.ok ? await reqUsuarios.json() : []
   const roles: Rol[] = reqRoles.ok ? await reqRoles.json() : []
+  const areas: Area[] = reqAreas.ok ? await reqAreas.json() : []
 
   return (
     <div className="w-full space-y-6">
@@ -35,7 +37,7 @@ export default async function AdministracionPage() {
         </div>
       </div>
 
-      <AdministracionUsuarios usuarios={usuarios} roles={roles} usuarioActualId={usuario.id} soloTramites={!esAdmin} />
+      <AdministracionUsuarios usuarios={usuarios} roles={roles} areas={areas} usuarioActualId={usuario.id} soloTramites={!esAdmin} />
     </div>
   )
 }

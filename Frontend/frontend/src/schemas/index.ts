@@ -300,6 +300,8 @@ export const UsuarioSchema = z.object({
 
 export const SolicitudAPIRespuestaSchema = z.object({
   id: z.number(),
+  // Lo creó el usuario en sesión o alguien de su área (puede marcar la novedad como subsanada)
+  delMismoArea: z.boolean().optional(),
   detalleSolicitud: z.string(),
   direccionTramite: z.string(),
 tramiteId: z.number(),

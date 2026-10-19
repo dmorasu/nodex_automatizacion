@@ -11,6 +11,8 @@ declare global {
     interface Request {
       // Códigos de rol del usuario (ej: ['TESORERIA']). Se cargan en `autenticacion`
       roles?: string[]
+      // Ids de los usuarios de su misma área (se consultan una vez por petición)
+      usuariosDeSuArea?: Promise<number[]>
     }
   }
 }
@@ -53,7 +55,7 @@ export const autenticacion = async (
     }
 
     const usuario = await Usuarios.findByPk(decoded.id, {
-      attributes: ["id", "nombreUsuario", "correoUsuario", "versionSesion"],
+      attributes: ["id", "nombreUsuario", "correoUsuario", "versionSesion", "areaId"],
       include: [{
         model: Roles,
         attributes: ["codigo"],
@@ -111,6 +113,19 @@ export const soloTramitesPropios = (req: Request) => {
   const roles = req.roles ?? []
   return roles.includes("GESTION_ACTIVOS") && !roles.includes("TORRE_CONTROL") && !roles.includes("ADMIN")
 }
+
+// Ids de los usuarios de la misma área (incluido él). Sin área: solo él.
+// Al buscar, cada usuario encuentra los trámites y gastos que crearon los de su área
+export const usuariosDeMiArea = (req: Request): Promise<number[]> => {
+  const areaId = req.usuario.areaId
+  if (!areaId) return Promise.resolve([req.usuario.id])
+  req.usuariosDeSuArea ??= Usuarios.findAll({ where: { areaId }, attributes: ["id"] }).then(usuarios => usuarios.map(u => u.id))
+  return req.usuariosDeSuArea
+}
+
+// Gestión de activos sin Torre de control: quiénes crearon los trámites que puede abrir y trabajar
+// (él y los de su área). null = sin límite
+export const creadoresPermitidos = async (req: Request) => (soloTramitesPropios(req) ? usuariosDeMiArea(req) : null)
 
 // Analista (sin ser administrador): en el inicio ve solo los trámites asignados a él
 export const esAnalistaTramites = (req: Request) => {

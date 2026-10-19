@@ -3,7 +3,7 @@ import multer from 'multer'
 import { cargarGastos, generarPlantilla, validarCargue } from '../../services/gastos/cargueMasivoGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
-import { soloTramitesPropios } from '../../middleware/auth'
+import { creadoresPermitidos } from '../../middleware/auth'
 import { responderError } from './utilidades'
 
 // Un solo archivo Excel (.xlsx) de hasta 5 MB en el campo "archivo"
@@ -14,7 +14,7 @@ export const recibirExcel = multer({
 }).single('archivo')
 
 // Gestión de activos solo trabaja con sus propios trámites
-const propiosDe = (req: Request) => (soloTramitesPropios(req) ? req.usuario.id : null)
+const propiosDe = (req: Request) => creadoresPermitidos(req)
 
 const archivo = (req: Request) => {
   if (!req.file) throw new ErrorGastos('Adjunte el archivo Excel (.xlsx) generado con la plantilla')
@@ -32,7 +32,7 @@ export class CargueMasivoGastosController {
         .filter(id => Number.isInteger(id) && id > 0)
         .slice(0, 500)
 
-      const buffer = await generarPlantilla(tramiteIds, propiosDe(req))
+      const buffer = await generarPlantilla(tramiteIds, await propiosDe(req))
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       res.setHeader('Content-Disposition', 'attachment; filename="plantilla_gastos.xlsx"')
@@ -45,7 +45,7 @@ export class CargueMasivoGastosController {
   // POST /cargue-masivo/validar  (archivo) → { total, errores: [{ fila, error }] }
   static validar = async (req: Request, res: Response) => {
     try {
-      res.json(await validarCargue(archivo(req), propiosDe(req)))
+      res.json(await validarCargue(archivo(req), await propiosDe(req)))
     } catch (error) {
       responderError(res, error)
     }
@@ -54,7 +54,7 @@ export class CargueMasivoGastosController {
   // POST /cargue-masivo/cargar  (archivo) → todo o nada
   static cargar = async (req: Request, res: Response) => {
     try {
-      const resultado = await cargarGastos(archivo(req), req.usuario.id, propiosDe(req))
+      const resultado = await cargarGastos(archivo(req), req.usuario.id, await propiosDe(req))
 
       if (!resultado.ok) {
         return res.status(400).json({

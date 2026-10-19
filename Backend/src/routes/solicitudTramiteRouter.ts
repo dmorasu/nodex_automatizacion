@@ -21,6 +21,7 @@ import { SubEstadosSolicitudController } from '../controllers/SubEstadosSolicitu
 import { requiereRol } from '../middleware/gastos/requiereRol'
 import { obtenerHistorial } from '../services/historialTramites'
 import { ErrorNovedadSubsanada, subsanarNovedad } from '../services/novedadSubsanada'
+import { usuariosDeMiArea } from '../middleware/auth'
 
 // La sesión y el perfil (Gestión de activos o Torre de control) se exigen en server.ts.
 // Estas acciones son solo de Torre de control:
@@ -135,13 +136,14 @@ router.delete('/:solicitudTramitesId/trazabilidad/:trazabilidadId',
 
 
 // ================= ESTADOS =================
-// Quien creó el trámite marca la novedad como subsanada (el único estado que puede cambiar).
-// Gestión de activos llega aquí porque la ruta admite su perfil; el servicio exige ser el creador.
+// Quien creó el trámite (o alguien de su área) marca la novedad como subsanada (el único estado que
+// puede cambiar). Gestión de activos llega aquí porque la ruta admite su perfil; el servicio lo revisa.
 router.post('/:solicitudTramitesId/subsanar-novedad', async (req, res) => {
   try {
     await subsanarNovedad({
       solicitudTramiteId: req.solicitudTramites.id,
       usuario: { id: req.usuario.id, nombreUsuario: req.usuario.nombreUsuario },
+      usuariosDelArea: await usuariosDeMiArea(req),
       fechaEntregaResultado: String(req.body?.fechaEntregaResultado ?? ''),
       observacion: String(req.body?.observacion ?? '')
     })

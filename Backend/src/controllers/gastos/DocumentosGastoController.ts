@@ -83,7 +83,7 @@ const verificarAccesoLote = async (req: Request, lotePagoId: number) => {
 }
 
 // Busca el documento y verifica acceso según a qué pertenece.
-// soloLectura: los documentos de un gasto (y de sus reintegros) los ve cualquier usuario, como el gasto
+// soloLectura: los documentos de un gasto (y de sus reintegros) los ven también los de su área, como el gasto
 const obtenerDocumentoConAcceso = async (req: Request, { soloLectura = false } = {}) => {
   const documento = await DocumentosGasto.findByPk(Number(req.params.documentoId))
 

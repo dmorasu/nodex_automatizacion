@@ -45,6 +45,14 @@ class Usuarios extends Model {
   declare area: string;
 
 
+  // Área del catálogo (tabla Areas). `area` guarda el mismo nombre en texto: la versión 4.5
+  // comparte esta tabla y lo sigue leyendo
+  @Column({
+    type: DataType.INTEGER
+  })
+  declare areaId: number | null;
+
+
   // Va en el token (campo v): si no coincide, la sesión ya no sirve (ver utils/jwt.ts)
   @Column({
     type: DataType.INTEGER,

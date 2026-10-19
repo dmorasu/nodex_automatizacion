@@ -322,9 +322,10 @@ export const reportarRealizado = async (tramitadorId: number, solicitudTramiteId
 
 // =====================================
 // EQUIPO INTERNO (Nodex Trámites)
-// `soloDelUsuario`: Gestión de activos sin Torre de control solo ve los trámites que creó
+// `soloDelUsuario`: Gestión de activos sin Torre de control solo ve los trámites que crearon estos usuarios
+// (él y los de su área)
 // =====================================
-const tramiteVisibleParaUsuario = async (solicitudTramiteId: number, soloDelUsuario: number | null) => {
+const tramiteVisibleParaUsuario = async (solicitudTramiteId: number, soloDelUsuario: number[] | null) => {
   const tramite = await SolicitudTramites.findOne({
     where: { id: solicitudTramiteId, ...(soloDelUsuario ? { usuarioId: soloDelUsuario } : {}) },
     attributes: ['id']
@@ -332,13 +333,13 @@ const tramiteVisibleParaUsuario = async (solicitudTramiteId: number, soloDelUsua
   if (!tramite) throw new ErrorNegocio('Trámite no encontrado', 404)
 }
 
-export const seguimientoParaUsuario = async (solicitudTramiteId: number, soloDelUsuario: number | null) => {
+export const seguimientoParaUsuario = async (solicitudTramiteId: number, soloDelUsuario: number[] | null) => {
   await tramiteVisibleParaUsuario(solicitudTramiteId, soloDelUsuario)
   return obtenerSeguimiento(solicitudTramiteId)
 }
 
 export const comentarComoUsuario = async (
-  usuarioId: number, solicitudTramiteId: number, comentario: string, soloDelUsuario: number | null
+  usuarioId: number, solicitudTramiteId: number, comentario: string, soloDelUsuario: number[] | null
 ) => {
   await tramiteVisibleParaUsuario(solicitudTramiteId, soloDelUsuario)
   const creado = await ComentarioTramite.create({ solicitudTramiteId, usuarioId, comentario: comentario.trim() })
@@ -348,7 +349,7 @@ export const comentarComoUsuario = async (
 }
 
 // Bandeja de trámites reportados como realizados
-export const listarReportes = async (estado: string, soloDelUsuario: number | null) => {
+export const listarReportes = async (estado: string, soloDelUsuario: number[] | null) => {
   const reportes = await ReporteRealizado.findAll({
     where: { estado },
     include: [
@@ -392,7 +393,7 @@ export const listarReportes = async (estado: string, soloDelUsuario: number | nu
 }
 
 // Marca el reporte como revisado. El estado del trámite se cambia aparte, con el flujo normal
-export const revisarReporte = async (reporteId: number, usuarioId: number, nota: string | null, soloDelUsuario: number | null) => {
+export const revisarReporte = async (reporteId: number, usuarioId: number, nota: string | null, soloDelUsuario: number[] | null) => {
   const reporte = await ReporteRealizado.findByPk(reporteId)
   if (!reporte) throw new ErrorNegocio('Reporte no encontrado', 404)
   await tramiteVisibleParaUsuario(reporte.solicitudTramiteId, soloDelUsuario)
@@ -409,7 +410,7 @@ export const revisarReporte = async (reporteId: number, usuarioId: number, nota:
 
 // Devolver el trámite al tramitador: el reporte de realizado no se acepta. El motivo es
 // obligatorio, le llega por push y lo ve en la app; puede volver a reportarlo cuando lo corrija.
-export const devolverReporte = async (reporteId: number, usuarioId: number, motivo: string, soloDelUsuario: number | null) => {
+export const devolverReporte = async (reporteId: number, usuarioId: number, motivo: string, soloDelUsuario: number[] | null) => {
   const texto = motivo?.trim()
   if (!texto) throw new ErrorNegocio('Escriba el motivo de la devolución')
   const reporte = await ReporteRealizado.findByPk(reporteId)

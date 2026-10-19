@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { Op, Order, WhereOptions, col, fn, literal, where } from 'sequelize'
+import { Op, Order, WhereOptions, col, fn, literal } from 'sequelize'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import EstadosGasto from '../../models/gastos/estadosGasto'
 import TiposGasto from '../../models/gastos/tiposGasto'
@@ -30,7 +30,7 @@ import LegalizacionesCaja from '../../models/gastos/legalizacionesCaja'
 import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
 import SolicitudTramites from '../../models/solicitudTramites'
 import Anticipos from '../../models/gastos/anticipos'
-import { soloTramitesPropios } from '../../middleware/auth'
+import { creadoresPermitidos, usuariosDeMiArea } from '../../middleware/auth'
 import { avisoSaldoCliente, saldoDelCliente } from '../../services/gastos/anticipos'
 import { obtenerAnticipoConAcceso } from './AnticiposController'
 
@@ -63,13 +63,15 @@ export const puedeGestionarGasto = async (req: Request, gasto: SolicitudesGasto)
 }
 
 // Busca el gasto y verifica que el usuario pueda usarlo.
-// Para solo ver (soloLectura) cualquier usuario abre cualquier gasto: se encuentran por número,
-// placa, matrícula u operación. A quien no puede gestionarlo se le responde 404 (no se revela que existe).
+// Para solo ver (soloLectura) también sirven los gastos que crearon los de su área (los encuentra
+// al buscar). A quien no puede se le responde 404 (no se revela que existe).
 export const obtenerGastoConAcceso = async (req: Request, id: number, { soloLectura = false } = {}) => {
   const gasto = await SolicitudesGasto.findByPk(id)
-  if (!gasto || (!soloLectura && !(await puedeGestionarGasto(req, gasto)))) {
-    throw new ErrorGastos('El gasto no existe', 404)
-  }
+  const puede = gasto && (
+    await puedeGestionarGasto(req, gasto) ||
+    (soloLectura && (await usuariosDeMiArea(req)).includes(gasto.creadoPor))
+  )
+  if (!puede) throw new ErrorGastos('El gasto no existe', 404)
   return gasto
 }
 
@@ -122,27 +124,6 @@ const CON_FACTURA_TRAMITADOR = `EXISTS (
   WHERE s.solicitud_gasto_id = "SolicitudesGasto"."id" AND s.tipo = 'FACTURA' AND s.estado IN ('PENDIENTE', 'APROBADO')
 )`
 
-// "ABC-123" → "ABC123", "50c 123456" → "50C123456": así la placa o la matrícula se encuentra
-// con o sin guiones ni espacios
-const normalizar = (texto: string) => texto.toUpperCase().replace(/[^A-Z0-9]/g, '')
-const columnaNormalizada = (columna: string) =>
-  fn('regexp_replace', fn('upper', col(`SolicitudesGasto.${columna}`)), '[^A-Z0-9]', '', 'g')
-
-// Búsqueda exacta, sin importar quién creó el gasto: número de gasto ("GAS-2026-000123",
-// "2026-000123", "000123" o "123"; el consecutivo es el id), placa o matrícula inmobiliaria
-const coincidenciasExactas = (busqueda: string): WhereOptions[] => {
-  const exactas: WhereOptions[] = []
-  const numero = /^(?:GAS-?)?(?:\d{4}-)?(\d{1,9})$/i.exec(busqueda.replace(/\s/g, ''))
-  if (numero) exactas.push({ codigo: { [Op.iLike]: `GAS-____-${numero[1].replace(/^0+/, '').padStart(6, '0')}` } })
-
-  const texto = normalizar(busqueda)
-  if (texto.length >= 4) {
-    exactas.push(where(columnaNormalizada('placa'), texto))
-    exactas.push(where(columnaNormalizada('matricula_inmobiliaria'), texto))
-  }
-  return exactas
-}
-
 const desdeBogota = (fecha: string) => new Date(`${fecha}T00:00:00-05:00`)
 const hastaBogota = (fecha: string) => new Date(`${fecha}T23:59:59.999-05:00`)
 
@@ -151,8 +132,8 @@ const hastaBogota = (fecha: string) => new Date(`${fecha}T23:59:59.999-05:00`)
 //  tramitadorId · creadoPor · reembolsable=si|no · sinCuentaCobro=si · soporteTramitador=si|no
 //  conTramite=si|no · reintegroPendiente=si · desde/hasta (creación) · pagoDesde/pagoHasta · busqueda
 //  cajaMenor=si|no (gastos que salen de una caja menor)
-//  Sin rol (o en "mis gastos") se ven los propios, salvo al filtrar por operación o al buscar
-//  un número de gasto, una placa o una matrícula exactos: eso trae los de cualquier usuario
+//  Sin rol (o en "mis gastos") se ven los propios; al buscar o filtrar por operación, también los
+//  que crearon los de su misma área
 const condicionesListado = async (req: Request) => {
   const q = req.query
   const condiciones: WhereOptions[] = []
@@ -161,9 +142,10 @@ const condicionesListado = async (req: Request) => {
   let alcance: WhereOptions | null = null
   if (q.alcance === 'todos' && !puedeVerTodos(req) && esAuxiliarCaja(req)) {
     alcance = { bolsaId: (await cajaDelUsuario(req.usuario.id))?.id ?? -1 }
-  } else if (q.alcance !== 'todos' || !puedeVerTodos(req)) alcance = { creadoPor: req.usuario.id }
-  // Por operación se ven los gastos de todos los usuarios (qué se ha pedido en esa operación)
-  if (q.operacionId) alcance = null
+  } else if (q.alcance !== 'todos' || !puedeVerTodos(req)) {
+    const buscando = String(q.busqueda ?? '').trim() || q.operacionId
+    alcance = { creadoPor: buscando ? await usuariosDeMiArea(req) : req.usuario.id }
+  }
 
   // Gastos que se pagan por caja menor (cajaMenor=si) o el resto (cajaMenor=no)
   if (q.cajaMenor === 'si' || q.cajaMenor === 'no') {
@@ -244,11 +226,9 @@ const condicionesListado = async (req: Request) => {
         ...(/^\d+$/.test(busqueda) ? [{ solicitudTramiteId: Number(busqueda) }] : [])
       ]
     }
-    // El número de gasto, la placa y la matrícula exactos encuentran los gastos de cualquier usuario
-    condiciones.push(alcance
-      ? { [Op.or]: [{ [Op.and]: [alcance, coincidencias] }, ...coincidenciasExactas(busqueda)] }
-      : coincidencias)
-  } else if (alcance) condiciones.push(alcance)
+    condiciones.push(coincidencias)
+  }
+  if (alcance) condiciones.push(alcance)
 
   return condiciones
 }
@@ -319,7 +299,7 @@ export class SolicitudesGastoController {
 
   static getById = async (req: Request, res: Response) => {
     try {
-      // Cualquier usuario lo ve; editar, anular y subir documentos queda para quien lo gestiona
+      // También lo ven los de su área; editar, anular y subir documentos queda para quien lo gestiona
       const encontrado = await obtenerGastoConAcceso(req, Number(req.params.id), { soloLectura: true })
       const gestiona = await puedeGestionarGasto(req, encontrado)
 
@@ -497,8 +477,9 @@ export class SolicitudesGastoController {
     try {
       const tramite = await SolicitudTramites.findByPk(Number(req.params.id), { attributes: ['id', 'usuarioId'] })
 
-      // Gestión de activos solo ve los gastos de sus propios trámites
-      if (!tramite || (soloTramitesPropios(req) && tramite.usuarioId !== req.usuario.id)) {
+      // Gestión de activos solo ve los gastos de los trámites que crearon él o los de su área
+      const permitidos = tramite && await creadoresPermitidos(req)
+      if (!tramite || (permitidos && !permitidos.includes(tramite.usuarioId))) {
         throw new ErrorGastos('El trámite no existe', 404)
       }
 

@@ -15,7 +15,7 @@ import {
   type TipoDocumentoTramite
 } from '../../services/tramitadores/tramitesTramitador'
 import { ESTADOS_REPORTE } from '../../models/tramitadores/reporteRealizado'
-import { soloTramitesPropios } from '../../middleware/auth'
+import { creadoresPermitidos, soloTramitesPropios } from '../../middleware/auth'
 import { notificarOperacionTramitador } from '../../services/tramitadores/correosTramitador'
 import { TIPOS_DOCUMENTO_TRAMITE } from '../../services/tramitadores/nombresDocumento'
 import { responderError } from '../gastos/utilidades'
@@ -117,15 +117,17 @@ export class TramitesTramitadorController {
 }
 
 // ── Nodex Trámites: seguimiento de lo que reportan los tramitadores ──
-// Gestión de activos sin Torre de control solo ve los trámites que creó
-const limiteDeUsuario = (req: Request) => (soloTramitesPropios(req) ? req.usuario.id : null)
+// Gestión de activos sin Torre de control: en cada trámite, los que creó él o alguien de su área;
+// la bandeja de reportes muestra solo los suyos
+const limiteDeUsuario = (req: Request) => creadoresPermitidos(req)
+const limiteDeBandeja = (req: Request) => (soloTramitesPropios(req) ? [req.usuario.id] : null)
 
 export class SeguimientoTramitadorController {
 
   // GET /tramites/:id → comentarios y reportes del trámite
   static seguimiento = async (req: Request, res: Response) => {
     try {
-      res.json(await seguimientoParaUsuario(Number(req.params.id), limiteDeUsuario(req)))
+      res.json(await seguimientoParaUsuario(Number(req.params.id), await limiteDeUsuario(req)))
     } catch (error) {
       responderError(res, error)
     }
@@ -134,7 +136,7 @@ export class SeguimientoTramitadorController {
   // POST /tramites/:id/comentarios  { comentario } → respuesta al tramitador
   static comentar = async (req: Request, res: Response) => {
     try {
-      await comentarComoUsuario(req.usuario.id, Number(req.params.id), req.body.comentario, limiteDeUsuario(req))
+      await comentarComoUsuario(req.usuario.id, Number(req.params.id), req.body.comentario, await limiteDeUsuario(req))
       res.status(201).json('Comentario agregado')
     } catch (error) {
       responderError(res, error)
@@ -147,7 +149,7 @@ export class SeguimientoTramitadorController {
       const estado = req.query.estado === ESTADOS_REPORTE.REVISADO || req.query.estado === ESTADOS_REPORTE.DEVUELTO
         ? req.query.estado
         : ESTADOS_REPORTE.PENDIENTE
-      res.json(await listarReportes(estado, limiteDeUsuario(req)))
+      res.json(await listarReportes(estado, limiteDeBandeja(req)))
     } catch (error) {
       responderError(res, error)
     }
@@ -156,7 +158,7 @@ export class SeguimientoTramitadorController {
   // POST /reportes-realizado/:id/revisar  { nota? }
   static revisar = async (req: Request, res: Response) => {
     try {
-      await revisarReporte(Number(req.params.id), req.usuario.id, textoOpcional(req.body.nota), limiteDeUsuario(req))
+      await revisarReporte(Number(req.params.id), req.usuario.id, textoOpcional(req.body.nota), await limiteDeUsuario(req))
       res.json('Reporte marcado como revisado')
     } catch (error) {
       responderError(res, error)
@@ -166,7 +168,7 @@ export class SeguimientoTramitadorController {
   // POST /reportes-realizado/:id/devolver  { motivo } → el trámite vuelve al tramitador
   static devolver = async (req: Request, res: Response) => {
     try {
-      await devolverReporte(Number(req.params.id), req.usuario.id, String(req.body.motivo ?? ''), limiteDeUsuario(req))
+      await devolverReporte(Number(req.params.id), req.usuario.id, String(req.body.motivo ?? ''), await limiteDeUsuario(req))
       res.json('Trámite devuelto al tramitador')
     } catch (error) {
       responderError(res, error)

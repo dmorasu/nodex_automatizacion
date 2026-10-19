@@ -13,7 +13,7 @@ import uploadDocumento from "../middleware/uploadDocumento";
 
 import {
   autenticacion,
-  soloTramitesPropios
+  creadoresPermitidos
 } from "../middleware/auth";
 
 import {
@@ -30,11 +30,11 @@ const router = Router();
 const uploadUno = multer({ storage: multer.memoryStorage(), limits: { fileSize: 32 * 1024 * 1024, files: 1 } });
 
 // POST /masivo/validar { ids } → a qué trámite va cada número (los que no aparecen no existen
-// o no son del usuario)
+// o no son del usuario ni de su área)
 router.post("/masivo/validar", autenticacion, async (req: Request, res: Response) => {
   try {
     const ids = ((req.body?.ids ?? []) as unknown[]).map(Number)
-    res.json(await tramitesParaDocumentos(ids, soloTramitesPropios(req) ? req.usuario.id : null))
+    res.json(await tramitesParaDocumentos(ids, await creadoresPermitidos(req)))
   } catch (error) {
     responderError(res, error)
   }

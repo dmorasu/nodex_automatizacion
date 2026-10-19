@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Metadata } from "next"
 import clsx from "clsx"
-import { Ban, BriefcaseBusiness, FileText, HardHat } from "lucide-react"
+import { Ban, BriefcaseBusiness, FileText, HardHat, Users } from "lucide-react"
 import { requierePerfil } from "@/src/auth/dal"
 import { encabezadosSesion } from "@/src/lib/sesionApi"
 import AdministrarCatalogos, { type PestanaCatalogo } from "@/components/catalogos/AdministrarCatalogos"
@@ -17,11 +17,12 @@ const PESTANAS: { id: Pestana, nombre: string, icono: typeof HardHat, descripcio
   { id: "tramitadores", nombre: "Tramitadores", icono: HardHat, descripcion: "Cree, edite y active o desactive tramitadores. Los inactivos no se pueden asignar a trámites." },
   { id: "tramites", nombre: "Tipos de trámite", icono: FileText, descripcion: "Tipos de trámite y sus subestados.", soloAdministradores: true },
   { id: "operaciones", nombre: "Operaciones", icono: BriefcaseBusiness, descripcion: "Operaciones y su centro de costos (también las usa Nodex Gastos).", soloAdministradores: true },
-  { id: "rechazos", nombre: "Tipos de rechazo", icono: Ban, descripcion: "Causas que se eligen al pasar un trámite a novedad.", soloAdministradores: true }
+  { id: "rechazos", nombre: "Tipos de rechazo", icono: Ban, descripcion: "Causas que se eligen al pasar un trámite a novedad.", soloAdministradores: true },
+  { id: "areas", nombre: "Áreas", icono: Users, descripcion: "Áreas de los usuarios. Al buscar, cada usuario encuentra los trámites y gastos que crearon los de su área.", soloAdministradores: true }
 ]
 
 // Catálogos de Nodex Trámites. Tramitadores: Torre de control (como antes en su propia página).
-// Tipos de trámite, operaciones y rechazos: Administrador de Torre de control o Admin
+// Tipos de trámite, operaciones, rechazos y áreas: Administrador de Torre de control o Admin
 // (el backend revisa el mismo permiso).
 export default async function CatalogosPage({ searchParams }: { searchParams: { pestana?: string } }) {
   const { puedeAsignarAnalistas } = await requierePerfil(["TORRE_CONTROL"])

@@ -18,6 +18,7 @@ import type {
 import { formatoMoneda } from "@/src/lib/formato"
 import BuscadorBeneficiario from "./BuscadorBeneficiario"
 import DocumentosNuevoGasto, { type DocumentoPendiente } from "./DocumentosNuevoGasto"
+import { avisarGastoCreado } from "./avisoProgramacion"
 import Seccion from "../ui/Seccion"
 import {
   claseBotonPrimario,
@@ -309,7 +310,8 @@ export default function FormularioGasto({
         return
       }
 
-      toast.success(gasto ? "Gasto actualizado" : "Gasto creado")
+      if (gasto) toast.success("Gasto actualizado")
+      else avisarGastoCreado(resultado.datos.codigo, resultado.datos.programacion)
       if (!gasto && documentos.length) await subirDocumentosDelGasto(resultado.datos.id, documentos)
       if (resultado.datos.avisoSaldo) toast.warning(resultado.datos.avisoSaldo, { autoClose: 10000 })
       router.push(`/solicitudes/${resultado.datos.id}`)

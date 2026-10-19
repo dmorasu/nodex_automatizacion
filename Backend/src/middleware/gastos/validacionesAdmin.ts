@@ -53,8 +53,16 @@ export const validarActualizarParametro = [
   param('clave')
     .isIn(Object.values(PARAMETROS)).withMessage('Parámetro no válido'),
 
-  body('valor')
-    .isFloat({ min: 0, max: 1 }).withMessage('El valor debe ser un número entre 0 y 1 (ej: 0.11 = 11 %)')
+  // La hora de corte va en horas (0 a 24, ej: 9.5 = 9:30 a. m.); los porcentajes, entre 0 y 1
+  body('valor').custom((valor, { req }) => {
+    const numero = Number(valor)
+    if (req.params?.clave === PARAMETROS.HORA_CORTE_PROGRAMACION) {
+      if (!(numero >= 0 && numero < 24)) throw new Error('La hora debe estar entre 00:00 y 23:59')
+    } else if (!(numero >= 0 && numero <= 1)) {
+      throw new Error('El valor debe ser un número entre 0 y 1 (ej: 0.11 = 11 %)')
+    }
+    return true
+  })
 ]
 
 const datosUsuario = [

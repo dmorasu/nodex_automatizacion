@@ -7,6 +7,7 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { FileText, Loader2, Plus, Search, UserPlus, X } from "lucide-react"
 import { buscarTercerosGasto, crearGastoDesdeTramite, type TerceroGasto } from "@/actions/gastos-tramite-action"
 import type { OpcionesGasto } from "@/src/gastos/datosGastos"
+import { avisarGastoCreado } from "@/components/gastos/avisoProgramacion"
 
 const claseInput = `
   w-full h-10 px-3 rounded-md border border-slate-200 bg-white
@@ -190,7 +191,8 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
         return
       }
 
-      toast.success(`Gasto ${resultado.datos.codigo} creado. Queda pendiente de pago en Tesorería.`)
+      if (resultado.datos.programacion?.siguienteDiaHabil) avisarGastoCreado(resultado.datos.codigo, resultado.datos.programacion)
+      else toast.success(`Gasto ${resultado.datos.codigo} creado. Queda pendiente de pago en Tesorería.`)
       if (documentos.length) {
         const fallidos = await subirDocumentosDelGasto(resultado.datos.id, documentos)
         if (fallidos) toast.warning(`${fallidos} documento(s) no se cargaron: súbalos desde el gasto en Nodex Gastos`, { autoClose: 10000 })

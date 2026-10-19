@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import type { ProgramacionPago } from "@/components/gastos/avisoProgramacion"
 
 // Acciones para crear gastos desde un trámite. Usan la API de Nodex Gastos
 // (mismo backend) con el token de la sesión: el gasto queda en Nodex Gastos
@@ -66,7 +67,8 @@ const leerErrores = async (respuesta: Response) => {
   return ["No se pudo completar la operación"]
 }
 
-export async function crearGastoDesdeTramite(datos: DatosGastoTramite): Promise<Resultado<{ id: number, codigo: string }>> {
+// programacion: cuándo lo programa Tesorería para pago (para el aviso; null en caja menor)
+export async function crearGastoDesdeTramite(datos: DatosGastoTramite): Promise<Resultado<{ id: number, codigo: string, programacion: ProgramacionPago | null }>> {
   const req = await llamarApi("/gastos/solicitudes", { method: "POST", body: JSON.stringify(datos) })
 
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { fetchApi, leerErrores } from "@/src/lib/api"
 import { TerceroSchema, TramiteApoyoSchema, type DatosGasto } from "@/src/schemas/gastos"
+import type { ProgramacionPago } from "@/components/gastos/avisoProgramacion"
 
 type Resultado<T = undefined> =
   | { ok: true, datos: T }
@@ -11,7 +12,8 @@ type Resultado<T = undefined> =
 
 // Crea (sin id) o actualiza (con id) un gasto
 // avisoSaldo: el gasto de un anticipo supera lo que le queda al cliente (se crea igual)
-export async function guardarGasto(datos: DatosGasto, id?: number): Promise<Resultado<{ id: number, avisoSaldo: string | null }>> {
+// programacion: al crear, cuándo lo programa Tesorería para pago (null en caja menor)
+export async function guardarGasto(datos: DatosGasto, id?: number): Promise<Resultado<{ id: number, codigo: string, avisoSaldo: string | null, programacion: ProgramacionPago | null }>> {
   const req = await fetchApi(id ? `/gastos/solicitudes/${id}` : "/gastos/solicitudes", {
     method: id ? "PUT" : "POST",
     body: JSON.stringify(datos)
@@ -23,7 +25,7 @@ export async function guardarGasto(datos: DatosGasto, id?: number): Promise<Resu
   revalidatePath("/solicitudes")
   if (datos.anticipoId) revalidatePath(`/anticipos/${datos.anticipoId}`)
 
-  return { ok: true, datos: { id: json.id, avisoSaldo: json.avisoSaldo ?? null } }
+  return { ok: true, datos: { id: json.id, codigo: json.codigo, avisoSaldo: json.avisoSaldo ?? null, programacion: json.programacion ?? null } }
 }
 
 export async function anularGasto(id: number, motivo: string): Promise<Resultado> {

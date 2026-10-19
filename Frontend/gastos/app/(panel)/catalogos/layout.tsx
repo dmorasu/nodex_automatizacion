@@ -13,7 +13,10 @@ export default async function CatalogosLayout({ children }: { children: React.Re
         <h1 className="text-xl font-semibold text-slate-800">Catálogos</h1>
       </div>
 
-      <Pestanas pestanas={CATALOGOS.map(c => ({ href: c.ruta ? `/catalogos/${c.ruta}` : "/catalogos", nombre: c.nombre }))} />
+      <Pestanas pestanas={[
+        ...CATALOGOS.map(c => ({ href: c.ruta ? `/catalogos/${c.ruta}` : "/catalogos", nombre: c.nombre })),
+        { href: "/catalogos/programacion", nombre: "Programación de pagos" }
+      ]} />
 
       {children}
     </div>

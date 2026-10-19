@@ -113,7 +113,10 @@ export const TIPOS_DOCUMENTO = {
 
 export const PARAMETROS = {
   RETENCION_FUENTE: 'RETENCION_FUENTE',
-  GMF: 'GMF'
+  GMF: 'GMF',
+  // Hora de Colombia (en horas: 9.5 = 9:30 a. m.) hasta la que un gasto nuevo se programa para
+  // pago el mismo día; después, el siguiente día hábil
+  HORA_CORTE_PROGRAMACION: 'HORA_CORTE_PROGRAMACION'
 } as const
 
 export type ClaveParametro = typeof PARAMETROS[keyof typeof PARAMETROS]

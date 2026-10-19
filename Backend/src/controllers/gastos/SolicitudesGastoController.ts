@@ -34,6 +34,7 @@ import { creadoresPermitidos, usuariosDeMiArea } from '../../middleware/auth'
 import { avisoSaldoCliente, saldoDelCliente } from '../../services/gastos/anticipos'
 import { obtenerAnticipoConAcceso } from './AnticiposController'
 import { tiposDocumentoDelGasto } from '../../services/gastos/tiposDocumento'
+import { programacionDelGasto } from '../../services/gastos/programacionPago'
 
 // Gastos de anticipos: saldo del cliente en la bolsa y lo que tiene por pagar (incluido este
 // gasto), para avisar en Tesorería y en Dirección de Negocio si no le alcanza. null si no es de anticipo.
@@ -452,7 +453,12 @@ export class SolicitudesGastoController {
       // Se crea aunque supere el saldo del cliente, pero se avisa en pantalla
       const avisoSaldo = gasto.anticipoId ? await avisoSaldoCliente(gasto.anticipoId) : null
 
-      res.status(201).json({ id: gasto.id, codigo: gasto.codigo, avisoSaldo })
+      // Cuándo lo programa Tesorería (para el aviso en pantalla). La caja menor no se programa:
+      // se paga en efectivo. Si no se puede calcular, el gasto se crea igual sin el aviso
+      const deCaja = (await FormasPago.findByPk(gasto.formaPagoId, { attributes: ['codigo'] }))?.codigo === 'CAJA_MENOR'
+      const programacion = deCaja ? null : await programacionDelGasto(gasto.createdAt).catch(() => null)
+
+      res.status(201).json({ id: gasto.id, codigo: gasto.codigo, avisoSaldo, programacion })
     } catch (error) {
       responderError(res, error)
     }

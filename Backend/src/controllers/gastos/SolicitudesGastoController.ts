@@ -164,7 +164,7 @@ const condicionesListado = async (req: Request) => {
     })
   }
 
-  // Compras de certificados (CTL y Cámara de Comercio): las paga Tesorería - Certificados.
+  // Compras de certificados (CTL, Cámara de Comercio y RUNT): las paga Tesorería - Certificados.
   // certificados=si → solo esas · certificados=no → todas menos esas. Quien solo tiene ese rol, solo ve esas.
   const tiposCertificados = await idsTiposCertificados()
   if (q.certificados === 'si' || soloCertificados(req)) condiciones.push({ tipoGastoId: tiposCertificados })

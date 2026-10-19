@@ -6,7 +6,7 @@
 
 export const ROLES = {
   TESORERIA: "TESORERIA",
-  // Paga solo las compras de certificados (CTL y Cámara de Comercio)
+  // Paga solo las compras de certificados (CTL, Cámara de Comercio y RUNT)
   TESORERIA_CERTIFICADOS: "TESORERIA_CERTIFICADOS",
   LEGALIZACION: "LEGALIZACION",
   CONTABILIDAD: "CONTABILIDAD",

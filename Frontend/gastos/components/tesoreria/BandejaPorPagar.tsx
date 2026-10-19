@@ -12,8 +12,8 @@ const MAXIMO_BANDEJA = 100
 
 // Gastos por pagar, en tres bandejas:
 //  · general: se programan para aprobación de Dirección de Negocio;
-//  · certificados (CTL y Cámara de Comercio) y anticipos (el cliente ya pagó): se pagan directo.
-// Las compras de certificados (CTL y Cámara de Comercio) van en su propia
+//  · certificados (CTL, Cámara de Comercio y RUNT) y anticipos (el cliente ya pagó): se pagan directo.
+// Las compras de certificados (CTL, Cámara de Comercio y RUNT) van en su propia
 // bandeja (Tesorería - Certificados) y no salen en la general.
 export default async function BandejaPorPagar({
   tipo,

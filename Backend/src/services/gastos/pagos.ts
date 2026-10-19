@@ -21,7 +21,7 @@ import { formatoMoneda } from './formato'
 //     SOLICITADO. Con todos aprobados el lote queda APROBADO.
 //  3. Tesorería adjunta el soporte de pago de cada gasto (obligatorio; el del banco para el lote es
 //     opcional) y confirma: se descuenta la bolsa y los gastos quedan PAGADO.
-// Las compras de certificados (CTL y Cámara de Comercio) no pasan por Dirección de Negocio:
+// Las compras de certificados (CTL, Cámara de Comercio y RUNT) no pasan por Dirección de Negocio:
 // Tesorería - Certificados las paga directo (pagarDirecto).
 // =====================================
 

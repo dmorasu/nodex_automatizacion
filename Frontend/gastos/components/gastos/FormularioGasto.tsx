@@ -496,7 +496,16 @@ export default function FormularioGasto({
           </div>
         )}
 
-        {(codigoTipo === "CTL" || codigoTipo === "CAMARA_COMERCIO") && (
+        {/* Certificado RUNT: de un vehículo (placa opcional). Lo paga Tesorería - Certificados */}
+        {codigoTipo === "RUNT" && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Campo etiqueta="Placa del vehículo">
+              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+            </Campo>
+          </div>
+        )}
+
+        {(codigoTipo === "CTL" || codigoTipo === "CAMARA_COMERCIO" || codigoTipo === "RUNT") && (
           <p className="mt-3 rounded-md bg-sky-50 px-3 py-2 text-xs text-sky-800">
             Compra de certificados: la paga Tesorería - Certificados (no sale en el &quot;Por pagar&quot; general).
           </p>

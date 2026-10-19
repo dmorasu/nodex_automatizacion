@@ -18,7 +18,7 @@ import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloC
 import { ESTADOS_LOTE, FORMA_PAGO_CAJA_MENOR, ROLES } from '../../services/gastos/constantes'
 import FormasPago from '../../models/gastos/formasPago'
 
-// Las compras de certificados (CTL y Cámara de Comercio) las paga Tesorería - Certificados;
+// Las compras de certificados (CTL, Cámara de Comercio y RUNT) las paga Tesorería - Certificados;
 // los demás gastos, Tesorería (también los de anticipos, aunque sean de un certificado).
 // El administrador paga todo.
 const verificarQuienPaga = async (req: Request, gastoIds: number[]) => {

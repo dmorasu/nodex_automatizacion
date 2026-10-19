@@ -6,7 +6,7 @@
 
 export const ROLES = {
   TESORERIA: 'TESORERIA',
-  // Persona de Tesorería que paga solo las compras de certificados (CTL y Cámara de Comercio)
+  // Persona de Tesorería que paga solo las compras de certificados (CTL, Cámara de Comercio y RUNT)
   TESORERIA_CERTIFICADOS: 'TESORERIA_CERTIFICADOS',
   LEGALIZACION: 'LEGALIZACION',
   CONTABILIDAD: 'CONTABILIDAD',
@@ -38,10 +38,12 @@ export const TIPOS_GASTO = {
   OTRO: 'OTRO',
   // Compras de certificados: las paga Tesorería - Certificados (no salen en "Por pagar" general)
   CTL: 'CTL',
-  CAMARA_COMERCIO: 'CAMARA_COMERCIO'
+  CAMARA_COMERCIO: 'CAMARA_COMERCIO',
+  // Certificado RUNT de un vehículo (2026-10-19): mismo esquema de los certificados
+  RUNT: 'RUNT'
 } as const
 
-export const TIPOS_GASTO_CERTIFICADOS: string[] = [TIPOS_GASTO.CTL, TIPOS_GASTO.CAMARA_COMERCIO]
+export const TIPOS_GASTO_CERTIFICADOS: string[] = [TIPOS_GASTO.CTL, TIPOS_GASTO.CAMARA_COMERCIO, TIPOS_GASTO.RUNT]
 
 export const ESTADOS_GASTO = {
   SOLICITADO: 'SOLICITADO',

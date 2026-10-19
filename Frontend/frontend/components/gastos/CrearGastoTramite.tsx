@@ -298,6 +298,12 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                       </div>
                     </>
                   )}
+                  {/* Certificado RUNT: de un vehículo (placa opcional). Lo paga Tesorería - Certificados */}
+                  {codigoTipo === "RUNT" && (
+                    <Campo etiqueta="Placa del vehículo">
+                      <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+                    </Campo>
+                  )}
                   {/* CTL: de un vehículo o de un inmueble (opcionales). Lo paga Tesorería - Certificados */}
                   {codigoTipo === "CTL" && (
                     <>

@@ -11,7 +11,7 @@ import { ErrorGastos } from './errores'
 // CATÁLOGOS DE NODEX GASTOS (solo Administrador)
 // Se crean, se renombran y se activan o desactivan. Solo se elimina lo que no se usa.
 // · Tipos de gasto: no se crean ni se eliminan (la lógica depende de sus códigos:
-//   vehículo, inmueble, CTL, Cámara de Comercio…); solo se renombran o se desactivan.
+//   vehículo, inmueble, CTL, Cámara de Comercio, RUNT…); solo se renombran o se desactivan.
 // · Tipos de documento que usa el sistema (soporte de pago, factura…): no se desactivan
 //   ni se eliminan.
 // · Tipos de documento: además dicen para qué servicio se suben (pago, legalización, reintegro).

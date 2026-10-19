@@ -3,7 +3,7 @@ import { ROLES, tieneAcceso } from "@/src/auth/permisos"
 import Pestanas from "@/components/ui/Pestanas"
 
 // Tesorería general paga todo menos las compras de certificados; Tesorería - Certificados
-// paga solo esas (CTL y Cámara de Comercio); la Auxiliar de Tesorería - Caja menor solo maneja
+// paga solo esas (CTL, Cámara de Comercio y RUNT); la Auxiliar de Tesorería - Caja menor solo maneja
 // su caja. Cada uno ve sus pestañas.
 export default async function TesoreriaLayout({ children }: { children: React.ReactNode }) {
   const sesion = await requiereAcceso([ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.AUXILIAR_TESORERIA_CAJA])
@@ -14,7 +14,7 @@ export default async function TesoreriaLayout({ children }: { children: React.Re
 
   const pestanas = [
     ...(general ? [{ href: "/tesoreria", nombre: "Por pagar" }] : []),
-    ...(certificados ? [{ href: "/tesoreria/certificados", nombre: "Certificados (CTL y Cámara)" }] : []),
+    ...(certificados ? [{ href: "/tesoreria/certificados", nombre: "Certificados (CTL, Cámara y RUNT)" }] : []),
     ...(general ? [{ href: "/tesoreria/anticipos", nombre: "Gastos de anticipos" }] : []),
     ...(caja ? [{ href: "/tesoreria/caja-menor", nombre: "Caja menor" }] : []),
     ...(general ? [{ href: "/tesoreria/programados", nombre: "Programados" }] : []),

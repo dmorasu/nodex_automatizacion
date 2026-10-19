@@ -23,7 +23,7 @@ const ROLES_GASTOS: string[] = [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, R
 export const puedeVerTodos = (req: Request) => (req.roles ?? []).some(rol => ROLES_GASTOS.includes(rol))
 
 // Tesorería - Certificados sin otro rol de gastos: solo ve y paga las compras de certificados
-// (CTL y Cámara de Comercio)
+// (CTL, Cámara de Comercio y RUNT)
 export const soloCertificados = (req: Request) => {
   const roles = req.roles ?? []
   return roles.includes(ROLES.TESORERIA_CERTIFICADOS) &&

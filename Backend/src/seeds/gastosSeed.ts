@@ -30,7 +30,8 @@ const TIPOS_GASTO_INICIALES = [
   { codigo: TIPOS_GASTO.INMUEBLE, nombre: 'Inmueble' },
   { codigo: TIPOS_GASTO.OTRO, nombre: 'Otro' },
   { codigo: TIPOS_GASTO.CTL, nombre: 'CTL' },
-  { codigo: TIPOS_GASTO.CAMARA_COMERCIO, nombre: 'Certificado de Cámara de Comercio' }
+  { codigo: TIPOS_GASTO.CAMARA_COMERCIO, nombre: 'Certificado de Cámara de Comercio' },
+  { codigo: TIPOS_GASTO.RUNT, nombre: 'Certificado RUNT' }
 ]
 
 const FORMAS_PAGO_INICIALES = [
@@ -85,7 +86,7 @@ const TIPOS_DOCUMENTO_INICIALES = [
 
 const ROLES_INICIALES = [
   { codigo: ROLES.TESORERIA, nombre: 'Tesorería', descripcion: 'Paga gastos y administra las bolsas' },
-  { codigo: ROLES.TESORERIA_CERTIFICADOS, nombre: 'Tesorería - Certificados', descripcion: 'Paga las compras de CTL y certificados de Cámara de Comercio' },
+  { codigo: ROLES.TESORERIA_CERTIFICADOS, nombre: 'Tesorería - Certificados', descripcion: 'Paga las compras de CTL y certificados de Cámara de Comercio y RUNT' },
   { codigo: ROLES.LEGALIZACION, nombre: 'Legalización', descripcion: 'Arma cuentas de cobro, legaliza y registra reintegros' },
   { codigo: ROLES.CONTABILIDAD, nombre: 'Contabilidad', descripcion: 'Contabiliza las cuentas de cobro legalizadas' },
   { codigo: ROLES.ADMIN, nombre: 'Administrador', descripcion: 'Acceso total al módulo de gastos' },

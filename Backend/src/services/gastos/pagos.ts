@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { Op, type Transaction } from 'sequelize'
 import { db } from '../../config/db'
 import Bolsas from '../../models/gastos/bolsas'
@@ -18,8 +19,8 @@ import { formatoMoneda } from './formato'
 //  1. Tesorería programa los gastos en un lote (PROGRAMADO). No toca la bolsa.
 //  2. Dirección de Negocio aprueba (APROBADO_PAGO) o rechaza cada gasto; el rechazado vuelve a
 //     SOLICITADO. Con todos aprobados el lote queda APROBADO.
-//  3. Tesorería adjunta el soporte del banco y confirma: se descuenta la bolsa y los gastos
-//     quedan PAGADO.
+//  3. Tesorería adjunta el soporte de pago de cada gasto (obligatorio; el del banco para el lote es
+//     opcional) y confirma: se descuenta la bolsa y los gastos quedan PAGADO.
 // Las compras de certificados (CTL y Cámara de Comercio) no pasan por Dirección de Negocio:
 // Tesorería - Certificados las paga directo (pagarDirecto).
 // =====================================
@@ -208,12 +209,119 @@ export const sacarDelLote = (
     return actualizarLote(lote, usuarioId, transaction)
   })
 
+// ── Soportes de pago ──────────────────────
+
+// Archivos de la confirmación: `soporte_<gastoId>` es el soporte de ese gasto (obligatorio, uno
+// distinto por gasto); `archivos` es el soporte del banco del lote (opcional)
+export const separarSoportes = (archivos: Express.Multer.File[]) => {
+  const porGasto = new Map<number, Express.Multer.File[]>()
+  const delLote: Express.Multer.File[] = []
+  for (const archivo of archivos) {
+    const gastoId = Number(/^soporte_(\d+)$/.exec(archivo.fieldname)?.[1])
+    if (gastoId) porGasto.set(gastoId, [...(porGasto.get(gastoId) ?? []), archivo])
+    else delLote.push(archivo)
+  }
+  return { porGasto, delLote }
+}
+
+type ArchivoSubido = { rutaDirectorio: string, nombreArchivo: string }
+
+const tipoSoportePago = async (transaction: Transaction) => {
+  const tipo = await TiposDocumentoGasto.findOne({ where: { codigo: TIPOS_DOCUMENTO.SOPORTE_PAGO }, transaction })
+  if (!tipo) throw new ErrorGastos('No existe el tipo de documento Soporte de pago', 500)
+  return tipo
+}
+
+// Sube un archivo a Azure y lo registra como Soporte de pago del gasto o del lote.
+// `subidos` lleva lo que ya está en Azure para borrarlo si la transacción falla
+const guardarSoporte = async (
+  archivo: Express.Multer.File,
+  destino: { solicitudGastoId: number, carpeta: string } | { lotePagoId: number, carpeta: string },
+  tipoDocumentoId: number,
+  usuarioId: number,
+  transaction: Transaction,
+  subidos: ArchivoSubido[]
+) => {
+  const { carpeta, ...dueno } = destino
+  const nombreArchivo = nombreSeguro(archivo.originalname)
+  await subirArchivo(carpeta, nombreArchivo, archivo.buffer)
+  subidos.push({ rutaDirectorio: carpeta, nombreArchivo })
+  await DocumentosGasto.create({
+    ...dueno,
+    tipoDocumentoId,
+    nombreOriginal: archivo.originalname,
+    nombreArchivo,
+    rutaDirectorio: carpeta,
+    tipoArchivo: archivo.mimetype,
+    tamano: archivo.size,
+    subidoPor: usuarioId
+  }, { transaction })
+}
+
+// Cada gasto pagado debe llevar su propio soporte de pago (decisión de Tesorería): se exige uno
+// por gasto y que no sea el mismo archivo de otro gasto. Queda en los documentos del gasto
+// (así lo toma también el PDF de pago unificado de Legalización)
+const adjuntarSoportesDeGastos = async (
+  gastos: SolicitudesGasto[],
+  porGasto: Map<number, Express.Multer.File[]>,
+  usuarioId: number,
+  transaction: Transaction,
+  subidos: ArchivoSubido[]
+) => {
+  const ids = new Set(gastos.map(g => g.id))
+  for (const gastoId of porGasto.keys()) {
+    if (!ids.has(gastoId)) throw new ErrorGastos('Hay un soporte de un gasto que no está en este pago')
+  }
+
+  const huellas = new Map<string, string>() // huella del archivo → gasto que lo usa
+  for (const gasto of gastos) {
+    const archivos = porGasto.get(gasto.id) ?? []
+    if (!archivos.length) throw new ErrorGastos(`Adjunte el soporte de pago del gasto ${gasto.codigo}`)
+    for (const archivo of archivos) {
+      const huella = createHash('sha256').update(archivo.buffer).digest('hex')
+      const otro = huellas.get(huella)
+      if (otro && otro !== gasto.codigo) {
+        throw new ErrorGastos(`El soporte de ${gasto.codigo} es el mismo archivo de ${otro}: cada gasto lleva su propio soporte`)
+      }
+      huellas.set(huella, gasto.codigo)
+    }
+  }
+
+  const tipo = await tipoSoportePago(transaction)
+  for (const gasto of gastos) {
+    for (const archivo of porGasto.get(gasto.id)!) {
+      await guardarSoporte(archivo, { solicitudGastoId: gasto.id, carpeta: `gastos/${gasto.codigo}` }, tipo.id, usuarioId, transaction, subidos)
+    }
+  }
+}
+
+// Soporte del banco del lote (opcional, además del de cada gasto)
+const adjuntarSoportesDelLote = async (loteId: number, archivos: Express.Multer.File[], usuarioId: number, transaction: Transaction, subidos: ArchivoSubido[]) => {
+  if (!archivos.length) return
+  const tipo = await tipoSoportePago(transaction)
+  for (const archivo of archivos) {
+    await guardarSoporte(archivo, { lotePagoId: loteId, carpeta: `gastos/lotes/lote-${loteId}` }, tipo.id, usuarioId, transaction, subidos)
+  }
+}
+
+// Ejecuta el pago y, si falla, borra de Azure los soportes que alcanzó a subir (Azure no se revierte)
+const conSoportes = async <T>(pago: (subidos: ArchivoSubido[]) => Promise<T>) => {
+  const subidos: ArchivoSubido[] = []
+  try {
+    return await pago(subidos)
+  } catch (error) {
+    await Promise.allSettled(subidos.map(s => eliminarArchivo(s.rutaDirectorio, s.nombreArchivo)))
+    throw error
+  }
+}
+
 // ── Pago directo (compras de certificados) ──
 
-// Paga en un solo paso: crea el lote ya PAGADO, descuenta la bolsa y los gastos quedan PAGADO.
-// Quién puede usarlo (solo certificados) lo valida el controlador.
-export const pagarDirecto = (datos: DatosPagoDirecto, usuarioId: number) =>
-  db.transaction(async transaction => {
+// Paga en un solo paso: crea el lote ya PAGADO, descuenta la bolsa y los gastos quedan PAGADO,
+// cada uno con su soporte de pago (obligatorio); el del banco para el lote es opcional.
+// Quién puede usarlo (certificados y anticipos) lo valida el controlador.
+export const pagarDirecto = (datos: DatosPagoDirecto, archivos: Express.Multer.File[], usuarioId: number) =>
+  conSoportes(subidos => db.transaction(async transaction => {
     const ids = datos.gastos.map(g => g.id)
     if (new Set(ids).size !== ids.length) throw new ErrorGastos('Hay gastos repetidos en el pago')
 
@@ -274,76 +382,65 @@ export const pagarDirecto = (datos: DatosPagoDirecto, usuarioId: number) =>
       })
     }
 
+    const { porGasto, delLote } = separarSoportes(archivos)
+    await adjuntarSoportesDeGastos(gastos, porGasto, usuarioId, transaction, subidos)
+    await adjuntarSoportesDelLote(lote.id, delLote, usuarioId, transaction, subidos)
+
     return lote
-  })
+  }))
 
 // ── 3. Confirmar el pago ──────────────────
 
-// Tesorería confirma con el soporte del banco ya adjunto: descuenta la bolsa y paga los gastos
-export const confirmarPago = (loteId: number, datos: DatosConfirmacion, usuarioId: number) =>
-  db.transaction(transaction => confirmarPagoEn(transaction, loteId, datos, usuarioId))
+// Un solo lote (sin archivos): como ahora cada gasto debe llevar su soporte, responde cuál falta.
+// La pantalla usa confirmarPagos
+export const confirmarPago = async (loteId: number, datos: DatosConfirmacion, usuarioId: number) => {
+  const { gastoIds } = await confirmarPagos([loteId], datos, [], usuarioId)
+  return { lote: (await LotesPago.findByPk(loteId))!, gastoIds }
+}
 
-// Confirma uno o varios lotes aprobados a la vez (todos o ninguno). Los archivos (el soporte
-// del banco, que puede ser uno solo para todos) se adjuntan a cada lote; si un lote ya tiene
-// su soporte, no hace falta adjuntar.
-export const confirmarPagos = async (
+// Confirma uno o varios lotes aprobados a la vez (todos o ninguno). Cada gasto lleva su propio
+// soporte de pago (`soporte_<gastoId>`, obligatorio); el soporte del banco (`archivos`) es
+// opcional y se adjunta a cada lote.
+export const confirmarPagos = (
   loteIds: number[],
   datos: DatosConfirmacion,
   archivos: Express.Multer.File[],
   usuarioId: number
 ) => {
   if (new Set(loteIds).size !== loteIds.length) throw new ErrorGastos('Hay lotes repetidos en la confirmación')
+  const { porGasto, delLote } = separarSoportes(archivos)
 
-  // Se suben antes de la transacción (Azure no se revierte): si algo falla, se borran
-  const subidos: { rutaDirectorio: string, nombreArchivo: string }[] = []
-  try {
-    return await db.transaction(async transaction => {
-      const tipoDocumento = archivos.length
-        ? await TiposDocumentoGasto.findOne({ where: { codigo: TIPOS_DOCUMENTO.SOPORTE_PAGO }, transaction })
-        : null
-      if (archivos.length && !tipoDocumento) throw new ErrorGastos('No existe el tipo de documento Soporte de pago', 500)
+  return conSoportes(subidos => db.transaction(async transaction => {
+    // Primero los lotes (bloqueados): así no se sube nada si alguno no se puede confirmar
+    for (const loteId of loteIds) verificarAprobado(await loteBloqueado(loteId, transaction))
 
-      const gastoIds: number[] = []
-      for (const loteId of loteIds) {
-        if (tipoDocumento) {
-          const rutaDirectorio = `gastos/lotes/lote-${loteId}`
-          for (const archivo of archivos) {
-            const nombreArchivo = nombreSeguro(archivo.originalname)
-            await subirArchivo(rutaDirectorio, nombreArchivo, archivo.buffer)
-            subidos.push({ rutaDirectorio, nombreArchivo })
-            await DocumentosGasto.create({
-              lotePagoId: loteId,
-              tipoDocumentoId: tipoDocumento.id,
-              nombreOriginal: archivo.originalname,
-              nombreArchivo,
-              rutaDirectorio,
-              tipoArchivo: archivo.mimetype,
-              tamano: archivo.size,
-              subidoPor: usuarioId
-            }, { transaction })
-          }
-        }
-        const resultado = await confirmarPagoEn(transaction, loteId, datos, usuarioId)
-        gastoIds.push(...resultado.gastoIds)
-      }
-      return { loteIds, gastoIds }
-    })
-  } catch (error) {
-    await Promise.allSettled(subidos.map(s => eliminarArchivo(s.rutaDirectorio, s.nombreArchivo)))
-    throw error
+    // Los soportes de todos los gastos de todos los lotes, juntos: así se detecta el mismo
+    // archivo en gastos de lotes distintos
+    const gastosDeLosLotes = await SolicitudesGasto.findAll({ where: { lotePagoId: loteIds }, order: [['id', 'ASC']], transaction })
+    await adjuntarSoportesDeGastos(gastosDeLosLotes, porGasto, usuarioId, transaction, subidos)
+
+    const gastoIds: number[] = []
+    for (const loteId of loteIds) {
+      await adjuntarSoportesDelLote(loteId, delLote, usuarioId, transaction, subidos)
+      const resultado = await confirmarPagoEn(transaction, loteId, datos, usuarioId)
+      gastoIds.push(...resultado.gastoIds)
+    }
+    return { loteIds, gastoIds }
+  }))
+}
+
+// Solo se confirma un lote que Dirección de Negocio aprobó completo
+const verificarAprobado = (lote: LotesPago) => {
+  if (lote.estado !== ESTADOS_LOTE.APROBADO) {
+    throw new ErrorGastos(lote.estado === ESTADOS_LOTE.PROGRAMADO
+      ? `El lote #${lote.id} aún tiene gastos pendientes de aprobación de Dirección de Negocio`
+      : `El lote #${lote.id} no está aprobado para pago`)
   }
 }
 
 const confirmarPagoEn = async (transaction: Transaction, loteId: number, datos: DatosConfirmacion, usuarioId: number) => {
     const lote = await loteBloqueado(loteId, transaction)
-    if (lote.estado !== ESTADOS_LOTE.APROBADO) {
-      throw new ErrorGastos(lote.estado === ESTADOS_LOTE.PROGRAMADO
-        ? `El lote #${lote.id} aún tiene gastos pendientes de aprobación de Dirección de Negocio`
-        : `El lote #${lote.id} no está aprobado para pago`)
-    }
-
-    const soportes = await DocumentosGasto.count({ where: { lotePagoId: lote.id }, transaction })
-    if (!soportes) throw new ErrorGastos('Adjunte el soporte del banco antes de confirmar el pago')
+    verificarAprobado(lote)
 
     const bolsa = await Bolsas.findByPk(lote.bolsaId, { transaction })
     if (!bolsa?.activo) throw new ErrorGastos('La bolsa del lote no existe o está inactiva')

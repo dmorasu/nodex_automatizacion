@@ -56,7 +56,7 @@ import {
   validarListado,
   validarListadoLotes
 } from '../../middleware/gastos/validacionesSolicitud'
-import { recibirDocumentos, recibirFacturas } from '../../middleware/gastos/uploadDocumentosGasto'
+import { recibirDocumentos, recibirFacturas, recibirSoportesPago } from '../../middleware/gastos/uploadDocumentosGasto'
 import { AnticiposController, ClientesEmpresarialesController } from '../../controllers/gastos/AnticiposController'
 import {
   leerDatosJson,
@@ -209,14 +209,15 @@ router.post('/bolsas/:id/ajustes', soloAdmin, validarAjuste, handleInputErrors, 
 const soloDireccion = requiereRol(ROLES.DIRECCION_NEGOCIO)
 router.post('/lotes', tesoreriaOCertificados, validarProgramacion, handleInputErrors, PagosController.programar)
 // Compras de certificados: pago directo, sin aprobación de Dirección
-router.post('/pagos', tesoreriaOCertificados, validarPagoDirecto, handleInputErrors, PagosController.pagarCertificados)
+// multipart: datos (JSON) + soporte_<gastoId> por cada gasto (obligatorio) + archivos del banco (opcional)
+router.post('/pagos', tesoreriaOCertificados, recibirSoportesPago, leerDatosJson, validarPagoDirecto, handleInputErrors, PagosController.pagarCertificados)
 router.post('/lotes/:id/aprobar', soloDireccion, validarAprobacionLote, handleInputErrors, PagosController.aprobar)
 router.post('/lotes/:id/rechazar', soloDireccion, validarSalidaLote, handleInputErrors, PagosController.rechazar)
 router.post('/lotes/:id/quitar', tesoreriaOCertificados, validarSalidaLote, handleInputErrors, PagosController.quitar)
 router.post('/lotes/:id/confirmar', tesoreriaOCertificados, validarConfirmacionPago, handleInputErrors, PagosController.confirmar)
 // Uno o varios lotes aprobados a la vez, adjuntando el soporte del banco en el mismo paso
 // (multipart: datos = JSON con loteIds, fechaPago y observacion; archivos[])
-router.post('/lotes/confirmar', tesoreriaOCertificados, recibirDocumentos, leerDatosJson, validarConfirmacionPagos, handleInputErrors, PagosController.confirmarVarios)
+router.post('/lotes/confirmar', tesoreriaOCertificados, recibirSoportesPago, leerDatosJson, validarConfirmacionPagos, handleInputErrors, PagosController.confirmarVarios)
 // Contabilidad también consulta los pagos para registrarles el número de egreso
 const verLotes = requiereRol(ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO)
 router.get('/lotes', verLotes, validarListadoLotes, handleInputErrors, PagosController.getLotes)

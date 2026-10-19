@@ -9,6 +9,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import type { Bolsa, GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
 import SelectBuscable from "@/components/ui/SelectBuscable"
+import SoportesPorGasto, { faltanSoportes, type SoportesElegidos } from "./SoportesPorGasto"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
@@ -36,12 +37,15 @@ export default function ModalPago({
   const [bolsaId, setBolsaId] = useState<number | null>(bolsaComun)
   const [fechaPago, setFechaPago] = useState(hoyEnBogota)
   const [observacion, setObservacion] = useState("")
+  // Pago directo: soporte de pago de cada gasto (obligatorio) y el del banco para el lote (opcional)
   const [archivos, setArchivos] = useState<File[]>([])
+  const [soportes, setSoportes] = useState<SoportesElegidos>({})
   // Valor a pagar por gasto; por defecto el valor solicitado (se puede cambiar)
   const [valores, setValores] = useState<Record<number, string>>(
     () => Object.fromEntries(gastos.map(g => [g.id, String(Number(g.valorSolicitadoPago))]))
   )
   const [pagando, startPagar] = useTransition()
+  const gastosConSoporte = gastos.map(g => ({ id: g.id, codigo: g.codigo, detalle: `${g.beneficiario.nombre} · ${g.conceptoPago}`, valor: valores[g.id] }))
 
   const bolsa = bolsas.find(b => b.id === bolsaId)
   const totalCentavos = useMemo(
@@ -59,21 +63,26 @@ export default function ModalPago({
     if (valoresInvalidos) return toast.error("Todos los valores a pagar deben ser mayores a cero")
 
     if (directo) {
-      const soporte = archivos.length ? new FormData() : null
-      archivos.forEach(archivo => soporte!.append("archivos", archivo))
+      const faltan = faltanSoportes(gastosConSoporte, soportes)
+      if (faltan.length) return toast.error(`Falta el soporte de pago de ${faltan.join(", ")}`)
+
+      const formData = new FormData()
+      formData.append("datos", JSON.stringify({
+        bolsaId,
+        fechaPago,
+        observacion,
+        gastos: gastos.map(g => ({ id: g.id, valorRealmentePagado: Number(valores[g.id]) }))
+      }))
+      gastos.forEach(g => formData.append(`soporte_${g.id}`, soportes[g.id]!))
+      archivos.forEach(archivo => formData.append("archivos", archivo))
+
       return startPagar(async () => {
-        const resultado = await pagarCertificados({
-          bolsaId,
-          fechaPago,
-          observacion,
-          gastos: gastos.map(g => ({ id: g.id, valorRealmentePagado: Number(valores[g.id]) }))
-        }, soporte)
+        const resultado = await pagarCertificados(formData)
         if (!resultado.ok) {
           resultado.errores.forEach(error => toast.error(error))
           return
         }
         toast.success(`${gastos.length} gasto(s) pagado(s) · lote #${resultado.datos.loteId}`)
-        if (resultado.advertencia) toast.warning(resultado.advertencia, { autoClose: false })
         onPagado()
       })
     }
@@ -110,7 +119,7 @@ export default function ModalPago({
               </DialogTitle>
               <p className="mt-0.5 text-xs text-slate-400">
                 {directo
-                  ? "Pago directo (compras de certificados y gastos de anticipos, sin aprobación de Dirección): se paga en un solo paso, se descuenta la bolsa y se avisa por correo a quien creó el gasto."
+                  ? "Pago directo (compras de certificados y gastos de anticipos, sin aprobación de Dirección): se paga en un solo paso y se descuenta la bolsa."
                   : "Se crea un lote que Dirección de Negocio debe aprobar. La bolsa se descuenta cuando confirme el pago con el soporte del banco."}
               </p>
             </div>
@@ -213,10 +222,12 @@ export default function ModalPago({
                 </p>
               )}
 
+              {directo && <SoportesPorGasto gastos={gastosConSoporte} soportes={soportes} onCambiar={setSoportes} />}
+
               <div className={`grid gap-4 ${directo ? "sm:grid-cols-2" : ""}`}>
                 {directo && (
                   <label className="block">
-                    <span className={claseLabel}>Soporte de pago (PDF, JPG o PNG)</span>
+                    <span className={claseLabel}>Soporte del banco para el lote <span className="text-slate-400">(opcional)</span></span>
                     <input
                       type="file"
                       multiple

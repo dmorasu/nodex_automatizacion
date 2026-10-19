@@ -7,8 +7,8 @@ import { formatoMoneda } from "@/src/lib/formato"
 import { claseBotonPrimario } from "../ui/estilos"
 import ModalConfirmarLotes from "./ModalConfirmarLotes"
 
-// Último paso del pago: Tesorería adjunta el soporte del banco (aquí mismo, o el que ya subió)
-// y confirma con la fecha real. Ahí se descuenta la bolsa y los gastos quedan Pagados.
+// Último paso del pago: Tesorería adjunta el soporte de pago de cada gasto (y, si quiere, el del
+// banco para el lote) y confirma con la fecha real. Ahí se descuenta la bolsa y los gastos quedan Pagados.
 // Para confirmar varios lotes a la vez: Tesorería → Programados.
 export default function ConfirmarPagoLote({ loteId, total, haySoporte, cantidadGastos, bolsa }: {
   loteId: number
@@ -23,9 +23,7 @@ export default function ConfirmarPagoLote({ loteId, total, haySoporte, cantidadG
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-xs text-slate-500">
-        {haySoporte
-          ? "Ya tiene soporte del banco. Al confirmar se descuenta la bolsa y se avisa por correo a quienes crearon los gastos."
-          : "Adjunte el soporte del banco al confirmar (o súbalo arriba). Se descuenta la bolsa y se avisa a quienes crearon los gastos."}
+        Al confirmar se adjunta el soporte de pago de cada gasto{haySoporte ? " (el lote ya tiene el del banco)" : ""} y se descuenta la bolsa.
       </p>
       <button type="button" onClick={() => setAbierto(true)} className={claseBotonPrimario}>
         <CheckCircle2 size={15} />
@@ -35,7 +33,6 @@ export default function ConfirmarPagoLote({ loteId, total, haySoporte, cantidadG
       {abierto && (
         <ModalConfirmarLotes
           lotes={[{ id: loteId, total, cantidadGastos, bolsa }]}
-          requiereSoporte={!haySoporte}
           onCerrar={() => setAbierto(false)}
           onConfirmados={() => router.refresh()}
         />

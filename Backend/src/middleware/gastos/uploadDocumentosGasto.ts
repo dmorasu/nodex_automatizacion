@@ -39,6 +39,39 @@ export const recibirDocumentos = (req: Request, res: Response, next: NextFunctio
   })
 }
 
+// ── Soportes del pago: uno por gasto (soporte_<gastoId>) y, opcional, el del banco (archivos) ──
+
+const MAX_SOPORTES_PAGO = 210
+
+const uploadSoportesPago = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_TAMANO_MB * 1024 * 1024, files: MAX_SOPORTES_PAGO },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname !== 'archivos' && !/^soporte_\d+$/.test(file.fieldname)) {
+      return cb(new Error('Los soportes deben enviarse en los campos soporte_<gasto> y archivos'))
+    }
+    if (!TIPOS_ARCHIVO_PERMITIDOS.includes(file.mimetype)) {
+      return cb(new Error(`"${file.originalname}" no es válido. Solo se permiten PDF, JPG o PNG`))
+    }
+    cb(null, true)
+  }
+})
+
+// Confirmación del pago y pago directo (multipart: datos en JSON + soportes)
+export const recibirSoportesPago = (req: Request, res: Response, next: NextFunction) => {
+  uploadSoportesPago.any()(req, res, error => {
+    if (!error) return next()
+    if (error instanceof multer.MulterError) {
+      const mensajes: Partial<Record<multer.ErrorCode, string>> = {
+        LIMIT_FILE_SIZE: `Cada archivo puede pesar máximo ${MAX_TAMANO_MB} MB`,
+        LIMIT_FILE_COUNT: `Puede subir máximo ${MAX_SOPORTES_PAGO} archivos a la vez`
+      }
+      return res.status(400).json({ error: mensajes[error.code] ?? error.message })
+    }
+    return res.status(400).json({ error: error.message })
+  })
+}
+
 // ── Facturas de las solicitudes de factura: PDF y XML (DIAN) de cada una ──
 
 // Los navegadores mandan el XML como text/xml, application/xml o sin tipo: se mira la extensión

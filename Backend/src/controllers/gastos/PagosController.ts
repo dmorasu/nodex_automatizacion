@@ -94,7 +94,7 @@ export class PagosController {
       const ids = (req.body.gastos as { id: number }[]).map(g => Number(g.id))
       await verificarQuienPaga(req, ids)
       await verificarFlujo(ids, 'directo')
-      const lote = await pagarDirecto(req.body, req.usuario.id)
+      const lote = await pagarDirecto(req.body, (req.files ?? []) as Express.Multer.File[], req.usuario.id)
 
       // Fuera de la transacción: un fallo en el correo no revierte el pago
       void notificarGastosPagados(ids)
@@ -156,8 +156,8 @@ export class PagosController {
     }
   }
 
-  // POST /lotes/confirmar  (multipart: datos = { loteIds, fechaPago, observacion }, archivos[])
-  // Confirma uno o varios lotes aprobados con el soporte del banco (puede ser uno para todos)
+  // POST /lotes/confirmar  (multipart: datos = { loteIds, fechaPago, observacion }, soporte_<gastoId>
+  // por cada gasto y, opcional, archivos[] del banco para los lotes)
   static confirmarVarios = async (req: Request, res: Response) => {
     try {
       const loteIds = (req.body.loteIds as unknown[]).map(Number)

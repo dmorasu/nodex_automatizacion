@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { fetchApi, leerErrores } from "@/src/lib/api"
+import { LoteDetalleSchema } from "@/src/schemas/gastos"
 
 type Resultado<T = undefined> =
   | { ok: true, datos: T, advertencia?: string }
@@ -40,28 +41,27 @@ export type DatosPagoDirecto = {
   gastos: { id: number, valorRealmentePagado: number }[]
 }
 
-// Compras de certificados: se pagan directo (sin aprobación de Dirección) y luego se sube el
-// soporte si se adjuntó. Si el pago queda pero el soporte falla, se mantiene el pago y se avisa.
-export async function pagarCertificados(datos: DatosPagoDirecto, soporte: FormData | null): Promise<Resultado<{ loteId: number }>> {
-  const req = await fetchApi("/gastos/pagos", { method: "POST", body: JSON.stringify(datos) })
+// Pago directo (certificados y gastos de anticipos, sin aprobación de Dirección), en un solo paso
+// con los soportes: formData = datos (JSON DatosPagoDirecto) + soporte_<gastoId> por cada gasto
+// (obligatorio) + archivos del banco para el lote (opcional). Si algo falla no se paga nada
+export async function pagarCertificados(formData: FormData): Promise<Resultado<{ loteId: number }>> {
+  const req = await fetchApi("/gastos/pagos", { method: "POST", body: formData })
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }
 
   const { loteId } = await req.json()
   refrescarPagos()
-
-  if (soporte && soporte.getAll("archivos").length > 0) {
-    const reqSoporte = await fetchApi(`/gastos/lotes/${loteId}/documentos`, { method: "POST", body: soporte })
-    if (!reqSoporte.ok) {
-      const [error] = await leerErrores(reqSoporte)
-      return {
-        ok: true,
-        datos: { loteId },
-        advertencia: `El pago quedó registrado (lote #${loteId}), pero el soporte no se pudo subir: ${error}. Súbalo desde Pagos realizados.`
-      }
-    }
-  }
-
   return { ok: true, datos: { loteId } }
+}
+
+// Gastos de los lotes a confirmar (para pedir el soporte de cada uno)
+export async function gastosDeLotes(loteIds: number[]) {
+  const lotes = await Promise.all(loteIds.map(async id => LoteDetalleSchema.parse(await (await fetchApi(`/gastos/lotes/${id}`)).json())))
+  return lotes.flatMap(l => l.gastos.map(g => ({
+    id: g.id,
+    codigo: g.codigo,
+    detalle: `Lote #${l.id} · ${g.beneficiario.nombre} · ${g.conceptoPago}`,
+    valor: g.valorProgramado
+  })))
 }
 
 // Tesorería saca gastos del lote antes de confirmar; vuelven a Por pagar
@@ -73,9 +73,10 @@ export async function quitarDelLote(loteId: number, gastoIds: number[], motivo: 
   return { ok: true, datos: await req.json() }
 }
 
-// Confirma uno o varios lotes aprobados en un solo paso: adjunta el soporte del banco a cada
-// lote (puede ser uno para todos), descuenta las bolsas y los gastos quedan PAGADO.
-// formData: datos (JSON con loteIds, fechaPago y observacion) + archivos[]
+// Confirma uno o varios lotes aprobados en un solo paso: cada gasto con su soporte de pago,
+// descuenta las bolsas y los gastos quedan PAGADO.
+// formData: datos (JSON con loteIds, fechaPago y observacion) + soporte_<gastoId> por gasto
+// (obligatorio) + archivos[] del banco para los lotes (opcional)
 export async function confirmarLotes(formData: FormData): Promise<Resultado<{ lotes: number, gastos: number }>> {
   const req = await fetchApi("/gastos/lotes/confirmar", { method: "POST", body: formData })
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }

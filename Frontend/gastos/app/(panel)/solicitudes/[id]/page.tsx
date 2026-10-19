@@ -43,6 +43,13 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold text-slate-800">{gasto.codigo}</h1>
               <EstadoGasto codigo={gasto.estado.codigo} nombre={gasto.estado.nombre} />
+              {/* Reembolsable: se le cobra al cliente (Legalización); no reembolsable: lo asume la bolsa (Contabilidad) */}
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${gasto.reembolsable ? "bg-sky-50 text-sky-700 ring-1 ring-sky-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}
+                title={gasto.reembolsable ? "Se le cobra al cliente: lo legaliza Legalización" : "Lo asume la bolsa: lo maneja Contabilidad"}
+              >
+                {gasto.reembolsable ? "Reembolsable" : "No reembolsable"}
+              </span>
             </div>
             <p className="mt-1 text-sm text-slate-500">{gasto.conceptoPago}</p>
             <p className="mt-1 text-xs text-slate-400">

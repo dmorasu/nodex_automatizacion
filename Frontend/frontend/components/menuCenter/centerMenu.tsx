@@ -7,6 +7,7 @@ import clsx from "clsx"
 import { Popover, PopoverButton, PopoverPanel, Transition } from "@headlessui/react"
 import {
   BellRing,
+  BookOpen,
   CircleCheckBig,
   FilePlus2,
   FileSpreadsheet,
@@ -169,8 +170,18 @@ export default function CenterMenu({
                   })}
                 </nav>
 
-                {/* CERRAR SESIÓN */}
+                {/* MANUAL Y CERRAR SESIÓN */}
                 <div className="border-t border-slate-200 p-2">
+                  <a
+                    href="/manual"
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => close()}
+                    className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                  >
+                    <BookOpen size={17} className="text-slate-400 group-hover:text-sky-500" />
+                    Manual Nodex
+                  </a>
                   <button
                     type="button"
                     onClick={async () => {

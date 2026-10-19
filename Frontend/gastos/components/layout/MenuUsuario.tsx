@@ -1,7 +1,7 @@
 "use client"
 
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react"
-import { CircleUser, LogOut } from "lucide-react"
+import { BookOpen, CircleUser, LogOut } from "lucide-react"
 import { cerrarSesion } from "@/actions/cerrarSesion"
 import { NOMBRES_ROL } from "@/src/auth/permisos"
 import type { Sesion } from "@/src/schemas"
@@ -39,6 +39,18 @@ export default function MenuUsuario({ sesion }: { sesion: Sesion }) {
               ))
               : <span className="text-[10px] text-slate-400">Sin roles asignados</span>}
           </div>
+        </div>
+
+        <div className="p-2 pb-0">
+          <a
+            href="/manual"
+            target="_blank"
+            rel="noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <BookOpen size={15} className="text-emerald-600" />
+            Manual Nodex
+          </a>
         </div>
 
         <form action={cerrarSesion} className="p-2">

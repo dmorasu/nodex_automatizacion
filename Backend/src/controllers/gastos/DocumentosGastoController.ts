@@ -82,12 +82,13 @@ const verificarAccesoLote = async (req: Request, lotePagoId: number) => {
   if (!propio) throw new ErrorGastos('El documento no existe', 404)
 }
 
-// Busca el documento y verifica acceso según a qué pertenece
-const obtenerDocumentoConAcceso = async (req: Request) => {
+// Busca el documento y verifica acceso según a qué pertenece.
+// soloLectura: los documentos de un gasto (y de sus reintegros) los ve cualquier usuario, como el gasto
+const obtenerDocumentoConAcceso = async (req: Request, { soloLectura = false } = {}) => {
   const documento = await DocumentosGasto.findByPk(Number(req.params.documentoId))
 
   if (documento?.solicitudGastoId) {
-    const gasto = await obtenerGastoConAcceso(req, documento.solicitudGastoId)
+    const gasto = await obtenerGastoConAcceso(req, documento.solicitudGastoId, { soloLectura })
     return { documento, gasto }
   }
 
@@ -106,7 +107,7 @@ const obtenerDocumentoConAcceso = async (req: Request) => {
   if (documento?.reintegroId) {
     const reintegro = await Reintegros.findByPk(documento.reintegroId)
     if (!reintegro) throw new ErrorGastos('El documento no existe', 404)
-    const gasto = await obtenerGastoConAcceso(req, reintegro.solicitudGastoId)
+    const gasto = await obtenerGastoConAcceso(req, reintegro.solicitudGastoId, { soloLectura })
     return { documento, gasto }
   }
 
@@ -251,7 +252,7 @@ export class DocumentosGastoController {
   // GET /documentos/:documentoId/ver
   static ver = async (req: Request, res: Response) => {
     try {
-      const { documento } = await obtenerDocumentoConAcceso(req)
+      const { documento } = await obtenerDocumentoConAcceso(req, { soloLectura: true })
 
       const archivo = await obtenerArchivo(documento.rutaDirectorio, documento.nombreArchivo)
 

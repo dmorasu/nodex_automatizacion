@@ -250,7 +250,8 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
     registrarFactura: z.boolean(),
     editar: z.boolean(),
     anular: z.boolean(),
-    subirDocumentos: z.boolean()
+    subirDocumentos: z.boolean(),
+    soloLectura: z.boolean().optional()
   })
 })
 

@@ -191,7 +191,12 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
           {gasto.anticipo && (
             <Seccion titulo="Anticipo del cliente">
               <dl className="space-y-4">
-                <Dato etiqueta="Anticipo" valor={<Link href={`/anticipos/${gasto.anticipo.id}`} className="font-semibold text-emerald-700 hover:underline">{gasto.anticipo.codigo}</Link>} />
+                <Dato
+                  etiqueta="Anticipo"
+                  valor={gasto.permisos.soloLectura
+                    ? gasto.anticipo.codigo
+                    : <Link href={`/anticipos/${gasto.anticipo.id}`} className="font-semibold text-emerald-700 hover:underline">{gasto.anticipo.codigo}</Link>}
+                />
                 <Dato etiqueta="Cliente" valor={`${gasto.anticipo.cliente.nombre} · ${gasto.anticipo.cliente.identificacion}`} />
                 <Dato etiqueta="Recibo de caja" valor={gasto.anticipo.reciboCaja} />
                 {gasto.saldoAnticipo && (
@@ -225,10 +230,12 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
                     ? <Link href={`/tesoreria/lotes/${gasto.lotePagoId}`} className="text-emerald-700 hover:underline">#{gasto.lotePagoId}</Link>
                     : `#${gasto.lotePagoId}`)}
                 />
-                <div>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">Soporte de pago</p>
-                  <ListaDocumentos documentos={gasto.documentosPago} vacio="Sin soporte cargado." />
-                </div>
+                {!gasto.permisos.soloLectura && (
+                  <div>
+                    <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">Soporte de pago</p>
+                    <ListaDocumentos documentos={gasto.documentosPago} vacio="Sin soporte cargado." />
+                  </div>
+                )}
               </dl>
             ) : (
               <p className="text-xs text-slate-400">Pendiente de pago.</p>

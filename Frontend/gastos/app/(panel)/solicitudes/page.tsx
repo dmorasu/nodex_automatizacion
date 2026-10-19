@@ -3,7 +3,7 @@ import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
 import { tieneRolDeGastos } from "@/src/auth/permisos"
 import { fetchApi } from "@/src/lib/api"
-import { obtenerCatalogos } from "@/src/lib/datosGastos"
+import { obtenerCatalogos, obtenerOperaciones } from "@/src/lib/datosGastos"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import EstadoGasto from "@/components/gastos/EstadoGasto"
@@ -12,6 +12,7 @@ import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/componen
 type Filtros = {
   alcance?: string
   estado?: string
+  operacionId?: string
   busqueda?: string
   pagina?: string
 }
@@ -35,10 +36,15 @@ export default async function SolicitudesPage({ searchParams }: { searchParams: 
 
   const consulta = new URLSearchParams({ alcance, pagina: String(pagina), tamano: String(TAMANO_PAGINA) })
   if (searchParams.estado) consulta.set("estado", searchParams.estado)
+  if (searchParams.operacionId) consulta.set("operacionId", searchParams.operacionId)
   if (searchParams.busqueda) consulta.set("busqueda", searchParams.busqueda)
 
-  const [catalogos, respuesta] = await Promise.all([
+  // Por operación, número de gasto, placa o matrícula salen también gastos de otros usuarios
+  const buscando = Boolean(searchParams.operacionId || searchParams.busqueda)
+
+  const [catalogos, operaciones, respuesta] = await Promise.all([
     obtenerCatalogos(),
+    obtenerOperaciones(),
     fetchApi(`/gastos/solicitudes?${consulta}`)
   ])
 
@@ -51,7 +57,7 @@ export default async function SolicitudesPage({ searchParams }: { searchParams: 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">
-            {alcance === "todos" ? "Todos los gastos" : "Mis gastos"}
+            {alcance === "todos" ? "Todos los gastos" : buscando ? "Gastos encontrados" : "Mis gastos"}
           </h1>
           <p className="mt-1 text-sm text-slate-400">{total} gasto(s) encontrado(s)</p>
         </div>
@@ -77,6 +83,11 @@ export default async function SolicitudesPage({ searchParams }: { searchParams: 
         <select name="estado" defaultValue={searchParams.estado ?? ""} className={`${claseInput} w-auto`} aria-label="Estado">
           <option value="">Todos los estados</option>
           {catalogos.estadosGasto.map(e => <option key={e.codigo} value={e.codigo}>{e.nombre}</option>)}
+        </select>
+
+        <select name="operacionId" defaultValue={searchParams.operacionId ?? ""} className={`${claseInput} w-auto`} aria-label="Operación">
+          <option value="">Todas las operaciones</option>
+          {operaciones.map(o => <option key={o.id} value={o.id}>{o.nombreOperacion}</option>)}
         </select>
 
         {puedeVerTodos && (
@@ -111,6 +122,9 @@ export default async function SolicitudesPage({ searchParams }: { searchParams: 
                   <Link href={`/solicitudes/${gasto.id}`} className="font-semibold text-emerald-700 hover:underline">
                     {gasto.codigo}
                   </Link>
+                  {gasto.creador && gasto.creador.id !== sesion.id && (
+                    <p className="text-[11px] text-slate-400">{gasto.creador.nombreUsuario}</p>
+                  )}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-slate-500">{formatoFecha(gasto.createdAt)}</td>
                 <td className="px-4 py-3 text-slate-700">

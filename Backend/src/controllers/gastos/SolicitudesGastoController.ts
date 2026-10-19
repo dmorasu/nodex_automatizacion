@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { Op, Order, WhereOptions, col, fn, literal } from 'sequelize'
+import { Op, Order, WhereOptions, col, fn, literal, where } from 'sequelize'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import EstadosGasto from '../../models/gastos/estadosGasto'
 import TiposGasto from '../../models/gastos/tiposGasto'
@@ -53,21 +53,23 @@ export const atributosSaldoAnticipo = (tabla = 'SolicitudesGasto'): [ReturnType<
   )`), 'comprometidoClienteAnticipo']
 ]
 
-// Busca el gasto y verifica que el usuario pueda verlo.
-// A quien no puede verlo se le responde 404 (no se revela que existe).
-export const obtenerGastoConAcceso = async (req: Request, id: number) => {
+// Quién gestiona un gasto (editar, anular, subir documentos): su creador, los roles del módulo
+// (Tesorería - Certificados solo las compras de certificados) o la auxiliar de la caja menor del gasto
+export const puedeGestionarGasto = async (req: Request, gasto: SolicitudesGasto) => {
+  if (gasto.creadoPor === req.usuario.id) return true
+  if (soloCertificados(req)) return (await idsTiposCertificados()).includes(gasto.tipoGastoId)
+  if (puedeVerTodos(req)) return true
+  return esAuxiliarCaja(req) && (await cajaDelUsuario(req.usuario.id))?.id === gasto.bolsaId
+}
+
+// Busca el gasto y verifica que el usuario pueda usarlo.
+// Para solo ver (soloLectura) cualquier usuario abre cualquier gasto: se encuentran por número,
+// placa, matrícula u operación. A quien no puede gestionarlo se le responde 404 (no se revela que existe).
+export const obtenerGastoConAcceso = async (req: Request, id: number, { soloLectura = false } = {}) => {
   const gasto = await SolicitudesGasto.findByPk(id)
-
-  // La auxiliar de caja menor abre los gastos de su caja
-  const deSuCaja = async () => esAuxiliarCaja(req) && (await cajaDelUsuario(req.usuario.id))?.id === gasto?.bolsaId
-  if (!gasto || (!puedeVerTodos(req) && gasto.creadoPor !== req.usuario.id && !(await deSuCaja()))) {
+  if (!gasto || (!soloLectura && !(await puedeGestionarGasto(req, gasto)))) {
     throw new ErrorGastos('El gasto no existe', 404)
   }
-  // Tesorería - Certificados solo abre compras de certificados (o los gastos que ella creó)
-  if (soloCertificados(req) && gasto.creadoPor !== req.usuario.id && !(await idsTiposCertificados()).includes(gasto.tipoGastoId)) {
-    throw new ErrorGastos('El gasto no existe', 404)
-  }
-
   return gasto
 }
 
@@ -120,6 +122,27 @@ const CON_FACTURA_TRAMITADOR = `EXISTS (
   WHERE s.solicitud_gasto_id = "SolicitudesGasto"."id" AND s.tipo = 'FACTURA' AND s.estado IN ('PENDIENTE', 'APROBADO')
 )`
 
+// "ABC-123" → "ABC123", "50c 123456" → "50C123456": así la placa o la matrícula se encuentra
+// con o sin guiones ni espacios
+const normalizar = (texto: string) => texto.toUpperCase().replace(/[^A-Z0-9]/g, '')
+const columnaNormalizada = (columna: string) =>
+  fn('regexp_replace', fn('upper', col(`SolicitudesGasto.${columna}`)), '[^A-Z0-9]', '', 'g')
+
+// Búsqueda exacta, sin importar quién creó el gasto: número de gasto ("GAS-2026-000123",
+// "2026-000123", "000123" o "123"; el consecutivo es el id), placa o matrícula inmobiliaria
+const coincidenciasExactas = (busqueda: string): WhereOptions[] => {
+  const exactas: WhereOptions[] = []
+  const numero = /^(?:GAS-?)?(?:\d{4}-)?(\d{1,9})$/i.exec(busqueda.replace(/\s/g, ''))
+  if (numero) exactas.push({ codigo: { [Op.iLike]: `GAS-____-${numero[1].replace(/^0+/, '').padStart(6, '0')}` } })
+
+  const texto = normalizar(busqueda)
+  if (texto.length >= 4) {
+    exactas.push(where(columnaNormalizada('placa'), texto))
+    exactas.push(where(columnaNormalizada('matricula_inmobiliaria'), texto))
+  }
+  return exactas
+}
+
 const desdeBogota = (fecha: string) => new Date(`${fecha}T00:00:00-05:00`)
 const hastaBogota = (fecha: string) => new Date(`${fecha}T23:59:59.999-05:00`)
 
@@ -128,14 +151,19 @@ const hastaBogota = (fecha: string) => new Date(`${fecha}T23:59:59.999-05:00`)
 //  tramitadorId · creadoPor · reembolsable=si|no · sinCuentaCobro=si · soporteTramitador=si|no
 //  conTramite=si|no · reintegroPendiente=si · desde/hasta (creación) · pagoDesde/pagoHasta · busqueda
 //  cajaMenor=si|no (gastos que salen de una caja menor)
+//  Sin rol (o en "mis gastos") se ven los propios, salvo al filtrar por operación o al buscar
+//  un número de gasto, una placa o una matrícula exactos: eso trae los de cualquier usuario
 const condicionesListado = async (req: Request) => {
   const q = req.query
   const condiciones: WhereOptions[] = []
 
   // Sin rol solo se ven los propios, aunque pida "todos". La auxiliar de caja menor ve los de su caja
+  let alcance: WhereOptions | null = null
   if (q.alcance === 'todos' && !puedeVerTodos(req) && esAuxiliarCaja(req)) {
-    condiciones.push({ bolsaId: (await cajaDelUsuario(req.usuario.id))?.id ?? -1 })
-  } else if (q.alcance !== 'todos' || !puedeVerTodos(req)) condiciones.push({ creadoPor: req.usuario.id })
+    alcance = { bolsaId: (await cajaDelUsuario(req.usuario.id))?.id ?? -1 }
+  } else if (q.alcance !== 'todos' || !puedeVerTodos(req)) alcance = { creadoPor: req.usuario.id }
+  // Por operación se ven los gastos de todos los usuarios (qué se ha pedido en esa operación)
+  if (q.operacionId) alcance = null
 
   // Gastos que se pagan por caja menor (cajaMenor=si) o el resto (cajaMenor=no)
   if (q.cajaMenor === 'si' || q.cajaMenor === 'no') {
@@ -204,7 +232,7 @@ const condicionesListado = async (req: Request) => {
   const busqueda = String(q.busqueda ?? '').trim()
   if (busqueda) {
     const patron = { [Op.iLike]: `%${busqueda}%` }
-    condiciones.push({
+    const coincidencias: WhereOptions = {
       [Op.or]: [
         { codigo: patron },
         { conceptoPago: patron },
@@ -215,8 +243,12 @@ const condicionesListado = async (req: Request) => {
         { '$beneficiario.identificacion$': patron },
         ...(/^\d+$/.test(busqueda) ? [{ solicitudTramiteId: Number(busqueda) }] : [])
       ]
-    })
-  }
+    }
+    // El número de gasto, la placa y la matrícula exactos encuentran los gastos de cualquier usuario
+    condiciones.push(alcance
+      ? { [Op.or]: [{ [Op.and]: [alcance, coincidencias] }, ...coincidenciasExactas(busqueda)] }
+      : coincidencias)
+  } else if (alcance) condiciones.push(alcance)
 
   return condiciones
 }
@@ -287,9 +319,11 @@ export class SolicitudesGastoController {
 
   static getById = async (req: Request, res: Response) => {
     try {
-      const { id } = await obtenerGastoConAcceso(req, Number(req.params.id))
+      // Cualquier usuario lo ve; editar, anular y subir documentos queda para quien lo gestiona
+      const encontrado = await obtenerGastoConAcceso(req, Number(req.params.id), { soloLectura: true })
+      const gestiona = await puedeGestionarGasto(req, encontrado)
 
-      const gasto = await SolicitudesGasto.findByPk(id, {
+      const gasto = await SolicitudesGasto.findByPk(encontrado.id, {
         include: [
           ...INCLUDES_BASE,
           { model: FormasPago, attributes: ['id', 'codigo', 'nombre'] },
@@ -371,8 +405,9 @@ export class SolicitudesGastoController {
         })
         : []
 
-      // Soportes del pago: están en el lote, no en el gasto
-      const documentosPago = gasto.lotePagoId
+      // Soportes del pago: están en el lote, no en el gasto (el del banco puede traer otros
+      // gastos del lote: no se muestra a quien solo ve el gasto)
+      const documentosPago = gasto.lotePagoId && gestiona
         ? await DocumentosGasto.findAll({
           where: { lotePagoId: gasto.lotePagoId },
           attributes: ['id', 'nombreOriginal', 'tipoArchivo', 'tamano', 'subidoPor', 'createdAt'],
@@ -407,7 +442,8 @@ export class SolicitudesGastoController {
           ),
           editar: creadorOAdmin && estado === ESTADOS_GASTO.SOLICITADO,
           anular: creadorOAdmin && estado === ESTADOS_GASTO.SOLICITADO,
-          subirDocumentos: estado !== ESTADOS_GASTO.ANULADO && estado !== ESTADOS_GASTO.CONTABILIZADO
+          subirDocumentos: gestiona && estado !== ESTADOS_GASTO.ANULADO && estado !== ESTADOS_GASTO.CONTABILIZADO,
+          soloLectura: !gestiona
         }
       })
     } catch (error) {

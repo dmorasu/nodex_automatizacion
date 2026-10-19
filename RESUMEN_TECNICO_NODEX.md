@@ -1,6 +1,6 @@
 # Nodex: resumen técnico para continuar
 
-_Actualizado: 2026-10-13_
+_Actualizado: 2026-10-19_
 
 ## Arquitectura
 
@@ -396,6 +396,11 @@ Fondo fijo en efectivo por sede (Medellín y Bogotá; fondo de 15.000.000 editab
 - Backend `services/gastos/catalogosGastos.ts` (`CATALOGOS`) + `/gastos/admin/catalogos/:catalogo` (`GET`, `POST`, `PUT /:id`, `DELETE /:id`; `soloAdmin`). Los **tipos de gasto no se crean ni se eliminan** (la lógica depende de sus códigos), solo se renombran o desactivan. Los **tipos de documento del sistema** (`TIPOS_DOCUMENTO`, FACTURA y OTRO) no se desactivan ni se eliminan.
 - **Clientes empresariales:** ya no los crea Contabilidad (se quitaron su pestaña, `POST/PUT /clientes-empresariales` y `ClientesEmpresariales.tsx`); queda `GET /clientes-empresariales` para el formulario.
 
+### Nodex Gastos: búsqueda de gastos de otros usuarios (2026-10-15)
+- **Listado `/solicitudes`** (`condicionesListado`): sin rol (o en "Mis gastos") cada usuario ve los suyos, **salvo** al filtrar por **operación** (trae los de todos) o al buscar un **número de gasto** (`GAS-2026-000123`, `2026-000123`, `000123` o `123`), una **placa** o una **matrícula** exactas (sin importar mayúsculas, guiones ni espacios; `coincidenciasExactas`). La búsqueda parcial (concepto, beneficiario, factura, texto suelto) sigue limitada a los propios. Pantalla: selector "Operación", título "Gastos encontrados" y el nombre del creador bajo el código cuando no es del usuario.
+- **Detalle solo para ver:** `obtenerGastoConAcceso(req, id, { soloLectura: true })` deja abrir cualquier gasto y sus documentos (`GET /documentos/:id/ver`, también los de sus reintegros). Editar, anular, subir y borrar documentos siguen con `puedeGestionarGasto` (creador, roles del módulo, Tesorería - Certificados solo certificados, auxiliar de su caja). `permisos.soloLectura`; a quien solo ve no se le muestra el soporte de pago del lote (puede traer otros gastos) ni el enlace al anticipo.
+- **Probado** contra la base de desarrollo con un usuario sin rol: número completo y solo el número, placa con guion y minúsculas, operación (con totales), texto parcial ajeno sin resultados, detalle ajeno en solo lectura y anular ajeno → 404.
+
 ### Administración de usuarios en Nodex Trámites (2026-10-05)
 - `/center/admin`: lista paginada (15 por página) con búsqueda y filtros por **perfil** (incluye "Sin acceso a trámites" y "Sin ningún perfil") y por **área**. Los perfiles del formulario de nuevo usuario van en cuadrícula por grupo.
 - **Administrador de Torre de control** entra a Administración (`requiereAdministrarUsuarios`, menú) y solo maneja perfiles de trámites (`ROLES_TRAMITES` en constantes). El backend (`RolesGastosController`) responde 403 si intenta asignar o quitar perfiles de Gastos/Administración, o editar o cambiar la contraseña de usuarios que los tengan. Al guardar perfiles de un usuario de Gastos conserva sus perfiles de Gastos.
@@ -493,7 +498,13 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 - **Limpieza hecha:** se quitaron de PM2 las entradas detenidas `api4.2`, `worker4.2`, `Nodex4.2`, `api_Nodex_4.3` y `Nodex4.3`, y se borraron `/home/desarrolloti/Nodex`, `Nodex2.0`, `nodex3.0` y `apps` (copias viejas que no usaba PM2, Nginx ni cron). Su código (sin `node_modules`, `.next` ni `dist`, con sus `.env`) quedó en Azure en `respaldos-nodex/archivo-servidor/` y se borra solo a los 30 días. El disco quedó en **59 %** (13 GB libres).
 - **Cuando la 5.0 pase a producción:** archivar igual y borrar `nodex4.0` (1,2 GB) después de la semana de espera de la guía.
 
-## Estado del código y del despliegue (2026-10-13)
+## Estado del código y del despliegue (2026-10-19)
+- **Rama `desarrollo`:** commit de la búsqueda de gastos de otros usuarios (número de gasto, placa, matrícula y operación; detalle solo para ver). Ver "Nodex Gastos: búsqueda de gastos de otros usuarios (2026-10-15)". El anterior era `5bbbf9d9`.
+- **Ensayo sin actualizar** (sigue en `b08852ce`): le faltan los commits del 2026-10-13 y este. No hay variables ni tablas nuevas por este cambio.
+- **Falta probar en el navegador:** con un usuario sin rol de Gastos, buscar un gasto ajeno por número, placa y matrícula, filtrar por operación y abrir el detalle (sin botones de editar, anular ni subir documentos; los documentos se abren).
+- **Manual de usuario:** sin actualizar para este cambio.
+
+## Estado del código y del despliegue (2026-10-13, histórico)
 - **Rama `desarrollo`, commit `d2516e6d`** (subido a GitHub). Commits del 2026-10-13, en orden:
   - `e13964de`: los trámites en espera por novedad no cuentan como vencidos.
   - `ec30e2ca`: historial del trámite (línea de tiempo con quién cambió qué; tabla `historial_tramites`).

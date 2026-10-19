@@ -562,11 +562,18 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 - **Cuando la 5.0 pase a producción:** archivar igual y borrar `nodex4.0` (1,2 GB) después de la semana de espera de la guía.
 
 ## Estado del código y del despliegue (2026-10-19)
-- **Rama `desarrollo`:** después de `513fefe1` (listas con búsqueda): etiqueta Reembolsable en el detalle del gasto, soporte de pago por gasto al pagar, PDF de pago unificado (elección y vista previa, ZIP sin carpetas) y tablas de Legalización (filtros, estado del trámite, 4x1000 y exportar a CSV). Antes: `c6f1bee8`, `93edbd68` (áreas), `ef5399c7`, `cca4f109`, `e127bcc8` (lint: frenaba `next build` de Trámites), `aeb30b9e`, `9b19252d`, `513fefe1`. El anterior era `5bbbf9d9`.
-- **Ensayo actualizado a `31d4c898` (2026-10-19)** con la guía ("Actualizar el ensayo con cambios nuevos"); arranque y verificaciones de la base OK (confirmado por el usuario). Respaldo previo en `/tmp/nodex_pruebas_antes_*.dump`; para volver: `b08852ce`. Sin variables nuevas ni cambios en `package.json`; se compilan el backend y las **tres** apps (la de tramitadores cambió el 2026-10-13: trámites devueltos). Al arrancar se crean: `historial_tramites`, `Areas` + `Usuarios.areaId` (asigna áreas por el texto viejo: **ver en el log los textos no reconocidos**), usos de los tipos de documento + Liquidación de pago, parámetro `HORA_CORTE_PROGRAMACION` (9:00) y `Operaciones.descargaPagoUnificada` (marca la 1301).
-- **Paso a producción:** antes, revisar los textos de área de producción (`SELECT area, COUNT(*) FROM "Usuarios" GROUP BY 1;`); los que no correspondan a un área del catálogo quedan sin área.
-- **Falta probar en el navegador:** Catálogos → Áreas; asignar área en Administración; con un usuario de Gestión de activos, filtrar el Dashboard y abrir un trámite de un compañero (y marcar novedad subsanada); en Gastos, buscar con un usuario sin rol y abrir el gasto de un compañero.
-- **Manual de usuario:** sin actualizar para estos cambios.
+- **Rama `desarrollo`, último commit `6ea60259`** (subido a GitHub). En orden desde el 2026-10-15: `c6f1bee8` (búsqueda de gastos ajenos, ya reemplazada), `93edbd68` (áreas), `ef5399c7` (menú de Trámites), `cca4f109` (Código BPR/FTF), `e127bcc8` (lint: frenaba `next build` de Trámites), `aeb30b9e` (tipos de documento por servicio), `9b19252d` (aviso de programación), `513fefe1` (listas con búsqueda), `a87c41f2` (etiqueta Reembolsable), `4a1bb840` (soporte de pago por gasto), `7f66ac13` (PDF de pago unificado), `31d4c898` (tablas de Legalización), `8771acd5` (resumen), `5a4a67c4` (RUNT), `6ea60259` (manual y enlace en los menús). El anterior al 2026-10-15 era `5bbbf9d9`.
+- **Ensayo en `31d4c898`** (actualizado el 2026-10-19 con la guía; arranque y verificaciones de la base OK, confirmado por el usuario; para volver: `b08852ce`). Ese arranque creó `historial_tramites`, `Areas` + `Usuarios.areaId`, los usos de los tipos de documento + Liquidación de pago, `HORA_CORTE_PROGRAMACION` (9:00) y `Operaciones.descargaPagoUnificada` (1301).
+- **Pendiente: llevar el ensayo a `6ea60259`** (RUNT, manual y enlace). Compilar backend, Trámites y Gastos (Tramitadores no cambió). Al arrancar el seed crea el tipo "Certificado RUNT". Sin variables nuevas. Para volver: `8771acd5`.
+- **Paso a producción:** antes, revisar los textos de área de producción (`SELECT area, COUNT(*) FROM "Usuarios" GROUP BY 1;`); los que no correspondan a un área del catálogo quedan sin área (salen en el log del arranque). Confirmar que la operación de Finalizaciones Leasing Vehículos tenga centro de costos `1301` (si no, marcarla en Catálogos → Operaciones).
+- **Falta probar en el navegador (ensayo):**
+  - Áreas: Catálogos → Áreas, asignar área en Administración; Gestión de activos filtrando el Dashboard y trabajando un trámite de un compañero (novedad subsanada); en Gastos, buscar con un usuario sin rol y abrir el gasto de un compañero (solo ver).
+  - Listas con búsqueda en los formularios reales (nuevo trámite, crear gasto, filtros, Gestión masiva, Cargue en pantalla).
+  - Gasto nuevo con documentos de pago y el aviso de la hora de corte; Catálogos → Tipos de documento ("Se sube en") y Programación de pagos.
+  - **Confirmar un pago con un soporte por gasto** y un **pago directo** de certificado (incluido RUNT).
+  - Legalización: filtros, 4x1000, exportar a CSV y abrirlo en Excel; Descargar documentos de la 1301 con revisión y vista previa.
+  - "Manual Nodex" desde el menú de Trámites y de Gastos.
+- **Manual de usuario:** actualizado al 2026-10-19 (`6ea60259`). Se sirve en `/manual` de Trámites y Gastos desde `docs/`; para cambios solo del manual basta `git pull` (sin recompilar).
 
 ## Estado del código y del despliegue (2026-10-13, histórico)
 - **Rama `desarrollo`, commit `d2516e6d`** (subido a GitHub). Commits del 2026-10-13, en orden:
@@ -755,6 +762,13 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
 - **CTL y Cámara de Comercio** son dos tipos de gasto distintos; en CTL la placa y la matrícula son opcionales.
 - **Pago en tres pasos (2026-10-06, decidido por el usuario):** la Dirección de Negocio aprueba también en Nodex (perfil propio); un gasto no aprobado vuelve a Por pagar (no se anula); la bolsa se descuenta al confirmar el pago, no al programar; el soporte del banco es obligatorio para confirmar; los certificados no pasan por la Dirección.
 - **Correo "por aprobar"** va a todos los usuarios con perfil Dirección de Negocio (no a un correo fijo del `.env`).
+- **Áreas (2026-10-19):** al cargar cada uno ve lo suyo; al buscar o filtrar, lo de su área. En Trámites lo del área se trabaja como propio; en Gastos solo se ve. El catálogo lo administran Admin y Administrador de Torre de control. Reemplazó la búsqueda de gastos "de cualquier usuario" del 2026-10-15.
+- **Soporte de pago (2026-10-19):** cada gasto pagado lleva su propio soporte, obligatorio y distinto (también en el pago directo); el del banco para el lote pasa a opcional. Reemplaza la decisión del 2026-10-06 ("el soporte del banco es obligatorio para confirmar").
+- **PDF de pago unificado (2026-10-19):** por operación (hoy la 1301); Legalización revisa y elige por gasto (soporte, factura registrada o ambos) con vista previa; solo cuenta la factura que registró Legalización; el ZIP de descarga queda sin carpetas.
+- **Hora de corte (2026-10-19):** 9:00 a. m., configurable; solo es un aviso a quien crea el gasto. La bandeja "Por pagar" de Tesorería **no** separa los gastos por fecha de programación (el usuario prefirió dejarla así).
+- **4x1000 en Legalización:** sin factura registrada se muestra **estimado** sobre lo pagado.
+- **RUNT** es un tipo de certificado más (como CTL y Cámara de Comercio), con placa opcional.
+- **Manual de usuario:** colores de la firma en lo general y el color de cada módulo dentro de su sección.
 
 ## Pendientes y riesgos
 1. **Arranque del backend:** confirmado el 2026-10-04 (`REST API en el puerto 4000` + `Conexion Exitosa`) tras corregir los índices de `mensajeria_paradas`. Sigue el riesgo de que `connectDB()` esconda errores; se propuso detener el servidor si falla (sin confirmar).
@@ -806,9 +820,11 @@ La API ya exige la clave `X-API-Key`. Como segunda barrera, permitir solo la IP 
 - **Paso a producción:** cuando el ensayo pase, seguir `deploy/GUIA_PASO_A_PRODUCCION.md` (anotar antes lo configurado en las pantallas del ensayo que se quiera conservar).
 - Confirmar que el backend arranca y asignar el rol "Tesorería - Certificados" en Usuarios.
 - Probar en el navegador: carga masiva de facturas, descarga ZIP, bandejas de Legalización y Contabilidad, y el flujo de certificados con un gasto real.
-- Agregar la columna "Tipo" a la plantilla del cargue masivo.
+- Agregar la columna "Tipo" a la plantilla del cargue masivo de gastos (hoy deduce vehículo o inmueble por placa o matrícula: no permite CTL, Cámara de Comercio ni RUNT).
 - Ofrecidos sin confirmar:
   - Carga masiva de facturas también en Contabilidad (no reembolsables).
   - Avisos por WhatsApp al tramitador (soporte rechazado, respuesta a un comentario).
   - Lista de IPs permitidas en Nginx para Trámites y Gastos (Tramitadores queda público) y Postgres solo en 127.0.0.1 / 10.0.4.4.
   - PWA en Android: sin HTTPS Chrome solo crea un acceso directo con su logo. Con HTTPS, más un service worker básico y un ícono "maskable" con margen, queda como app.
+  - Enlace "Manual Nodex" también en la app de tramitadores (menú de cuenta).
+  - Guardar por gasto la elección del PDF de pago (opción C), si Legalización corrige siempre los mismos casos.

@@ -52,7 +52,7 @@ export const listarCatalogos = async () => {
       FROM "SubEstados" se ORDER BY se.nombre
     `, { type: QueryTypes.SELECT }),
     db.query(`
-      SELECT o.id, o."nombreOperacion" AS nombre, o."centroDeCostos",
+      SELECT o.id, o."nombreOperacion" AS nombre, o."centroDeCostos", o."descargaPagoUnificada",
         (SELECT COUNT(*) FROM "SolicitudTramites" s WHERE s."operacionesId" = o.id)::int AS "usoTramites",
         (SELECT COUNT(*) FROM gastos_solicitudes g WHERE g.operacion_id = o.id)::int AS "usoGastos"
       FROM "Operaciones" o ORDER BY o."nombreOperacion"
@@ -88,10 +88,12 @@ export const guardarCatalogo = async (tipo: TipoCatalogo, datos: Record<string, 
     case 'operaciones': {
       const nombreOperacion = texto(datos.nombre, 'El nombre', 100)!
       const centroDeCostos = texto(datos.centroDeCostos, 'El centro de costos', 10, false)
+      // Sin el dato, no cambia
+      const descargaPagoUnificada = datos.descargaPagoUnificada === undefined ? undefined : String(datos.descargaPagoUnificada) === 'true'
       await revisarDuplicado('Operaciones', 'nombreOperacion', nombreOperacion, id)
       return id
-        ? (await existente(porId.operaciones, id)).update({ nombreOperacion, centroDeCostos })
-        : Operaciones.create({ nombreOperacion, centroDeCostos })
+        ? (await existente(porId.operaciones, id)).update({ nombreOperacion, centroDeCostos, ...(descargaPagoUnificada !== undefined && { descargaPagoUnificada }) })
+        : Operaciones.create({ nombreOperacion, centroDeCostos, descargaPagoUnificada: descargaPagoUnificada ?? false })
     }
     case 'subestados': {
       const nombre = texto(datos.nombre, 'El nombre', 200)!

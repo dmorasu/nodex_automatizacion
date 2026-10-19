@@ -99,6 +99,8 @@ export type TipoMovimientoBolsa = typeof TIPOS_MOVIMIENTO_BOLSA[keyof typeof TIP
 
 export const TIPOS_DOCUMENTO = {
   SOPORTE_PAGO: 'SOPORTE_PAGO',
+  // Liquidación que adjunta quien crea el gasto (va en el PDF de pago unificado)
+  LIQUIDACION_PAGO: 'LIQUIDACION_PAGO',
   // Comprobante de la consignación que hizo el cliente (anticipos)
   SOPORTE_CONSIGNACION: 'SOPORTE_CONSIGNACION',
   CUENTA_COBRO: 'CUENTA_COBRO',

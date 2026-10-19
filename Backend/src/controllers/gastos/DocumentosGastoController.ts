@@ -15,7 +15,7 @@ import { obtenerGastoConAcceso } from './SolicitudesGastoController'
 import { esAdmin, esAuxiliarCaja, puedeVerTodos, responderError } from './utilidades'
 import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
 import { cajaDelUsuario } from '../../services/gastos/cajaMenor'
-import { generarZipDocumentos } from '../../services/gastos/descargaDocumentos'
+import { generarZipDocumentos, revisionPdfsDePago, type EleccionPdfPago } from '../../services/gastos/descargaDocumentos'
 import { tiposDocumentoDelGasto } from '../../services/gastos/tiposDocumento'
 
 const CARPETA_GASTOS = 'gastos'
@@ -232,10 +232,22 @@ export class DocumentosGastoController {
     }
   }
 
-  // POST /documentos/descargar  { gastoIds: number[] } → ZIP con una carpeta por gasto
+  // POST /documentos/descargar/revision  { gastoIds } → gastos con PDF de pago unificado, sus
+  // documentos y lo sugerido (la pantalla deja elegir antes de descargar)
+  static revisionPdfsDePago = async (req: Request, res: Response) => {
+    try {
+      res.json(await revisionPdfsDePago((req.body.gastoIds as unknown[]).map(Number)))
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /documentos/descargar  { gastoIds: number[], pdfPago?: { [gastoId]: SOPORTE|FACTURA|AMBOS } }
+  // → ZIP sin carpetas (ver generarZipDocumentos)
   static descargarVarios = async (req: Request, res: Response) => {
     try {
-      const { contenido, gastos, archivos, faltantes } = await generarZipDocumentos((req.body.gastoIds as unknown[]).map(Number))
+      const eleccion = (req.body.pdfPago && typeof req.body.pdfPago === 'object' ? req.body.pdfPago : {}) as EleccionPdfPago
+      const { contenido, gastos, archivos, faltantes } = await generarZipDocumentos((req.body.gastoIds as unknown[]).map(Number), eleccion)
       const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
 
       res.setHeader('Content-Type', 'application/zip')

@@ -96,6 +96,17 @@ export const ajustarEsquemaTramites = async () => {
   await ubicacionYMensajeros()
   await versionSesion()
   await areasDeUsuarios()
+  await descargaPagoUnificada()
+}
+
+// 2026-10-19 · Operaciones cuyos gastos Legalización descarga como un solo PDF de pago por gasto.
+// Solo al crear la columna se marca Finalizaciones Leasing Vehículos (centro de costos 1301);
+// después se cambia en Catálogos → Operaciones
+const descargaPagoUnificada = async () => {
+  const operaciones = await columnasDe('Operaciones')
+  if (!operaciones || operaciones.descargaPagoUnificada) return
+  await db.query(`ALTER TABLE "Operaciones" ADD COLUMN "descargaPagoUnificada" BOOLEAN NOT NULL DEFAULT false`)
+  await db.query(`UPDATE "Operaciones" SET "descargaPagoUnificada" = true WHERE TRIM("centroDeCostos") = '1301'`)
 }
 
 // Áreas iniciales del catálogo (después se crean, renombran y eliminan en Catálogos → Áreas)

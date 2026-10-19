@@ -109,3 +109,25 @@ export async function marcarReintegrado(reintegroId: number, fechaReintegro: str
     ? resultado
     : { ...resultado, advertencia: `El reintegro quedó registrado, pero el soporte no se pudo subir: ${subida.errores[0]}` }
 }
+
+// ── PDF de pago unificado (operaciones como la 1301) ──
+
+export type SegundoDocumento = "SOPORTE" | "FACTURA" | "AMBOS"
+export type DocumentoRevision = { id: number, nombre: string, tipo: string }
+export type RevisionPdfPago = {
+  id: number
+  codigo: string
+  archivo: string
+  liquidaciones: DocumentoRevision[]
+  soportes: DocumentoRevision[]
+  facturas: DocumentoRevision[]
+  sugerido: SegundoDocumento
+}
+
+// Antes de descargar: qué gastos bajan como un solo PDF de pago, qué documentos tiene cada uno
+// y qué se sugiere poner después de la liquidación (vacío si ninguno lo lleva)
+export async function revisarPdfsDePago(gastoIds: number[]): Promise<Resultado<RevisionPdfPago[]>> {
+  const req = await fetchApi("/gastos/documentos/descargar/revision", { method: "POST", body: JSON.stringify({ gastoIds }) })
+  if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+  return { ok: true, datos: await req.json() }
+}

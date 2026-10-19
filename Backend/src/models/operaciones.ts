@@ -20,6 +20,15 @@ class Operaciones extends Model{
 
     declare centroDeCostos:string
 
+    // Legalización descarga los gastos de esta operación como un solo PDF de pago por gasto
+    // (liquidación + soporte de pago). Se marca en Catálogos → Operaciones (hoy: 1301)
+    @Column({
+        type: DataType.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    })
+    declare descargaPagoUnificada:boolean
+
 
     @HasMany(()=>SolicitudTramites,{
          onUpdate:'CASCADE',

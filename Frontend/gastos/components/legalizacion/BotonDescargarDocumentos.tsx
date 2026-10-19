@@ -4,10 +4,13 @@ import { useState } from "react"
 import { toast } from "react-toastify"
 import { Download, Loader2 } from "lucide-react"
 import { claseBotonPrimario } from "../ui/estilos"
+import { revisarPdfsDePago, type RevisionPdfPago, type SegundoDocumento } from "@/actions/gastos/legalizacion"
+import ModalPdfsDePago from "./ModalPdfsDePago"
 
 export const MAXIMO_DESCARGA = 50
 
-// Descarga en un ZIP los documentos de los gastos indicados (una carpeta por gasto)
+// Descarga en un ZIP los documentos de los gastos indicados (todos en la raíz, sin carpetas).
+// Si hay gastos con PDF de pago unificado (ej: 1301), primero se revisa qué lleva cada PDF
 export default function BotonDescargarDocumentos({
   gastoIds,
   texto = "Descargar documentos",
@@ -18,17 +21,35 @@ export default function BotonDescargarDocumentos({
   alTerminar?: () => void
 }) {
   const [descargando, setDescargando] = useState(false)
+  const [revision, setRevision] = useState<RevisionPdfPago[] | null>(null)
 
-  const descargar = async () => {
+  // Primero: ¿hay gastos con PDF de pago unificado? Si los hay, se revisan antes de descargar
+  const revisar = async () => {
     if (gastoIds.length === 0) return toast.error("Seleccione al menos un gasto")
     if (gastoIds.length > MAXIMO_DESCARGA) return toast.error(`Puede descargar máximo ${MAXIMO_DESCARGA} gastos a la vez`)
 
+    setDescargando(true)
+    const resultado = await revisarPdfsDePago(gastoIds).catch(() => null)
+    if (!resultado?.ok) {
+      setDescargando(false)
+      return toast.error(resultado?.errores[0] ?? "No se pudieron revisar los documentos")
+    }
+    if (resultado.datos.length) {
+      setDescargando(false)
+      setRevision(resultado.datos)
+      return
+    }
+    await descargar({})
+  }
+
+  const descargar = async (pdfPago: Record<number, SegundoDocumento>) => {
+    setRevision(null)
     setDescargando(true)
     try {
       const respuesta = await fetch("/documentos/descargar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gastoIds })
+        body: JSON.stringify({ gastoIds, pdfPago })
       })
 
       if (!respuesta.ok) {
@@ -59,9 +80,12 @@ export default function BotonDescargarDocumentos({
   }
 
   return (
-    <button type="button" onClick={descargar} disabled={descargando || gastoIds.length === 0} className={claseBotonPrimario}>
-      {descargando ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-      {descargando ? "Preparando ZIP..." : texto}
-    </button>
+    <>
+      <button type="button" onClick={revisar} disabled={descargando || gastoIds.length === 0} className={claseBotonPrimario}>
+        {descargando ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+        {descargando ? "Preparando ZIP..." : texto}
+      </button>
+      {revision && <ModalPdfsDePago gastos={revision} onDescargar={descargar} onCerrar={() => setRevision(null)} />}
+    </>
   )
 }

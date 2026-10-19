@@ -158,10 +158,15 @@ router.get('/clientes-empresariales', ClientesEmpresarialesController.listar)
 router.post('/solicitudes/:id/documentos', recibirDocumentos, validarId, handleInputErrors, DocumentosGastoController.subir)
 router.get('/documentos/:documentoId/ver', DocumentosGastoController.ver)
 // Descarga masiva (ZIP): los roles del módulo que revisan documentos
-router.post('/documentos/descargar',
+const validarGastosDescarga = [
   requiereRol(ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA),
   body('gastoIds').isArray({ min: 1, max: 50 }).withMessage('Seleccione entre 1 y 50 gastos'),
-  body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido'),
+  body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido')
+]
+router.post('/documentos/descargar/revision', validarGastosDescarga, handleInputErrors, DocumentosGastoController.revisionPdfsDePago)
+router.post('/documentos/descargar',
+  validarGastosDescarga,
+  body('pdfPago.*').optional().isIn(['SOPORTE', 'FACTURA', 'AMBOS']).withMessage('Elección del PDF de pago no válida'),
   handleInputErrors,
   DocumentosGastoController.descargarVarios
 )

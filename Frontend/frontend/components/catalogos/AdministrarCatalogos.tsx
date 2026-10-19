@@ -11,7 +11,8 @@ type TipoCatalogo = "tramites" | "operaciones" | "subestados" | "rechazos" | "ar
 
 type TipoTramite = { id: number, nombre: string, responsable: string | null, uso: number }
 type SubEstado = { id: number, nombre: string, tramiteId: number, uso: number }
-type Operacion = { id: number, nombre: string, centroDeCostos: string | null, usoTramites: number, usoGastos: number }
+// descargaPagoUnificada: Legalización baja sus gastos como un solo PDF de pago por gasto
+type Operacion = { id: number, nombre: string, centroDeCostos: string | null, usoTramites: number, usoGastos: number, descargaPagoUnificada: boolean }
 type Rechazo = { id: number, nombre: string, uso: number }
 type Area = { id: number, nombre: string, uso: number }
 type Catalogos = { tramites: TipoTramite[], subestados: SubEstado[], operaciones: Operacion[], rechazos: Rechazo[], areas: Area[] }
@@ -313,7 +314,21 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
                       </td>
                     ) : (
                       <>
-                        <td className="px-4 py-2.5 font-medium text-slate-700">{o.nombre}</td>
+                        <td className="px-4 py-2.5">
+                          <p className="font-medium text-slate-700">{o.nombre}</p>
+                          <button
+                            type="button"
+                            onClick={() => guardar("operaciones", { nombre: o.nombre, centroDeCostos: o.centroDeCostos ?? "", descargaPagoUnificada: String(!o.descargaPagoUnificada) }, o.id)}
+                            aria-pressed={o.descargaPagoUnificada}
+                            title="En Legalización → Descargar documentos, cada gasto de esta operación baja como un solo PDF (liquidación + soporte de pago)"
+                            className={clsx(
+                              "mt-1 rounded-full border px-2 py-px text-[10px] font-medium transition",
+                              o.descargaPagoUnificada ? "border-sky-300 bg-sky-50 text-sky-700" : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                            )}
+                          >
+                            PDF de pago unificado: {o.descargaPagoUnificada ? "sí" : "no"}
+                          </button>
+                        </td>
                         <td className="hidden px-4 py-2.5 font-mono text-[11px] text-slate-500 md:table-cell">{o.centroDeCostos || "—"}</td>
                         <td className="hidden px-4 py-2.5 text-slate-500 sm:table-cell">{motivo || "Sin uso"}</td>
                         <td className="px-4 py-2.5">

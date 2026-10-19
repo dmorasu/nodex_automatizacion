@@ -6,6 +6,7 @@ import type { FiltrosHistorialCaja, obtenerHistorialCaja } from "@/src/lib/datos
 import EstadoGasto from "../gastos/EstadoGasto"
 import Paginacion from "../ui/Paginacion"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const ESTADOS = [
   ["", "Todos"],
@@ -52,9 +53,9 @@ export default function HistorialCaja({ bolsaId, filtros, historial }: {
         </label>
         <label className="block">
           <span className={claseLabel}>Estado</span>
-          <select name="estado" defaultValue={filtros.estado ?? ""} className={claseInput}>
+          <SelectBuscable name="estado" defaultValue={filtros.estado ?? ""} className={claseInput}>
             {ESTADOS.map(([codigo, nombre]) => <option key={codigo} value={codigo}>{nombre}</option>)}
-          </select>
+          </SelectBuscable>
         </label>
         <label className="block">
           <span className={claseLabel}>Quién legaliza</span>

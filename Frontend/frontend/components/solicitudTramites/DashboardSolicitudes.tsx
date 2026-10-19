@@ -17,6 +17,7 @@ import { usePerfil, usePermisosAnalistas } from "@/src/auth/PerfilContexto"
 import SolicitudTramiteMenu from "@/components/solicitudTramites/MenuSolicitudTramites"
 import EstadoTramite from "@/components/solicitudTramites/EstadoTramite"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/components/ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 // Filtros que viajan en la URL: al volver del detalle de un trámite siguen aplicados
 const FILTROS = [
@@ -145,43 +146,43 @@ export default function DashboardPageClient() {
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Estado</span>
-            <select name="estadoId" defaultValue={filtros.estadoId} className={claseFiltro}>
+            <SelectBuscable name="estadoId" defaultValue={filtros.estadoId} className={claseFiltro}>
               <option value="">Todos</option>
               {estados.map(e => <option key={e.id} value={e.id}>{e.nombreEstado}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
 
           <label className="block">
             <span className={claseEtiqueta}>Tipo de trámite</span>
-            <select name="tramiteId" defaultValue={filtros.tramiteId} className={claseFiltro}>
+            <SelectBuscable name="tramiteId" defaultValue={filtros.tramiteId} className={claseFiltro}>
               <option value="">Todos</option>
               {tramites.map(t => <option key={t.id} value={t.id}>{t.nombreTramite}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           {/* El analista no filtra por analista: el backend le muestra solo los suyos */}
           {!esAnalista && (
             <label className="block">
               <span className={claseEtiqueta}>Analista</span>
-              <select name="analistaId" defaultValue={filtros.analistaId} className={claseFiltro}>
+              <SelectBuscable name="analistaId" defaultValue={filtros.analistaId} className={claseFiltro}>
                 <option value="">Todos</option>
                 <option value="sin">Sin analista</option>
                 {analistas.map(a => <option key={a.id} value={a.id}>{a.nombreUsuario}</option>)}
-              </select>
+              </SelectBuscable>
             </label>
           )}
           <label className="block">
             <span className={claseEtiqueta}>Tramitador</span>
-            <select name="tramitadorId" defaultValue={filtros.tramitadorId} className={claseFiltro}>
+            <SelectBuscable name="tramitadorId" defaultValue={filtros.tramitadorId} className={claseFiltro}>
               <option value="">Todos</option>
               {tramitadores.map(t => <option key={t.id} value={t.id}>{t.nombreTramitador}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Operación</span>
-            <select name="operacionesId" defaultValue={filtros.operacionesId} className={claseFiltro}>
+            <SelectBuscable name="operacionesId" defaultValue={filtros.operacionesId} className={claseFiltro}>
               <option value="">Todas</option>
               {operaciones.map(o => <option key={o.id} value={o.id}>{o.nombreOperacion}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
 
           <label className="block">

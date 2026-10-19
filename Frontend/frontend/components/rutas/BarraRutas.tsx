@@ -6,6 +6,7 @@ import { toast } from "react-toastify"
 import { ChevronLeft, ChevronRight, Loader2, LocateFixed } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import type { Sede } from "@/src/rutas"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const claseControl = "h-9 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
 
@@ -54,10 +55,10 @@ export default function BarraRutas({ fecha, hoy, sedes, sinUbicacion, googleDisp
         <button type="button" onClick={() => ir({ fecha: hoy })} className="h-9 px-2 text-xs font-medium text-sky-600 hover:underline">Hoy</button>
       )}
 
-      <select value={parametros.get("sedeId") ?? ""} onChange={e => ir({ sedeId: e.target.value })} className={claseControl} aria-label="Sede">
+      <SelectBuscable value={parametros.get("sedeId") ?? ""} onChange={e => ir({ sedeId: e.target.value })} className={claseControl} aria-label="Sede">
         <option value="">Todas las sedes</option>
         {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-      </select>
+      </SelectBuscable>
 
       {sinUbicacion > 0 && googleDisponible && (
         <button type="button" onClick={ubicarPendientes} disabled={ubicando}

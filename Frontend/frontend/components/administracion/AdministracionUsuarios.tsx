@@ -13,6 +13,7 @@ import {
   desbloquearUsuario,
   restablecerContrasena
 } from "@/actions/administracion-action"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export type Rol = { id: number, codigo: string, nombre: string }
 export type Area = { id: number, nombre: string }
@@ -167,10 +168,10 @@ function ModalUsuario({ usuario, roles, areas, grupos, onCerrar }: { usuario: Us
       </label>
       <label className="block">
         <span className={claseLabel}>Área</span>
-        <select value={datos.areaId ?? ""} onChange={e => setDatos({ ...datos, areaId: e.target.value ? Number(e.target.value) : null })} className={claseInput}>
+        <SelectBuscable value={datos.areaId ?? ""} onChange={e => setDatos({ ...datos, areaId: e.target.value ? Number(e.target.value) : null })} className={claseInput}>
           <option value="">Sin área</option>
           {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-        </select>
+        </SelectBuscable>
       </label>
 
       {!usuario && (
@@ -384,7 +385,7 @@ export default function AdministracionUsuarios({ usuarios, roles, areas, usuario
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
             <input value={busqueda} onChange={e => { setBusqueda(e.target.value); setPagina(1) }} placeholder="Buscar por nombre, correo o área" className={`${claseInput} pl-9`} aria-label="Buscar usuario" />
           </div>
-          <select value={perfil} onChange={e => { setPerfil(e.target.value); setPagina(1) }} className={`${claseInput} w-full sm:w-56`} aria-label="Filtrar por perfil">
+          <SelectBuscable value={perfil} onChange={e => { setPerfil(e.target.value); setPagina(1) }} className={`${claseInput} w-full sm:w-56`} aria-label="Filtrar por perfil">
             <option value="">Todos los perfiles</option>
             {grupos.map(g => (
               <optgroup key={g.titulo} label={g.titulo}>
@@ -395,12 +396,12 @@ export default function AdministracionUsuarios({ usuarios, roles, areas, usuario
               <option value={SIN_TRAMITES}>Sin acceso a trámites</option>
               <option value={SIN_PERFILES}>Sin ningún perfil</option>
             </optgroup>
-          </select>
-          <select value={area} onChange={e => { setArea(e.target.value); setPagina(1) }} className={`${claseInput} w-full sm:w-48`} aria-label="Filtrar por área">
+          </SelectBuscable>
+          <SelectBuscable value={area} onChange={e => { setArea(e.target.value); setPagina(1) }} className={`${claseInput} w-full sm:w-48`} aria-label="Filtrar por área">
             <option value="">Todas las áreas</option>
             {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
             <option value={SIN_AREA}>Sin área</option>
-          </select>
+          </SelectBuscable>
         </div>
         <button type="button" onClick={() => setEditando(null)} className={botonPrimario}>
           <Plus size={15} />

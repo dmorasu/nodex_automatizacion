@@ -9,6 +9,7 @@ import EstadoGasto from "@/components/gastos/EstadoGasto"
 import { EstadoTramiteNodex, EtiquetaSoporteTramitador } from "@/components/legalizacion/SeguimientoTramitador"
 import Paginacion from "@/components/ui/Paginacion"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/components/ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 // Filtros que viajan en la URL (formulario GET): se pueden compartir y volver atrás
 const FILTROS = [
@@ -78,78 +79,78 @@ export default async function TodosLosGastosPage({ searchParams }: { searchParam
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Estado</span>
-            <select name="estado" defaultValue={searchParams.estado ?? ""} className={claseFiltro}>
+            <SelectBuscable name="estado" defaultValue={searchParams.estado ?? ""} className={claseFiltro}>
               <option value="">Todos</option>
               {catalogos.estadosGasto.map(e => <option key={e.id} value={e.codigo}>{e.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Solo ya pagados</span>
-            <select name="pagados" defaultValue={searchParams.pagados ?? ""} className={claseFiltro}>
+            <SelectBuscable name="pagados" defaultValue={searchParams.pagados ?? ""} className={claseFiltro}>
               <option value="">No</option>
               <option value="si">Sí (sin solicitados ni anulados)</option>
-            </select>
+            </SelectBuscable>
           </label>
 
           <label className="block">
             <span className={claseEtiqueta}>Bolsa</span>
-            <select name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={claseFiltro}>
+            <SelectBuscable name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={claseFiltro}>
               <option value="">Todas</option>
               {bolsas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Tipo de gasto</span>
-            <select name="tipoGastoId" defaultValue={searchParams.tipoGastoId ?? ""} className={claseFiltro}>
+            <SelectBuscable name="tipoGastoId" defaultValue={searchParams.tipoGastoId ?? ""} className={claseFiltro}>
               <option value="">Todos</option>
               {catalogos.tiposGasto.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Operación</span>
-            <select name="operacionId" defaultValue={searchParams.operacionId ?? ""} className={claseFiltro}>
+            <SelectBuscable name="operacionId" defaultValue={searchParams.operacionId ?? ""} className={claseFiltro}>
               <option value="">Todas</option>
               {operaciones.map(o => <option key={o.id} value={o.id}>{o.nombreOperacion}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Tramitador</span>
-            <select name="tramitadorId" defaultValue={searchParams.tramitadorId ?? ""} className={claseFiltro}>
+            <SelectBuscable name="tramitadorId" defaultValue={searchParams.tramitadorId ?? ""} className={claseFiltro}>
               <option value="">Todos</option>
               {tramitadores.map(t => <option key={t.id} value={t.id}>{t.nombreTramitador}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
 
           <label className="block">
             <span className={claseEtiqueta}>Creado por</span>
-            <select name="creadoPor" defaultValue={searchParams.creadoPor ?? ""} className={claseFiltro}>
+            <SelectBuscable name="creadoPor" defaultValue={searchParams.creadoPor ?? ""} className={claseFiltro}>
               <option value="">Cualquiera</option>
               {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombreUsuario}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Reembolsable</span>
-            <select name="reembolsable" defaultValue={searchParams.reembolsable ?? ""} className={claseFiltro}>
+            <SelectBuscable name="reembolsable" defaultValue={searchParams.reembolsable ?? ""} className={claseFiltro}>
               <option value="">Todos</option>
               <option value="si">Sí (Legalización)</option>
               <option value="no">No (lo asume la bolsa)</option>
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Trámite</span>
-            <select name="conTramite" defaultValue={searchParams.conTramite ?? ""} className={claseFiltro}>
+            <SelectBuscable name="conTramite" defaultValue={searchParams.conTramite ?? ""} className={claseFiltro}>
               <option value="">Con o sin trámite</option>
               <option value="si">Con trámite</option>
               <option value="no">Sin trámite</option>
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Factura del tramitador</span>
-            <select name="soporteTramitador" defaultValue={searchParams.soporteTramitador ?? ""} className={claseFiltro}>
+            <SelectBuscable name="soporteTramitador" defaultValue={searchParams.soporteTramitador ?? ""} className={claseFiltro}>
               <option value="">Indiferente</option>
               <option value="si">La subió</option>
               <option value="no">No la ha subido</option>
-            </select>
+            </SelectBuscable>
           </label>
 
           <label className="block">
@@ -171,22 +172,22 @@ export default async function TodosLosGastosPage({ searchParams }: { searchParam
 
           <label className="block">
             <span className={claseEtiqueta}>Reintegro</span>
-            <select name="reintegroPendiente" defaultValue={searchParams.reintegroPendiente ?? ""} className={claseFiltro}>
+            <SelectBuscable name="reintegroPendiente" defaultValue={searchParams.reintegroPendiente ?? ""} className={claseFiltro}>
               <option value="">Indiferente</option>
               <option value="si">Con reintegro pendiente</option>
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Ordenar por</span>
-            <select name="orden" defaultValue={searchParams.orden ?? "recientes"} className={claseFiltro}>
+            <SelectBuscable name="orden" defaultValue={searchParams.orden ?? "recientes"} className={claseFiltro}>
               {ORDENES.map(([valor, nombre]) => <option key={valor} value={valor}>{nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <label className="block">
             <span className={claseEtiqueta}>Por página</span>
-            <select name="tamano" defaultValue={tamano} className={claseFiltro}>
+            <SelectBuscable name="tamano" defaultValue={tamano} className={claseFiltro}>
               {["20", "50", "100"].map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <div className="flex items-end gap-2">
             <button type="submit" className={`${claseBotonPrimario} h-9 flex-1`}>Filtrar</button>

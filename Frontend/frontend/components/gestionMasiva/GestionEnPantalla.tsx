@@ -17,6 +17,7 @@ import {
   type TipoAccion,
   type TramiteMasivo
 } from "./camposAcciones"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const API = "/api/backend" // proxy del frontend: agrega el token de sesión
 
@@ -64,10 +65,10 @@ function Celda({ campo, valor, opciones, onChange, disabled }: {
 }) {
   if (campo.tipo === "seleccion") {
     return (
-      <select value={valor} onChange={e => onChange(e.target.value)} disabled={disabled} className={claseCelda} aria-label={campo.etiqueta}>
+      <SelectBuscable value={valor} onChange={e => onChange(e.target.value)} disabled={disabled} className={claseCelda} aria-label={campo.etiqueta}>
         <option value="">{campo.obligatorio ? "Seleccione…" : "—"}</option>
         {opciones.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-      </select>
+      </SelectBuscable>
     )
   }
   if (campo.tipo === "textoLargo") {
@@ -399,34 +400,34 @@ export default function GestionEnPantalla() {
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <label className="block">
                 <span className={claseEtiqueta}>Tramitador</span>
-                <select value={busqueda.tramitadorId} onChange={e => cambiarBusqueda("tramitadorId", e.target.value)} className={claseFiltro}>
+                <SelectBuscable value={busqueda.tramitadorId} onChange={e => cambiarBusqueda("tramitadorId", e.target.value)} className={claseFiltro}>
                   <option value="">Todos</option>
                   <option value="sin">Sin tramitador</option>
                   {catalogos.tramitadores.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                </select>
+                </SelectBuscable>
               </label>
               <label className="block">
                 <span className={claseEtiqueta}>Operación</span>
-                <select value={busqueda.operacionesId} onChange={e => cambiarBusqueda("operacionesId", e.target.value)} className={claseFiltro}>
+                <SelectBuscable value={busqueda.operacionesId} onChange={e => cambiarBusqueda("operacionesId", e.target.value)} className={claseFiltro}>
                   <option value="">Todas</option>
                   {operaciones.map(o => <option key={o.id} value={o.id}>{o.nombreOperacion}</option>)}
-                </select>
+                </SelectBuscable>
               </label>
               <label className="block">
                 <span className={claseEtiqueta}>Estado actual</span>
-                <select value={busqueda.estado} onChange={e => cambiarBusqueda("estado", e.target.value)} className={claseFiltro}>
+                <SelectBuscable value={busqueda.estado} onChange={e => cambiarBusqueda("estado", e.target.value)} className={claseFiltro}>
                   <option value="abiertos">Abiertos (sin finalizar ni desistir)</option>
                   <option value="">Todos</option>
                   {catalogos.estados.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-                </select>
+                </SelectBuscable>
               </label>
               <label className="block">
                 <span className={claseEtiqueta}>Fecha de</span>
-                <select value={busqueda.fecha} onChange={e => cambiarBusqueda("fecha", e.target.value)} className={claseFiltro}>
+                <SelectBuscable value={busqueda.fecha} onChange={e => cambiarBusqueda("fecha", e.target.value)} className={claseFiltro}>
                   <option value="creacion">Creación del trámite</option>
                   <option value="diligencia">Diligencia (programación)</option>
                   <option value="finalizacion">Finalización del servicio</option>
-                </select>
+                </SelectBuscable>
               </label>
               <label className="block">
                 <span className={claseEtiqueta}>Desde</span>

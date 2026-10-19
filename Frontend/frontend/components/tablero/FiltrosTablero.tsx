@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import clsx from "clsx"
 import type { OpcionFiltro } from "@/src/tablero"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 // max-w-full: en el celular un select con opciones largas no ensancha la página
 const claseControl = "h-9 max-w-full rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
@@ -44,11 +45,11 @@ export default function FiltrosTablero({ hoy, desde, hasta, analistas, tramitado
   const presetActivo = hasta === hoy ? PRESETS.find(p => restarDias(hoy, p.dias - 1) === desde)?.dias : undefined
 
   const selector = (clave: string, vacio: string, opciones: OpcionFiltro[], extra?: React.ReactNode) => (
-    <select value={parametros.get(clave) ?? ""} onChange={e => cambiar({ [clave]: e.target.value })} className={claseControl} aria-label={vacio}>
+    <SelectBuscable value={parametros.get(clave) ?? ""} onChange={e => cambiar({ [clave]: e.target.value })} className={claseControl} aria-label={vacio}>
       <option value="">{vacio}</option>
       {extra}
       {opciones.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-    </select>
+    </SelectBuscable>
   )
 
   return (

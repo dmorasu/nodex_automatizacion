@@ -7,6 +7,7 @@ import { eliminarDocumento, subirDocumentos } from "@/actions/gastos/gastos"
 import type { GastoDetalle, ItemCatalogo } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseInput } from "../ui/estilos"
 import ListaDocumentos from "./ListaDocumentos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export default function DocumentosGasto({
   gastoId,
@@ -60,10 +61,10 @@ export default function DocumentosGasto({
         <form ref={formulario} onSubmit={subir} className="flex flex-wrap items-end gap-3 rounded-md border border-dashed border-slate-300 p-4">
           <label className="block min-w-[180px]">
             <span className="block mb-1.5 text-xs font-medium text-slate-600">Tipo de documento</span>
-            <select value={tipoDocumentoId} onChange={e => setTipoDocumentoId(e.target.value)} className={claseInput}>
+            <SelectBuscable value={tipoDocumentoId} onChange={e => setTipoDocumentoId(e.target.value)} className={claseInput}>
               <option value="">Seleccione</option>
               {tiposDocumento.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
 
           <label className="block flex-1 min-w-[220px]">

@@ -4,6 +4,7 @@ import { ROLES } from "@/src/auth/permisos"
 import { obtenerBolsasActivas, obtenerCatalogos } from "@/src/lib/datosGastos"
 import Seccion from "@/components/ui/Seccion"
 import { claseBotonPrimario, claseInput, claseLabel } from "@/components/ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export default async function ReportesPage() {
   await requiereAcceso([ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD])
@@ -24,17 +25,17 @@ export default async function ReportesPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block">
               <span className={claseLabel}>Estado</span>
-              <select name="estado" defaultValue="" className={claseInput}>
+              <SelectBuscable name="estado" defaultValue="" className={claseInput}>
                 <option value="">Todos los estados</option>
                 {catalogos.estadosGasto.map(e => <option key={e.codigo} value={e.codigo}>{e.nombre}</option>)}
-              </select>
+              </SelectBuscable>
             </label>
             <label className="block">
               <span className={claseLabel}>Bolsa</span>
-              <select name="bolsaId" defaultValue="" className={claseInput}>
+              <SelectBuscable name="bolsaId" defaultValue="" className={claseInput}>
                 <option value="">Todas las bolsas</option>
                 {bolsas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-              </select>
+              </SelectBuscable>
             </label>
             <label className="block">
               <span className={claseLabel}>Creados desde</span>

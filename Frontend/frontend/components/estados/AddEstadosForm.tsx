@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useTiposRechazo } from "@/hooks/useTiposRechazos";
 import { Flag } from "lucide-react";
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export default function AddExpenseForm({
   closeModal,
@@ -205,7 +206,7 @@ export default function AddExpenseForm({
             </label>
 
 
-            <select
+            <SelectBuscable
               id="tipoRechazoId"
               name="tipoRechazoId"
               className="
@@ -245,7 +246,7 @@ export default function AddExpenseForm({
                 )
               )}
 
-            </select>
+            </SelectBuscable>
 
           </div>
 

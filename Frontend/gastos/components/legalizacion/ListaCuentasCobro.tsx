@@ -5,6 +5,7 @@ import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import EstadoGasto from "../gastos/EstadoGasto"
 import Paginacion from "../ui/Paginacion"
 import { claseBotonSecundario, claseInput } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 type Filtros = { estado?: string, busqueda?: string, pagina?: string }
 
@@ -32,10 +33,10 @@ export default async function ListaCuentasCobro({ searchParams, rutaBase }: { se
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
           <input name="busqueda" defaultValue={searchParams.busqueda} placeholder="Número de cuenta de cobro" className={`${claseInput} pl-9`} aria-label="Buscar" />
         </div>
-        <select name="estado" defaultValue={searchParams.estado ?? ""} className={`${claseInput} w-auto`} aria-label="Estado">
+        <SelectBuscable name="estado" defaultValue={searchParams.estado ?? ""} className={`${claseInput} w-auto`} aria-label="Estado">
           <option value="">Todos los estados</option>
           {ESTADOS.map(e => <option key={e.codigo} value={e.codigo}>{e.nombre}</option>)}
-        </select>
+        </SelectBuscable>
         <button type="submit" className={claseBotonSecundario}>Filtrar</button>
       </form>
 

@@ -7,6 +7,7 @@ import { toast } from "react-toastify"
 import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react"
 import { asignarAnalistaMunicipios } from "@/actions/analistas-action"
 import type { Analista } from "@/hooks/useAnalistas"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export type MunicipioAnalista = {
   id: number
@@ -68,11 +69,11 @@ export default function MunicipiosAnalista({ analistas, municipios, total, pagin
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
           <input name="busqueda" defaultValue={filtros.busqueda} placeholder="Municipio o departamento" className={`${claseInput} w-full pl-9`} aria-label="Buscar municipio" />
         </div>
-        <select name="analistaId" defaultValue={filtros.analistaId} className={claseInput} aria-label="Filtrar por analista">
+        <SelectBuscable name="analistaId" defaultValue={filtros.analistaId} className={claseInput} aria-label="Filtrar por analista">
           <option value="">Todos los analistas</option>
           <option value="sin">Sin analista</option>
           {analistas.map(a => <option key={a.id} value={a.id}>{a.nombreUsuario}</option>)}
-        </select>
+        </SelectBuscable>
         <button type="submit" className="h-10 rounded-md border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50">
           Filtrar
         </button>
@@ -82,11 +83,11 @@ export default function MunicipiosAnalista({ analistas, municipios, total, pagin
       {seleccion.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs text-sky-800">
           <span className="font-semibold">{seleccion.length} seleccionado(s)</span>
-          <select value={analistaNuevo} onChange={e => setAnalistaNuevo(e.target.value)} disabled={guardando} className={`${claseInput} h-8`} aria-label="Analista para los municipios seleccionados">
+          <SelectBuscable value={analistaNuevo} onChange={e => setAnalistaNuevo(e.target.value)} disabled={guardando} className={`${claseInput} h-8`} aria-label="Analista para los municipios seleccionados">
             <option value="">Asignar a…</option>
             {analistas.map(a => <option key={a.id} value={a.id}>{a.nombreUsuario}</option>)}
             <option value="sin">Sin analista</option>
-          </select>
+          </SelectBuscable>
           <button type="button" onClick={asignar} disabled={guardando} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-sky-500 px-3 font-semibold text-white hover:bg-sky-600 disabled:opacity-50">
             {guardando && <Loader2 size={13} className="animate-spin" />}
             Asignar

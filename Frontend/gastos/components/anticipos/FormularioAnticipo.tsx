@@ -10,6 +10,7 @@ import { guardarAnticipo } from "@/actions/gastos/anticipos"
 import type { AnticipoDetalle, BolsaApoyo, ClienteEmpresarial, DatosAnticipo, Operacion } from "@/src/schemas/gastos"
 import Seccion from "../ui/Seccion"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
@@ -210,14 +211,14 @@ export default function FormularioAnticipo({
       <Seccion titulo="Cliente del banco">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Campo etiqueta="Tipo de identificación">
-            <select
+            <SelectBuscable
               value={datos.cliente.tipoIdentificacion}
               onChange={e => cambiarCliente("tipoIdentificacion", e.target.value)}
               className={claseInput}
             >
               <option value="CC">Cédula</option>
               <option value="NIT">NIT</option>
-            </select>
+            </SelectBuscable>
           </Campo>
           <Campo etiqueta="Identificación">
             <input
@@ -244,14 +245,14 @@ export default function FormularioAnticipo({
             <input value={datos.cliente.direccion} onChange={e => cambiarCliente("direccion", e.target.value)} maxLength={200} className={claseInput} />
           </Campo>
           <Campo etiqueta="Cliente empresarial">
-            <select
+            <SelectBuscable
               value={datos.clienteEmpresarialId ?? ""}
               onChange={e => cambiar("clienteEmpresarialId", e.target.value ? Number(e.target.value) : null)}
               className={claseInput}
             >
               <option value="">{clientesEmpresariales.length ? "Seleccione" : "No hay clientes empresariales"}</option>
               {clientesEmpresariales.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </Campo>
         </div>
         {clienteExistente && (
@@ -264,24 +265,24 @@ export default function FormularioAnticipo({
       <Seccion titulo={esFactura ? "Datos de la solicitud" : "Datos del anticipo"}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Campo etiqueta="Operación">
-            <select
+            <SelectBuscable
               value={datos.operacionId ?? ""}
               onChange={e => cambiar("operacionId", e.target.value ? Number(e.target.value) : null)}
               className={claseInput}
             >
               <option value="">Seleccione la operación</option>
               {operaciones.map(o => <option key={o.id} value={o.id}>{o.centroDeCostos ? `${o.nombreOperacion} (${o.centroDeCostos})` : o.nombreOperacion}</option>)}
-            </select>
+            </SelectBuscable>
           </Campo>
           <Campo etiqueta={esFactura ? "Bolsa de anticipos facturados" : "Bolsa de anticipos"}>
-            <select
+            <SelectBuscable
               value={datos.bolsaId ?? ""}
               onChange={e => cambiar("bolsaId", e.target.value ? Number(e.target.value) : null)}
               className={claseInput}
             >
               <option value="">{bolsas.length ? "Seleccione la bolsa" : esFactura ? "No hay bolsas de anticipos facturados activas" : "No hay bolsas de anticipos activas"}</option>
               {bolsas.map(b => <option key={b.id} value={b.id}>{b.lineaNegocio ? `${b.nombre} · ${b.lineaNegocio}` : b.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </Campo>
           <Campo etiqueta="Concepto" className="sm:col-span-2">
             <input value={datos.concepto} onChange={e => cambiar("concepto", e.target.value)} maxLength={200} placeholder={esFactura ? "Ej: Honorarios escrituración" : "Ej: Anticipo traspaso"} className={claseInput} />

@@ -8,6 +8,7 @@ import { FileText, Loader2, Plus, Search, UserPlus, X } from "lucide-react"
 import { buscarTercerosGasto, crearGastoDesdeTramite, type TerceroGasto } from "@/actions/gastos-tramite-action"
 import type { OpcionesGasto } from "@/src/gastos/datosGastos"
 import { avisarGastoCreado } from "@/components/gastos/avisoProgramacion"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const claseInput = `
   w-full h-10 px-3 rounded-md border border-slate-200 bg-white
@@ -236,22 +237,22 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
               <div className="px-6 py-5 space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo etiqueta="Bolsa" obligatorio>
-                    <select value={datos.bolsaId ?? ""} onChange={e => cambiar("bolsaId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
+                    <SelectBuscable value={datos.bolsaId ?? ""} onChange={e => cambiar("bolsaId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
                       <option value="">{opciones.bolsas.length ? "Seleccione la bolsa" : "No hay bolsas activas"}</option>
                       {opciones.bolsas.map(b => <option key={b.id} value={b.id}>{b.lineaNegocio ? `${b.nombre} · ${b.lineaNegocio}` : b.nombre}</option>)}
-                    </select>
+                    </SelectBuscable>
                   </Campo>
                   <Campo etiqueta="Tipo de gasto" obligatorio>
-                    <select value={datos.tipoGastoId ?? ""} onChange={e => cambiar("tipoGastoId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
+                    <SelectBuscable value={datos.tipoGastoId ?? ""} onChange={e => cambiar("tipoGastoId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
                       <option value="">Seleccione</option>
                       {opciones.tiposGasto.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                    </select>
+                    </SelectBuscable>
                   </Campo>
                   <Campo etiqueta="Forma de pago" obligatorio>
-                    <select value={datos.formaPagoId ?? ""} onChange={e => cambiar("formaPagoId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
+                    <SelectBuscable value={datos.formaPagoId ?? ""} onChange={e => cambiar("formaPagoId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
                       <option value="">Seleccione</option>
                       {opciones.formasPago.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-                    </select>
+                    </SelectBuscable>
                   </Campo>
                   <Campo etiqueta="Valor solicitado" obligatorio>
                     <input type="number" min={0} step="0.01" value={datos.valorSolicitado} onChange={e => cambiar("valorSolicitado", e.target.value)} placeholder="0" className={claseInput} />
@@ -325,17 +326,17 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                   ) : nuevo ? (
                     <div className="space-y-3">
                       <div className="grid gap-3 sm:grid-cols-3">
-                        <select value={nuevo.tipoIdentificacion} onChange={e => setNuevo({ ...nuevo, tipoIdentificacion: e.target.value })} className={claseInput} aria-label="Tipo de identificación">
+                        <SelectBuscable value={nuevo.tipoIdentificacion} onChange={e => setNuevo({ ...nuevo, tipoIdentificacion: e.target.value })} className={claseInput} aria-label="Tipo de identificación">
                           {["NIT", "CC", "CE", "PAS"].map(t => <option key={t}>{t}</option>)}
-                        </select>
+                        </SelectBuscable>
                         <input value={nuevo.identificacion} onChange={e => setNuevo({ ...nuevo, identificacion: e.target.value })} placeholder="Identificación" maxLength={30} className={claseInput} />
                         <input value={nuevo.nombre} onChange={e => setNuevo({ ...nuevo, nombre: e.target.value })} placeholder="Nombre o razón social" maxLength={200} className={claseInput} />
                         <input value={nuevo.banco} onChange={e => setNuevo({ ...nuevo, banco: e.target.value })} placeholder="Banco (opcional)" maxLength={100} className={claseInput} />
-                        <select value={nuevo.tipoCuenta} onChange={e => setNuevo({ ...nuevo, tipoCuenta: e.target.value })} className={claseInput} aria-label="Tipo de cuenta">
+                        <SelectBuscable value={nuevo.tipoCuenta} onChange={e => setNuevo({ ...nuevo, tipoCuenta: e.target.value })} className={claseInput} aria-label="Tipo de cuenta">
                           <option value="">Sin cuenta</option>
                           <option value="AHORROS">Ahorros</option>
                           <option value="CORRIENTE">Corriente</option>
-                        </select>
+                        </SelectBuscable>
                         <input value={nuevo.numeroCuenta} onChange={e => setNuevo({ ...nuevo, numeroCuenta: e.target.value })} placeholder="Número de cuenta" maxLength={30} className={claseInput} />
                       </div>
                       <button type="button" onClick={() => setNuevo(null)} className="text-xs font-medium text-slate-500 hover:underline">Volver a buscar</button>
@@ -376,10 +377,10 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Documentos (opcional)</p>
                     <div className="flex flex-wrap items-end gap-3">
                       <Campo etiqueta="Tipo de documento" className="min-w-[200px]">
-                        <select value={tipoDocumentoId} onChange={e => setTipoDocumentoId(e.target.value)} className={claseInput}>
+                        <SelectBuscable value={tipoDocumentoId} onChange={e => setTipoDocumentoId(e.target.value)} className={claseInput}>
                           <option value="">Seleccione</option>
                           {opciones.tiposDocumentoPago.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                        </select>
+                        </SelectBuscable>
                       </Campo>
                       <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                         <Plus size={15} /> Agregar archivos

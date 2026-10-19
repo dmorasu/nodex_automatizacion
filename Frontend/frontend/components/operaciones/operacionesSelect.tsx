@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { BriefcaseBusiness, ChevronDown } from "lucide-react"
 
 import { OperacionesSchema } from "@/src/schemas"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 
 type Props = {
@@ -142,7 +143,7 @@ export default function OperacionesSelect({
       {/* SELECT                                           */}
       {/* ================================================= */}
 
-      <select
+      <SelectBuscable sinFlecha
         name={name}
         value={selected}
         onChange={(e) =>
@@ -203,7 +204,7 @@ export default function OperacionesSelect({
           )
         )}
 
-      </select>
+      </SelectBuscable>
 
 
 

@@ -7,6 +7,7 @@ import { toast } from "react-toastify"
 import { CheckCircle2, FileText, FileUp, Loader2, Trash2, UploadCloud, XCircle } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import { claseBotonPrimario, claseBotonSecundario } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const TIPOS = [["", "Sin tipo"], ["SOPORTE", "Soporte"], ["FACTURA", "Factura"], ["BOLETA_REINTEGRO", "Boleta de reintegro"], ["INGRESO", "Ingreso"], ["OTRO", "Otro"]] as const
 const PERMITIDOS = ["application/pdf", "image/jpeg", "image/jpg", "image/png"]
@@ -136,13 +137,13 @@ export default function CargueDocumentos({ recientes }: { recientes: number[] })
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-xs text-slate-600">
               Tipo para todos
-              <select
+              <SelectBuscable
                 value={tipoTodos}
                 onChange={e => { setTipoTodos(e.target.value); setArchivos(a => a.map(x => (x.estado === "subido" ? x : { ...x, tipo: e.target.value }))) }}
                 className="h-9 rounded-md border border-slate-200 bg-white px-2 text-xs"
               >
                 {TIPOS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-              </select>
+              </SelectBuscable>
             </label>
             <span className="text-xs text-slate-500">
               {archivos.length} archivo(s) · {listos.length} listo(s) para subir
@@ -203,9 +204,9 @@ export default function CargueDocumentos({ recientes }: { recientes: number[] })
                         ) : <span className="text-slate-400">—</span>}
                       </td>
                       <td className="px-4 py-2.5">
-                        <select value={a.tipo} disabled={bloqueado} onChange={e => cambiar(a.clave, { tipo: e.target.value })} className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs disabled:bg-slate-50">
+                        <SelectBuscable value={a.tipo} disabled={bloqueado} onChange={e => cambiar(a.clave, { tipo: e.target.value })} className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs disabled:bg-slate-50">
                           {TIPOS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-                        </select>
+                        </SelectBuscable>
                       </td>
                       <td className="px-4 py-2.5">
                         {a.estado === "subido" ? <span className="inline-flex items-center gap-1 font-semibold text-emerald-600"><CheckCircle2 size={14} /> Subido</span>

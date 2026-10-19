@@ -10,6 +10,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import type { ResumenCaja, UsuariosCaja } from "@/src/schemas/gastos"
 import Seccion from "../ui/Seccion"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 type Edicion = { id?: number, nombre: string, fondo: string, topeAlerta: string }
 
@@ -147,9 +148,9 @@ export default function ConfiguracionCajas({ cajas, usuarios }: { cajas: Resumen
           </div>
           <label className="block">
             <span className={claseLabel}>Caja</span>
-            <select value={cajaId ?? ""} onChange={e => setCajaId(Number(e.target.value) || null)} className={claseInput}>
+            <SelectBuscable value={cajaId ?? ""} onChange={e => setCajaId(Number(e.target.value) || null)} className={claseInput}>
               {cajas.filter(c => c.activo).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           <button type="button" onClick={asignar} disabled={procesando || !usuarioId} className={claseBotonPrimario}>
             <UserPlus size={15} /> Asignar

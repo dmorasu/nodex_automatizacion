@@ -6,6 +6,7 @@ import { toast } from "react-toastify"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { reasignarTramites } from "@/actions/analistas-action"
 import type { Analista } from "@/hooks/useAnalistas"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const claseSelect = "h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
 
@@ -47,23 +48,23 @@ export default function ReasignarTramites({ analistas, conTramites }: {
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
       <label className="block flex-1">
         <span className="mb-1.5 block text-xs font-medium text-slate-600">De</span>
-        <select value={desde} onChange={e => setDesde(e.target.value)} disabled={procesando} className={claseSelect}>
+        <SelectBuscable value={desde} onChange={e => setDesde(e.target.value)} disabled={procesando} className={claseSelect}>
           <option value="">Seleccione</option>
           {conTramites.map(c => (
             <option key={c.id ?? "sin"} value={c.id ?? "sin"}>{c.nombre} ({c.abiertos} abiertos)</option>
           ))}
-        </select>
+        </SelectBuscable>
       </label>
 
       <ArrowRight size={18} className="mx-auto hidden shrink-0 text-slate-300 sm:mb-2.5 sm:block" />
 
       <label className="block flex-1">
         <span className="mb-1.5 block text-xs font-medium text-slate-600">A</span>
-        <select value={hacia} onChange={e => setHacia(e.target.value)} disabled={procesando} className={claseSelect}>
+        <SelectBuscable value={hacia} onChange={e => setHacia(e.target.value)} disabled={procesando} className={claseSelect}>
           <option value="">Seleccione</option>
           {analistas.map(a => <option key={a.id} value={a.id}>{a.nombreUsuario}</option>)}
           <option value="sin">Sin analista</option>
-        </select>
+        </SelectBuscable>
       </label>
 
       <button

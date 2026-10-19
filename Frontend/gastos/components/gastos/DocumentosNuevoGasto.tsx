@@ -5,6 +5,7 @@ import { toast } from "react-toastify"
 import { FileText, Plus, X } from "lucide-react"
 import type { ItemCatalogo } from "@/src/schemas/gastos"
 import { claseBotonSecundario, claseInput } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export type DocumentoPendiente = { tipoDocumentoId: number, archivo: File }
 
@@ -43,10 +44,10 @@ export default function DocumentosNuevoGasto({ tipos, documentos, onCambiar }: {
       <div className="flex flex-wrap items-end gap-3">
         <label className="block min-w-[200px]">
           <span className="mb-1.5 block text-xs font-medium text-slate-600">Tipo de documento</span>
-          <select value={tipoDocumentoId} onChange={e => setTipoDocumentoId(e.target.value)} className={claseInput}>
+          <SelectBuscable value={tipoDocumentoId} onChange={e => setTipoDocumentoId(e.target.value)} className={claseInput}>
             <option value="">Seleccione</option>
             {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-          </select>
+          </SelectBuscable>
         </label>
         <label className={`${claseBotonSecundario} cursor-pointer`}>
           <Plus size={15} /> Agregar archivos

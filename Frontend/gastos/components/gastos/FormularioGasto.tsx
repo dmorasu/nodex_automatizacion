@@ -27,6 +27,7 @@ import {
   claseLabel,
   claseTextarea
 } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 
 // Sube los documentos del gasto recién creado, por tipo y de a 10 (límite del backend).
@@ -159,14 +160,14 @@ function Selector({ valor, opciones, onChange, vacio = "Seleccione una opción" 
   vacio?: string
 }) {
   return (
-    <select
+    <SelectBuscable
       value={valor ?? ""}
       onChange={e => onChange(e.target.value ? Number(e.target.value) : null)}
       className={claseInput}
     >
       <option value="">{vacio}</option>
       {opciones.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-    </select>
+    </SelectBuscable>
   )
 }
 
@@ -541,13 +542,13 @@ export default function FormularioGasto({
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Campo etiqueta="Tipo de identificación" obligatorio>
-                <select
+                <SelectBuscable
                   value={beneficiarioNuevo.tipoIdentificacion}
                   onChange={e => setBeneficiarioNuevo({ ...beneficiarioNuevo, tipoIdentificacion: e.target.value })}
                   className={claseInput}
                 >
                   {["NIT", "CC", "CE", "PAS"].map(t => <option key={t}>{t}</option>)}
-                </select>
+                </SelectBuscable>
               </Campo>
               <Campo etiqueta="Identificación" obligatorio>
                 <input value={beneficiarioNuevo.identificacion} onChange={e => setBeneficiarioNuevo({ ...beneficiarioNuevo, identificacion: e.target.value })} maxLength={30} className={claseInput} />
@@ -559,7 +560,7 @@ export default function FormularioGasto({
                 <input value={beneficiarioNuevo.banco} onChange={e => setBeneficiarioNuevo({ ...beneficiarioNuevo, banco: e.target.value })} maxLength={100} className={claseInput} />
               </Campo>
               <Campo etiqueta="Tipo de cuenta">
-                <select
+                <SelectBuscable
                   value={beneficiarioNuevo.tipoCuenta}
                   onChange={e => setBeneficiarioNuevo({ ...beneficiarioNuevo, tipoCuenta: e.target.value })}
                   className={claseInput}
@@ -567,7 +568,7 @@ export default function FormularioGasto({
                   <option value="">Sin cuenta</option>
                   <option value="AHORROS">Ahorros</option>
                   <option value="CORRIENTE">Corriente</option>
-                </select>
+                </SelectBuscable>
               </Campo>
               <Campo etiqueta="Número de cuenta">
                 <input value={beneficiarioNuevo.numeroCuenta} onChange={e => setBeneficiarioNuevo({ ...beneficiarioNuevo, numeroCuenta: e.target.value })} maxLength={30} className={claseInput} />

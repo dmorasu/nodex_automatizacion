@@ -6,6 +6,7 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { KeyRound, Loader2, Pencil, Plus, Search, X } from "lucide-react"
 import { guardarTramitador, type DatosTramitador } from "@/actions/tramitadores-action"
 import ModalAccesoApp, { EtiquetaAccesoApp, type EstadoAccesoApp } from "./ModalAccesoApp"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export type Tramitador = DatosTramitador & { id: number, acceso?: EstadoAccesoApp }
 export type SedeOpcion = { id: number, nombre: string }
@@ -110,10 +111,10 @@ function ModalTramitador({ tramitador, sedes, onCerrar }: { tramitador: Tramitad
               {datos.esMensajero && (
                 <label className="mt-3 block">
                   <span className={claseLabel}>Sede de salida <span className="text-red-400">*</span></span>
-                  <select value={datos.sedeId ?? ""} onChange={e => cambiar("sedeId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
+                  <SelectBuscable value={datos.sedeId ?? ""} onChange={e => cambiar("sedeId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
                     <option value="">{sedes.length ? "Seleccione la sede" : "No hay sedes: créelas en Rutas de mensajeros"}</option>
                     {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                  </select>
+                  </SelectBuscable>
                 </label>
               )}
             </div>

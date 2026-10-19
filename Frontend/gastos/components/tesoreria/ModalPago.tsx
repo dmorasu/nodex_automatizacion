@@ -8,6 +8,7 @@ import { pagarCertificados, programarPago } from "@/actions/gastos/tesoreria"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { Bolsa, GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
@@ -119,7 +120,7 @@ export default function ModalPago({
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className={claseLabel}>Bolsa <span className="text-red-400">*</span></span>
-                  <select
+                  <SelectBuscable
                     value={bolsaId ?? ""}
                     onChange={e => setBolsaId(e.target.value ? Number(e.target.value) : null)}
                     className={claseInput}
@@ -128,7 +129,7 @@ export default function ModalPago({
                     {bolsas.map(b => (
                       <option key={b.id} value={b.id}>{b.nombre} · {formatoMoneda(b.saldoActual)}</option>
                     ))}
-                  </select>
+                  </SelectBuscable>
                 </label>
                 <label className="block">
                   <span className={claseLabel}>{directo ? "Fecha de pago" : "Fecha programada"} <span className="text-red-400">*</span></span>

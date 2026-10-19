@@ -7,6 +7,7 @@ import { Loader2, Pencil, X } from "lucide-react"
 import { asignarAnalista } from "@/actions/analistas-action"
 import { useAnalistas } from "@/hooks/useAnalistas"
 import { usePermisosAnalistas } from "@/src/auth/PerfilContexto"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 // Analista asignado del trámite. El Administrador de Torre de control lo puede cambiar aquí.
 export default function CambiarAnalista({ solicitudId, analistaId, nombreAnalista }: {
@@ -53,7 +54,7 @@ export default function CambiarAnalista({ solicitudId, analistaId, nombreAnalist
 
   return (
     <span className="flex flex-wrap items-center gap-2">
-      <select
+      <SelectBuscable
         value={seleccion}
         onChange={e => setSeleccion(e.target.value)}
         disabled={guardando || loading}
@@ -62,7 +63,7 @@ export default function CambiarAnalista({ solicitudId, analistaId, nombreAnalist
       >
         <option value="">Sin analista</option>
         {analistas.map(a => <option key={a.id} value={a.id}>{a.nombreUsuario}</option>)}
-      </select>
+      </SelectBuscable>
       <button
         type="button"
         onClick={guardar}

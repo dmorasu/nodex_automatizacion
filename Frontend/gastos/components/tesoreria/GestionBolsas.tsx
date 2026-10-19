@@ -9,6 +9,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import { llevaSaldoPorCliente, NOMBRES_TIPO_BOLSA, type Bolsa } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseInput } from "../ui/estilos"
 import ModalSaldoBolsa from "./ModalSaldoBolsa"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 type Edicion = { id?: number, nombre: string, lineaNegocio: string, tipo: string }
 
@@ -73,7 +74,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
       </td>
       <td className="px-4 py-2">
         {edicion?.id ? null : (
-          <select
+          <SelectBuscable
             value={edicion?.tipo ?? "GENERAL"}
             onChange={e => setEdicion(actual => actual && { ...actual, tipo: e.target.value })}
             className={claseInput}
@@ -82,7 +83,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
             <option value="GENERAL">General</option>
             <option value="ANTICIPOS">Anticipos de clientes</option>
             <option value="FACTURAS">Anticipos facturados</option>
-          </select>
+          </SelectBuscable>
         )}
       </td>
       <td colSpan={2} />

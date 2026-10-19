@@ -9,6 +9,7 @@ import {
 import {
   transportadorasSchema
 } from "@/src/schemas"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 
 type Props = {
@@ -147,7 +148,7 @@ export default function TransportadorasSelect({
       {/* SELECT                                           */}
       {/* ================================================= */}
 
-      <select
+      <SelectBuscable sinFlecha
         name={name}
         value={selected}
         onChange={(e) =>
@@ -208,7 +209,7 @@ export default function TransportadorasSelect({
           )
         )}
 
-      </select>
+      </SelectBuscable>
 
 
 

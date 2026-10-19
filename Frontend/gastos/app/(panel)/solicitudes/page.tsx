@@ -8,6 +8,7 @@ import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import EstadoGasto from "@/components/gastos/EstadoGasto"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/components/ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 type Filtros = {
   alcance?: string
@@ -80,21 +81,21 @@ export default async function SolicitudesPage({ searchParams }: { searchParams: 
           />
         </div>
 
-        <select name="estado" defaultValue={searchParams.estado ?? ""} className={`${claseInput} w-auto`} aria-label="Estado">
+        <SelectBuscable name="estado" defaultValue={searchParams.estado ?? ""} className={`${claseInput} w-auto`} aria-label="Estado">
           <option value="">Todos los estados</option>
           {catalogos.estadosGasto.map(e => <option key={e.codigo} value={e.codigo}>{e.nombre}</option>)}
-        </select>
+        </SelectBuscable>
 
-        <select name="operacionId" defaultValue={searchParams.operacionId ?? ""} className={`${claseInput} w-auto`} aria-label="Operación">
+        <SelectBuscable name="operacionId" defaultValue={searchParams.operacionId ?? ""} className={`${claseInput} w-auto`} aria-label="Operación">
           <option value="">Todas las operaciones</option>
           {operaciones.map(o => <option key={o.id} value={o.id}>{o.nombreOperacion}</option>)}
-        </select>
+        </SelectBuscable>
 
         {puedeVerTodos && (
-          <select name="alcance" defaultValue={alcance} className={`${claseInput} w-auto`} aria-label="Alcance">
+          <SelectBuscable name="alcance" defaultValue={alcance} className={`${claseInput} w-auto`} aria-label="Alcance">
             <option value="mios">Mis gastos</option>
             <option value="todos">Todos los gastos</option>
-          </select>
+          </SelectBuscable>
         )}
 
         <button type="submit" className={claseBotonSecundario}>Filtrar</button>

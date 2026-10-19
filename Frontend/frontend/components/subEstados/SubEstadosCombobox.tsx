@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Flag, ChevronDown } from "lucide-react"
 
 import { useSubEstados } from "@/hooks/useSubEstados"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 
 interface Props {
@@ -61,7 +62,7 @@ export default function SubEstadosCombobox({
       {/* SELECT                                            */}
       {/* ================================================= */}
 
-      <select
+      <SelectBuscable sinFlecha
         name={name}
         value={selected}
 
@@ -131,7 +132,7 @@ export default function SubEstadosCombobox({
 
         ))}
 
-      </select>
+      </SelectBuscable>
 
 
       {/* ================================================= */}

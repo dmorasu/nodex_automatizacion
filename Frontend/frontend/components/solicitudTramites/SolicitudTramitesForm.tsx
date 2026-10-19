@@ -23,6 +23,7 @@ import { toDateInput } from "@/src/ultis";
 
 import { Paperclip } from "lucide-react";
 import CampoDireccion, { type MunicipioSugerido } from "../direcciones/CampoDireccion";
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 
 
@@ -454,7 +455,7 @@ const [, setMostrarDocumentos] =
         {/* TIPO DE IDENTIFICACIÓN                          */}
         {/* =============================================== */}
 
-        <select
+        <SelectBuscable
           name="tipoDocumento"
           value={tipoDocumento}
           onChange={(e) =>
@@ -493,7 +494,7 @@ const [, setMostrarDocumentos] =
             Matrícula inmobiliaria
           </option>
 
-        </select>
+        </SelectBuscable>
 
 
 

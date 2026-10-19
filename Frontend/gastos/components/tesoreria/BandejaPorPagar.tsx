@@ -5,6 +5,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import BandejaPagos from "@/components/tesoreria/BandejaPagos"
 import { claseBotonSecundario, claseInput } from "@/components/ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 // Máximo que permite el backend por página
 const MAXIMO_BANDEJA = 100
@@ -68,10 +69,10 @@ export default async function BandejaPorPagar({
             aria-label="Buscar"
           />
         </div>
-        <select name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={`${claseInput} w-auto`} aria-label="Bolsa">
+        <SelectBuscable name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={`${claseInput} w-auto`} aria-label="Bolsa">
           <option value="">Todas las bolsas</option>
           {bolsasActivas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-        </select>
+        </SelectBuscable>
         <button type="submit" className={claseBotonSecundario}>Filtrar</button>
       </form>
 

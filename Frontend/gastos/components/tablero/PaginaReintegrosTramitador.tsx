@@ -6,6 +6,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import { ReintegrosTramitadorSchema } from "@/src/schemas/gastos"
 import ReintegrosPorTramitador from "./ReintegrosPorTramitador"
 import { claseBotonSecundario, claseInput } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export type FiltrosReintegrosTramitador = {
   busqueda?: string
@@ -51,10 +52,10 @@ export default async function PaginaReintegrosTramitador({ ruta, filtros }: { ru
         </label>
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Bolsa</span>
-          <select name="bolsaId" defaultValue={filtros.bolsaId ?? ""} className={`${claseInput} w-44`}>
+          <SelectBuscable name="bolsaId" defaultValue={filtros.bolsaId ?? ""} className={`${claseInput} w-44`}>
             <option value="">Todas las bolsas</option>
             {bolsas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-          </select>
+          </SelectBuscable>
         </label>
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Gastos pagados desde</span>
@@ -66,16 +67,16 @@ export default async function PaginaReintegrosTramitador({ ruta, filtros }: { ru
         </label>
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Mostrar</span>
-          <select name="estado" defaultValue={filtros.estado ?? "pendientes"} className={`${claseInput} w-44`}>
+          <SelectBuscable name="estado" defaultValue={filtros.estado ?? "pendientes"} className={`${claseInput} w-44`}>
             <option value="pendientes">Solo con pendiente</option>
             <option value="todos">También ya reintegrados</option>
-          </select>
+          </SelectBuscable>
         </label>
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Antigüedad del pendiente</span>
-          <select name="diasMinimos" defaultValue={filtros.diasMinimos ?? ""} className={`${claseInput} w-44`}>
+          <SelectBuscable name="diasMinimos" defaultValue={filtros.diasMinimos ?? ""} className={`${claseInput} w-44`}>
             {ANTIGUEDADES.map(a => <option key={a.valor} value={a.valor}>{a.nombre}</option>)}
-          </select>
+          </SelectBuscable>
         </label>
         <button type="submit" className={claseBotonSecundario}>Filtrar</button>
         {hayFiltros && <Link href={ruta} className="pb-2 text-xs text-slate-500 hover:underline">Limpiar</Link>}

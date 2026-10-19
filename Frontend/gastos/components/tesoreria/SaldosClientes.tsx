@@ -10,6 +10,7 @@ import ModalSaldoBolsa from "./ModalSaldoBolsa"
 import EstadoCuentaCliente from "./EstadoCuentaCliente"
 import Paginacion from "../ui/Paginacion"
 import { claseBotonSecundario, claseInput } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 // Arqueo de una bolsa de anticipos: saldo de cada cliente (lo que pagó menos sus gastos) y el
 // cuadre contra el saldo de la bolsa. Disponible = saldo − gastos creados que aún no se pagan:
@@ -105,9 +106,9 @@ export default function SaldosClientes({ arqueo, esAdmin }: { arqueo: Arqueo, es
           </div>
           <label className="flex items-center gap-2 text-xs text-slate-500">
             Ordenar por
-            <select value={orden} onChange={e => ir({ orden: e.target.value })} className={`${claseInput} w-auto`}>
+            <SelectBuscable value={orden} onChange={e => ir({ orden: e.target.value })} className={`${claseInput} w-auto`}>
               {Object.entries(ORDENES_ARQUEO).map(([clave, nombre]) => <option key={clave} value={clave}>{nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </label>
           {navegando && <Loader2 size={16} className="animate-spin text-slate-400" />}
         </div>

@@ -10,6 +10,7 @@ import GraficoDineroPagado from "@/components/tablero/GraficoDineroPagado"
 import ResumenReintegros from "@/components/tablero/ResumenReintegros"
 import Seccion from "@/components/ui/Seccion"
 import { claseBotonSecundario, claseInput } from "@/components/ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 type Filtros = { bolsaId?: string, desde?: string, hasta?: string }
 
@@ -65,10 +66,10 @@ export default async function TableroPage({ searchParams }: { searchParams: Filt
       <form className="flex flex-wrap items-end gap-3">
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Bolsa</span>
-          <select name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={`${claseInput} w-48`}>
+          <SelectBuscable name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={`${claseInput} w-48`}>
             <option value="">Todas las bolsas</option>
             {opcionesBolsa.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-          </select>
+          </SelectBuscable>
         </label>
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Pagados desde</span>

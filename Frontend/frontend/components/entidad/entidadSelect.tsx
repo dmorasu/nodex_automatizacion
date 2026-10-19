@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Building2, ChevronDown } from "lucide-react"
 
 import { EntidadesSchema } from "@/src/schemas"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 
 type Props = {
@@ -142,7 +143,7 @@ export default function EntidadesSelect({
       {/* SELECT                                           */}
       {/* ================================================= */}
 
-      <select
+      <SelectBuscable sinFlecha
         name={name}
         value={selected}
         onChange={(e) =>
@@ -201,7 +202,7 @@ export default function EntidadesSelect({
           )
         )}
 
-      </select>
+      </SelectBuscable>
 
 
 

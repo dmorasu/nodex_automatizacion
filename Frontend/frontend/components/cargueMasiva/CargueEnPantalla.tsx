@@ -16,6 +16,7 @@ import {
 } from "@/src/lib/cargueTramites"
 import { BuscadorCliente, BuscadorMunicipio, claseCampo } from "./Buscadores"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const COMUNES_VACIOS: Comunes = {
   clienteId: null, clienteNombre: "", tramiteId: null, operacionId: null, entidadId: null, municipioId: null,
@@ -43,14 +44,14 @@ function Lista({ valor, opciones, comun, onCambiar, ancho = "w-36" }: {
 }) {
   const nombreComun = opciones.find(o => o.id === comun)?.nombre
   return (
-    <select
+    <SelectBuscable
       value={valor ?? ""}
       onChange={e => onCambiar(e.target.value ? Number(e.target.value) : null)}
       className={clsx(claseCampo, ancho, !valor && "text-slate-400")}
     >
       <option value="">{nombreComun ? `Común: ${nombreComun}` : "Seleccione"}</option>
       {opciones.map(o => <option key={o.id} value={o.id} className="text-slate-700">{o.nombre}</option>)}
-    </select>
+    </SelectBuscable>
   )
 }
 
@@ -282,22 +283,22 @@ export default function CargueEnPantalla() {
             <BuscadorCliente valor={{ id: comunes.clienteId, nombre: comunes.clienteNombre }} onElegir={c => cambiarComunes({ clienteId: c?.id ?? null, clienteNombre: c?.nombre ?? "" })} />
           </Campo>
           <Campo etiqueta="Tipo de trámite">
-            <select value={comunes.tramiteId ?? ""} onChange={e => cambiarComunes({ tramiteId: Number(e.target.value) || null })} className={claseCampo}>
+            <SelectBuscable value={comunes.tramiteId ?? ""} onChange={e => cambiarComunes({ tramiteId: Number(e.target.value) || null })} className={claseCampo}>
               <option value="">Seleccione</option>
               {catalogos.tramites.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </Campo>
           <Campo etiqueta="Operación">
-            <select value={comunes.operacionId ?? ""} onChange={e => cambiarComunes({ operacionId: Number(e.target.value) || null })} className={claseCampo}>
+            <SelectBuscable value={comunes.operacionId ?? ""} onChange={e => cambiarComunes({ operacionId: Number(e.target.value) || null })} className={claseCampo}>
               <option value="">Seleccione</option>
               {catalogos.operaciones.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </Campo>
           <Campo etiqueta="Entidad">
-            <select value={comunes.entidadId ?? ""} onChange={e => cambiarComunes({ entidadId: Number(e.target.value) || null })} className={claseCampo}>
+            <SelectBuscable value={comunes.entidadId ?? ""} onChange={e => cambiarComunes({ entidadId: Number(e.target.value) || null })} className={claseCampo}>
               <option value="">Seleccione</option>
               {catalogos.entidades.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-            </select>
+            </SelectBuscable>
           </Campo>
           <Campo etiqueta="Municipio">
             <BuscadorMunicipio municipios={catalogos.municipios} valor={comunes.municipioId} onElegir={id => cambiarComunes({ municipioId: id })} />
@@ -306,10 +307,10 @@ export default function CargueEnPantalla() {
             <input type="date" value={comunes.fechaEntrega} onChange={e => cambiarComunes({ fechaEntrega: e.target.value })} className={claseCampo} />
           </Campo>
           <Campo etiqueta="Documentos aportados">
-            <select value={comunes.documentosAportados} onChange={e => cambiarComunes({ documentosAportados: e.target.value })} className={claseCampo}>
+            <SelectBuscable value={comunes.documentosAportados} onChange={e => cambiarComunes({ documentosAportados: e.target.value })} className={claseCampo}>
               <option value="No">No</option>
               <option value="Si">Sí</option>
-            </select>
+            </SelectBuscable>
           </Campo>
         </div>
 
@@ -318,25 +319,25 @@ export default function CargueEnPantalla() {
             <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700"><Receipt size={14} className="text-sky-500" /> Para los gastos</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Campo etiqueta="Bolsa">
-                <select value={comunes.gasto.bolsaId ?? ""} onChange={e => cambiarGastoComun({ bolsaId: Number(e.target.value) || null })} className={claseCampo}>
+                <SelectBuscable value={comunes.gasto.bolsaId ?? ""} onChange={e => cambiarGastoComun({ bolsaId: Number(e.target.value) || null })} className={claseCampo}>
                   <option value="">Seleccione</option>
                   {g.bolsas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-                </select>
+                </SelectBuscable>
               </Campo>
               <Campo etiqueta="Forma de pago">
-                <select value={comunes.gasto.formaPagoId ?? ""} onChange={e => cambiarGastoComun({ formaPagoId: Number(e.target.value) || null })} className={claseCampo}>
+                <SelectBuscable value={comunes.gasto.formaPagoId ?? ""} onChange={e => cambiarGastoComun({ formaPagoId: Number(e.target.value) || null })} className={claseCampo}>
                   <option value="">Seleccione</option>
                   {g.formasPago.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-                </select>
+                </SelectBuscable>
               </Campo>
               <Campo etiqueta="Concepto del pago">
                 <input value={comunes.gasto.conceptoPago} onChange={e => cambiarGastoComun({ conceptoPago: e.target.value })} maxLength={200} placeholder="Ej: Pago derechos de tránsito" className={claseCampo} />
               </Campo>
               <Campo etiqueta="Reembolsable (se le cobra al cliente)">
-                <select value={comunes.gasto.reembolsable ? "si" : "no"} onChange={e => cambiarGastoComun({ reembolsable: e.target.value === "si" })} className={claseCampo}>
+                <SelectBuscable value={comunes.gasto.reembolsable ? "si" : "no"} onChange={e => cambiarGastoComun({ reembolsable: e.target.value === "si" })} className={claseCampo}>
                   <option value="si">Sí</option>
                   <option value="no">No</option>
-                </select>
+                </SelectBuscable>
               </Campo>
               <Campo etiqueta="Beneficiario: identificación">
                 <input value={comunes.gasto.beneficiarioIdentificacion} onChange={e => cambiarGastoComun({ beneficiarioIdentificacion: e.target.value })} maxLength={30} className={claseCampo} />
@@ -422,7 +423,7 @@ export default function CargueEnPantalla() {
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex w-44 gap-1">
-                        <select
+                        <SelectBuscable
                           value={f.tipoIdentificador}
                           onChange={e => cambiarFila(f.clave, { tipoIdentificador: e.target.value as Fila["tipoIdentificador"] })}
                           className={clsx(claseCampo, "w-[4.5rem] shrink-0 px-1")}
@@ -430,7 +431,7 @@ export default function CargueEnPantalla() {
                         >
                           <option value="placa">Placa</option>
                           <option value="matricula">Matr.</option>
-                        </select>
+                        </SelectBuscable>
                         <input
                           value={f.identificador}
                           onChange={e => {
@@ -506,10 +507,10 @@ export default function CargueEnPantalla() {
                         <div className="flex flex-wrap items-end gap-2">
                           <span className="flex h-8 items-center gap-1 text-[11px] font-semibold text-sky-700"><Receipt size={13} /> Gasto</span>
                           <Campo etiqueta="Tipo de gasto">
-                            <select value={f.gasto.tipoGastoId ?? ""} onChange={e => cambiarGasto(f.clave, { tipoGastoId: Number(e.target.value) || null })} className={clsx(claseCampo, "w-36")}>
+                            <SelectBuscable value={f.gasto.tipoGastoId ?? ""} onChange={e => cambiarGasto(f.clave, { tipoGastoId: Number(e.target.value) || null })} className={clsx(claseCampo, "w-36")}>
                               <option value="">Seleccione</option>
                               {g.tiposGasto.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                            </select>
+                            </SelectBuscable>
                           </Campo>
                           <Campo etiqueta="Valor">
                             <input inputMode="numeric" value={f.gasto.valor} onChange={e => cambiarGasto(f.clave, { valor: e.target.value.replace(/[^\d]/g, "") })} placeholder="0" className={clsx(claseCampo, "w-28")} />
@@ -537,7 +538,7 @@ export default function CargueEnPantalla() {
                             <Lista valor={f.gasto.formaPagoId} opciones={g.formasPago} comun={comunes.gasto.formaPagoId} onCambiar={id => cambiarGasto(f.clave, { formaPagoId: id })} />
                           </Campo>
                           <Campo etiqueta="Reembolsable">
-                            <select
+                            <SelectBuscable
                               value={f.gasto.reembolsable === null ? "" : f.gasto.reembolsable ? "si" : "no"}
                               onChange={e => cambiarGasto(f.clave, { reembolsable: e.target.value === "" ? null : e.target.value === "si" })}
                               className={clsx(claseCampo, "w-28", f.gasto.reembolsable === null && "text-slate-400")}
@@ -545,7 +546,7 @@ export default function CargueEnPantalla() {
                               <option value="">Común: {comunes.gasto.reembolsable ? "Sí" : "No"}</option>
                               <option value="si">Sí</option>
                               <option value="no">No</option>
-                            </select>
+                            </SelectBuscable>
                           </Campo>
                         </div>
                       </td>

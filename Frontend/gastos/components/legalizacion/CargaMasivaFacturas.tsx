@@ -11,6 +11,7 @@ import { formatoMoneda, formatoTamano } from "@/src/lib/formato"
 import type { GastoListado } from "@/src/schemas/gastos"
 import type { Tasas } from "./ModalFactura"
 import { claseBotonPrimario, claseBotonSecundario } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const TIPOS_PERMITIDOS = ["application/pdf", "image/jpeg", "image/png"]
 const MAX_BYTES = 15 * 1024 * 1024
@@ -256,7 +257,7 @@ export default function CargaMasivaFacturas({
                         {fila.estado === "listo" ? (
                           <p className="font-semibold text-slate-700">{fila.codigoGasto}</p>
                         ) : (<>
-                        <select
+                        <SelectBuscable
                           value={fila.gastoId ?? ""}
                           onChange={e => cambiarGasto(fila.clave, Number(e.target.value) || null)}
                           disabled={bloqueada}
@@ -268,7 +269,7 @@ export default function CargaMasivaFacturas({
                               {g.codigo} · {g.placa ?? g.matriculaInmobiliaria ?? g.conceptoPago} · {formatoMoneda(g.valorRealmentePagado)}
                             </option>
                           ))}
-                        </select>
+                        </SelectBuscable>
                         {gasto && (
                           <p className="mt-1 text-[11px] text-slate-400">
                             {fila.propuesto && <span className="mr-1 font-semibold text-emerald-600">Asignado por el nombre ·</span>}

@@ -5,6 +5,7 @@ import { obtenerBolsasActivas } from "@/src/lib/datosGastos"
 import Paginacion from "@/components/ui/Paginacion"
 import TablaLotes from "@/components/tesoreria/TablaLotes"
 import { claseBotonSecundario, claseInput } from "@/components/ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 export type FiltrosListadoLotes = { busqueda?: string, bolsaId?: string, desde?: string, hasta?: string, pagina?: string }
 
@@ -62,10 +63,10 @@ export default async function ListadoLotes({
         </label>
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Bolsa</span>
-          <select name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={`${claseInput} w-44`}>
+          <SelectBuscable name="bolsaId" defaultValue={searchParams.bolsaId ?? ""} className={`${claseInput} w-44`}>
             <option value="">Todas</option>
             {bolsas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-          </select>
+          </SelectBuscable>
         </label>
         <label className="block">
           <span className="block mb-1 text-[11px] font-medium text-slate-500">Fecha desde</span>

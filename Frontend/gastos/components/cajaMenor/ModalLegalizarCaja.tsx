@@ -8,6 +8,7 @@ import { legalizarGastoCaja } from "@/actions/gastos/cajaMenor"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
+import SelectBuscable from "@/components/ui/SelectBuscable"
 
 function Campo({ etiqueta, obligatorio = true, className, children }: { etiqueta: string, obligatorio?: boolean, className?: string, children: React.ReactNode }) {
   return (
@@ -107,10 +108,10 @@ export default function ModalLegalizarCaja({ gasto, onCerrar, onLegalizado }: {
                 <input value={datos.beneficiario} onChange={e => cambiar("beneficiario", e.target.value)} maxLength={200} className={claseInput} />
               </Campo>
               <Campo etiqueta="Tipo de documento">
-                <select value={datos.tipoIdentificacion} onChange={e => cambiar("tipoIdentificacion", e.target.value)} className={claseInput}>
+                <SelectBuscable value={datos.tipoIdentificacion} onChange={e => cambiar("tipoIdentificacion", e.target.value)} className={claseInput}>
                   <option value="CC">CC</option>
                   <option value="NIT">NIT</option>
-                </select>
+                </SelectBuscable>
               </Campo>
               <Campo etiqueta="Identificación">
                 <input value={datos.identificacion} onChange={e => cambiar("identificacion", e.target.value)} maxLength={30} className={claseInput} />

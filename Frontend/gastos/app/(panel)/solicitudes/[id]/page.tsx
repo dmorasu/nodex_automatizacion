@@ -94,7 +94,7 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
               <Dato etiqueta="Cliente" valor={gasto.nombreClienteBanco} />
               <Dato etiqueta="Identificación" valor={gasto.identificacionClienteBanco} />
               <Dato etiqueta="Contrato" valor={gasto.contrato} />
-              <Dato etiqueta="Código BPR" valor={gasto.codigoBpr} />
+              <Dato etiqueta="Código BPR/FTF" valor={gasto.codigoBpr} />
             </dl>
           </Seccion>
 

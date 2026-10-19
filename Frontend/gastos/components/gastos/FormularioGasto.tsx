@@ -482,7 +482,7 @@ export default function FormularioGasto({
           <Campo etiqueta="Contrato">
             <input value={datos.contrato} onChange={e => cambiar("contrato", e.target.value)} maxLength={50} className={claseInput} />
           </Campo>
-          <Campo etiqueta="Código BPR">
+          <Campo etiqueta="Código BPR/FTF">
             <input value={datos.codigoBpr} onChange={e => cambiar("codigoBpr", e.target.value)} maxLength={50} className={claseInput} />
           </Campo>
         </div>

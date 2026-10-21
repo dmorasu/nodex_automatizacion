@@ -23,6 +23,8 @@ import { notificarFacturasParaLegalizacion } from './gastos/notificacionesGastos
 //   · Finalizado: marca la fecha de finalización en la programación
 //   · notifica: Desistido (WhatsApp al tramitador y correo a quien creó el trámite),
 //     En espera por novedad y Finalizado (correo)
+//   · Novedad Subsanada Continuar Trámite exige una nueva fecha de entrega del resultado; la
+//     anterior queda en el historial del trámite (anterior → nueva, con quién la cambió)
 // =====================================
 
 export const ESTADO_EN_ESPERA_POR_NOVEDAD = 3
@@ -34,12 +36,48 @@ export type CambioEstado = {
   solicitudTramiteId: number
   estadoId: number
   tipoRechazoId?: number | null
+  // Obligatoria con Novedad Subsanada Continuar Trámite (YYYY-MM-DD o DD/MM/YYYY)
+  fechaEntregaResultado?: string | null
+}
+
+// Error de datos del cambio de estado (se responde con su status, no como error del servidor)
+export class ErrorEstadoTramite extends Error {
+  constructor(message: string, public status = 400) {
+    super(message)
+  }
+}
+
+const hoyColombia = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
+
+// Nueva fecha de entrega del resultado → YYYY-MM-DD. Acepta también DD/MM/YYYY (Excel escrito a mano).
+export const validarFechaEntrega = (valor: string | null | undefined) => {
+  const texto = String(valor ?? '').trim()
+  const dma = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  const fecha = dma ? `${dma[3]}-${dma[2].padStart(2, '0')}-${dma[1].padStart(2, '0')}` : texto.slice(0, 10)
+  if (!fecha) throw new ErrorEstadoTramite('Indique la nueva fecha de entrega del resultado')
+  const enUtc = new Date(`${fecha}T00:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || isNaN(enUtc.getTime()) || enUtc.toISOString().slice(0, 10) !== fecha) {
+    throw new ErrorEstadoTramite('La fecha de entrega del resultado no es válida')
+  }
+  if (fecha < hoyColombia()) throw new ErrorEstadoTramite('La fecha de entrega del resultado no puede ser anterior a hoy')
+  return fecha
 }
 
 // Guarda el estado dentro de la transacción que se le pase (para quien necesite cambiar el
 // estado junto con otros datos, como la novedad subsanada). Sin notificaciones.
-export const registrarEstado = async ({ solicitudTramiteId, estadoId, tipoRechazoId }: CambioEstado, transaction: Transaction) => {
+export const registrarEstado = async ({ solicitudTramiteId, estadoId, tipoRechazoId, fechaEntregaResultado }: CambioEstado, transaction: Transaction) => {
   const estadoNumero = Number(estadoId)
+
+  // Novedad subsanada: nueva fecha de entrega. Se cambia con el modelo (no con un update en
+  // bloque) para que el historial guarde la fecha anterior y la nueva con el usuario
+  if (estadoNumero === ESTADO_NOVEDAD_SUBSANADA) {
+    const fecha = validarFechaEntrega(fechaEntregaResultado)
+    const tramite = await SolicitudTramites.findByPk(solicitudTramiteId, { transaction, lock: transaction.LOCK.UPDATE })
+    if (!tramite) throw new ErrorEstadoTramite('El trámite no existe', 404)
+    // A medianoche UTC, como la guarda el formulario del trámite
+    await tramite.update({ fechaEntregaResultado: new Date(`${fecha}T00:00:00Z`) }, { transaction })
+  }
+
   const registro = await EstadosTramites.create({
     solicitudTramiteId,
     estadoId: estadoNumero,

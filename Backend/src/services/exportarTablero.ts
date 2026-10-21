@@ -100,15 +100,14 @@ export const generarExcelTablero = (t: TableroTramites, alcance: string) => {
     'Gastos con reintegro': x.gastosConReintegro
   })), ['% a tiempo'], ['Reintegro pendiente']), 'Por tramitador')
 
-  XLSX.utils.book_append_sheet(libro, hoja(t.porCliente.map(c => ({
-    'Cliente': c.cliente,
-    'Identificación': c.identificacion ?? '',
-    'Abiertos': c.abiertos,
-    'Vencidos': c.vencidos,
-    'Finalizados': c.finalizados,
-    '% a tiempo': porcentaje(c.porcentajeATiempo),
-    'Valor finalizado': c.valorFinalizado
-  })), ['% a tiempo'], ['Valor finalizado']), 'Por cliente')
+  // Acumulado por operación (o en el rango propio de la ficha), con la suma del valor del trámite (sin viáticos)
+  XLSX.utils.book_append_sheet(libro, hoja(t.valorPorOperacion.filas.map(o => ({
+    'Operación': o.operacion,
+    'Trámites': o.tramites,
+    'Con valor registrado': o.conValor,
+    'Valor total del trámite': o.valorTotal,
+    '% del valor': porcentaje(o.porcentaje)
+  })), ['% del valor'], ['Valor total del trámite']), 'Por operación')
 
   XLSX.utils.book_append_sheet(libro, hoja(t.porMunicipio.map(m => ({
     'Municipio': m.municipio,
@@ -126,7 +125,8 @@ export const generarExcelTablero = (t: TableroTramites, alcance: string) => {
   XLSX.utils.book_append_sheet(libro, hoja(t.tendencia.map(s => ({
     'Semana del': s.semana,
     'Creados': s.creados,
-    'Finalizados': s.finalizados
+    'Finalizados': s.finalizados,
+    'Finalizados fuera de plazo (más de 1 día hábil después del reporte del tramitador)': s.finalizadosFueraDePlazo
   }))), 'Tendencia semanal')
 
   return XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' }) as Buffer

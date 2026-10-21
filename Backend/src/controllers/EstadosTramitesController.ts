@@ -15,7 +15,7 @@ import { fechaColombia } from "../utils/fechaColombia"
 import TiposRechazo from "../models/tiposRechazos"
 import Tramite from "../models/tramite"
 import Clientes from "../models/clientes"
-import { cambiarEstadoTramite } from "../services/estadoTramite"
+import { cambiarEstadoTramite, ErrorEstadoTramite } from "../services/estadoTramite"
 
 declare global {
   namespace Express {
@@ -44,7 +44,8 @@ export class EstadosTramitesController {
       const { esFinalizado } = await cambiarEstadoTramite({
         solicitudTramiteId: req.solicitudTramites.id,
         estadoId: Number(req.body.estadoId),
-        tipoRechazoId: req.body.tipoRechazoId ? Number(req.body.tipoRechazoId) : null
+        tipoRechazoId: req.body.tipoRechazoId ? Number(req.body.tipoRechazoId) : null,
+        fechaEntregaResultado: req.body.fechaEntregaResultado ?? null
       })
 
       return res.status(201).json({
@@ -52,6 +53,8 @@ export class EstadosTramitesController {
         requiereEvaluacion: esFinalizado
       })
     } catch (error: any) {
+      // Datos que faltan o no sirven (ej: la nueva fecha de entrega de la novedad subsanada)
+      if (error instanceof ErrorEstadoTramite) return res.status(error.status).json({ success: false, error: error.message })
       console.error("❌ ERROR EN CREATE ESTADO:", error)
       return res.status(500).json({
         success: false,

@@ -30,7 +30,7 @@ const VACIO: DatosTramitador = {
 }
 
 // Ventana para crear o editar un tramitador
-function ModalTramitador({ tramitador, sedes, onCerrar }: { tramitador: Tramitador | null, sedes: SedeOpcion[], onCerrar: () => void }) {
+function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador: Tramitador | null, sedes: SedeOpcion[], regiones: string[], onCerrar: () => void }) {
   const [datos, setDatos] = useState<DatosTramitador>(tramitador ?? VACIO)
   const [guardando, startGuardar] = useTransition()
 
@@ -38,6 +38,7 @@ function ModalTramitador({ tramitador, sedes, onCerrar }: { tramitador: Tramitad
     setDatos(actuales => ({ ...actuales, [campo]: valor }))
 
   const guardar = () => {
+    if (!regiones.includes(datos.region)) return toast.error("Elija la región del tramitador")
     if (datos.esMensajero && !datos.sedeId) return toast.error("Elija la sede de la que sale el mensajero")
     startGuardar(async () => {
       const resultado = await guardarTramitador(datos, tramitador?.id)
@@ -75,7 +76,12 @@ function ModalTramitador({ tramitador, sedes, onCerrar }: { tramitador: Tramitad
             </label>
             <label className="block">
               <span className={claseLabel}>Región <span className="text-red-400">*</span></span>
-              <input value={datos.region ?? ""} onChange={e => cambiar("region", e.target.value)} maxLength={100} className={claseInput} />
+              <SelectBuscable value={datos.region ?? ""} onChange={e => cambiar("region", e.target.value)} className={claseInput}>
+                <option value="">Seleccione la región</option>
+                {/* Una región escrita antes a mano que no es de la lista: se ve, pero hay que cambiarla */}
+                {datos.region && !regiones.includes(datos.region) && <option value={datos.region} disabled>{datos.region} (ya no existe)</option>}
+                {regiones.map(r => <option key={r} value={r}>{r}</option>)}
+              </SelectBuscable>
             </label>
             <label className="block">
               <span className={claseLabel}>Correo <span className="text-red-400">*</span></span>
@@ -135,7 +141,7 @@ function ModalTramitador({ tramitador, sedes, onCerrar }: { tramitador: Tramitad
   )
 }
 
-export default function GestionTramitadores({ tramitadores, sedes }: { tramitadores: Tramitador[], sedes: SedeOpcion[] }) {
+export default function GestionTramitadores({ tramitadores, sedes, regiones }: { tramitadores: Tramitador[], sedes: SedeOpcion[], regiones: string[] }) {
   const [busqueda, setBusqueda] = useState("")
   // undefined = cerrado | null = nuevo | Tramitador = editando
   const [edicion, setEdicion] = useState<Tramitador | null | undefined>(undefined)
@@ -150,12 +156,18 @@ export default function GestionTramitadores({ tramitadores, sedes }: { tramitado
     )
   }, [tramitadores, busqueda])
 
-  const alternarActivo = (t: Tramitador) =>
+  const alternarActivo = (t: Tramitador) => {
+    // Sin una región de la lista el backend no guarda: se abre el formulario para elegirla
+    if (!regiones.includes(t.region)) {
+      toast.info(`Elija la región de ${t.nombreTramitador} para guardar el cambio`)
+      return setEdicion({ ...t, activo: !t.activo })
+    }
     startCambiar(async () => {
       const resultado = await guardarTramitador({ ...t, activo: !t.activo }, t.id)
       if (resultado.ok) toast.success(`${t.nombreTramitador} ${t.activo ? "desactivado" : "activado"}`)
       else resultado.errores.forEach(error => toast.error(error))
     })
+  }
 
   return (
     <div className="space-y-4">
@@ -233,7 +245,7 @@ export default function GestionTramitadores({ tramitadores, sedes }: { tramitado
       </div>
 
       {edicion !== undefined && (
-        <ModalTramitador key={edicion?.id ?? "nuevo"} tramitador={edicion} sedes={sedes} onCerrar={() => setEdicion(undefined)} />
+        <ModalTramitador key={edicion?.id ?? "nuevo"} tramitador={edicion} sedes={sedes} regiones={regiones} onCerrar={() => setEdicion(undefined)} />
       )}
 
       {accesoDe && <ModalAccesoApp key={accesoDe.id} tramitador={accesoDe} onCerrar={() => setAccesoDe(null)} />}

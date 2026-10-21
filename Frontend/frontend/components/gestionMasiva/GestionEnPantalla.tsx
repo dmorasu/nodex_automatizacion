@@ -92,7 +92,7 @@ function Celda({ campo, valor, opciones, onChange, disabled }: {
 
 // Gestión masiva sin Excel: se eligen los trámites, la acción y los valores (iguales para
 // todos o fila por fila) y se guarda con el mismo proceso del cargue por Excel.
-export default function GestionEnPantalla() {
+export default function GestionEnPantalla({ idsIniciales = [], accionInicial }: { idsIniciales?: number[], accionInicial?: string } = {}) {
   const catalogos = useCatalogos()
 
   const { data: operaciones } = useOperaciones()
@@ -108,7 +108,8 @@ export default function GestionEnPantalla() {
   const [tramites, setTramites] = useState<TramiteMasivo[]>([])
 
   // Acciones elegidas (una o varias): se guardan juntas en ORDEN_GUARDADO
-  const [tipos, setTipos] = useState<TipoAccion[]>(["estados"])
+  const accionValida = ACCIONES.find(a => a.tipo === accionInicial)?.tipo
+  const [tipos, setTipos] = useState<TipoAccion[]>([accionValida ?? "estados"])
   const acciones = ACCIONES.filter(a => tipos.includes(a.tipo))
   const alternarAccion = (tipo: TipoAccion) =>
     setTipos(actuales => actuales.includes(tipo)
@@ -137,6 +138,25 @@ export default function GestionEnPantalla() {
   const opcionesDe = (campo: Campo) => (campo.catalogo ? catalogos[campo.catalogo] : [])
 
   // ── Trámites ─────────────────────────────
+
+  // Trámites que llegan marcados desde el Tablero de gestión: se cargan una vez al abrir
+  const idsDelTablero = idsIniciales.slice(0, 500).join(",")
+  useEffect(() => {
+    if (!idsDelTablero) return
+    let vigente = true
+    setCargando(true)
+    fetch(`${API}/bulk/tramites?ids=${idsDelTablero}`)
+      .then(async res => {
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error ?? "No se pudieron consultar los trámites")
+        if (!vigente) return
+        setTramites(json.tramites)
+        toast.success(`${json.tramites.length} trámite(s) cargado(s) desde el tablero`)
+      })
+      .catch(error => vigente && toast.error((error as Error).message))
+      .finally(() => vigente && setCargando(false))
+    return () => { vigente = false }
+  }, [idsDelTablero])
 
   // Consulta los trámites con sus valores actuales
   const consultar = async (ids: number[]) => {

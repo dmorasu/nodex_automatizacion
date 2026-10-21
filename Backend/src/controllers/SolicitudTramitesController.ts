@@ -77,7 +77,10 @@ const filtrosTablero = (req: Request) => {
       tramitadorId: id(req.query.tramitadorId),
       operacionId: id(req.query.operacionId),
       tramiteId: id(req.query.tramiteId),
-      estadoId: id(req.query.estadoId)
+      estadoId: id(req.query.estadoId),
+      // Rango de creación propio de "Valor por operación" (sin rango: acumulado de siempre)
+      valorDesde: fecha(req.query.valorDesde) ?? undefined,
+      valorHasta: fecha(req.query.valorHasta) ?? undefined
     }
   }
 }
@@ -712,6 +715,7 @@ static tablero = async (req: Request, res: Response) => {
   try {
     const { filtros, hoy } = filtrosTablero(req)
     if (filtros.desde > filtros.hasta) return res.status(400).json({ error: 'La fecha inicial no puede ser mayor que la final' })
+    if (filtros.valorDesde && filtros.valorHasta && filtros.valorDesde > filtros.valorHasta) return res.status(400).json({ error: 'En Valor por operación, la fecha inicial no puede ser mayor que la final' })
     res.json(await obtenerTablero(filtros, hoy))
   } catch (error) {
     console.error('TABLERO TRÁMITES:', error)
@@ -724,6 +728,7 @@ static exportarTablero = async (req: Request, res: Response) => {
   try {
     const { filtros, hoy } = filtrosTablero(req)
     if (filtros.desde > filtros.hasta) return res.status(400).json({ error: 'La fecha inicial no puede ser mayor que la final' })
+    if (filtros.valorDesde && filtros.valorHasta && filtros.valorDesde > filtros.valorHasta) return res.status(400).json({ error: 'En Valor por operación, la fecha inicial no puede ser mayor que la final' })
 
     const tablero = await obtenerTablero(filtros, hoy, { sinLimite: true })
     const alcance = esAnalistaTramites(req) ? `Trámites de ${req.usuario.nombreUsuario}` : 'Todos los trámites (según filtros)'

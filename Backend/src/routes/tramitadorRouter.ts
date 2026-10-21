@@ -23,6 +23,9 @@ router.post('/',
 
 router.get('/tramitadores',TramitadorController.getAll)
 
+// Regiones para la lista desplegable del formulario (va antes de /:tramitadorId)
+router.get('/regiones',TramitadorController.regiones)
+
 router.get('/:tramitadorId',
     TramitadorController.getById
 )

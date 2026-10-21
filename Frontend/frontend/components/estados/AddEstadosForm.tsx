@@ -27,6 +27,9 @@ export default function AddExpenseForm({
   const { data: tiposRechazo } =
     useTiposRechazo();
 
+  // Hoy en Colombia (YYYY-MM-DD): la nueva fecha de entrega no puede ser anterior
+  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+
   const crearEstadoconId =
     CrearEstadoTramite.bind(null, +id);
 
@@ -250,6 +253,28 @@ export default function AddExpenseForm({
 
           </div>
 
+        )}
+
+
+
+        {/* =============================================== */}
+        {/* NUEVA FECHA DE ENTREGA (NOVEDAD SUBSANADA)      */}
+        {/* La anterior queda en el historial del trámite   */}
+        {/* =============================================== */}
+
+        {estadoSeleccionado === 4 && (
+          <div>
+            <label htmlFor="fechaEntregaResultado" className="block mb-1.5 text-xs font-medium text-slate-600">
+              Nueva fecha de entrega del resultado <span className="text-red-400">*</span>
+            </label>
+            <input
+              id="fechaEntregaResultado"
+              name="fechaEntregaResultado"
+              type="date"
+              min={hoy}
+              className="w-full h-10 px-3 rounded-md border border-slate-200 bg-slate-50 text-xs text-slate-700 outline-none transition focus:bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            />
+          </div>
         )}
 
 

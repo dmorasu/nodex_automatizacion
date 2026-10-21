@@ -6,6 +6,7 @@ import { db } from '../config/db'
 import AccesoTramitador from '../models/tramitadores/accesoTramitador'
 import { crearORestablecerAcceso, revocarAcceso } from '../services/tramitadores/accesoTramitadores'
 import { responderError } from './gastos/utilidades'
+import { regionesDeMunicipios } from '../services/regionesMunicipios'
 
 declare global{
     namespace Express{
@@ -16,6 +17,15 @@ declare global{
 }
 
 export class TramitadorController{
+    static regiones = async (_req: Request, res: Response) => {
+        try {
+            res.json(await regionesDeMunicipios())
+        } catch (error) {
+            console.log(error);
+            res.status(500).json({ error: 'No se pudieron cargar las regiones' })
+        }
+    }
+
     static getAll =async (req:Request,res:Response) =>{
         try {
                 const tramitador=  await Tramitador.findAll({

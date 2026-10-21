@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { param, validationResult, body } from "express-validator";
 import Tramitador from "../models/tramitador";
+import { regionesDeMunicipios } from "../services/regionesMunicipios";
 
 export const validateTramitadorExits = async (
   req: Request,
@@ -59,9 +60,13 @@ export const validateTramitadorInput = [
     .customSanitizer(valor => String(valor ?? "").replace(/[\s-]/g, ""))
     .matches(/^\d{10,15}$/).withMessage("El WhatsApp debe tener solo números con el indicativo del país (ej: 573001234567)"),
   body("region")
-    .isString().trim()
-    .notEmpty().withMessage("La región no debe estar vacía")
-    .isLength({ max: 100 }),
+    .isString().withMessage("Elija la región del tramitador").bail()
+    .trim()
+    .notEmpty().withMessage("Elija la región del tramitador").bail()
+    .custom(async region => {
+      // Solo las regionales de los municipios (lista desplegable del formulario)
+      if (!(await regionesDeMunicipios()).includes(region)) throw new Error(`La región "${region}" no existe`)
+    }),
   body("activo").optional().isBoolean().withMessage("Activo debe ser verdadero o falso").toBoolean(),
   body("esMensajero").optional().isBoolean().withMessage("Mensajero debe ser verdadero o falso").toBoolean(),
   body("sedeId").optional({ values: "null" }).isInt({ min: 1 }).withMessage("Sede no válida").toInt()

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Metadata } from "next"
 import clsx from "clsx"
-import { Ban, BriefcaseBusiness, FileText, HardHat, Users } from "lucide-react"
+import { Ban, BriefcaseBusiness, Download, FileText, HardHat, Users } from "lucide-react"
 import { requierePerfil } from "@/src/auth/dal"
 import { encabezadosSesion } from "@/src/lib/sesionApi"
 import AdministrarCatalogos, { type PestanaCatalogo } from "@/components/catalogos/AdministrarCatalogos"
@@ -32,21 +32,35 @@ export default async function CatalogosPage({ searchParams }: { searchParams: { 
 
   let tramitadores: Tramitador[] = []
   let sedes: SedeOpcion[] = []
+  let regiones: string[] = []
   if (actual.id === "tramitadores") {
-    const [req, reqSedes] = await Promise.all([
+    const [req, reqSedes, reqRegiones] = await Promise.all([
       fetch(`${process.env.API_URL}/tramitador/tramitadores`, { headers: encabezadosSesion(), cache: "no-store" }),
       // Sedes de mensajería (para marcar mensajeros)
-      fetch(`${process.env.API_URL}/mensajeria/sedes`, { headers: encabezadosSesion(), cache: "no-store" })
+      fetch(`${process.env.API_URL}/mensajeria/sedes`, { headers: encabezadosSesion(), cache: "no-store" }),
+      // Regiones = regionales de los municipios
+      fetch(`${process.env.API_URL}/tramitador/regiones`, { headers: encabezadosSesion(), cache: "no-store" })
     ])
     tramitadores = req.ok ? await req.json() : []
     sedes = reqSedes.ok ? await reqSedes.json() : []
+    regiones = reqRegiones.ok ? await reqRegiones.json() : []
   }
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-800">Catálogos</h1>
-        <p className="mt-1 text-sm text-slate-400">{actual.descripcion}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-800">Catálogos</h1>
+          <p className="mt-1 text-sm text-slate-400">{actual.descripcion}</p>
+        </div>
+        {/* Una hoja por cada pestaña que ve el usuario (pasa por el proxy con la sesión) */}
+        <a
+          href="/api/backend/catalogos-tramites/exportar"
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+        >
+          <Download size={15} />
+          Descargar Excel
+        </a>
       </div>
 
       {disponibles.length > 1 && (
@@ -68,7 +82,7 @@ export default async function CatalogosPage({ searchParams }: { searchParams: { 
       )}
 
       {actual.id === "tramitadores"
-        ? <GestionTramitadores tramitadores={tramitadores} sedes={sedes} />
+        ? <GestionTramitadores tramitadores={tramitadores} sedes={sedes} regiones={regiones} />
         : <AdministrarCatalogos key={actual.id} pestana={actual.id} />}
     </div>
   )

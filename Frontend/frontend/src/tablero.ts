@@ -59,15 +59,14 @@ export type FilaTramitador = {
   gastosConReintegro: number
 }
 
-export type FilaCliente = {
-  clienteId: number | null
-  cliente: string
-  identificacion: string | null
-  abiertos: number
-  vencidos: number
-  finalizados: number
-  porcentajeATiempo: number | null
-  valorFinalizado: number
+// Trámites por operación y la suma de su valor del trámite (sin viáticos)
+export type FilaOperacion = {
+  operacionId: number | null
+  operacion: string
+  tramites: number
+  conValor: number
+  valorTotal: number
+  porcentaje: number
 }
 
 export type FilaMunicipio = {
@@ -102,7 +101,8 @@ export type Tablero = {
   atencion: Record<ClaveAlerta, ListaAlerta>
   porAnalista: FilaAnalista[]
   porTramitador: FilaTramitador[]
-  porCliente: FilaCliente[]
+  // Acumulado de siempre, o en su propio rango de creación (desde/hasta)
+  valorPorOperacion: { desde: string | null, hasta: string | null, total: number, filas: FilaOperacion[] }
   porMunicipio: FilaMunicipio[]
   causasNovedad: {
     total: number
@@ -112,7 +112,8 @@ export type Tablero = {
   }
   // false si no se pudieron leer los reintegros de Nodex Gastos
   reintegrosDisponibles: boolean
-  tendencia: { semana: string, creados: number, finalizados: number }[]
+  // finalizadosFueraDePlazo: parte de los finalizados (más de 1 día hábil después del reporte del tramitador)
+  tendencia: { semana: string, creados: number, finalizados: number, finalizadosFueraDePlazo: number }[]
   antiguedad: {
     estados: string[]
     rangos: { rango: string, total: number, porEstado: Record<string, number> }[]

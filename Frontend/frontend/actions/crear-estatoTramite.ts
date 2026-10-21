@@ -22,6 +22,7 @@ export default async function CrearEstadoTramite(
       tipoRechazoId: formData.get("tipoRechazoId")
         ? Number(formData.get("tipoRechazoId"))
         : null,
+      fechaEntregaResultado: String(formData.get("fechaEntregaResultado") ?? "") || null,
       solicitudTramitesId
     }
 
@@ -47,6 +48,15 @@ export default async function CrearEstadoTramite(
       }
     }
 
+    // "Novedad Subsanada Continuar Trámite" (id 4) exige la nueva fecha de entrega del resultado
+    if (estadoTramiteData.estadoId === 4 && !estadoTramiteData.fechaEntregaResultado) {
+      return {
+        errors: ["Indique la nueva fecha de entrega del resultado"],
+        success: "",
+        requiereEvaluacion: false
+      }
+    }
+
     const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramitesId}/estadosTramites`
     
 
@@ -59,6 +69,7 @@ export default async function CrearEstadoTramite(
       body: JSON.stringify({
         estadoId: estadoTramiteData.estadoId,
         tipoRechazoId: estadoTramiteData.tipoRechazoId,
+        fechaEntregaResultado: estadoTramiteData.fechaEntregaResultado,
         solicitudTramiteId: solicitudTramitesId
       })
     })

@@ -97,6 +97,78 @@ export const ajustarEsquemaTramites = async () => {
   await versionSesion()
   await areasDeUsuarios()
   await descargaPagoUnificada()
+  await regionalDeMunicipios()
+}
+
+// Regional de cada departamento, tomada del listado de municipios entregado el 2026-10-21
+// (Municipios(Hoja1).csv). Claves en mayúsculas y sin tildes.
+const REGIONAL_POR_DEPARTAMENTO: Record<string, string> = {
+  'ANTIOQUIA': 'ANTIOQUIA',
+  'CHOCO': 'ANTIOQUIA',
+  'BOGOTA, D.C.': 'BOGOTÁ Y SABANA',
+  'CUNDINAMARCA': 'BOGOTÁ Y SABANA',
+  'ARCHIPIELAGO DE SAN ANDRES, PROVIDENCIA Y SANTA CATALINA': 'CARIBE',
+  'ATLANTICO': 'CARIBE',
+  'BOLIVAR': 'CARIBE',
+  'CESAR': 'CARIBE',
+  'CORDOBA': 'CARIBE',
+  'LA GUAJIRA': 'CARIBE',
+  'MAGDALENA': 'CARIBE',
+  'SUCRE': 'CARIBE',
+  'ARAUCA': 'CENTRO',
+  'BOYACA': 'CENTRO',
+  'CALDAS': 'CENTRO',
+  'CASANARE': 'CENTRO',
+  'META': 'CENTRO',
+  'NORTE DE SANTANDER': 'CENTRO',
+  'QUINDIO': 'CENTRO',
+  'RISARALDA': 'CENTRO',
+  'SANTANDER': 'CENTRO',
+  'TOLIMA': 'CENTRO',
+  'AMAZONAS': 'SUR',
+  'CAQUETA': 'SUR',
+  'CAUCA': 'SUR',
+  'GUAINIA': 'SUR',
+  'GUAVIARE': 'SUR',
+  'HUILA': 'SUR',
+  'NARIÑO': 'SUR',
+  'PUTUMAYO': 'SUR',
+  'VALLE DEL CAUCA': 'SUR',
+  'VAUPES': 'SUR',
+  'VICHADA': 'SUR'
+}
+
+// Municipios que el listado pone en otra regional que la de su departamento
+const REGIONAL_POR_MUNICIPIO: { municipio: string, departamento: string, regional: string }[] = [
+  { municipio: 'YAGUARA', departamento: 'HUILA', regional: 'CARIBE' }
+]
+
+// En SQL: mayúsculas y sin tildes (la Ñ se conserva), para comparar con las claves de arriba
+const sinTildes = (columna: string) => `TRANSLATE(UPPER(TRIM(${columna})), 'ÁÉÍÓÚÜ', 'AEIOUU')`
+
+// 2026-10-21 · La tabla Municipios está cargada dos veces y solo una copia traía la regional
+// (en desarrollo 1.123 de 2.244 sin regional, entre ellas las que usan la mayoría de trámites).
+// Llena la regional que falte según el departamento; nunca cambia una que ya tenga valor, así que
+// en cada arranque solo toca los municipios nuevos que lleguen sin regional.
+const regionalDeMunicipios = async () => {
+  const municipios = await columnasDe('Municipios')
+  if (!municipios?.regional) return
+
+  for (const { municipio, departamento, regional } of REGIONAL_POR_MUNICIPIO) {
+    await db.query(`
+      UPDATE "Municipios" SET regional = :regional
+      WHERE regional IS NULL AND ${sinTildes('"nombreMunicipio"')} = :municipio AND ${sinTildes('departamento')} = :departamento
+    `, { replacements: { regional, municipio, departamento } })
+  }
+  for (const [departamento, regional] of Object.entries(REGIONAL_POR_DEPARTAMENTO)) {
+    await db.query(
+      `UPDATE "Municipios" SET regional = :regional WHERE regional IS NULL AND ${sinTildes('departamento')} = :departamento`,
+      { replacements: { regional, departamento } }
+    )
+  }
+
+  const [[{ faltan }]] = await db.query(`SELECT COUNT(*)::int AS faltan FROM "Municipios" WHERE regional IS NULL`) as [{ faltan: number }[], unknown]
+  if (faltan) console.log(`Municipios: ${faltan} sin regional (departamento no reconocido)`)
 }
 
 // 2026-10-19 · Operaciones cuyos gastos Legalización descarga como un solo PDF de pago por gasto.

@@ -282,6 +282,13 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Commit de la regional de los municipios (2026-10-21)** — cambia solo el backend (compilar Backend y reiniciar `nodex-ensayo-api`).
+- **Sin variables nuevas.** Al arrancar llena `Municipios.regional` donde esté vacía, según el departamento (ANTIOQUIA, BOGOTÁ Y SABANA, CARIBE, CENTRO, SUR). Nunca cambia una regional que ya tenga valor; si queda algún municipio sin regional, el log dice cuántos.
+- Comprobar la base (debe decir 0 sin regional):
+  ```bash
+  sudo -u postgres psql -d nodex_pruebas -c "SELECT regional, COUNT(*) FROM \"Municipios\" GROUP BY 1 ORDER BY 1"
+  ```
+
 **Commits del 2026-10-11 y 2026-10-12 (avisos del tramitador, login protegido, sesiones de 7 días, dependencias y encabezados)** — cambian el backend y las tres apps.
 - `npm ci` en Backend y en Nodex Trámites baja `xlsx` desde `https://cdn.sheetjs.com` (el servidor necesita salida a ese dominio).
 - Al arrancar se crea `Usuarios.versionSesion`: **todos vuelven a iniciar sesión** (los tokens anteriores dejan de servir).

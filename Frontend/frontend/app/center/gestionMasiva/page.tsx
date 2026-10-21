@@ -16,7 +16,10 @@ const tabs = [
 
 // Dos formas de hacer la misma gestión masiva (mismo proceso en el backend):
 // en pantalla (eligiendo trámites y valores) o cargando la plantilla de Excel
-export default function Page() {
+// Desde el Tablero de gestión llega con ?accion=<tipo>&ids=1,2,3: abre "En pantalla" con esos
+// trámites cargados y la acción elegida
+export default function Page({ searchParams }: { searchParams: { ids?: string, accion?: string } }) {
+  const idsIniciales = (searchParams.ids ?? '').split(',').map(Number).filter(n => Number.isInteger(n) && n > 0)
 
   const [modo, setModo] = useState<'pantalla' | 'excel'>('pantalla')
   const [active, setActive] = useState('estados')
@@ -54,7 +57,7 @@ export default function Page() {
       </div>
 
       {modo === 'pantalla' ? (
-        <GestionEnPantalla />
+        <GestionEnPantalla idsIniciales={idsIniciales} accionInicial={searchParams.accion} />
       ) : (
         <div>
           <div className="flex flex-wrap gap-2 mb-6">

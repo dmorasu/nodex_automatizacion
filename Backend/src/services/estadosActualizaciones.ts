@@ -1,4 +1,5 @@
 import { cambiarEstadoTramite } from './estadoTramite'
+import { excelDateToString } from '../utils/excelDate'
 
 // Cambio de estado masivo (Excel o gestión en pantalla). Cada fila usa la misma lógica del
 // cambio individual: estado actual, finalización y notificaciones. Cada trámite se guarda por
@@ -14,7 +15,9 @@ export const procesarEstados = async (data: any[]) => {
       await cambiarEstadoTramite({
         solicitudTramiteId: Number(row.solicitudTramiteId),
         estadoId: Number(row.estadoId),
-        tipoRechazoId: row.tipoRechazoId ? Number(row.tipoRechazoId) : null
+        tipoRechazoId: row.tipoRechazoId ? Number(row.tipoRechazoId) : null,
+        // Solo cuenta con Novedad Subsanada Continuar Trámite (celda de fecha o texto)
+        fechaEntregaResultado: excelDateToString(row.fechaEntregaResultado)
       })
     } catch (error: any) {
       errores.push({ fila, error: error.message })

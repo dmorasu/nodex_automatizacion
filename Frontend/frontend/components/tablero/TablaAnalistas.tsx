@@ -23,7 +23,7 @@ export default function TablaAnalistas({ filas }: { filas: FilaAnalista[] }) {
               <th className="px-3 py-2.5 text-right font-semibold">Finalizados</th>
               <th className="px-3 py-2.5 text-right font-semibold">A tiempo</th>
               <th className="px-3 py-2.5 text-right font-semibold">Ciclo prom.</th>
-              <th className="px-5 py-2.5 text-right font-semibold" title="Creados en el período que se programaron a más tardar el día hábil siguiente a su creación">Programación en plazo</th>
+              <th className="px-5 py-2.5 text-right font-semibold" title="Creados en el período que se programaron a más tardar el día hábil siguiente al inicio del plazo: la creación o, si es más tarde, el pago de sus gastos o el fin del envío de documentos de la misma placa o matrícula. Con un gasto sin pagar o un envío sin finalizar todavía no se mide.">Programación en plazo</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

@@ -20,7 +20,8 @@ import { validateCuentaCobroInput, validateCuentaCobroExits } from '../middlewar
 import { SubEstadosSolicitudController } from '../controllers/SubEstadosSolicitudController'
 import { requiereRol } from '../middleware/gastos/requiereRol'
 import { obtenerHistorial } from '../services/historialTramites'
-import { ErrorNovedadSubsanada, subsanarNovedad } from '../services/novedadSubsanada'
+import { subsanarNovedad } from '../services/novedadSubsanada'
+import { ErrorEstadoTramite } from '../services/estadoTramite'
 import { usuariosDeMiArea } from '../middleware/auth'
 
 // La sesión y el perfil (Gestión de activos o Torre de control) se exigen en server.ts.
@@ -149,7 +150,7 @@ router.post('/:solicitudTramitesId/subsanar-novedad', async (req, res) => {
     })
     res.json('Novedad subsanada')
   } catch (error) {
-    if (error instanceof ErrorNovedadSubsanada) return res.status(error.status).json({ error: error.message })
+    if (error instanceof ErrorEstadoTramite) return res.status(error.status).json({ error: error.message })
     console.error('ERROR SUBSANAR NOVEDAD:', error)
     res.status(500).json({ error: 'No se pudo marcar la novedad como subsanada' })
   }

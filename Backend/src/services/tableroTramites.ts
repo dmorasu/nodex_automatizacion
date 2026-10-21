@@ -16,10 +16,20 @@ import { sumarDiasHabiles } from '../utils/diasHabiles'
 //     programación, logística, subestado, documento, asignación o edición). Solo se muestra: las
 //     alertas de "sin movimiento" siguen con el criterio acordado (trazabilidad o cambio de estado).
 //   · En espera por novedad (2026-10-13): todos los que están en novedad, con los días que llevan.
+//   · Sin programación (2026-10-21): en estado Sin Iniciar (o sin estado) y sin fecha de
+//     diligencia. Los de otros estados sin fecha (ej. en novedad) no cuentan.
 //   · Programación en plazo (2026-10-13, por analista): de los trámites creados en el período,
 //     cuántos se programaron (se les puso fecha de diligencia) a más tardar el día hábil siguiente
-//     a su creación (sin fines de semana ni festivos de Colombia). Los que aún están dentro del
+//     al inicio del plazo (sin fines de semana ni festivos de Colombia). Los que aún están dentro del
 //     plazo sin programar, y los desistidos sin programar, no cuentan.
+//     Inicio del plazo (2026-10-21, regla de Torre de control): lo último que ocurra entre la
+//     creación, el pago de los gastos del trámite (el dinero ya se envió al corresponsal) y la
+//     finalización del envío de documentos de la misma placa o matrícula (otro trámite de tipo
+//     "Envío de documentación…" o "Envío de tarjeta…"). Sin gasto ni envío: desde la creación.
+//     Con un gasto sin pagar o un envío sin finalizar el plazo aún no empieza y no se mide.
+//   · Finalizado fuera de plazo (2026-10-21, gráfica de creados vs finalizados): el analista lo
+//     marcó Finalizado después del día hábil siguiente al reporte "realizado" del tramitador
+//     (el último que no fue devuelto). Sin reporte del tramitador no se puede medir: cuenta normal.
 //   · Vencen hoy (2026-10-13): abiertos cuya fecha de entrega del resultado (la que se pone al
 //     crear el trámite) es hoy. Es la lista del día a día de las analistas.
 // =====================================
@@ -30,6 +40,12 @@ const MAXIMO_POR_ALERTA = 100
 const MAXIMO_RANKING = 15
 const ESTADOS_CERRADOS = ['Finalizado', 'Desistido']
 const EN_NOVEDAD = 'En espera por novedad'
+// Tipos de trámite de envío de documentos (regla del inicio del plazo de programación)
+const TIPOS_ENVIO = '^env[ií]o de (documentaci[oó]n|tarjeta)'
+// Estados de gasto que aún no tienen el pago hecho (sin ANULADO: los anulados no cuentan)
+const GASTO_SIN_PAGAR = ['SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO']
+// Nombre que toma el trámite sin estado en la consulta (COALESCE)
+const SIN_INICIAR = 'Sin Iniciar'
 
 export type FiltrosTablero = {
   desde: string            // YYYY-MM-DD (período para finalizados, % a tiempo, ciclo, valor y causas)
@@ -40,6 +56,9 @@ export type FiltrosTablero = {
   tramiteId?: number
   // Estado actual (id de Estados). "Sin Iniciar" incluye los que no tienen estado
   estadoId?: number
+  // Solo para "Valor por operación": rango de creación propio (sin rango = acumulado de siempre)
+  valorDesde?: string
+  valorHasta?: string
 }
 
 type Fila = {
@@ -68,9 +87,14 @@ type Fila = {
   ultimaActividad: string          // YYYY-MM-DD (Bogotá)
   ultimoEstado: string | null      // YYYY-MM-DD (Bogotá): último cambio de estado
   programadoEl: string | null      // YYYY-MM-DD (Bogotá): día en que se le puso fecha de diligencia
+  gastoPagadoEl: string | null     // YYYY-MM-DD: último pago de los gastos del trámite
+  gastoSinPagar: boolean           // algún gasto (no anulado) todavía sin pagar
+  envioFinalizadoEl: string | null // YYYY-MM-DD (Bogotá): fin del envío de documentos de la placa/matrícula
+  envioSinFinalizar: boolean       // hay un envío de documentos de la placa/matrícula abierto
   ultimaGestion: string            // YYYY-MM-DD HH:MI (Bogotá)
   ultimaGestionTipo: string        // Qué fue: Cambio de estado, Trazabilidad, Programación...
   reportadoRealizado: boolean
+  reportadoEl: string | null       // YYYY-MM-DD (Bogotá): reporte "realizado" del tramitador (no devuelto)
 }
 
 const DIA_MS = 24 * 60 * 60 * 1000
@@ -103,9 +127,48 @@ const condicionesFiltro = (filtros: FiltrosTablero, replacements: Record<string,
   return condiciones
 }
 
+// Valor por operación (2026-10-21): acumulado de todos los trámites, sin el período del tablero,
+// con los demás filtros (el analista solo ve los suyos) y un rango de creación opcional propio.
+// Suma solo el valor del trámite de la programación (sin viáticos).
+const consultarValorPorOperacion = async (filtros: FiltrosTablero) => {
+  const replacements: Record<string, unknown> = {}
+  const condiciones = condicionesFiltro(filtros, replacements)
+  if (filtros.valorDesde) { condiciones.push(`s."createdAt" >= :valorDesde::date AT TIME ZONE 'America/Bogota'`); replacements.valorDesde = filtros.valorDesde }
+  if (filtros.valorHasta) { condiciones.push(`s."createdAt" < (:valorHasta::date + 1) AT TIME ZONE 'America/Bogota'`); replacements.valorHasta = filtros.valorHasta }
+
+  const filas = await db.query<{ operacionId: number | null, operacion: string | null, tramites: string, conValor: string, valorTotal: string }>(`
+    SELECT
+      s."operacionesId" AS "operacionId",
+      o."nombreOperacion" AS operacion,
+      COUNT(*) AS tramites,
+      COUNT(*) FILTER (WHERE COALESCE(p."valorTramite", 0) > 0) AS "conValor",
+      COALESCE(SUM(p."valorTramite"), 0) AS "valorTotal"
+    FROM "SolicitudTramites" s
+    LEFT JOIN "Operaciones" o ON o.id = s."operacionesId"
+    LEFT JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
+    ${condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : ''}
+    GROUP BY 1, 2
+  `, { type: QueryTypes.SELECT, replacements })
+
+  const total = filas.reduce((suma, f) => suma + Number(f.valorTotal), 0)
+  return {
+    desde: filtros.valorDesde ?? null,
+    hasta: filtros.valorHasta ?? null,
+    total,
+    filas: filas.map(f => ({
+      operacionId: f.operacionId,
+      operacion: f.operacion ?? 'Sin operación',
+      tramites: Number(f.tramites),
+      conValor: Number(f.conValor),
+      valorTotal: Number(f.valorTotal),
+      porcentaje: total ? redondear1((Number(f.valorTotal) / total) * 100) : 0
+    })).sort((a, b) => b.valorTotal - a.valorTotal || b.tramites - a.tramites)
+  }
+}
+
 // Trámites del tablero: todos los abiertos y los creados o finalizados desde `inicio`
 const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
-  const replacements: Record<string, unknown> = { inicio, cerrados: ESTADOS_CERRADOS }
+  const replacements: Record<string, unknown> = { inicio, cerrados: ESTADOS_CERRADOS, tiposEnvio: TIPOS_ENVIO, gastoSinPagar: GASTO_SIN_PAGAR }
   const condiciones = condicionesFiltro(filtros, replacements)
 
   const filas = await db.query<Fila>(`
@@ -139,7 +202,11 @@ const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
         s."createdAt",
         p."updatedAt" AS "programacionActualizada",
         p."createdAt" AS "programacionCreada",
-        l."updatedAt" AS "logisticaActualizada"
+        l."updatedAt" AS "logisticaActualizada",
+        -- Para relacionarlo con los envíos de documentos de la misma placa o matrícula
+        NULLIF(UPPER(TRIM(s.placa)), '') AS "placaClave",
+        NULLIF(UPPER(TRIM(s."matriculaInmobiliaria")), '') AS "matriculaClave",
+        COALESCE(tr."nombreTramite" ~* :tiposEnvio, false) AS "esEnvio"
       FROM "SolicitudTramites" s
       LEFT JOIN "Estados" e ON e.id = s."estadoActualTramite"
       LEFT JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
@@ -150,9 +217,30 @@ const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
       LEFT JOIN "Tramites" tr ON tr.id = s."tramiteId"
       LEFT JOIN "Municipios" m ON m.id = s."municipiosId"
       ${condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : ''}
-    )
+    ),
+    -- Envíos de documentos (cualquier fecha): abiertos o cuándo finalizaron. Los desistidos no cuentan
+    envios AS (
+      SELECT
+        NULLIF(UPPER(TRIM(s.placa)), '') AS placa,
+        NULLIF(UPPER(TRIM(s."matriculaInmobiliaria")), '') AS matricula,
+        NOT COALESCE(e."nombreEstado" IN (:cerrados), false) AS abierto,
+        CASE WHEN e."nombreEstado" = 'Finalizado' THEN p."fechaFinalizacionServicio" END AS fin
+      FROM "SolicitudTramites" s
+      JOIN "Tramites" tr ON tr.id = s."tramiteId" AND tr."nombreTramite" ~* :tiposEnvio
+      LEFT JOIN "Estados" e ON e.id = s."estadoActualTramite"
+      LEFT JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
+    ),
+    -- Agrupados por placa y por matrícula: un cruce por cada una (más rápido que comparar fila por fila)
+    envios_placa AS (SELECT placa, BOOL_OR(abierto) AS abierto, MAX(fin) AS fin FROM envios WHERE placa IS NOT NULL GROUP BY 1),
+    envios_matricula AS (SELECT matricula, BOOL_OR(abierto) AS abierto, MAX(fin) AS fin FROM envios WHERE matricula IS NOT NULL GROUP BY 1)
     SELECT
       b.*,
+      -- Inicio del plazo de programación: pago de los gastos y fin del envío de documentos
+      gp.pagado::text AS "gastoPagadoEl",
+      COALESCE(gp.pendiente, false) AS "gastoSinPagar",
+      -- Un envío no se relaciona con otros envíos
+      CASE WHEN NOT b."esEnvio" THEN to_char(GREATEST(ep.fin, em.fin) AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') END AS "envioFinalizadoEl",
+      (NOT b."esEnvio" AND (COALESCE(ep.abierto, false) OR COALESCE(em.abierto, false))) AS "envioSinFinalizar",
       -- Última actividad: el más reciente entre creación, trazabilidad y cambio de estado
       to_char(GREATEST(b."createdAt", z.ultima, x.ultima) AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "ultimaActividad",
       to_char(x.ultima AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "ultimoEstado",
@@ -162,7 +250,8 @@ const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
         AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "programadoEl",
       to_char(g.fecha AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI') AS "ultimaGestion",
       g.tipo AS "ultimaGestionTipo",
-      (r.solicitud_tramite_id IS NOT NULL) AS "reportadoRealizado"
+      (r.solicitud_tramite_id IS NOT NULL) AS "reportadoRealizado",
+      to_char(r.reportado AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "reportadoEl"
     FROM base b
     LEFT JOIN (SELECT "solicitudTramiteId", MAX("createdAt") AS ultima FROM "Trazabilidad" GROUP BY 1) z ON z."solicitudTramiteId" = b.id
     LEFT JOIN (SELECT "solicitudTramiteId", MAX("createdAt") AS ultima FROM "EstadosTramites" GROUP BY 1) x ON x."solicitudTramiteId" = b.id
@@ -206,8 +295,22 @@ const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
       ORDER BY v.fecha DESC
       LIMIT 1
     ) g ON true
+    -- Gastos del trámite (sin anulados): último pago y si alguno sigue sin pagar
+    LEFT JOIN (
+      SELECT gs.solicitud_tramite_id, MAX(gs.fecha_pago) AS pagado, BOOL_OR(eg.codigo IN (:gastoSinPagar)) AS pendiente
+      FROM gastos_solicitudes gs
+      JOIN gastos_estados_gasto eg ON eg.id = gs.estado_id
+      WHERE gs.solicitud_tramite_id IS NOT NULL AND eg.codigo <> 'ANULADO'
+      GROUP BY 1
+    ) gp ON gp.solicitud_tramite_id = b.id
+    -- Envíos de documentos de la misma placa o matrícula
+    LEFT JOIN envios_placa ep ON ep.placa = b."placaClave"
+    LEFT JOIN envios_matricula em ON em.matricula = b."matriculaClave"
     -- Un reporte devuelto al tramitador no cuenta: el trámite vuelve a estar en sus manos
-    LEFT JOIN (SELECT DISTINCT solicitud_tramite_id FROM tramitadores_reportes_realizado WHERE estado <> 'DEVUELTO') r ON r.solicitud_tramite_id = b.id
+    LEFT JOIN (
+      SELECT solicitud_tramite_id, MAX(created_at) AS reportado FROM tramitadores_reportes_realizado
+      WHERE estado <> 'DEVUELTO' GROUP BY 1
+    ) r ON r.solicitud_tramite_id = b.id
     WHERE NOT b.cerrado OR b.creado >= :inicio OR b.finalizado >= :inicio
   `, { type: QueryTypes.SELECT, replacements })
 
@@ -267,14 +370,15 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   const inicioTendencia = sumarDias(lunesDe(hoy), -7 * (SEMANAS_TENDENCIA - 1))
   const inicio = filtros.desde < inicioTendencia ? filtros.desde : inicioTendencia
 
-  const [filas, causas, reintegros] = await Promise.all([
+  const [filas, causas, reintegros, valorPorOperacion] = await Promise.all([
     consultarFilas(filtros, inicio),
     consultarCausasNovedad(filtros),
     // Reintegros pendientes de Nodex Gastos (por tramitador, sin importar el período)
     obtenerReintegrosPorTramitador({ soloPendientes: true }).catch(error => {
       console.error('Tablero: no se pudieron leer los reintegros de Gastos', error)
       return null
-    })
+    }),
+    consultarValorPorOperacion(filtros)
   ])
 
   // Lista de alerta: total y los primeros (en la exportación a Excel, todos)
@@ -333,7 +437,7 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
       .sort((a, b) => b.diasEnNovedad - a.diasEnNovedad)),
     realizadoSinFinalizar: alerta(abiertos.filter(f => f.reportadoRealizado).map(f => resumenTramite(f))),
     sinTramitador: alerta(abiertos.filter(f => !f.tramitadorId).map(f => resumenTramite(f))),
-    sinProgramacion: alerta(abiertos.filter(f => !f.fechaProgramada).map(f => resumenTramite(f))),
+    sinProgramacion: alerta(abiertos.filter(f => f.estado === SIN_INICIAR && !f.fechaProgramada).map(f => resumenTramite(f))),
     sinMovimiento: alerta(abiertos
       .filter(f => f.estado !== EN_NOVEDAD && sinMovimiento(f) > DIAS_GRACIA)
       .map(f => resumenTramite(f, { diasSinMovimiento: sinMovimiento(f) }))
@@ -347,7 +451,10 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
     let evaluados = 0, enPlazo = 0
     for (const f of grupo) {
       if (!enPeriodo(f.creado)) continue
-      const plazo = sumarDiasHabiles(f.creado, 1)
+      // Gasto sin pagar o envío sin finalizar: el plazo todavía no empieza
+      if (f.gastoSinPagar || f.envioSinFinalizar) continue
+      const inicioPlazo = [f.creado, f.gastoPagadoEl, f.envioFinalizadoEl].filter((d): d is string => Boolean(d)).sort().at(-1)!
+      const plazo = sumarDiasHabiles(inicioPlazo, 1)
       if (f.programadoEl) {
         evaluados++
         if (f.programadoEl <= plazo) enPlazo++
@@ -388,24 +495,6 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
     .filter(t => t.abiertos > 0 || t.finalizados > 0)
     .sort((a, b) => b.abiertos - a.abiertos)
 
-  // ── Por cliente (volumen y valor) ──
-  // Por identificación: hay clientes repetidos con nombres distintos (ej: "BANCOLOMBIA SA" y "S.A")
-  const porCliente = agrupar(f => f.identificacionCliente?.trim() || f.clienteId).map(grupo => {
-    const { abiertos: a, vencidos, finalizados, valorFinalizado, porcentajeATiempo } = desempeno(grupo)
-    return {
-      clienteId: grupo[0].clienteId,
-      cliente: grupo[0].cliente ?? 'Sin cliente',
-      identificacion: grupo[0].identificacionCliente,
-      abiertos: a,
-      vencidos,
-      finalizados,
-      porcentajeATiempo,
-      valorFinalizado
-    }
-  })
-    .filter(c => c.abiertos > 0 || c.finalizados > 0)
-    .sort((a, b) => (b.abiertos + b.finalizados) - (a.abiertos + a.finalizados))
-
   // ── Mapa: abiertos y vencidos por municipio (con coordenadas del municipio) ──
   const porMunicipio = agrupar(f => f.municipioId)
     .map(grupo => {
@@ -437,10 +526,13 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   const tendencia = semanas.map(semana => {
     const fin = sumarDias(semana, 6)
     const dentro = (fecha: string | null) => !!fecha && fecha >= semana && fecha <= fin
+    const finalizados = filas.filter(f => f.estado === 'Finalizado' && dentro(f.finalizado))
     return {
       semana,
       creados: filas.filter(f => dentro(f.creado)).length,
-      finalizados: filas.filter(f => f.estado === 'Finalizado' && dentro(f.finalizado)).length
+      finalizados: finalizados.length,
+      // De esos, los que el analista finalizó después del día hábil siguiente al reporte del tramitador
+      finalizadosFueraDePlazo: finalizados.filter(f => f.reportadoEl && f.finalizado! > sumarDiasHabiles(f.reportadoEl, 1)).length
     }
   })
 
@@ -473,7 +565,8 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
     atencion,
     porAnalista,
     porTramitador,
-    porCliente: opciones.sinLimite ? porCliente : porCliente.slice(0, MAXIMO_RANKING),
+    // Acumulado (sin el período del tablero), con su propio rango de creación opcional
+    valorPorOperacion,
     porMunicipio,
     causasNovedad,
     reintegrosDisponibles: reintegros !== null,

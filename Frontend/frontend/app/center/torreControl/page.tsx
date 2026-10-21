@@ -9,7 +9,7 @@ import TablaAnalistas from "@/components/tablero/TablaAnalistas"
 import TendenciaSemanal from "@/components/tablero/TendenciaSemanal"
 import Antiguedad from "@/components/tablero/Antiguedad"
 import TablaTramitadores from "@/components/tablero/TablaTramitadores"
-import TablaClientes from "@/components/tablero/TablaClientes"
+import TablaOperaciones from "@/components/tablero/TablaOperaciones"
 import CausasNovedad from "@/components/tablero/CausasNovedad"
 import MapaMunicipios from "@/components/tablero/MapaMunicipios"
 
@@ -17,7 +17,8 @@ export const metadata: Metadata = {
   title: "Nodex - Tablero de gestión",
 }
 
-const FILTROS = ["desde", "hasta", "analistaId", "tramitadorId", "operacionId", "tramiteId", "estadoId"] as const
+// valorDesde/valorHasta: rango propio de "Valor por operación" (lo maneja esa ficha)
+const FILTROS = ["desde", "hasta", "analistaId", "tramitadorId", "operacionId", "tramiteId", "estadoId", "valorDesde", "valorHasta"] as const
 
 // Tablero de gestión de Torre de control. El Administrador de Torre de control y Admin ven
 // todos los trámites (y la carga por analista); cada analista ve solo los suyos.
@@ -115,7 +116,7 @@ export default async function TableroGestionPage({ searchParams }: { searchParam
 
           <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
             <CausasNovedad causas={tablero.causasNovedad} />
-            <TablaClientes filas={tablero.porCliente} />
+            <TablaOperaciones datos={tablero.valorPorOperacion} hoy={tablero.hoy} />
           </div>
 
           <MapaMunicipios municipios={tablero.porMunicipio} />

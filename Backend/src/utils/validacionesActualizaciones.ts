@@ -2,6 +2,8 @@ import SolicitudTramites from '../models/solicitudTramites'
 import Estados from '../models/estados'
 import Tramitador from '../models/tramitador'
 import Transportadora from '../models/trasnportadora'
+import { ESTADO_NOVEDAD_SUBSANADA, validarFechaEntrega } from '../services/estadoTramite'
+import { excelDateToString } from './excelDate'
 
 // ============================
 // VALIDAR ESTADOS
@@ -48,6 +50,15 @@ if (!esValido) {
     const estado = await Estados.findByPk(row.estadoId)
     if (!estado) {
       errores.push({ fila, error: 'Estado no existe' })
+    }
+
+    // Novedad subsanada: exige la nueva fecha de entrega del resultado (columna fechaEntregaResultado)
+    if (Number(row.estadoId) === ESTADO_NOVEDAD_SUBSANADA) {
+      try {
+        validarFechaEntrega(excelDateToString(row.fechaEntregaResultado))
+      } catch (error: any) {
+        errores.push({ fila, error: error.message })
+      }
     }
   }
 

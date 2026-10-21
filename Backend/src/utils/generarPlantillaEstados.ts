@@ -10,7 +10,9 @@ export const generarPlantillaEstados = async () => {
   // =========================
   const dataTemplate = [{
     solicitudTramiteId: '',
-    estadoId: ''
+    estadoId: '',
+    // Obligatoria con Novedad Subsanada Continuar Trámite (id 4): nueva entrega del resultado
+    fechaEntregaResultado: ''
   }]
 
   const wsData = XLSX.utils.json_to_sheet(dataTemplate)

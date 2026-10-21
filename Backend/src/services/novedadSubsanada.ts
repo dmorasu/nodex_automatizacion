@@ -9,7 +9,7 @@ import Usuarios from '../models/usuarios'
 import Tramite from '../models/tramite'
 import Clientes from '../models/clientes'
 import Municipios from '../models/municipios'
-import { ESTADO_EN_ESPERA_POR_NOVEDAD, ESTADO_NOVEDAD_SUBSANADA, registrarEstado } from './estadoTramite'
+import { ErrorEstadoTramite, ESTADO_EN_ESPERA_POR_NOVEDAD, ESTADO_NOVEDAD_SUBSANADA, registrarEstado, validarFechaEntrega } from './estadoTramite'
 import { correoBase, ficha, html, MARCAS, nota } from './template/correoBase'
 
 // =====================================
@@ -21,15 +21,9 @@ import { correoBase, ficha, html, MARCAS, nota } from './template/correoBase'
 // correo al analista asignado con copia a la torre de control (sin analista: a la torre de control).
 // =====================================
 
-export class ErrorNovedadSubsanada extends Error {
-  constructor(message: string, public status = 400) {
-    super(message)
-  }
-}
+export class ErrorNovedadSubsanada extends ErrorEstadoTramite {}
 
 const correoTorreControl = () => process.env.CORREO_TORRE_CONTROL || 'torredecontrol@gomezpinedaabogados.com'
-
-const hoyColombia = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
 
 // YYYY-MM-DD → DD/MM/YYYY
 const fechaTexto = (fecha: string | null) => (fecha ? fecha.split('-').reverse().join('/') : 'Sin fecha')
@@ -50,12 +44,7 @@ export type DatosSubsanacion = {
 export const subsanarNovedad = async ({ solicitudTramiteId, usuario, usuariosDelArea, fechaEntregaResultado, observacion }: DatosSubsanacion) => {
   const texto = observacion?.trim() ?? ''
   if (!texto) throw new ErrorNovedadSubsanada('Escriba qué se subsanó')
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEntregaResultado ?? '') || isNaN(Date.parse(`${fechaEntregaResultado}T00:00:00Z`))) {
-    throw new ErrorNovedadSubsanada('La fecha de entrega del resultado no es válida')
-  }
-  if (fechaEntregaResultado < hoyColombia()) {
-    throw new ErrorNovedadSubsanada('La fecha de entrega del resultado no puede ser anterior a hoy')
-  }
+  const fechaNueva = validarFechaEntrega(fechaEntregaResultado)
 
   const { fechaAnterior } = await db.transaction(async transaction => {
     // Bloqueo de la fila: dos clics seguidos no registran dos veces la subsanación
@@ -69,20 +58,19 @@ export const subsanarNovedad = async ({ solicitudTramiteId, usuario, usuariosDel
     }
 
     const fechaAnterior = fechaDeEntrega(solicitud.fechaEntregaResultado)
-    // El historial registra el cambio de fecha (anterior → nueva) con el usuario
-    await solicitud.update({ fechaEntregaResultado: new Date(`${fechaEntregaResultado}T00:00:00Z`) }, { transaction })
     await Trazabilidad.create({
       solicitudTramiteId,
       observacionTrazabilidad: `Novedad subsanada: ${texto}`,
       nombreUsuario: usuario.nombreUsuario
     }, { transaction })
-    await registrarEstado({ solicitudTramiteId, estadoId: ESTADO_NOVEDAD_SUBSANADA }, transaction)
+    // Cambia también la fecha de entrega (el historial guarda la anterior y la nueva)
+    await registrarEstado({ solicitudTramiteId, estadoId: ESTADO_NOVEDAD_SUBSANADA, fechaEntregaResultado: fechaNueva }, transaction)
 
     return { fechaAnterior }
   })
 
   // Después de guardar: un fallo del correo no deshace la subsanación
-  await notificarNovedadSubsanada(solicitudTramiteId, usuario.nombreUsuario, texto, fechaAnterior, fechaEntregaResultado)
+  await notificarNovedadSubsanada(solicitudTramiteId, usuario.nombreUsuario, texto, fechaAnterior, fechaNueva)
 }
 
 const notificarNovedadSubsanada = async (

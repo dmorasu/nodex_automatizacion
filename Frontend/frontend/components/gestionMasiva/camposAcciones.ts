@@ -32,11 +32,13 @@ export const ACCIONES: Accion[] = [
   {
     tipo: "estados",
     nombre: "Cambiar estado",
-    descripcion: "Registra el nuevo estado. Deje el estado vacío en los trámites que no deben cambiar. Si escribe una observación, se guarda primero como trazabilidad.",
+    descripcion: "Registra el nuevo estado. Deje el estado vacío en los trámites que no deben cambiar. Si escribe una observación, se guarda primero como trazabilidad. Novedad Subsanada exige la nueva fecha de entrega.",
     aviso: "Notifica igual que el cambio individual: Desistido avisa al tramitador por WhatsApp; En espera por novedad y Finalizado envían correo al solicitante.",
     campos: [
       { clave: "estadoId", etiqueta: "Nuevo estado", tipo: "seleccion", catalogo: "estados" },
       { clave: "tipoRechazoId", etiqueta: "Tipo de rechazo", tipo: "seleccion", catalogo: "tiposRechazo" },
+      // Obligatoria con Novedad Subsanada Continuar Trámite; la anterior queda en el historial
+      { clave: "fechaEntregaResultado", etiqueta: "Nueva entrega (novedad subsanada)", tipo: "fecha" },
       { clave: "observacion", etiqueta: "Observación (trazabilidad)", tipo: "textoLargo", auxiliar: true }
     ]
   },

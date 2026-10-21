@@ -3,11 +3,16 @@
 import { useState } from "react"
 import { fechaCorta, type Tablero } from "@/src/tablero"
 
-// Paleta validada (validate_palette.js, modo claro): contraste ≥ 3:1 y separación para daltonismo
-const SERIES = [
-  { clave: "creados", nombre: "Creados", color: "#0284c7" },
-  { clave: "finalizados", nombre: "Finalizados", color: "#7c3aed" }
-] as const
+// Paleta validada (validate_palette.js, modo claro): contraste ≥ 3:1 y separación para daltonismo.
+// "Fuera de plazo" es parte de los finalizados (va apilada encima de su barra), no una serie aparte
+const COLOR_CREADOS = "#0284c7"
+const COLOR_FINALIZADOS = "#7c3aed"
+const COLOR_FUERA_DE_PLAZO = "#d9682f"
+const LEYENDA = [
+  { nombre: "Creados", color: COLOR_CREADOS },
+  { nombre: "Finalizados", color: COLOR_FINALIZADOS },
+  { nombre: "Finalizados fuera de plazo", color: COLOR_FUERA_DE_PLAZO, ayuda: "El analista lo marcó Finalizado después del día hábil siguiente al reporte \"realizado\" del tramitador" }
+]
 
 const ALTO = 160
 
@@ -41,10 +46,10 @@ export default function TendenciaSemanal({ tendencia }: { tendencia: Tablero["te
               : balance < 0 ? `el atraso bajó en ${(-balance).toLocaleString("es-CO")}` : "sin cambio en el atraso"}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {/* Leyenda: rectángulo, como las barras */}
-          {SERIES.map(s => (
-            <span key={s.clave} className="inline-flex items-center gap-1.5 text-[11px] text-slate-600">
+          {LEYENDA.map(s => (
+            <span key={s.nombre} title={s.ayuda} className="inline-flex items-center gap-1.5 text-[11px] text-slate-600">
               <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: s.color }} aria-hidden="true" />
               {s.nombre}
             </span>
@@ -59,11 +64,11 @@ export default function TendenciaSemanal({ tendencia }: { tendencia: Tablero["te
         {verTabla ? (
           <table className="w-full text-left text-xs">
             <thead className="text-[11px] uppercase tracking-wide text-slate-500">
-              <tr><th className="py-1.5 font-semibold">Semana del</th><th className="py-1.5 text-right font-semibold">Creados</th><th className="py-1.5 text-right font-semibold">Finalizados</th></tr>
+              <tr><th className="py-1.5 font-semibold">Semana del</th><th className="py-1.5 text-right font-semibold">Creados</th><th className="py-1.5 text-right font-semibold">Finalizados</th><th className="py-1.5 text-right font-semibold">Fuera de plazo</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {tendencia.map(s => (
-                <tr key={s.semana}><td className="py-1.5 text-slate-600">{fechaCorta(s.semana)}</td><td className="py-1.5 text-right text-slate-700">{s.creados}</td><td className="py-1.5 text-right text-slate-700">{s.finalizados}</td></tr>
+                <tr key={s.semana}><td className="py-1.5 text-slate-600">{fechaCorta(s.semana)}</td><td className="py-1.5 text-right text-slate-700">{s.creados}</td><td className="py-1.5 text-right text-slate-700">{s.finalizados}</td><td className="py-1.5 text-right text-slate-700">{s.finalizadosFueraDePlazo}</td></tr>
               ))}
             </tbody>
           </table>
@@ -72,7 +77,8 @@ export default function TendenciaSemanal({ tendencia }: { tendencia: Tablero["te
             {/* Eje Y */}
             <div className="relative w-8 shrink-0 text-right text-[10px] text-slate-400" style={{ height: ALTO }}>
               {guias.map(g => (
-                <span key={g} className="absolute right-0 -translate-y-1/2" style={{ bottom: `${(g / maximo) * 100}%` }}>{g}</span>
+                // Anclada por abajo: se baja media altura para quedar centrada en su línea
+                <span key={g} className="absolute right-0 translate-y-1/2 leading-none" style={{ bottom: `${(g / maximo) * 100}%` }}>{g}</span>
               ))}
             </div>
 
@@ -93,31 +99,48 @@ export default function TendenciaSemanal({ tendencia }: { tendencia: Tablero["te
                       onMouseLeave={() => setActiva(null)}
                       onFocus={() => setActiva(i)}
                       onBlur={() => setActiva(null)}
-                      aria-label={`Semana del ${fechaCorta(s.semana)}: ${s.creados} creados, ${s.finalizados} finalizados`}
+                      aria-label={`Semana del ${fechaCorta(s.semana)}: ${s.creados} creados, ${s.finalizados} finalizados, ${s.finalizadosFueraDePlazo} fuera de plazo`}
                       className={`relative flex flex-1 items-end justify-center gap-0.5 outline-none ${activa === i ? "bg-slate-50" : ""}`}
                     >
-                      {SERIES.map(serie => (
-                        <span
-                          key={serie.clave}
-                          className="w-2.5 rounded-t sm:w-3"
-                          style={{
-                            height: `${(s[serie.clave] / maximo) * 100}%`,
-                            minHeight: s[serie.clave] > 0 ? 2 : 0,
-                            backgroundColor: serie.color,
-                            opacity: activa === null || activa === i ? 1 : 0.55
-                          }}
-                        />
-                      ))}
+                      {/* Creados */}
+                      <span
+                        className="w-2.5 rounded-t sm:w-3"
+                        style={{
+                          height: `${(s.creados / maximo) * 100}%`,
+                          minHeight: s.creados > 0 ? 2 : 0,
+                          backgroundColor: COLOR_CREADOS,
+                          opacity: activa === null || activa === i ? 1 : 0.55
+                        }}
+                      />
+                      {/* Finalizados: a tiempo abajo y fuera de plazo encima, separados 2 px; solo el tope va redondeado */}
+                      <span
+                        className="flex w-2.5 flex-col-reverse gap-[2px] sm:w-3"
+                        style={{ height: `${(s.finalizados / maximo) * 100}%`, minHeight: s.finalizados > 0 ? 2 : 0, opacity: activa === null || activa === i ? 1 : 0.55 }}
+                      >
+                        {s.finalizados - s.finalizadosFueraDePlazo > 0 && (
+                          <span
+                            className={s.finalizadosFueraDePlazo > 0 ? "" : "rounded-t"}
+                            style={{ flexGrow: s.finalizados - s.finalizadosFueraDePlazo, backgroundColor: COLOR_FINALIZADOS }}
+                          />
+                        )}
+                        {s.finalizadosFueraDePlazo > 0 && (
+                          <span className="rounded-t" style={{ flexGrow: s.finalizadosFueraDePlazo, minHeight: 2, backgroundColor: COLOR_FUERA_DE_PLAZO }} />
+                        )}
+                      </span>
 
                       {/* Tooltip: el valor manda, el nombre de la serie acompaña */}
                       {activa === i && (
                         <span className={`pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg ${i > tendencia.length / 2 ? "right-0" : "left-0"}`}>
                           <span className="block text-[11px] text-slate-400">Semana del {fechaCorta(s.semana)}</span>
-                          {SERIES.map(serie => (
-                            <span key={serie.clave} className="mt-1 flex items-center gap-2 text-xs">
-                              <span className="h-0.5 w-3 rounded" style={{ backgroundColor: serie.color }} aria-hidden="true" />
-                              <b className="text-slate-800">{s[serie.clave]}</b>
-                              <span className="text-slate-500">{serie.nombre}</span>
+                          {[
+                            { nombre: "Creados", valor: s.creados, color: COLOR_CREADOS },
+                            { nombre: "Finalizados", valor: s.finalizados, color: COLOR_FINALIZADOS },
+                            { nombre: "de ellos, fuera de plazo", valor: s.finalizadosFueraDePlazo, color: COLOR_FUERA_DE_PLAZO }
+                          ].map(fila => (
+                            <span key={fila.nombre} className="mt-1 flex items-center gap-2 text-xs">
+                              <span className="h-0.5 w-3 rounded" style={{ backgroundColor: fila.color }} aria-hidden="true" />
+                              <b className="text-slate-800">{fila.valor}</b>
+                              <span className="text-slate-500">{fila.nombre}</span>
                             </span>
                           ))}
                         </span>

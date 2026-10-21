@@ -5,6 +5,8 @@ import ParadaMensajeria from '../../models/mensajeria/paradaMensajeria'
 import { obtenerArchivo } from '../../services/azureFileStorage'
 import { ErrorUbicacion } from '../../services/mensajeria/ubicacion'
 import { confirmarParada, hoyBogota, rutaDelMensajero } from '../../services/mensajeria/rutas'
+import { registrarUbicacion } from '../../services/mensajeria/ubicacionEnVivo'
+import { finalizarJornada, iniciarAlmuerzo, iniciarDiligencia, iniciarJornada, terminarAlmuerzo } from '../../services/mensajeria/jornadas'
 
 const responder = (res: Response, error: unknown) => {
   if (error instanceof ErrorUbicacion) return res.status(error.status).json({ error: error.message })
@@ -39,6 +41,55 @@ export class RutaMensajeroController {
     try {
       await confirmarParada(req.sesionTramitador!.tramitadorId, Number(req.params.id), req.body, req.file)
       res.json({ mensaje: 'Visita confirmada' })
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // POST /ruta/ubicacion { latitud, longitud, precision }: posición mientras la ruta está iniciada
+  static ubicacion = async (req: Request, res: Response) => {
+    try {
+      res.json(await registrarUbicacion(req.sesionTramitador!.tramitadorId, req.body))
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // POST /ruta/jornada/iniciar | finalizar { latitud?, longitud? }
+  static iniciarJornada = async (req: Request, res: Response) => {
+    try {
+      await iniciarJornada(req.sesionTramitador!.tramitadorId, req.body)
+      res.json({ mensaje: 'Ruta iniciada' })
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  static finalizarJornada = async (req: Request, res: Response) => {
+    try {
+      const jornada = await finalizarJornada(req.sesionTramitador!.tramitadorId, req.body)
+      res.json({ mensaje: 'Ruta finalizada', km: Number(jornada.kmGps ?? 0) })
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // POST /ruta/jornada/almuerzo/iniciar | terminar
+  static almuerzo = (accion: 'iniciar' | 'terminar') => async (req: Request, res: Response) => {
+    try {
+      const tramitadorId = req.sesionTramitador!.tramitadorId
+      await (accion === 'iniciar' ? iniciarAlmuerzo(tramitadorId) : terminarAlmuerzo(tramitadorId))
+      res.json({ mensaje: accion === 'iniciar' ? 'Almuerzo iniciado' : 'Almuerzo terminado' })
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // POST /ruta/paradas/:id/iniciar { latitud?, longitud? }: llegó al sitio de la diligencia
+  static iniciarDiligencia = async (req: Request, res: Response) => {
+    try {
+      await iniciarDiligencia(req.sesionTramitador!.tramitadorId, Number(req.params.id), req.body)
+      res.json({ mensaje: 'Diligencia iniciada' })
     } catch (error) {
       responder(res, error)
     }

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "react-toastify"
-import { ChevronLeft, ChevronRight, Loader2, LocateFixed } from "lucide-react"
+import { ChevronLeft, ChevronRight, Download, Loader2, LocateFixed } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import type { Sede } from "@/src/rutas"
 import SelectBuscable from "@/components/ui/SelectBuscable"
@@ -24,6 +24,11 @@ export default function BarraRutas({ fecha, hoy, sedes, sinUbicacion, googleDisp
   const router = useRouter()
   const parametros = useSearchParams()
   const [ubicando, setUbicando] = useState(false)
+  // Excel de tiempos y km (PESV): por defecto, el mes en curso
+  const [reporte, setReporte] = useState({ desde: `${hoy.slice(0, 8)}01`, hasta: hoy })
+  const urlReporte = `/api/backend/mensajeria/reporte/exportar?${new URLSearchParams({
+    ...reporte, ...(parametros.get("sedeId") ? { sedeId: parametros.get("sedeId")! } : {})
+  })}`
 
   const ir = (cambios: Record<string, string>) => {
     const nuevos = new URLSearchParams(parametros.toString())
@@ -59,6 +64,16 @@ export default function BarraRutas({ fecha, hoy, sedes, sinUbicacion, googleDisp
         <option value="">Todas las sedes</option>
         {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
       </SelectBuscable>
+
+      {/* Excel de tiempos y kilómetros por día, ruta y diligencia (con la sede elegida) */}
+      <div className="ml-auto flex flex-wrap items-center gap-1.5">
+        <input type="date" value={reporte.desde} max={reporte.hasta} onChange={e => e.target.value && setReporte(r => ({ ...r, desde: e.target.value }))} className={claseControl} aria-label="Reporte desde" />
+        <span className="text-xs text-slate-400">a</span>
+        <input type="date" value={reporte.hasta} min={reporte.desde} max={hoy} onChange={e => e.target.value && setReporte(r => ({ ...r, hasta: e.target.value }))} className={claseControl} aria-label="Reporte hasta" />
+        <a href={urlReporte} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50">
+          <Download size={15} /> Tiempos y km (Excel)
+        </a>
+      </div>
 
       {sinUbicacion > 0 && googleDisponible && (
         <button type="button" onClick={ubicarPendientes} disabled={ubicando}

@@ -14,7 +14,7 @@ type Gps = { estado: "buscando" } | { estado: "listo", latitud: number, longitud
 
 // Confirmar la visita: Entregado o No se pudo, con foto y la ubicación del celular.
 // La ubicación sirve como prueba de que la visita se hizo en el lugar.
-export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual }: { paradaId: number, tramiteId: number, estadoActual: string }) {
+export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, textoBoton }: { paradaId: number, tramiteId: number, estadoActual: string, textoBoton?: string }) {
   const [abierto, setAbierto] = useState(false)
   const [estado, setEstado] = useState<Estado | null>(null)
   const [observacion, setObservacion] = useState("")
@@ -93,7 +93,7 @@ export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual }: {
     <>
       <button type="button" onClick={abrir} className={`${estadoActual === "PENDIENTE" ? claseBotonPrimario : claseBotonSecundario} w-full`}>
         <CheckCircle2 size={17} />
-        {estadoActual === "PENDIENTE" ? "Confirmar visita" : "Cambiar confirmación"}
+        {textoBoton ?? (estadoActual === "PENDIENTE" ? "Confirmar visita" : "Cambiar confirmación")}
       </button>
 
       <HojaInferior

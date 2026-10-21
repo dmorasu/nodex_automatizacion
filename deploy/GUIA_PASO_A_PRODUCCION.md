@@ -152,7 +152,8 @@ sudo -u postgres pg_restore -d nodex --no-owner --role=desarrolloti /var/backups
 **Lo hace solo el backend al primer arranque contra `nodex` (paso 6):**
 columnas y tablas nuevas (incluidas las de anticipos, clientes empresariales y suscripciones push),
 asignación de analistas a municipios y trámites (por `responsable`), regional de los municipios que
-no la tengan (por departamento), roles, catálogos de Gastos
+no la tengan (por departamento), las tablas de ubicaciones en vivo, rutas (jornadas) y pausas de los mensajeros y las columnas
+de inicio de diligencia en las paradas, roles, catálogos de Gastos
 (con el tipo de documento "Soporte de consignación") y las 3 notificaciones automáticas con sus
 horarios por defecto (WhatsApp de diligencias 08:00 y 13:00; recordatorio push de reintegros 09:00).
 Todas las bolsas existentes quedan de tipo General.

@@ -4,6 +4,7 @@ import { requiereSesion } from "@/src/auth/sesion"
 import MenuCuenta from "@/components/ui/MenuCuenta"
 import NavegacionInferior from "@/components/ui/NavegacionInferior"
 import RegistroServiceWorker from "@/components/notificaciones/RegistroServiceWorker"
+import UbicacionEnRuta from "@/components/ruta/UbicacionEnRuta"
 
 // Estructura de la app en el celular: encabezado arriba y navegación fija abajo
 export default async function AppLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -20,6 +21,8 @@ export default async function AppLayout({ children }: Readonly<{ children: React
           </Link>
           <MenuCuenta nombre={sesion.nombre} identificacion={sesion.identificacion} />
         </div>
+        {/* Mensajero con la ruta iniciada: envía su ubicación y lo avisa aquí, en toda la app */}
+        {sesion.esMensajero && <UbicacionEnRuta />}
       </header>
 
       <main className="mx-auto w-full min-w-0 max-w-2xl px-4 py-5">{children}</main>

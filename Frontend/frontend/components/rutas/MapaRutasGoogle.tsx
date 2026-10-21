@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { COLOR_ESTADO, NOMBRE_ESTADO_PARADA, puntosRuta, type Parada, type RutaEnMapa } from "@/src/rutas"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { COLOR_ESTADO, MINUTOS_SIN_SENAL, NOMBRE_ESTADO_PARADA, haceMinutos, horaCorta, iniciales, puntosRuta, type Parada, type RutaEnMapa } from "@/src/rutas"
 import { cargarGoogleMaps, mapIdGoogle } from "@/src/lib/googleMaps"
 
 const escapar = (texto: string | null | undefined) =>
@@ -22,12 +22,34 @@ const elementoSede = () => {
   return span
 }
 
+// Mensajero en vivo: sus iniciales en su color, con halo si la posición es reciente; gris si no hay señal
+const elementoEnVivo = (nombre: string, color: string, sinSenal: boolean) => {
+  const span = document.createElement("span")
+  span.textContent = iniciales(nombre)
+  span.style.cssText = `display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9999px;background:${sinSenal ? "#94a3b8" : color};color:#fff;font:700 11px system-ui;border:3px solid #fff;box-shadow:0 0 0 ${sinSenal ? "1px #94a3b8" : `5px ${color}55`},0 1px 4px rgba(0,0,0,.4)`
+  return span
+}
+
+// Punto del recorrido real (donde confirmó una visita)
+const elementoPuntoRecorrido = (color: string) => {
+  const span = document.createElement("span")
+  span.style.cssText = `display:block;width:10px;height:10px;border-radius:9999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 1px ${color}`
+  return span
+}
+
 // Mapa de Google con las rutas de varios mensajeros (un color por mensajero)
 export default function MapaRutasGoogle({ rutas }: { rutas: RutaEnMapa[] }) {
   const contenedor = useRef<HTMLDivElement>(null)
   const mapa = useRef<google.maps.Map | null>(null)
   const ventana = useRef<google.maps.InfoWindow | null>(null)
   const dibujos = useRef<{ quitar: () => void }[]>([])
+  const dibujosEnVivo = useRef<{ quitar: () => void }[]>([])
+  const encuadradoEnVivo = useRef(false)
+
+  // La ruta planeada y la capa en vivo se dibujan aparte: la posición se actualiza cada minuto
+  // y no debe reencuadrar ni redibujar el resto del mapa
+  const claveBase = useMemo(() => JSON.stringify(rutas.map(r => [r.id, r.color, r.sede, r.paradas, r.trazado])), [rutas])
+  const claveEnVivo = useMemo(() => JSON.stringify(rutas.map(r => [r.id, r.enVivo, r.recorrido])), [rutas])
   const [listo, setListo] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -115,12 +137,66 @@ export default function MapaRutasGoogle({ rutas }: { rutas: RutaEnMapa[] }) {
       }
     }
 
+    encuadradoEnVivo.current = !limites.isEmpty()
     if (!limites.isEmpty()) {
       m.fitBounds(limites, 40)
       // Con un solo punto el zoom quedaría al máximo
       google.maps.event.addListenerOnce(m, "idle", () => { if ((m.getZoom() ?? 0) > 16) m.setZoom(16) })
     }
-  }, [listo, rutas])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listo, claveBase])
+
+  // Capa en vivo: recorrido real (punteado) y la última posición de cada mensajero
+  useEffect(() => {
+    const m = mapa.current
+    if (!listo || !m) return
+    dibujosEnVivo.current.forEach(d => d.quitar())
+    dibujosEnVivo.current = []
+    const limites = new google.maps.LatLngBounds()
+
+    for (const ruta of rutas) {
+      const camino = ruta.recorrido.map(p => ({ lat: p.latitud, lng: p.longitud }))
+      if (camino.length > 1) {
+        const linea = new google.maps.Polyline({
+          map: m,
+          path: camino,
+          strokeOpacity: 0,
+          icons: [{ icon: { path: google.maps.SymbolPath.CIRCLE, fillOpacity: 1, fillColor: ruta.color, strokeOpacity: 0, scale: 2.5 }, offset: "0", repeat: "9px" }],
+          zIndex: 5
+        })
+        dibujosEnVivo.current.push({ quitar: () => linea.setMap(null) })
+      }
+      for (const p of ruta.recorrido) {
+        if (p.titulo === "Posición en vivo") continue
+        const punto = new google.maps.marker.AdvancedMarkerElement({ map: m, position: { lat: p.latitud, lng: p.longitud }, content: elementoPuntoRecorrido(ruta.color), title: `${ruta.nombre} · ${p.titulo} · ${horaCorta(p.hora)}`, zIndex: 6 })
+        dibujosEnVivo.current.push({ quitar: () => { punto.map = null } })
+      }
+
+      if (ruta.enVivo) {
+        const v = ruta.enVivo
+        const sinSenal = v.minutos > MINUTOS_SIN_SENAL
+        const posicion = { lat: v.latitud, lng: v.longitud }
+        const marcador = new google.maps.marker.AdvancedMarkerElement({ map: m, position: posicion, content: elementoEnVivo(ruta.nombre, ruta.color, sinSenal), title: `${ruta.nombre} · ${haceMinutos(v.minutos)}`, zIndex: 20 })
+        marcador.addListener("click", () => {
+          ventana.current?.setContent(`<div style="font:12px system-ui;line-height:1.45;max-width:260px">
+            <b style="color:${ruta.color}">${escapar(ruta.nombre)}</b><br>
+            ${sinSenal ? "Sin señal" : "En vivo"} · ${haceMinutos(v.minutos)} (${horaCorta(v.registradaEn)})
+            ${v.precisionMetros !== null ? `<br>Precisión ± ${v.precisionMetros} m` : ""}</div>`)
+          ventana.current?.open({ map: m, anchor: marcador })
+        })
+        dibujosEnVivo.current.push({ quitar: () => { marcador.map = null } })
+        limites.extend(posicion)
+      }
+    }
+
+    // Si la ruta planeada no tenía nada que encuadrar (mensajero sin paradas), se encuadra una vez en vivo
+    if (!encuadradoEnVivo.current && !limites.isEmpty()) {
+      encuadradoEnVivo.current = true
+      m.fitBounds(limites, 60)
+      google.maps.event.addListenerOnce(m, "idle", () => { if ((m.getZoom() ?? 0) > 15) m.setZoom(15) })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listo, claveEnVivo])
 
   if (error) {
     return (

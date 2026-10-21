@@ -5,6 +5,7 @@ import SedeMensajeria from '../../models/mensajeria/sedeMensajeria'
 import ParadaMensajeria, { ESTADOS_PARADA } from '../../models/mensajeria/paradaMensajeria'
 import { subirArchivo } from '../azureFileStorage'
 import { ErrorUbicacion, googleDisponible } from './ubicacion'
+import { jornadaAbierta, resumenJornadas } from './jornadas'
 
 // =====================================
 // RUTAS DE MENSAJEROS
@@ -95,6 +96,8 @@ type FilaParada = {
   latitudConfirmacion: number | null
   longitudConfirmacion: number | null
   precisionMetros: number | null
+  inicioDiligencia: string | null
+  jornadaId: number | null
   tieneFoto: boolean
   tramiteId: number
   cliente: string | null
@@ -118,6 +121,7 @@ const consultarParadas = async (fecha: string, tramitadorIds: number[]) => {
       pa.fecha_confirmacion AS "fechaConfirmacion",
       pa.latitud_confirmacion AS "latitudConfirmacion", pa.longitud_confirmacion AS "longitudConfirmacion",
       pa.precision_metros AS "precisionMetros", (pa.foto_nombre IS NOT NULL) AS "tieneFoto",
+      pa.inicio_diligencia AS "inicioDiligencia", pa.jornada_id AS "jornadaId",
       s.id AS "tramiteId", c."nombreCliente" AS cliente, tr."nombreTramite" AS tipo,
       COALESCE(s.placa, s."matriculaInmobiliaria") AS placa, s."detalleSolicitud" AS detalle,
       s."direccionTramite" AS direccion, m."nombreMunicipio" AS municipio,
@@ -155,7 +159,10 @@ export const rutasDelDia = async (fecha: string, sedeId?: number) => {
   const ids = mensajeros.map(m => m.id)
 
   await sincronizarParadas(fecha, ids)
-  const paradas = await consultarParadas(fecha, ids)
+  const [paradas, jornadas] = await Promise.all([
+    consultarParadas(fecha, ids),
+    ids.length ? resumenJornadas({ tramitadorIds: ids, desde: fecha, hasta: fecha }) : Promise.resolve([])
+  ])
 
   return {
     fecha,
@@ -166,6 +173,8 @@ export const rutasDelDia = async (fecha: string, sedeId?: number) => {
         mensajero: { id: m.id, nombre: m.nombreTramitador.trim(), numero: m.numeroTramitador },
         sede: datosSede(m.sede),
         paradas: suyas,
+        // Rutas marcadas en la app ese día (inicio, fin, almuerzo, km por GPS)
+        jornadas: jornadas.filter(j => j.tramitadorId === m.id),
         resumen: {
           total: suyas.length,
           entregadas: suyas.filter(p => p.estado === ESTADOS_PARADA.ENTREGADO).length,
@@ -183,7 +192,19 @@ export const rutaDelMensajero = async (tramitadorId: number, fecha: string) => {
   if (!mensajero?.esMensajero) throw new ErrorUbicacion('No está registrado como mensajero', 403)
 
   await sincronizarParadas(fecha, [tramitadorId])
-  return { fecha, sede: datosSede(mensajero.sede), paradas: await consultarParadas(fecha, [tramitadorId]) }
+  const [paradas, jornadas, abierta] = await Promise.all([
+    consultarParadas(fecha, [tramitadorId]),
+    resumenJornadas({ tramitadorIds: [tramitadorId], desde: fecha, hasta: fecha }),
+    jornadaAbierta(tramitadorId)
+  ])
+  // La ruta en curso puede venir de otro día (si no la finalizó): se muestra para que la cierre
+  return {
+    fecha,
+    sede: datosSede(mensajero.sede),
+    paradas,
+    jornadas,
+    jornadaAbierta: abierta ? { id: abierta.id, fecha: abierta.fecha, inicio: abierta.inicio.toISOString(), enAlmuerzo: (abierta.pausas ?? []).some(p => !p.fin) } : null
+  }
 }
 
 // Orden manual (el analista arrastra o sube/baja paradas)
@@ -329,6 +350,11 @@ export const confirmarParada = async (
   if (![ESTADOS_PARADA.ENTREGADO, ESTADOS_PARADA.NO_SE_PUDO].includes(datos.estado as any)) throw new ErrorUbicacion('Estado no válido')
   const observacion = datos.observacion?.trim() || null
   if (datos.estado === ESTADOS_PARADA.NO_SE_PUDO && !observacion) throw new ErrorUbicacion('Cuente por qué no se pudo hacer la visita')
+  // Hoy, la confirmación es el fin de la diligencia: debe estar iniciada (para medir su tiempo).
+  // Las de días anteriores se pueden confirmar como antes.
+  if (parada.fecha === hoyBogota() && parada.estado === ESTADOS_PARADA.PENDIENTE && !parada.inicioDiligencia) {
+    throw new ErrorUbicacion('Primero toque "Iniciar diligencia" al llegar al sitio', 409)
+  }
   if (foto && !TIPOS_FOTO.includes(foto.mimetype)) throw new ErrorUbicacion('La foto debe ser JPG o PNG')
 
   let fotoDatos = {}

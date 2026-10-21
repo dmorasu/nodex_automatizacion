@@ -38,6 +38,8 @@ export const ParadaSchema = z.object({
   estado: z.enum(["PENDIENTE", "ENTREGADO", "NO_SE_PUDO"]),
   observacion: z.string().nullable(),
   fechaConfirmacion: z.string().nullable(),
+  // Hora en que el mensajero inició la diligencia (la confirmación es su fin)
+  inicioDiligencia: z.string().nullable(),
   tieneFoto: z.boolean(),
   tramiteId: z.number(),
   cliente: z.string().nullable(),
@@ -58,7 +60,19 @@ export const RutaSchema = z.object({
     latitud: z.number().nullable(),
     longitud: z.number().nullable()
   }).nullable(),
-  paradas: z.array(ParadaSchema)
+  paradas: z.array(ParadaSchema),
+  // Rutas marcadas ese día (inicio, fin, almuerzo y km por GPS) y la que está en curso
+  jornadas: z.array(z.object({
+    id: z.number(),
+    inicio: z.string(),
+    fin: z.string().nullable(),
+    minutosTotales: z.number(),
+    minutosAlmuerzo: z.number(),
+    minutosEfectivos: z.number(),
+    enAlmuerzo: z.boolean(),
+    km: z.number()
+  })),
+  jornadaAbierta: z.object({ id: z.number(), fecha: z.string(), inicio: z.string(), enAlmuerzo: z.boolean() }).nullable()
 })
 
 export const CambioContrasenaSchema = z.object({
@@ -250,6 +264,7 @@ export const ListadoGastosSchema = z.object({
 export type Sesion = z.infer<typeof SesionSchema>
 export type Parada = z.infer<typeof ParadaSchema>
 export type Ruta = z.infer<typeof RutaSchema>
+export type JornadaDelDia = Ruta["jornadas"][number]
 export type TramiteListado = z.infer<typeof TramiteListadoSchema>
 export type DetalleTramite = z.infer<typeof DetalleTramiteSchema>
 export type GastoDelTramite = z.infer<typeof GastoDelTramiteSchema>

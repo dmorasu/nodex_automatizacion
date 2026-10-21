@@ -11,6 +11,7 @@ import {
   COLOR_ESTADO,
   NOMBRE_ESTADO_PARADA,
   distanciaMetros,
+  duracion,
   enlacesGoogleMaps,
   type Parada,
   type RutaMensajero
@@ -91,6 +92,13 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
             {resumen.total > 0 && ` · ${resumen.entregadas} entregada(s)`}
             {resumen.noSePudo > 0 && ` · ${resumen.noSePudo} no se pudo`}
           </p>
+          {/* Rutas marcadas en la app: horas, tiempo efectivo (sin almuerzo) y km por GPS */}
+          {ruta.jornadas.map((j, i) => (
+            <p key={j.id} className="mt-1 text-[11px] text-slate-600">
+              <b>Ruta {i + 1}</b> · {hora(j.inicio)} a {j.fin ? hora(j.fin) : <span className="font-semibold text-emerald-700">{j.enAlmuerzo ? "en almuerzo" : "en curso"}</span>}
+              {" "}· {duracion(j.minutosEfectivos)} efectivos{j.minutosAlmuerzo > 0 && ` · almuerzo ${duracion(j.minutosAlmuerzo)}`} · {j.km.toLocaleString("es-CO", { maximumFractionDigits: 1 })} km
+            </p>
+          ))}
         </div>
         {paradas.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -151,11 +159,19 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
                         </button>
                       </div>
 
+                      {/* Diligencia en curso (iniciada en la app, aún sin confirmar) */}
+                      {p.estado === "PENDIENTE" && p.inicioDiligencia && (
+                        <p className="mt-2 rounded-md bg-sky-50 px-2.5 py-1.5 font-semibold text-sky-800">En curso desde {hora(p.inicioDiligencia)}</p>
+                      )}
+
                       {/* Confirmación del mensajero */}
                       {p.estado !== "PENDIENTE" && (
                         <div className={clsx("mt-2 rounded-md px-2.5 py-1.5", p.estado === "ENTREGADO" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700")}>
                           <p className="font-semibold">
                             {NOMBRE_ESTADO_PARADA[p.estado]}{p.fechaConfirmacion && ` · ${hora(p.fechaConfirmacion)}`}
+                            {p.inicioDiligencia && p.fechaConfirmacion && (
+                              <span className="font-normal"> · duró {duracion(Math.max(0, Math.round((Date.parse(p.fechaConfirmacion) - Date.parse(p.inicioDiligencia)) / 60_000)))}</span>
+                            )}
                             {distancia !== null && <span className="font-normal"> · a {distancia >= 1000 ? `${(distancia / 1000).toFixed(1)} km` : `${distancia} m`} de la dirección</span>}
                           </p>
                           {p.observacion && <p className="mt-0.5 whitespace-pre-line">{p.observacion}</p>}

@@ -73,7 +73,7 @@ export default async function RutasPage({ searchParams }: { searchParams: { fech
           <Link href="/center/catalogos?pestana=tramitadores" className="font-semibold text-sky-600 hover:underline">Tramitadores</Link>.
         </div>
       ) : (
-        <PanelRutas key={fecha} rutas={rutas.rutas} fecha={fecha} googleDisponible={rutas.googleDisponible} />
+        <PanelRutas key={fecha} rutas={rutas.rutas} fecha={fecha} hoy={configuracion.hoy} googleDisponible={rutas.googleDisponible} />
       )}
     </div>
   )

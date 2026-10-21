@@ -15,6 +15,9 @@ export type Parada = {
   estado: "PENDIENTE" | "ENTREGADO" | "NO_SE_PUDO"
   observacion: string | null
   fechaConfirmacion: string | null
+  // Hora en que el mensajero inició la diligencia (la confirmación es su fin)
+  inicioDiligencia: string | null
+  jornadaId: number | null
   latitudConfirmacion: number | null
   longitudConfirmacion: number | null
   precisionMetros: number | null
@@ -33,10 +36,25 @@ export type Parada = {
   estadoTramite: string
 }
 
+// Ruta marcada en la app (inicio, fin, almuerzo y km por GPS; PESV)
+export type JornadaMensajero = {
+  id: number
+  inicio: string
+  fin: string | null
+  minutosTotales: number
+  minutosAlmuerzo: number
+  minutosEfectivos: number
+  enAlmuerzo: boolean
+  km: number
+}
+
+export const duracion = (minutos: number) => (minutos < 60 ? `${minutos} min` : `${Math.floor(minutos / 60)} h ${minutos % 60} min`)
+
 export type RutaMensajero = {
   mensajero: { id: number, nombre: string, numero: string | null }
   sede: Sede | null
   paradas: Parada[]
+  jornadas: JornadaMensajero[]
   resumen: { total: number, entregadas: number, noSePudo: number, sinUbicacion: number }
 }
 
@@ -112,6 +130,21 @@ export type PuntoMapa = [number, number] // [latitud, longitud]
 
 // Ruta lista para dibujar: `trazado` es la línea por las calles (Google); si no hay, se unen
 // las paradas con líneas rectas punteadas
+// Última posición del mensajero con la ruta iniciada en su app (GET /mensajeria/ubicaciones)
+export type UbicacionEnVivo = {
+  tramitadorId: number
+  latitud: number
+  longitud: number
+  precisionMetros: number | null
+  registradaEn: string
+}
+
+// Más de estos minutos sin posición: se muestra como "sin señal"
+export const MINUTOS_SIN_SENAL = 10
+
+// Punto del recorrido real: donde confirmó cada visita (y al final, su posición en vivo)
+export type PuntoRecorrido = { latitud: number, longitud: number, hora: string, titulo: string }
+
 export type RutaEnMapa = {
   id: number
   nombre: string
@@ -119,6 +152,37 @@ export type RutaEnMapa = {
   sede: Sede | null
   paradas: Parada[]
   trazado: PuntoMapa[] | null
+  enVivo: (UbicacionEnVivo & { minutos: number }) | null
+  recorrido: PuntoRecorrido[]
+}
+
+// "Gonzalo Romero Diaz" → "GR"
+export const iniciales = (nombre: string) =>
+  nombre.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("")
+
+export const horaCorta = (fecha: string) =>
+  new Date(fecha).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", timeZone: "America/Bogota" })
+
+export const haceMinutos = (minutos: number) =>
+  minutos < 1 ? "hace un momento" : minutos < 60 ? `hace ${minutos} min` : `hace ${Math.floor(minutos / 60)} h ${minutos % 60} min`
+
+// Recorrido real del día: las visitas confirmadas con GPS en el orden en que se hicieron
+// y, si es más reciente, la posición en vivo como último punto
+export const recorridoReal = (paradas: Parada[], enVivo: UbicacionEnVivo | null): PuntoRecorrido[] => {
+  const visitas = paradas
+    .filter(p => p.fechaConfirmacion && p.latitudConfirmacion !== null && p.longitudConfirmacion !== null)
+    .sort((a, b) => a.fechaConfirmacion!.localeCompare(b.fechaConfirmacion!))
+    .map(p => ({
+      latitud: p.latitudConfirmacion!,
+      longitud: p.longitudConfirmacion!,
+      hora: p.fechaConfirmacion!,
+      titulo: `Trámite #${p.tramiteId} · ${NOMBRE_ESTADO_PARADA[p.estado]}`
+    }))
+  const ultima = visitas.at(-1)
+  if (enVivo && (!ultima || enVivo.registradaEn > ultima.hora)) {
+    visitas.push({ latitud: enVivo.latitud, longitud: enVivo.longitud, hora: enVivo.registradaEn, titulo: "Posición en vivo" })
+  }
+  return visitas
 }
 
 // Puntos de la ruta en orden: sede → paradas con ubicación → sede

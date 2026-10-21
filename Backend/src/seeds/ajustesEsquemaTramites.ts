@@ -244,4 +244,19 @@ export const ajustarEsquemaMensajeria = async () => {
       ADD COLUMN "sedeId" INTEGER REFERENCES mensajeria_sedes (id) ON UPDATE CASCADE ON DELETE SET NULL
     `)
   }
+
+  // 2026-10-21 · Tiempo por diligencia (PESV): inicio de la diligencia y la ruta en que se hizo.
+  // mensajeria_jornadas ya existe (la crea sync()).
+  const paradas = await columnasDe('mensajeria_paradas')
+  if (paradas) {
+    const nuevas: [string, string][] = [
+      ['inicio_diligencia', 'TIMESTAMP WITH TIME ZONE'],
+      ['latitud_inicio', 'DOUBLE PRECISION'],
+      ['longitud_inicio', 'DOUBLE PRECISION'],
+      ['jornada_id', 'INTEGER REFERENCES mensajeria_jornadas (id) ON UPDATE CASCADE ON DELETE SET NULL']
+    ]
+    for (const [columna, tipo] of nuevas) {
+      if (!paradas[columna]) await db.query(`ALTER TABLE mensajeria_paradas ADD COLUMN ${columna} ${tipo}`)
+    }
+  }
 }

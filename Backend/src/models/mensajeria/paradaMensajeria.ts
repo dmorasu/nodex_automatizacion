@@ -1,6 +1,7 @@
 import { Table, Column, DataType, Model, AllowNull, Default, ForeignKey, BelongsTo } from 'sequelize-typescript'
 import SolicitudTramites from '../solicitudTramites'
 import Tramitador from '../tramitador'
+import JornadaMensajero from './jornadaMensajero'
 
 export const ESTADOS_PARADA = {
   PENDIENTE: 'PENDIENTE',
@@ -53,6 +54,26 @@ class ParadaMensajeria extends Model {
   @Default(ESTADOS_PARADA.PENDIENTE)
   @Column({ type: DataType.STRING(20) })
   declare estado: string
+
+  // ── Inicio de la diligencia (2026-10-21): el mensajero llega y la inicia; la confirmación
+  // es la finalización. Columnas agregadas en ajustarEsquemaMensajeria (después de sync). ──
+
+  @Column({ type: DataType.DATE })
+  declare inicioDiligencia: Date | null
+
+  @Column({ type: DataType.DOUBLE })
+  declare latitudInicio: number | null
+
+  @Column({ type: DataType.DOUBLE })
+  declare longitudInicio: number | null
+
+  // Ruta (jornada) en la que se hizo la diligencia
+  @ForeignKey(() => JornadaMensajero)
+  @Column({ type: DataType.INTEGER })
+  declare jornadaId: number | null
+
+  @BelongsTo(() => JornadaMensajero, { constraints: false })
+  declare jornada: JornadaMensajero
 
   // ── Confirmación desde la app ──
 

@@ -11,6 +11,8 @@ router.post('/sedes', MensajeriaController.guardarSede)
 router.put('/sedes/:id', MensajeriaController.guardarSede)
 
 router.get('/rutas', MensajeriaController.rutas)
+router.get('/ubicaciones', MensajeriaController.ubicaciones)
+router.get('/reporte/exportar', MensajeriaController.exportarReporte)
 router.put('/rutas/:tramitadorId/orden', MensajeriaController.reordenar)
 router.post('/rutas/:tramitadorId/optimizar', MensajeriaController.optimizar)
 router.post('/ubicar-pendientes', MensajeriaController.ubicarPendientes)

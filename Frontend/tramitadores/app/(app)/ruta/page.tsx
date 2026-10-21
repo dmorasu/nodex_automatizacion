@@ -6,6 +6,8 @@ import { obtenerDatos } from "@/src/lib/api"
 import { RutaSchema, type Parada } from "@/src/schemas"
 import { enlaceGoogleMaps, enlaceWaze, enlacesRuta } from "@/src/rutas"
 import ConfirmarVisita from "@/components/ruta/ConfirmarVisita"
+import PanelRuta from "@/components/ruta/PanelRuta"
+import IniciarDiligencia from "@/components/ruta/IniciarDiligencia"
 import { claseBotonPrimario, claseBotonSecundario, claseTarjeta } from "@/components/ui/estilos"
 
 export const metadata = { title: "Mi ruta" }
@@ -13,6 +15,8 @@ export const metadata = { title: "Mi ruta" }
 const hoyBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 const moverDias = (fecha: string, dias: number) =>
   new Date(Date.parse(`${fecha}T12:00:00Z`) + dias * 86400000).toISOString().slice(0, 10)
+const hora = (iso: string) => new Date(iso).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", timeZone: "America/Bogota" })
+const minutosEntre = (desde: string, hasta: string) => Math.max(0, Math.round((Date.parse(hasta) - Date.parse(desde)) / 60_000))
 const fechaLarga = (fecha: string) =>
   new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
 
@@ -37,6 +41,14 @@ export default async function MiRutaPage({ searchParams }: { searchParams: { fec
   const enlaces = enlacesRuta(ruta.sede, pendientes)
   const hechas = ruta.paradas.length - pendientes.length
   const puedeConfirmar = fecha <= hoy
+  // Hoy cada diligencia se inicia al llegar y se finaliza al confirmarla (tiempo por diligencia)
+  const esHoy = fecha === hoy
+  const enCurso = ruta.paradas.find(p => p.estado === "PENDIENTE" && p.inicioDiligencia)
+  const motivoNoIniciar = (paradaId: number) =>
+    !ruta.jornadaAbierta ? "Inicie la ruta primero"
+      : ruta.jornadaAbierta.enAlmuerzo ? "Está en almuerzo"
+        : enCurso && enCurso.id !== paradaId ? `Termine primero la diligencia del trámite #${enCurso.tramiteId}`
+          : null
 
   return (
     <div className="space-y-4">
@@ -55,6 +67,9 @@ export default async function MiRutaPage({ searchParams }: { searchParams: { fec
       {fecha !== hoy && (
         <Link href="/ruta" className="block text-center text-sm font-semibold text-indigo-600">Volver a hoy</Link>
       )}
+
+      {/* Rutas del día: iniciar, almuerzo y finalizar (solo hoy) */}
+      {esHoy && <PanelRuta jornadaAbierta={ruta.jornadaAbierta} jornadas={ruta.jornadas} />}
 
       {/* Toda la ruta en Google Maps */}
       {enlaces.length > 0 && (
@@ -111,7 +126,20 @@ export default async function MiRutaPage({ searchParams }: { searchParams: { fec
                   <Navigation size={16} /> Waze
                 </a>
               </div>
-              {puedeConfirmar && (
+              {p.inicioDiligencia && (
+                <p className="mt-2 text-xs font-semibold text-indigo-700">
+                  {p.estado === "PENDIENTE"
+                    ? `En curso desde ${hora(p.inicioDiligencia)}`
+                    : p.fechaConfirmacion ? `Duró ${minutosEntre(p.inicioDiligencia, p.fechaConfirmacion)} min (${hora(p.inicioDiligencia)} a ${hora(p.fechaConfirmacion)})` : null}
+                </p>
+              )}
+              {esHoy && p.estado === "PENDIENTE" ? (
+                <div className="mt-2">
+                  {p.inicioDiligencia
+                    ? <ConfirmarVisita paradaId={p.id} tramiteId={p.tramiteId} estadoActual={p.estado} textoBoton="Finalizar diligencia" />
+                    : <IniciarDiligencia paradaId={p.id} deshabilitado={motivoNoIniciar(p.id)} />}
+                </div>
+              ) : puedeConfirmar && (
                 <div className="mt-2">
                   <ConfirmarVisita paradaId={p.id} tramiteId={p.tramiteId} estadoActual={p.estado} />
                 </div>

@@ -468,6 +468,8 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span>Ordene las paradas con las flechas o presione <b>Optimizar</b>.</span></li>
           </ol>
           <p>El borde de cada número muestra el estado: <span class="chip verde">Entregado</span> <span class="chip rojo">No se pudo</span>.</p>
+          <p><b>En vivo:</b> cuando el mensajero inicia la ruta en su app, aparece en el mapa con sus iniciales y la hora de su última posición ("hace 2 min"); se actualiza sola cada minuto. Solo envía mientras tiene la app abierta: si lleva más de 10 minutos sin enviar, se ve en gris ("Sin señal"). La línea de puntos es el <b>recorrido real</b>: las visitas que confirmó, en el orden en que las hizo.</p>
+          <p>En la tarjeta de cada mensajero se ven sus rutas del día (hora de inicio y fin, tiempo efectivo sin el almuerzo y kilómetros por GPS) y cuánto duró cada diligencia. Con <b>Tiempos y km (Excel)</b> descarga, para un rango de fechas, los tiempos y kilómetros por día, por ruta y por diligencia (PESV). Los kilómetros son aproximados: el celular solo los registra con la app abierta.</p>
         </div>
       </details>
 
@@ -819,6 +821,9 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <div class="cuerpo">
           <ol class="pasos">
             <li><span>Entre a <b>Mi ruta</b> para ver las paradas del día en orden.</span></li>
+            <li><span>Al salir, toque <b>Iniciar ruta</b>. La primera vez le pide su autorización. Arriba verá el aviso <b>Ubicación compartida</b>: Torre de control ve dónde va mientras tenga la app abierta (queda activa todo el día).</span></li>
+            <li><span>Al llegar a cada sitio toque <b>Iniciar diligencia</b>; al terminar, <b>Finalizar diligencia</b> (Entregado o No se pudo). Así queda cuánto duró cada una.</span></li>
+            <li><span>Para almorzar toque <b>Salir a almorzar</b> y al volver <b>Volver del almuerzo</b>. Al terminar toque <b>Finalizar ruta</b>; si sale de nuevo, inicie otra ruta.</span></li>
             <li><span>Toque <b>Abrir ruta completa en Google Maps</b>, o en cada parada <b>Google Maps</b> o <b>Waze</b>.</span></li>
             <li><span>En cada parada toque <b>Confirmar visita</b>: Entregado o No se pudo, una observación y una foto.</span></li>
           </ol>

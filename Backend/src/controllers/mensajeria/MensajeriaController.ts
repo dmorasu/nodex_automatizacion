@@ -7,6 +7,8 @@ import { obtenerArchivo } from '../../services/azureFileStorage'
 import { ErrorUbicacion, geocodificar, googleDisponible, ubicarManual, ubicarTramite } from '../../services/mensajeria/ubicacion'
 import { hoyBogota, optimizarRuta, reordenarParadas, rutasDelDia } from '../../services/mensajeria/rutas'
 import { MAXIMO_PUNTOS_TRAZADO, trazarRuta } from '../../services/mensajeria/trazado'
+import { ubicacionesDelDia } from '../../services/mensajeria/ubicacionEnVivo'
+import { generarReporteRutas } from '../../services/mensajeria/reporteRutas'
 
 const responder = (res: Response, error: unknown) => {
   if (error instanceof ErrorUbicacion) return res.status(error.status).json({ error: error.message })
@@ -19,6 +21,37 @@ const coordenada = (valor: unknown) => (valor === null || valor === undefined ||
 
 // Rutas de mensajeros en Nodex Trámites (Torre de control)
 export class MensajeriaController {
+
+  // GET /ubicaciones?fecha=: última posición del día de cada mensajero que inició su ruta
+  static ubicaciones = async (req: Request, res: Response) => {
+    try {
+      res.json(await ubicacionesDelDia(fechaValida(req.query.fecha) ?? hoyBogota()))
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // GET /reporte/exportar?desde=&hasta=&sedeId=: Excel de tiempos y km por día, ruta y diligencia (PESV)
+  static exportarReporte = async (req: Request, res: Response) => {
+    try {
+      const desde = fechaValida(req.query.desde)
+      const hasta = fechaValida(req.query.hasta)
+      if (!desde || !hasta) throw new ErrorUbicacion('Indique las fechas desde y hasta')
+      const sedeId = Number(req.query.sedeId) > 0 ? Number(req.query.sedeId) : undefined
+      let archivo: Buffer
+      try {
+        archivo = await generarReporteRutas(desde, hasta, sedeId)
+      } catch (error) {
+        if (error instanceof Error && /fecha|rango/.test(error.message)) throw new ErrorUbicacion(error.message)
+        throw error
+      }
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', `attachment; filename="rutas-mensajeros-${desde}-a-${hasta}.xlsx"`)
+      res.send(archivo)
+    } catch (error) {
+      responder(res, error)
+    }
+  }
 
   static configuracion = (_req: Request, res: Response) => {
     res.json({ googleDisponible: googleDisponible(), hoy: hoyBogota() })

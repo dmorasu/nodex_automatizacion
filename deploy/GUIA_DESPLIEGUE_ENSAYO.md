@@ -282,6 +282,16 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Ubicación en vivo de los mensajeros (2026-10-21)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar sus procesos).
+- **Sin variables nuevas.** El arranque crea la tabla `mensajeria_ubicaciones` (la crea `sync()`). La app necesita **HTTPS** para leer el GPS (el ensayo ya lo tiene).
+- Comprobar la base: `sudo -u postgres psql -d nodex_pruebas -c "\d mensajeria_ubicaciones"`.
+- **Rutas, almuerzo y diligencias (PESV):** el arranque crea `mensajeria_jornadas` y `mensajeria_pausas` (sync) y agrega a `mensajeria_paradas` las columnas `inicio_diligencia`, `latitud_inicio`, `longitud_inicio` y `jornada_id`. Comprobar:
+  ```bash
+  sudo -u postgres psql -d nodex_pruebas -c "\dt mensajeria_*" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'mensajeria_paradas' AND column_name IN ('inicio_diligencia','jornada_id')"
+  ```
+- Pruebas: Mi ruta → Iniciar ruta → Iniciar diligencia → Finalizar diligencia → Salir a almorzar / Volver → Finalizar ruta; en Rutas de mensajeros ver la ruta en la tarjeta y descargar **Tiempos y km (Excel)**. Avisar a los mensajeros: desde esta versión, las diligencias de hoy se inician antes de confirmarlas.
+- Pruebas: con un mensajero, Mi ruta → **Iniciar ruta** → Autorizo (y permitir la ubicación en el celular); en Nodex Trámites → Rutas de mensajeros debe aparecer "En vivo" y su marcador en el mapa en menos de 2 minutos. Detener desde la franja de arriba de la app.
+
 **Commit de la regional de los municipios (2026-10-21)** — cambia solo el backend (compilar Backend y reiniciar `nodex-ensayo-api`).
 - **Sin variables nuevas.** Al arrancar llena `Municipios.regional` donde esté vacía, según el departamento (ANTIOQUIA, BOGOTÁ Y SABANA, CARIBE, CENTRO, SUR). Nunca cambia una regional que ya tenga valor; si queda algún municipio sin regional, el log dice cuántos.
 - Comprobar la base (debe decir 0 sin regional):

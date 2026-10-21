@@ -132,6 +132,27 @@ router.post('/ruta/paradas/:id/confirmar',
   handleInputErrors,
   RutaMensajeroController.confirmar
 )
+// Ubicación en vivo mientras el mensajero tiene la ruta iniciada (cada ~1 min, con la app abierta)
+router.post('/ruta/ubicacion',
+  ...sesion,
+  body(['latitud', 'longitud']).isFloat().withMessage('Ubicación no válida'),
+  body('precision').optional({ values: 'null' }).isFloat({ min: 0 }).withMessage('Ubicación no válida'),
+  handleInputErrors,
+  RutaMensajeroController.ubicacion
+)
+// Rutas del día (PESV): inicio y fin de la ruta, almuerzo e inicio de cada diligencia
+const gpsOpcional = body(['latitud', 'longitud']).optional({ values: 'null' }).isFloat().withMessage('Ubicación no válida')
+router.post('/ruta/jornada/iniciar', ...sesion, gpsOpcional, handleInputErrors, RutaMensajeroController.iniciarJornada)
+router.post('/ruta/jornada/finalizar', ...sesion, gpsOpcional, handleInputErrors, RutaMensajeroController.finalizarJornada)
+router.post('/ruta/jornada/almuerzo/iniciar', ...sesion, RutaMensajeroController.almuerzo('iniciar'))
+router.post('/ruta/jornada/almuerzo/terminar', ...sesion, RutaMensajeroController.almuerzo('terminar'))
+router.post('/ruta/paradas/:id/iniciar',
+  ...sesion,
+  param('id').isInt({ min: 1 }).withMessage('Parada no válida'),
+  gpsOpcional,
+  handleInputErrors,
+  RutaMensajeroController.iniciarDiligencia
+)
 router.get('/ruta/paradas/:id/foto',
   ...sesion,
   param('id').isInt({ min: 1 }),

@@ -607,7 +607,7 @@ Ensayo en el **mismo servidor Ubuntu** donde corre la producción actual (PM2, p
 - **Cuando la 5.0 pase a producción:** archivar igual y borrar `nodex4.0` (1,2 GB) después de la semana de espera de la guía.
 
 ## Estado del código y del despliegue (2026-10-21)
-- **2026-10-23, sin commit:** bolsas de no reembolsables, sin saldo (ver su sección). Para el ensayo: compilar **Backend, Nodex Gastos y Nodex Trámites**; sin variables nuevas; el arranque agrega `gastos_bolsas.sin_saldo`. Después, crear o marcar la bolsa en Tesorería → Bolsas.
+- **Commit `26548d5b` (2026-10-23, subido):** bolsas de no reembolsables, sin saldo (ver su sección). Para el ensayo (desde `6ea60259` se lleva junto con los del 2026-10-21): compilar **Backend, Nodex Gastos y Nodex Trámites**; sin variables nuevas; el arranque agrega `gastos_bolsas.sin_saldo`. Después, crear o marcar la bolsa en Tesorería → Bolsas. Para volver: `e012fcab` (la columna nueva la ignora la versión anterior).
 - **Rama `desarrollo`, último commit `3afc356b`** (subido a GitHub). Commits del 2026-10-21, en orden: `f764e4f2` (Trámites: tablero de gestión, regionales, novedad subsanada y catálogos en Excel), `7a1309ef` (resumen), `3bbe850e` (mensajeros: ubicación en vivo, rutas con almuerzo, tiempo por diligencia y km PESV), `3afc356b` (resumen). El anterior era `80a1b4d0`.
 - **Ensayo sin actualizar: sigue en `6ea60259`.** Se puede llevar directo a `3afc356b` en una sola actualización (guía de ensayo → "Variables por versión", las dos entradas del 2026-10-21):
   - Compilar **Backend, Nodex Trámites y Nodex Tramitadores** (Gastos no cambió). **Sin variables nuevas.**

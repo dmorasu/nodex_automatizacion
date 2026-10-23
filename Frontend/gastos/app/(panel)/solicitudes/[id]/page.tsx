@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowLeft, Pencil } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
-import { ROLES, tieneAcceso } from "@/src/auth/permisos"
+import { ROLES, TESORERIA_OPERATIVA, tieneAcceso } from "@/src/auth/permisos"
 import ListaDocumentos from "@/components/gastos/ListaDocumentos"
 import SeccionLegalizacionGasto from "@/components/legalizacion/SeccionLegalizacionGasto"
 import { obtenerCatalogos, obtenerGasto, obtenerTasas } from "@/src/lib/datosGastos"
@@ -26,7 +26,7 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
   const pagado = gasto.valorRealmentePagado !== null
   // Los gastos de caja menor no pasan por Legalización: los legaliza Tesorería en la caja
   const deCaja = gasto.formaPago.codigo === "CAJA_MENOR"
-  const esTesoreria = tieneAcceso(sesion.roles, [ROLES.TESORERIA])
+  const esTesoreria = tieneAcceso(sesion.roles, TESORERIA_OPERATIVA)
 
   return (
     <div className="space-y-6">
@@ -166,7 +166,7 @@ export default async function DetalleGastoPage({ params }: { params: { id: strin
               esLegalizacion={tieneAcceso(sesion.roles, [ROLES.LEGALIZACION])}
               rutaCuentas={
                 tieneAcceso(sesion.roles, [ROLES.LEGALIZACION]) ? "/legalizacion/cuentas"
-                  : tieneAcceso(sesion.roles, [ROLES.TESORERIA]) ? "/tesoreria/cuentas"
+                  : esTesoreria ? "/tesoreria/cuentas"
                     : null
               }
               tasas={tasas}

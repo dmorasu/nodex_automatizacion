@@ -31,10 +31,12 @@ const verificarQuienPaga = async (req: Request, gastoIds: number[]) => {
   const deCertificados = gastos.filter(esCertificado)
   const generales = gastos.filter(g => !esCertificado(g))
 
-  if (deCertificados.length && !roles.includes(ROLES.TESORERIA_CERTIFICADOS)) {
+  // El Analista de Tesorería paga los dos (certificados y generales)
+  const analista = roles.includes(ROLES.ANALISTA_TESORERIA)
+  if (deCertificados.length && !analista && !roles.includes(ROLES.TESORERIA_CERTIFICADOS)) {
     throw new ErrorGastos(`Las compras de certificados las paga Tesorería - Certificados (${deCertificados.map(g => g.codigo).join(', ')})`, 403)
   }
-  if (generales.length && !roles.includes(ROLES.TESORERIA)) {
+  if (generales.length && !analista && !roles.includes(ROLES.TESORERIA)) {
     throw new ErrorGastos(`Solo puede pagar compras de certificados (${generales.map(g => g.codigo).join(', ')} no lo son)`, 403)
   }
 }

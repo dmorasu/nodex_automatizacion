@@ -4,7 +4,9 @@ export const RolSchema = z.object({
   id: z.number(),
   codigo: z.string(),
   nombre: z.string(),
-  descripcion: z.string().nullable().optional()
+  descripcion: z.string().nullable().optional(),
+  // GASTOS | TRAMITES: cada app asigna solo los suyos
+  modulo: z.string().nullable().optional()
 })
 
 export const UsuarioConRolesSchema = z.object({

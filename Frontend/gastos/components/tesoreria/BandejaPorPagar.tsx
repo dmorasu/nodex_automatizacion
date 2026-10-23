@@ -1,5 +1,7 @@
 import { Search } from "lucide-react"
 import { fetchApi } from "@/src/lib/api"
+import { obtenerSesion } from "@/src/auth/dal"
+import { ROLES, tieneAcceso } from "@/src/auth/permisos"
 import { obtenerBolsas } from "@/src/lib/datosTesoreria"
 import { formatoMoneda } from "@/src/lib/formato"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
@@ -33,9 +35,10 @@ export default async function BandejaPorPagar({
   if (searchParams.bolsaId) consulta.set("bolsaId", searchParams.bolsaId)
   if (searchParams.busqueda) consulta.set("busqueda", searchParams.busqueda)
 
-  const [bolsas, respuesta] = await Promise.all([
+  const [bolsas, respuesta, sesion] = await Promise.all([
     obtenerBolsas(),
-    fetchApi(`/gastos/solicitudes?${consulta}`)
+    fetchApi(`/gastos/solicitudes?${consulta}`),
+    obtenerSesion()
   ])
 
   const { total, registros } = ListadoGastosSchema.parse(await respuesta.json())
@@ -45,8 +48,8 @@ export default async function BandejaPorPagar({
   return (
     <div className="space-y-4">
 
-      {/* Saldos: la bandeja de certificados no los muestra */}
-      {tipo !== "certificados" && (
+      {/* Saldos: solo Tesorería (no en la bandeja de certificados ni para el Analista de Tesorería) */}
+      {tipo !== "certificados" && tieneAcceso(sesion.roles, [ROLES.TESORERIA]) && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {bolsasActivas.map(bolsa => (
             <div key={bolsa.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">

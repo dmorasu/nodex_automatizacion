@@ -98,9 +98,10 @@ sleep 20; pm2 logs nodex-ensayo-api --lines 30 --nostream | grep -v "dotenv@"
 Debe salir **`Conexion Exitosa`** y **no** debe salir "MODO ENSAYO". Si sale "Fallo la Conexion…", ir al plan B.
 
 ### 7. Perfiles
+Desde el 2026-10-23 el Administrador está separado en `ADMIN_GASTOS` y `ADMIN_TRAMITES` (antes `ADMIN`).
 ```bash
 # Primero quien administra
-sudo -u postgres psql -d nodex -c "INSERT INTO gastos_usuario_roles (usuario_id, rol_id, created_at, updated_at) SELECT u.id, r.id, NOW(), NOW() FROM \"Usuarios\" u JOIN gastos_roles r ON r.codigo='ADMIN' WHERE LOWER(u.\"correoUsuario\")='dmorasu@gmail.com' ON CONFLICT (usuario_id, rol_id) DO NOTHING;"
+sudo -u postgres psql -d nodex -c "INSERT INTO gastos_usuario_roles (usuario_id, rol_id, created_at, updated_at) SELECT u.id, r.id, NOW(), NOW() FROM \"Usuarios\" u JOIN gastos_roles r ON r.codigo IN ('ADMIN_GASTOS','ADMIN_TRAMITES') WHERE LOWER(u.\"correoUsuario\")='dmorasu@gmail.com' ON CONFLICT (usuario_id, rol_id) DO NOTHING;"
 # Luego los del ensayo
 sudo -u postgres psql -d nodex < /var/backups/nodex/perfiles.sql | sort | uniq -c
 sudo -u postgres psql -d nodex -c "SELECT r.codigo, COUNT(*) FROM gastos_usuario_roles ur JOIN gastos_roles r ON r.id=ur.rol_id GROUP BY 1;"

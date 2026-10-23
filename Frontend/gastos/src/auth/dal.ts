@@ -31,7 +31,9 @@ export const obtenerSesion = cache(async () => {
     redirect("/auth/login")
   }
 
-  return resultado.data
+  // El Administrador de Gastos es el ADMIN de esta app (el de Trámites no cuenta aquí)
+  const roles = resultado.data.roles
+  return { ...resultado.data, roles: roles.includes("ADMIN_GASTOS") ? [...roles, "ADMIN"] : roles }
 })
 
 // Para usar al inicio de cada página protegida por rol

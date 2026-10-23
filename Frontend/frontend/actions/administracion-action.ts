@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { encabezadosSesion } from "@/src/lib/sesionApi"
 
-// Administración de usuarios (solo Admin). Usa los endpoints de Administración de Nodex
-// Gastos: los usuarios y perfiles son los mismos para trámites y gastos.
+// Administración de usuarios. Usa los endpoints de Administración de Nodex Gastos (los usuarios
+// son los mismos para las dos apps), pero aquí solo se asignan los perfiles de Trámites.
 
 type Resultado = { ok: true } | { ok: false, errores: string[] }
 
@@ -42,8 +42,9 @@ export const actualizarUsuario = async (id: number, datos: DatosUsuario) =>
 export const restablecerContrasena = async (id: number, contrasena: string) =>
   llamar(`/usuarios/${id}/contrasena`, "PUT", { contrasena })
 
+// Solo los perfiles de Trámites: el backend no toca los de Gastos
 export const asignarPerfiles = async (id: number, roles: string[]) =>
-  llamar(`/usuarios/${id}/roles`, "PUT", { roles })
+  llamar(`/usuarios/${id}/roles`, "PUT", { modulo: "TRAMITES", roles })
 
 // Quita el bloqueo por intentos fallidos en el login
 export const desbloquearUsuario = async (id: number) =>

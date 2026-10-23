@@ -11,7 +11,8 @@ export default async function UsuariosRolesPage() {
   ])
 
   const usuarios = z.array(UsuarioConRolesSchema).parse(await reqUsuarios.json())
-  const roles = z.array(RolSchema).parse(await reqRoles.json())
+  // Solo los perfiles de Gastos: los de Trámites se manejan en Nodex Trámites
+  const roles = z.array(RolSchema).parse(await reqRoles.json()).filter(r => r.modulo === "GASTOS")
 
   return (
     <div>

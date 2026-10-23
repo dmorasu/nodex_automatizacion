@@ -28,15 +28,15 @@ export type UsuarioAdmin = {
   minutosBloqueo?: number
 }
 
-// Los perfiles se muestran agrupados por módulo
+// Solo los perfiles de Trámites: los de Gastos se asignan en Nodex Gastos (decisión del usuario,
+// 2026-10-23: un cambio en una app no debe afectar la otra)
 const GRUPOS = [
   { titulo: "Trámites", codigos: ["GESTION_ACTIVOS", "TORRE_CONTROL", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL"] },
-  { titulo: "Gastos", codigos: ["TESORERIA", "TESORERIA_CERTIFICADOS", "DIRECCION_NEGOCIO", "LEGALIZACION", "CONTABILIDAD"] },
-  { titulo: "General", codigos: ["ADMIN"] }
+  { titulo: "Administración", codigos: ["ADMIN_TRAMITES"] }
 ]
 
-// Perfiles que dan entrada a Nodex Trámites
-const PERFILES_TRAMITES = ["GESTION_ACTIVOS", "TORRE_CONTROL", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL", "ADMIN"]
+// Perfiles que dan entrada a Nodex Trámites (son los únicos que esta pantalla envía al guardar)
+const PERFILES_TRAMITES = ["GESTION_ACTIVOS", "TORRE_CONTROL", "ANALISTA_TRAMITES", "ADMIN_TORRE_CONTROL", "ADMIN_TRAMITES"]
 
 const TAMANO_PAGINA = 15
 
@@ -45,7 +45,7 @@ const SIN_PERFILES = "__sin_perfiles"
 const SIN_TRAMITES = "__sin_tramites"
 const SIN_AREA = "__sin_area"
 
-// Tiene perfiles que solo el Admin puede tocar (Gastos o Administración)
+// Tiene perfiles que el Administrador de Torre de control no puede tocar (Gastos o Administrador de Trámites)
 const tienePerfilesAjenos = (usuario: UsuarioAdmin) =>
   usuario.roles.some(r => !GRUPOS[0].codigos.includes(r.codigo))
 
@@ -271,14 +271,15 @@ function FilaUsuario({ usuario, roles, esUsted, soloTramites, onEditar, onContra
   onEditar: () => void
   onContrasena: () => void
 }) {
-  const inicial = usuario.roles.map(r => r.codigo)
+  // Solo los perfiles de Trámites (los de Gastos no se envían ni se tocan)
+  const inicial = usuario.roles.map(r => r.codigo).filter(c => PERFILES_TRAMITES.includes(c))
   const [seleccion, setSeleccion] = useState<string[]>(inicial)
   const { procesando, ejecutar } = useAccion()
   const { procesando: desbloqueando, ejecutar: ejecutarDesbloqueo } = useAccion()
 
   const huboCambios = seleccion.length !== inicial.length || seleccion.some(c => !inicial.includes(c))
   const sinPerfilTramites = !seleccion.some(c => PERFILES_TRAMITES.includes(c))
-  // Los perfiles que no se muestran (Gastos/Administración) van igual en `seleccion` y no cambian
+  // El Administrador de Trámites no se muestra al de Torre de control: va igual en `seleccion` y no cambia
   const bloqueado = soloTramites && tienePerfilesAjenos(usuario)
 
   return (

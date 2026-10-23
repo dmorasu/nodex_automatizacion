@@ -6,6 +6,8 @@
 
 export const ROLES = {
   TESORERIA: "TESORERIA",
+  // Trabajo de Tesorería sin administrar bolsas ni cajas y sin Indicadores ni Reportes
+  ANALISTA_TESORERIA: "ANALISTA_TESORERIA",
   // Paga solo las compras de certificados (CTL, Cámara de Comercio y RUNT)
   TESORERIA_CERTIFICADOS: "TESORERIA_CERTIFICADOS",
   LEGALIZACION: "LEGALIZACION",
@@ -14,19 +16,33 @@ export const ROLES = {
   DIRECCION_NEGOCIO: "DIRECCION_NEGOCIO",
   // Hace el trabajo de Tesorería solo en la caja menor que tiene asignada
   AUXILIAR_TESORERIA_CAJA: "AUXILIAR_TESORERIA_CAJA",
+  // Administrador de Gastos (se asigna); la sesión le agrega ADMIN, que es el que revisan las pantallas
+  ADMIN_GASTOS: "ADMIN_GASTOS",
   ADMIN: "ADMIN"
 } as const
 
+// Perfiles que se asignan en Usuarios de Nodex Gastos (los de Trámites se manejan en Nodex Trámites)
+export const ROLES_GASTOS_ASIGNABLES: string[] = [
+  "TESORERIA", "ANALISTA_TESORERIA", "TESORERIA_CERTIFICADOS", "AUXILIAR_TESORERIA_CAJA",
+  "DIRECCION_NEGOCIO", "LEGALIZACION", "CONTABILIDAD", "ADMIN_GASTOS"
+]
+
 export type CodigoRol = typeof ROLES[keyof typeof ROLES]
+
+// Tesorería y Analista de Tesorería hacen el trabajo diario de Tesorería
+export const TESORERIA_OPERATIVA: CodigoRol[] = [ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA]
 
 export const NOMBRES_ROL: Record<string, string> = {
   TESORERIA: "Tesorería",
+  ANALISTA_TESORERIA: "Analista de Tesorería",
   TESORERIA_CERTIFICADOS: "Tesorería - Certificados",
   LEGALIZACION: "Legalización",
   CONTABILIDAD: "Contabilidad",
   DIRECCION_NEGOCIO: "Dirección de Negocio",
   AUXILIAR_TESORERIA_CAJA: "Auxiliar de Tesorería - Caja menor",
   ADMIN: "Administrador",
+  ADMIN_GASTOS: "Administrador de Gastos",
+  ADMIN_TRAMITES: "Administrador de Trámites",
   GESTION_ACTIVOS: "Gestión de activos (trámites)",
   TORRE_CONTROL: "Torre de control (trámites)",
   ANALISTA_TRAMITES: "Analista de trámites",
@@ -35,12 +51,12 @@ export const NOMBRES_ROL: Record<string, string> = {
 
 // Roles del módulo de gastos: con alguno se ven todos los gastos
 export const tieneRolDeGastos = (roles: string[]) =>
-  roles.some(rol => ["TESORERIA", "TESORERIA_CERTIFICADOS", "LEGALIZACION", "CONTABILIDAD", "DIRECCION_NEGOCIO", "ADMIN"].includes(rol))
+  roles.some(rol => ["TESORERIA", "ANALISTA_TESORERIA", "TESORERIA_CERTIFICADOS", "LEGALIZACION", "CONTABILIDAD", "DIRECCION_NEGOCIO", "ADMIN"].includes(rol))
 
 // Tesorería - Certificados sin otro rol de gastos: solo ve y paga las compras de certificados
 export const soloCertificados = (roles: string[]) =>
   roles.includes(ROLES.TESORERIA_CERTIFICADOS) &&
-  !roles.some(rol => ["TESORERIA", "LEGALIZACION", "CONTABILIDAD", "ADMIN"].includes(rol))
+  !roles.some(rol => ["TESORERIA", "ANALISTA_TESORERIA", "LEGALIZACION", "CONTABILIDAD", "ADMIN"].includes(rol))
 
 export type Modulo = {
   href: string
@@ -67,7 +83,7 @@ export const MODULOS: Modulo[] = [
     href: "/tesoreria",
     nombre: "Tesorería",
     descripcion: "Paga gastos y administra las bolsas",
-    roles: [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.AUXILIAR_TESORERIA_CAJA]
+    roles: [ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.AUXILIAR_TESORERIA_CAJA]
   },
   {
     href: "/direccion",

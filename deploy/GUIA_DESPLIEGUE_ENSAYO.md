@@ -282,6 +282,12 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Perfiles por app y Analista de Tesorería (2026-10-23)** — cambian el backend, Nodex Gastos y Nodex Trámites (compilar los tres y reiniciar `nodex-api`, `nodex-gastos` y `nodex-tramites`).
+- **Sin variables nuevas.** El arranque crea los perfiles Administrador de Gastos, Administrador de Trámites y Analista de Tesorería, da los dos administradores a quien tenga Administrador y deja Administrador inactivo (sale "Perfiles: Administrador separado…" en el log). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT r.codigo, r.activo, COUNT(ur.usuario_id) FROM gastos_roles r LEFT JOIN gastos_usuario_roles ur ON ur.rol_id = r.id WHERE r.codigo LIKE 'ADMIN%' OR r.codigo = 'ANALISTA_TESORERIA' GROUP BY 1, 2;"`
+- Compilar y reiniciar **las tres apps a la vez**: un frontend viejo con el backend nuevo no puede guardar perfiles (falta el campo `modulo`).
+- Para volver a la versión anterior: `UPDATE gastos_roles SET activo = true WHERE codigo = 'ADMIN';` (las asignaciones de Administrador no se borraron).
+
 **Bolsas de no reembolsables, sin saldo (2026-10-23)** — cambian el backend, Nodex Gastos y Nodex Trámites (compilar los tres y reiniciar `nodex-ensayo-api`, `nodex-ensayo-gastos` y `nodex-ensayo-tramites`).
 - **Sin variables nuevas.** El arranque agrega `gastos_bolsas.sin_saldo`. Comprobar:
   `sudo -u postgres psql -d nodex_pruebas -c "SELECT nombre, sin_saldo FROM gastos_bolsas;"`

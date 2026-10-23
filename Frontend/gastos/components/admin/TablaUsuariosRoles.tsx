@@ -7,7 +7,8 @@ import { asignarRoles } from "@/actions/admin/asignarRoles"
 import type { Rol, UsuarioConRoles } from "@/src/schemas/admin"
 
 function FilaUsuario({ usuario, roles }: { usuario: UsuarioConRoles, roles: Rol[] }) {
-  const inicial = usuario.roles.map(rol => rol.codigo)
+  // Solo los perfiles de Gastos que muestra la tabla (los de Trámites no se envían)
+  const inicial = usuario.roles.map(rol => rol.codigo).filter(codigo => roles.some(r => r.codigo === codigo))
   const [seleccionados, setSeleccionados] = useState<string[]>(inicial)
   const [guardando, startTransition] = useTransition()
 

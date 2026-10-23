@@ -21,7 +21,7 @@ import {
   legalizarCuenta,
   quitarLinea
 } from '../../services/gastos/cuentasCobro'
-import { ESTADOS_CUENTA_COBRO, ROLES } from '../../services/gastos/constantes'
+import { ROLES_TESORERIA_OPERATIVA, ESTADOS_CUENTA_COBRO, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, responderError } from './utilidades'
 
@@ -115,7 +115,7 @@ export class CuentasCobroController {
 
       const enBorrador = cuenta.estado.codigo === ESTADOS_CUENTA_COBRO.BORRADOR
       const esLegalizacion = req.roles?.includes(ROLES.LEGALIZACION) || esAdmin(req)
-      const esTesoreria = req.roles?.includes(ROLES.TESORERIA) ?? false
+      const esTesoreria = (req.roles ?? []).some(rol => ROLES_TESORERIA_OPERATIVA.includes(rol))
 
       res.json({
         ...cuenta.toJSON(),

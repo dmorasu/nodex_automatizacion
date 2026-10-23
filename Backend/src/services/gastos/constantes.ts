@@ -6,11 +6,18 @@
 
 export const ROLES = {
   TESORERIA: 'TESORERIA',
+  // Trabajo de Tesorería (pagos, certificados, anticipos, caja menor, cuentas de cobro) sin
+  // administrar bolsas ni cajas y sin Indicadores ni Reportes
+  ANALISTA_TESORERIA: 'ANALISTA_TESORERIA',
   // Persona de Tesorería que paga solo las compras de certificados (CTL, Cámara de Comercio y RUNT)
   TESORERIA_CERTIFICADOS: 'TESORERIA_CERTIFICADOS',
   LEGALIZACION: 'LEGALIZACION',
   CONTABILIDAD: 'CONTABILIDAD',
+  // ADMIN ya no se asigna (2026-10-23): es el administrador de la app de la petición, que
+  // `autenticacion` agrega con ADMIN_GASTOS (rutas /api/gastos) o ADMIN_TRAMITES (las demás)
   ADMIN: 'ADMIN',
+  ADMIN_GASTOS: 'ADMIN_GASTOS',
+  ADMIN_TRAMITES: 'ADMIN_TRAMITES',
   // Aprueba en Nodex los pagos que Tesorería programa (luego los aprueba en la plataforma del banco)
   DIRECCION_NEGOCIO: 'DIRECCION_NEGOCIO',
   // Perfiles del módulo de trámites
@@ -24,11 +31,20 @@ export const ROLES = {
   AUXILIAR_TESORERIA_CAJA: 'AUXILIAR_TESORERIA_CAJA'
 } as const
 
-// Perfiles del módulo de trámites: los únicos que el Administrador de Torre de control puede asignar
-export const ROLES_TRAMITES: string[] = [ROLES.GESTION_ACTIVOS, ROLES.TORRE_CONTROL, ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL]
+// Perfiles de cada app: cada una asigna y quita solo los suyos (los de la otra no se tocan)
+export const ROLES_TRAMITES: string[] = [ROLES.GESTION_ACTIVOS, ROLES.TORRE_CONTROL, ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL, ROLES.ADMIN_TRAMITES]
+export const ROLES_GASTOS_ASIGNABLES: string[] = [
+  ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.AUXILIAR_TESORERIA_CAJA,
+  ROLES.DIRECCION_NEGOCIO, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.ADMIN_GASTOS
+]
+export type ModuloRoles = 'GASTOS' | 'TRAMITES'
+export const rolesDelModulo = (modulo: ModuloRoles) => (modulo === 'GASTOS' ? ROLES_GASTOS_ASIGNABLES : ROLES_TRAMITES)
 
 // Estos roles trabajan en Torre de control: tienen sus mismos permisos (se agregan en `autenticacion`)
-export const ROLES_CON_TORRE_CONTROL: string[] = [ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL]
+export const ROLES_CON_TORRE_CONTROL: string[] = [ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL, ROLES.ADMIN_TRAMITES]
+
+// Tesorería y Analista de Tesorería hacen el trabajo diario de Tesorería
+export const ROLES_TESORERIA_OPERATIVA: string[] = [ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA]
 
 export type CodigoRol = typeof ROLES[keyof typeof ROLES]
 

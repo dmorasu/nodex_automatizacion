@@ -100,6 +100,7 @@ export const validarAsignarRoles = [
   param('usuarioId')
     .isInt({ min: 1 }).withMessage('Id de usuario no válido'),
 
+  body('modulo').isIn(['GASTOS', 'TRAMITES']).withMessage('Indique la app de los perfiles (GASTOS o TRAMITES)'),
   body('roles')
     .isArray().withMessage('Debe enviar la lista de roles'),
 

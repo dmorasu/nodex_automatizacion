@@ -8,7 +8,8 @@ type Resultado = { ok: true } | { ok: false, error: string }
 export async function asignarRoles(usuarioId: number, roles: string[]): Promise<Resultado> {
   const req = await fetchApi(`/gastos/admin/usuarios/${usuarioId}/roles`, {
     method: "PUT",
-    body: JSON.stringify({ roles })
+    // Solo los perfiles de Gastos: el backend no toca los de Trámites
+    body: JSON.stringify({ modulo: "GASTOS", roles })
   })
 
   if (!req.ok) {

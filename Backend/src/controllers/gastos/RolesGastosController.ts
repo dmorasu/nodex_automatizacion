@@ -7,20 +7,36 @@ import Areas from '../../models/areas'
 import UsuarioRoles from '../../models/gastos/usuarioRoles'
 import { correoIgual, hashcontrasena } from '../../utils/auth'
 import { ErrorGastos } from '../../services/gastos/errores'
-import { esAdmin, responderError } from './utilidades'
-import { ROLES_TRAMITES } from '../../services/gastos/constantes'
+import { responderError } from './utilidades'
+import { ROLES, ROLES_GASTOS_ASIGNABLES, ROLES_TRAMITES, rolesDelModulo, type ModuloRoles } from '../../services/gastos/constantes'
 import { desbloquearCuenta, minutosBloqueoCuenta } from '../../utils/intentosLogin'
 
-// El Administrador de Torre de control (sin ADMIN) solo maneja perfiles de trámites:
-// no asigna ni quita perfiles de Gastos o Administración, y no edita ni cambia la contraseña
-// de usuarios que los tengan (así no puede entrar a Gastos con la cuenta de otro).
-const soloTramites = (req: Request) => !esAdmin(req)
-const fueraDeTramites = (codigos: string[]) => codigos.filter(c => !ROLES_TRAMITES.includes(c))
+// Cada app maneja solo sus perfiles (decisión del usuario, 2026-10-23): Nodex Gastos los de
+// Gastos (Administrador de Gastos) y Nodex Trámites los de Trámites (Administrador de Trámites o
+// Administrador de Torre de control, que no toca al Administrador de Trámites). Los perfiles de
+// la otra app no se envían ni se tocan, así un cambio en una no afecta la otra.
+const asignadosDe = (req: Request) => req.rolesAsignados ?? []
+
+const administra = (req: Request, modulo: ModuloRoles) => {
+  const roles = asignadosDe(req)
+  return modulo === 'GASTOS'
+    ? roles.includes(ROLES.ADMIN_GASTOS)
+    : roles.includes(ROLES.ADMIN_TRAMITES) || roles.includes(ROLES.ADMIN_TORRE_CONTROL)
+}
+
+// Perfiles que puede poner o quitar en esa app
+const asignablesPor = (req: Request, modulo: ModuloRoles) =>
+  administra(req, modulo)
+    ? rolesDelModulo(modulo).filter(c => c !== ROLES.ADMIN_TRAMITES || asignadosDe(req).includes(ROLES.ADMIN_TRAMITES))
+    : []
+
+const moduloDe = (codigo: string): ModuloRoles | null =>
+  ROLES_GASTOS_ASIGNABLES.includes(codigo) ? 'GASTOS' : ROLES_TRAMITES.includes(codigo) ? 'TRAMITES' : null
 
 const codigosDelUsuario = async (usuarioId: number) => {
   const usuario = await Usuarios.findByPk(usuarioId, {
     attributes: ['id'],
-    include: [{ model: Roles, attributes: ['codigo'], through: { attributes: [] } }]
+    include: [{ model: Roles, attributes: ['codigo'], where: { activo: true }, required: false, through: { attributes: [] } }]
   })
   return (usuario?.roles ?? []).map(r => r.codigo)
 }
@@ -33,21 +49,34 @@ const areaDelUsuario = async (areaId: unknown) => {
   return { areaId: area.id, area: area.nombre }
 }
 
-const verificarUsuarioDeTramites = async (req: Request, usuarioId: number) => {
-  if (soloTramites(req) && fueraDeTramites(await codigosDelUsuario(usuarioId)).length) {
-    throw new ErrorGastos('Este usuario tiene perfiles de Gastos o Administración: solo el administrador puede modificarlo', 403)
+// Datos y contraseña: los usuarios se crean y editan en Nodex Trámites, así que el Administrador de
+// Trámites puede con todos. El Administrador de Torre de control no edita a quien tenga perfiles de
+// Gastos o sea Administrador de Trámites (así no entra a otra app con la cuenta de otro), y el
+// Administrador de Gastos no edita a quien tenga perfiles de Trámites.
+const verificarPuedeEditar = async (req: Request, usuarioId: number) => {
+  if (asignadosDe(req).includes(ROLES.ADMIN_TRAMITES)) return
+  const codigos = await codigosDelUsuario(usuarioId)
+  const ajeno = codigos.find(c => {
+    const modulo = moduloDe(c)
+    return modulo && !asignablesPor(req, modulo).includes(c)
+  })
+  if (ajeno) {
+    throw new ErrorGastos(moduloDe(ajeno) === 'GASTOS'
+      ? 'Este usuario tiene perfiles de Gastos: solo el Administrador de Trámites puede modificarlo'
+      : 'Solo el Administrador de Trámites puede modificar a este usuario', 403)
   }
 }
 
 export class RolesGastosController {
 
-  // Usuario en sesión con sus roles: el frontend lo usa para armar el menú
+  // Usuario en sesión con sus roles: el frontend lo usa para armar el menú. Van los asignados (sin
+  // ADMIN): cada app trata como ADMIN a su propio administrador (ADMIN_GASTOS o ADMIN_TRAMITES)
   static me = async (req: Request, res: Response) => {
     res.json({
       id: req.usuario.id,
       nombreUsuario: req.usuario.nombreUsuario,
       correoUsuario: req.usuario.correoUsuario,
-      roles: req.roles ?? []
+      roles: req.rolesAsignados ?? []
     })
   }
 
@@ -59,7 +88,8 @@ export class RolesGastosController {
         order: [['nombre', 'ASC']]
       })
 
-      res.json(roles)
+      // Cada pantalla muestra solo los perfiles de su app
+      res.json(roles.map(r => ({ ...r.toJSON(), modulo: moduloDe(r.codigo) })))
     } catch (error) {
       console.log(error)
       res.status(500).json({ error: 'Hubo un error' })
@@ -73,6 +103,8 @@ export class RolesGastosController {
         include: [{
           model: Roles,
           attributes: ['id', 'codigo', 'nombre'],
+          where: { activo: true },
+          required: false,
           through: { attributes: [] }
         }],
         order: [['nombreUsuario', 'ASC']]
@@ -93,8 +125,8 @@ export class RolesGastosController {
       const correo = String(req.body.correoUsuario).trim().toLowerCase()
       const codigos: string[] = req.body.roles ?? []
 
-      if (soloTramites(req) && fueraDeTramites(codigos).length) {
-        throw new ErrorGastos('Solo puede asignar perfiles de trámites', 403)
+      if (codigos.some(c => { const m = moduloDe(c); return !m || !asignablesPor(req, m).includes(c) })) {
+        throw new ErrorGastos('Solo puede asignar los perfiles de su app', 403)
       }
 
       if (await Usuarios.findOne({ where: correoIgual(correo) })) {
@@ -133,7 +165,7 @@ export class RolesGastosController {
     try {
       const usuario = await Usuarios.findByPk(Number(req.params.usuarioId))
       if (!usuario) throw new ErrorGastos('Usuario no encontrado', 404)
-      await verificarUsuarioDeTramites(req, usuario.id)
+      await verificarPuedeEditar(req, usuario.id)
 
       const correo = String(req.body.correoUsuario).trim().toLowerCase()
       const repetido = await Usuarios.findOne({
@@ -160,7 +192,7 @@ export class RolesGastosController {
     try {
       const usuario = await Usuarios.findByPk(Number(req.params.usuarioId))
       if (!usuario) throw new ErrorGastos('Usuario no encontrado', 404)
-      await verificarUsuarioDeTramites(req, usuario.id)
+      await verificarPuedeEditar(req, usuario.id)
 
       // Contraseña nueva y fuera de todas sus sesiones abiertas (por si alguien más la conocía)
       await usuario.update({ contrasena: await hashcontrasena(req.body.contrasena), versionSesion: usuario.versionSesion + 1 })
@@ -187,54 +219,49 @@ export class RolesGastosController {
     }
   }
 
-  // Reemplaza los roles del usuario por los enviados: { roles: ['TESORERIA', 'CONTABILIDAD'] }
-  // Un arreglo vacío le quita el acceso al módulo.
+  // PUT /admin/usuarios/:usuarioId/roles  { modulo: 'GASTOS' | 'TRAMITES', roles: [...] }
+  // Reemplaza solo los perfiles de esa app; los de la otra quedan como están en la base
+  // (aunque la pantalla tenga datos viejos). Un arreglo vacío le quita el acceso a esa app.
   static asignarRoles = async (req: Request, res: Response) => {
-    const usuarioId = Number(req.params.usuarioId)
-    const codigos: string[] = req.body.roles
-
     try {
-      const usuario = await Usuarios.findByPk(usuarioId)
+      const usuarioId = Number(req.params.usuarioId)
+      const modulo = req.body.modulo as ModuloRoles
+      const codigos = [...new Set(req.body.roles as string[])]
 
-      if (!usuario) {
-        return res.status(404).json({ error: 'Usuario no encontrado' })
+      const usuario = await Usuarios.findByPk(usuarioId, { attributes: ['id'] })
+      if (!usuario) throw new ErrorGastos('Usuario no encontrado', 404)
+      if (!administra(req, modulo)) throw new ErrorGastos('No administra los perfiles de esta app', 403)
+
+      const delModulo = rolesDelModulo(modulo)
+      if (codigos.some(c => !delModulo.includes(c))) {
+        throw new ErrorGastos(modulo === 'GASTOS' ? 'Solo puede enviar perfiles de Gastos' : 'Solo puede enviar perfiles de Trámites')
       }
 
-      const roles = await Roles.findAll({
-        where: { codigo: { [Op.in]: codigos }, activo: true }
-      })
-
-      if (roles.length !== new Set(codigos).size) {
-        return res.status(400).json({ error: 'Uno o más roles no existen' })
+      const antes = (await codigosDelUsuario(usuarioId)).filter(c => delModulo.includes(c))
+      const cambiados = [...antes.filter(c => !codigos.includes(c)), ...codigos.filter(c => !antes.includes(c))]
+      const permitidos = asignablesPor(req, modulo)
+      if (cambiados.some(c => !permitidos.includes(c))) {
+        throw new ErrorGastos('Solo el Administrador de Trámites puede asignar o quitar ese perfil', 403)
       }
 
-      // Sin ADMIN, los perfiles de Gastos y Administración del usuario deben quedar como estaban
-      if (soloTramites(req)) {
-        const antes = fueraDeTramites(await codigosDelUsuario(usuarioId)).sort().join(',')
-        const despues = fueraDeTramites([...new Set(codigos)]).sort().join(',')
-        if (antes !== despues) {
-          return res.status(403).json({ error: 'Solo puede asignar o quitar perfiles de trámites' })
-        }
+      // Evita que un administrador se quite a sí mismo la administración de esa app por error
+      const suAdmin = modulo === 'GASTOS' ? ROLES.ADMIN_GASTOS : ROLES.ADMIN_TRAMITES
+      if (usuarioId === req.usuario.id && antes.includes(suAdmin) && !codigos.includes(suAdmin)) {
+        throw new ErrorGastos('No puede quitarse su propio perfil de administrador')
       }
 
-      // Evita que un administrador se quite a sí mismo el rol ADMIN por error
-      if (usuarioId === req.usuario.id && !codigos.includes('ADMIN') && req.roles?.includes('ADMIN')) {
-        return res.status(400).json({ error: 'No puede quitarse su propio rol de administrador' })
-      }
+      const roles = await Roles.findAll({ where: { codigo: { [Op.in]: delModulo } }, attributes: ['id', 'codigo', 'activo'] })
+      const nuevos = roles.filter(r => r.activo && codigos.includes(r.codigo))
+      if (nuevos.length !== codigos.length) throw new ErrorGastos('Uno o más perfiles no existen')
 
       await db.transaction(async transaction => {
-        await UsuarioRoles.destroy({ where: { usuarioId }, transaction })
-
-        await UsuarioRoles.bulkCreate(
-          roles.map(rol => ({ usuarioId, rolId: rol.id })),
-          { transaction }
-        )
+        await UsuarioRoles.destroy({ where: { usuarioId, rolId: { [Op.in]: roles.map(r => r.id) } }, transaction })
+        await UsuarioRoles.bulkCreate(nuevos.map(rol => ({ usuarioId, rolId: rol.id })), { transaction })
       })
 
-      res.json('Roles actualizados correctamente')
+      res.json('Perfiles actualizados correctamente')
     } catch (error) {
-      console.log(error)
-      res.status(500).json({ error: 'Hubo un error' })
+      responderError(res, error)
     }
   }
 }

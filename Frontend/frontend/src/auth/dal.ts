@@ -29,7 +29,9 @@ export const verificacionSesion = cache(async () => {
     redirect('/auth/login')
   }
 
-  const roles: string[] = reqRoles.ok ? ((await reqRoles.json()).roles ?? []) : []
+  const asignados: string[] = reqRoles.ok ? ((await reqRoles.json()).roles ?? []) : []
+  // El Administrador de Trámites es el ADMIN de esta app (el de Gastos no cuenta aquí)
+  const roles = asignados.includes("ADMIN_TRAMITES") ? [...asignados, "ADMIN"] : asignados
   const perfil = perfilDesdeRoles(roles)
 
   // Sin perfil asignado no hay acceso a trámites
@@ -40,7 +42,7 @@ export const verificacionSesion = cache(async () => {
   return {
     usuario: resultado.data,
     perfil,
-    // Admin además ve Administración (usuarios, perfiles y contraseñas)
+    // Administrador de Trámites además ve Administración (usuarios, perfiles y contraseñas)
     esAdmin: roles.includes("ADMIN"),
     // Administración de usuarios: Admin todo; Administrador de Torre de control solo perfiles de trámites
     puedeAdministrarUsuarios: roles.includes("ADMIN") || roles.includes("ADMIN_TORRE_CONTROL"),

@@ -11,6 +11,8 @@ declare global {
     interface Request {
       // Códigos de rol del usuario (ej: ['TESORERIA']). Se cargan en `autenticacion`
       roles?: string[]
+      // Los asignados tal cual (sin ADMIN ni Torre de control agregados): los devuelve /gastos/me
+      rolesAsignados?: string[]
       // Ids de los usuarios de su misma área (se consultan una vez por petición)
       usuariosDeSuArea?: Promise<number[]>
     }
@@ -86,8 +88,17 @@ export const autenticacion = async (
     }
 
     req.usuario = usuario
-    const roles = (usuario.roles ?? []).map(rol => rol.codigo)
-    // Analista y Administrador de Torre de control trabajan con los permisos de Torre de control
+    const asignados = (usuario.roles ?? []).map(rol => rol.codigo)
+    // ADMIN de antes del 2026-10-23 (si aún estuviera activo) cuenta como administrador de las dos apps
+    if (asignados.includes(ROLES.ADMIN)) asignados.push(ROLES.ADMIN_GASTOS, ROLES.ADMIN_TRAMITES)
+    req.rolesAsignados = [...new Set(asignados.filter(rol => rol !== ROLES.ADMIN))]
+
+    const roles = [...req.rolesAsignados]
+    // Cada app tiene su administrador: ADMIN (acceso total) vale solo en las rutas de su app
+    const rutaDeGastos = req.originalUrl.startsWith("/api/gastos")
+    if (roles.includes(rutaDeGastos ? ROLES.ADMIN_GASTOS : ROLES.ADMIN_TRAMITES)) roles.push(ROLES.ADMIN)
+    // Analista, Administrador de Torre de control y Administrador de Trámites trabajan con los
+    // permisos de Torre de control
     if (roles.some(rol => ROLES_CON_TORRE_CONTROL.includes(rol)) && !roles.includes(ROLES.TORRE_CONTROL)) {
       roles.push(ROLES.TORRE_CONTROL)
     }

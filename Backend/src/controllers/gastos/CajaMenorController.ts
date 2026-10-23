@@ -259,7 +259,7 @@ export class CajaMenorController {
       const json = reembolso.toJSON()
       const roles = req.roles ?? []
       const direccion = roles.includes(ROLES.DIRECCION_NEGOCIO) || roles.includes(ROLES.ADMIN)
-      const tesoreria = roles.some(r => ([ROLES.TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA, ROLES.ADMIN] as string[]).includes(r))
+      const tesoreria = roles.some(r => ([ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA, ROLES.ADMIN] as string[]).includes(r))
       res.json({
         ...json,
         legalizaciones: json.legalizaciones.map((l: { solicitudGastoId: number }) => ({

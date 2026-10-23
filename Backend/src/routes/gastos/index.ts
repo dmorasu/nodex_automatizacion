@@ -111,7 +111,7 @@ router.get('/terceros', ApoyoGastosController.terceros)
 
 // ── Gastos de un trámite (frontend de trámites) ──
 router.get('/tramites/:id/gastos',
-  requiereRol(ROLES.GESTION_ACTIVOS, ROLES.TORRE_CONTROL, ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD),
+  requiereRol(ROLES.GESTION_ACTIVOS, ROLES.TORRE_CONTROL, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD),
   validarId,
   handleInputErrors,
   SolicitudesGastoController.porTramite
@@ -161,7 +161,7 @@ router.post('/solicitudes/:id/documentos', recibirDocumentos, validarId, handleI
 router.get('/documentos/:documentoId/ver', DocumentosGastoController.ver)
 // Descarga masiva (ZIP): los roles del módulo que revisan documentos
 const validarGastosDescarga = [
-  requiereRol(ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA),
+  requiereRol(ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA),
   body('gastoIds').isArray({ min: 1, max: 50 }).withMessage('Seleccione entre 1 y 50 gastos'),
   body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido')
 ]
@@ -176,13 +176,15 @@ router.delete('/documentos/:documentoId', DocumentosGastoController.eliminar)
 
 
 // ── Bolsas (Tesorería) ──────────────
+// Crear, editar, recargar y ver movimientos de bolsas (y configurar cajas): solo Tesorería. El
+// Analista de Tesorería no administra bolsas, pero las ve en la lista al pagar
 const soloTesoreria = requiereRol(ROLES.TESORERIA)
 const soloAdmin = requiereRol(ROLES.ADMIN)
-// Usuarios: Admin todo; Administrador de Torre de control solo perfiles de trámites (lo limita el controlador)
-const administraUsuarios = requiereRol(ROLES.ADMIN_TORRE_CONTROL)
+// Usuarios: cada administrador maneja los perfiles de su app (lo limita el controlador)
+const administraUsuarios = requiereRol(ROLES.ADMIN_GASTOS, ROLES.ADMIN_TRAMITES, ROLES.ADMIN_TORRE_CONTROL)
 
 // Tesorería - Certificados también consulta los saldos (paga desde las bolsas)
-const tesoreriaOCertificados = requiereRol(ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS)
+const tesoreriaOCertificados = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.TESORERIA_CERTIFICADOS)
 router.get('/bolsas', tesoreriaOCertificados, BolsasController.getAll)
 router.post('/bolsas', soloTesoreria, validarCrearBolsa, handleInputErrors, BolsasController.create)
 router.put('/bolsas/:id', soloTesoreria, validarId, validarBolsa, handleInputErrors, BolsasController.update)
@@ -226,7 +228,7 @@ router.post('/lotes/:id/confirmar', tesoreriaOCertificados, validarConfirmacionP
 // (multipart: datos = JSON con loteIds, fechaPago y observacion; archivos[])
 router.post('/lotes/confirmar', tesoreriaOCertificados, recibirSoportesPago, leerDatosJson, validarConfirmacionPagos, handleInputErrors, PagosController.confirmarVarios)
 // Contabilidad también consulta los pagos para registrarles el número de egreso
-const verLotes = requiereRol(ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO)
+const verLotes = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO)
 router.get('/lotes', verLotes, validarListadoLotes, handleInputErrors, PagosController.getLotes)
 router.get('/lotes/:id', verLotes, validarId, handleInputErrors, PagosController.getLote)
 router.post('/lotes/:id/documentos', tesoreriaOCertificados, recibirDocumentos, validarId, handleInputErrors, DocumentosGastoController.subirALote)
@@ -235,9 +237,9 @@ router.post('/lotes/:id/documentos', tesoreriaOCertificados, recibirDocumentos, 
 // ── Legalización ────────────────────
 const soloLegalizacion = requiereRol(ROLES.LEGALIZACION)
 // Contabilidad y Tesorería también consultan las cuentas de cobro
-const verCuentas = requiereRol(ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA)
+const verCuentas = requiereRol(ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA)
 // Tesorería también puede legalizar (marcar como legalizada) una cuenta de cobro
-const legalizarCuentas = requiereRol(ROLES.LEGALIZACION, ROLES.TESORERIA)
+const legalizarCuentas = requiereRol(ROLES.LEGALIZACION, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA)
 
 // Factura real: con ella se calcula la retención, el 4x1000 y el reintegro
 // Legalización (reembolsables) o Contabilidad (no reembolsables): se valida en el controlador
@@ -289,6 +291,7 @@ router.post('/contabilidad/contabilizar-gastos', soloContabilidad, validarContab
 
 
 // ── Tablero y reportes ──────────────
+// El Analista de Tesorería no ve Indicadores ni Reportes (decisión del usuario)
 const verTablero = requiereRol(ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD)
 
 router.get('/tablero', verTablero, validarFiltrosTablero, handleInputErrors, TableroController.getTablero)
@@ -349,8 +352,8 @@ router.put('/admin/parametros/:clave',
 // Tesorería maneja todas las cajas; la Auxiliar de Tesorería - Caja menor, solo la suya (lo
 // verifica el controlador). Dirección de Negocio aprueba los reembolsos.
 // =====================================
-const tesoreriaCaja = requiereRol(ROLES.TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA)
-const cajaODireccion = requiereRol(ROLES.TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA, ROLES.DIRECCION_NEGOCIO)
+const tesoreriaCaja = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA)
+const cajaODireccion = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA, ROLES.DIRECCION_NEGOCIO)
 
 router.get('/caja-menor/cajas', tesoreriaCaja, CajaMenorController.cajas)
 router.get('/caja-menor/cajas/:id/historial', tesoreriaCaja, validarHistorialCaja, handleInputErrors, CajaMenorController.historial)

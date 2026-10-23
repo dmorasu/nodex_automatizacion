@@ -17,7 +17,7 @@ export const esAdmin = (req: Request) => req.roles?.includes(ROLES.ADMIN) ?? fal
 
 // Roles del módulo de gastos (los de trámites, como Gestión de activos, no cuentan)
 // (Dirección de Negocio ve los gastos y sus documentos para aprobar los pagos)
-const ROLES_GASTOS: string[] = [ROLES.TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO, ROLES.ADMIN]
+const ROLES_GASTOS: string[] = [ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.DIRECCION_NEGOCIO, ROLES.ADMIN]
 
 // Con un rol del módulo de gastos se ven todos los gastos; sin él, cada usuario ve solo los suyos
 export const puedeVerTodos = (req: Request) => (req.roles ?? []).some(rol => ROLES_GASTOS.includes(rol))
@@ -27,13 +27,14 @@ export const puedeVerTodos = (req: Request) => (req.roles ?? []).some(rol => ROL
 export const soloCertificados = (req: Request) => {
   const roles = req.roles ?? []
   return roles.includes(ROLES.TESORERIA_CERTIFICADOS) &&
-    !roles.some(rol => ([ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.ADMIN] as string[]).includes(rol))
+    !roles.some(rol => ([ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.ADMIN] as string[]).includes(rol))
 }
 
 // Auxiliar de Tesorería - Caja menor sin Tesorería: solo ve y maneja la caja que tiene asignada
 export const esAuxiliarCaja = (req: Request) => {
   const roles = req.roles ?? []
-  return roles.includes(ROLES.AUXILIAR_TESORERIA_CAJA) && !roles.includes(ROLES.TESORERIA) && !roles.includes(ROLES.ADMIN)
+  return roles.includes(ROLES.AUXILIAR_TESORERIA_CAJA) &&
+    !roles.some(rol => ([ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.ADMIN] as string[]).includes(rol))
 }
 
 // Ids de los tipos de gasto de certificados (se consultan una vez)

@@ -15,7 +15,7 @@ import {
   type LucideIcon
 } from "lucide-react"
 import { obtenerSesion } from "@/src/auth/dal"
-import { NOMBRES_ROL, ROLES, modulosPermitidos, tieneAcceso } from "@/src/auth/permisos"
+import { NOMBRES_ROL, ROLES, TESORERIA_OPERATIVA, modulosPermitidos, tieneAcceso } from "@/src/auth/permisos"
 import { fetchApi } from "@/src/lib/api"
 
 // Aspecto de cada módulo. Las clases van completas (Tailwind solo genera las que lee literalmente).
@@ -71,7 +71,8 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
     ["/anticipos", "con novedad por corregir", anticipos.then(r => r?.conNovedad ?? 0)],
     ["/anticipos", "confirmados para crear el gasto", anticipos.then(r => r?.confirmadosSinGasto ?? 0)]
   ]
-  if (puede(ROLES.TESORERIA)) {
+  const tesoreria = tieneAcceso(roles, TESORERIA_OPERATIVA)
+  if (tesoreria) {
     consultas.push(
       ["/tesoreria", "por programar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "no", anticipo: "no", cajaMenor: "no" })],
       ["/tesoreria", "de anticipos por pagar", contar({ alcance: "todos", estado: "SOLICITADO", anticipo: "si" })],
@@ -79,7 +80,7 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
     )
   }
   // Caja menor: Tesorería ve todas las cajas; la auxiliar, solo la suya (lo limita el backend)
-  if (puede(ROLES.TESORERIA) || roles.includes(ROLES.AUXILIAR_TESORERIA_CAJA)) {
+  if (tesoreria || roles.includes(ROLES.AUXILIAR_TESORERIA_CAJA)) {
     consultas.push(
       ["/tesoreria", "por pagar en caja menor", contar({ alcance: "todos", estado: "SOLICITADO", cajaMenor: "si" })],
       ["/tesoreria", "por legalizar en caja menor", contar({ alcance: "todos", estado: "PAGADO_CAJA", cajaMenor: "si" })]
@@ -91,7 +92,7 @@ const pendientesPorModulo = async (roles: string[]): Promise<Record<string, Pend
       ["/direccion", "reembolsos de caja menor por aprobar", contarReembolsos("POR_APROBAR")]
     )
   }
-  if (puede(ROLES.TESORERIA_CERTIFICADOS)) {
+  if (puede(ROLES.TESORERIA_CERTIFICADOS) || roles.includes(ROLES.ANALISTA_TESORERIA)) {
     consultas.push(["/tesoreria", "certificados por pagar", contar({ alcance: "todos", estado: "SOLICITADO", certificados: "si", anticipo: "no" })])
   }
   if (puede(ROLES.LEGALIZACION)) {

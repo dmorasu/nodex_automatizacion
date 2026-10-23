@@ -89,7 +89,11 @@ const ROLES_INICIALES = [
   { codigo: ROLES.TESORERIA_CERTIFICADOS, nombre: 'Tesorería - Certificados', descripcion: 'Paga las compras de CTL y certificados de Cámara de Comercio y RUNT' },
   { codigo: ROLES.LEGALIZACION, nombre: 'Legalización', descripcion: 'Arma cuentas de cobro, legaliza y registra reintegros' },
   { codigo: ROLES.CONTABILIDAD, nombre: 'Contabilidad', descripcion: 'Contabiliza las cuentas de cobro legalizadas' },
-  { codigo: ROLES.ADMIN, nombre: 'Administrador', descripcion: 'Acceso total al módulo de gastos' },
+  // Ya no se asigna: `separarAdministradores` lo deja inactivo
+  { codigo: ROLES.ADMIN, nombre: 'Administrador', descripcion: 'Ya no se usa: reemplazado por Administrador de Gastos y Administrador de Trámites' },
+  { codigo: ROLES.ADMIN_GASTOS, nombre: 'Administrador de Gastos', descripcion: 'Acceso total a Nodex Gastos y a sus perfiles' },
+  { codigo: ROLES.ADMIN_TRAMITES, nombre: 'Administrador de Trámites', descripcion: 'Acceso total a Nodex Trámites, sus perfiles y usuarios' },
+  { codigo: ROLES.ANALISTA_TESORERIA, nombre: 'Analista de Tesorería', descripcion: 'Paga gastos y certificados, caja menor y cuentas de cobro; no administra bolsas ni ve Indicadores' },
   { codigo: ROLES.DIRECCION_NEGOCIO, nombre: 'Dirección de Negocio', descripcion: 'Aprueba los pagos que programa Tesorería' },
   { codigo: ROLES.AUXILIAR_TESORERIA_CAJA, nombre: 'Auxiliar de Tesorería - Caja menor', descripcion: 'Paga, legaliza y reembolsa solo la caja menor que tiene asignada' },
   { codigo: ROLES.GESTION_ACTIVOS, nombre: 'Gestión de activos', descripcion: 'Trámites: crea y edita sus propios trámites y les crea gastos' },
@@ -122,7 +126,7 @@ const insertarSiNoExisten = async (
   }
 }
 
-// Asigna ADMIN a los correos de GASTOS_ADMIN_CORREOS (separados por coma).
+// Asigna los dos administradores a los correos de GASTOS_ADMIN_CORREOS (separados por coma).
 // Sirve para tener el primer administrador, que luego asigna los demás roles.
 const asignarAdministradoresIniciales = async () => {
   const correos = (process.env.GASTOS_ADMIN_CORREOS ?? '')
@@ -132,8 +136,8 @@ const asignarAdministradoresIniciales = async () => {
 
   if (correos.length === 0) return
 
-  const rolAdmin = await Roles.findOne({ where: { codigo: ROLES.ADMIN } })
-  if (!rolAdmin) return
+  const admins = await Roles.findAll({ where: { codigo: [ROLES.ADMIN_GASTOS, ROLES.ADMIN_TRAMITES] } })
+  if (!admins.length) return
 
   for (const correo of correos) {
     const usuario = await Usuarios.findOne({ where: { correoUsuario: { [Op.iLike]: correo } } })
@@ -143,10 +147,26 @@ const asignarAdministradoresIniciales = async () => {
       continue
     }
 
-    await UsuarioRoles.findOrCreate({
-      where: { usuarioId: usuario.id, rolId: rolAdmin.id }
-    })
+    for (const rol of admins) {
+      await UsuarioRoles.findOrCreate({ where: { usuarioId: usuario.id, rolId: rol.id } })
+    }
   }
+}
+
+// 2026-10-23 · El Administrador único se separa en Administrador de Gastos y de Trámites (decisión
+// del usuario: un cambio en una app no debe afectar la otra). Quien tenga ADMIN recibe los dos, así
+// nadie pierde acceso; ADMIN queda inactivo (no se borra la asignación: para volver a la versión
+// anterior basta con activarlo de nuevo). Solo corre mientras ADMIN siga activo.
+const separarAdministradores = async () => {
+  const admin = await Roles.findOne({ where: { codigo: ROLES.ADMIN } })
+  if (!admin?.activo) return
+  const nuevos = await Roles.findAll({ where: { codigo: [ROLES.ADMIN_GASTOS, ROLES.ADMIN_TRAMITES] } })
+  const asignaciones = await UsuarioRoles.findAll({ where: { rolId: admin.id } })
+  for (const { usuarioId } of asignaciones) {
+    for (const rol of nuevos) await UsuarioRoles.findOrCreate({ where: { usuarioId, rolId: rol.id } })
+  }
+  await admin.update({ activo: false })
+  console.log(`Perfiles: Administrador separado en Gastos y Trámites para ${asignaciones.length} usuario(s)`)
 }
 
 
@@ -168,5 +188,6 @@ export const seedGastos = async () => {
   await insertarSiNoExisten(Roles, 'codigo', ROLES_INICIALES)
   await insertarSiNoExisten(Parametros, 'clave', PARAMETROS_INICIALES)
 
+  await separarAdministradores()
   await asignarAdministradoresIniciales()
 }

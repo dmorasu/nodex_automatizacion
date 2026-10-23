@@ -1,5 +1,10 @@
 # Paso a producción de Nodex (del ensayo a la base real)
 
+> **Hecho el 2026-10-23** con el código `c7203357`: respaldo `/var/backups/nodex/nodex_ANTES_DEL_CAMBIO_20261023_1301.dump`,
+> `AZURE_FILE_SHARE_NAME=documentostramites`, `API_KEY_EXTERNA` sin cambiar (decisión del usuario) y procesos
+> renombrados a `nodex-*` con `deploy/ecosystem.config.js`. Esta guía queda como referencia para un cambio parecido;
+> los arreglos encontrados ese día ya están incluidos abajo.
+
 El ensayo (`/home/desarrolloti/nodex5.0`, procesos `nodex-ensayo-*`, puertos 9000–9003, dominios
 `*.nodexgpa.com`) ya está instalado, compilado y probado contra `nodex_pruebas`. Pasar a producción es
 **apuntarlo a la base real (`nodex`), quitar el modo ensayo y apagar la versión 4.5**. No se vuelve a
@@ -31,8 +36,12 @@ Servidor `SRVWEBNOX02` · todo como `root` · la 4.5 son los procesos `apiNodex4
 
 ### 1. Respaldo completo de producción (obligatorio: es el plan B)
 ```bash
+# La carpeta no existe: los respaldos diarios van a Azure y no dejan nada en el servidor
+mkdir -p /var/backups/nodex && chmod 700 /var/backups/nodex
 cd /tmp; FECHA=$(date +%Y%m%d_%H%M)
 sudo -u postgres pg_dump -Fc nodex > /var/backups/nodex/nodex_ANTES_DEL_CAMBIO_$FECHA.dump
+# postgres no entra a la carpeta (700): root abre el archivo y se lo pasa
+sudo -u postgres pg_restore -l < /var/backups/nodex/nodex_ANTES_DEL_CAMBIO_$FECHA.dump | head -3
 ls -lh /var/backups/nodex/
 ```
 
@@ -93,7 +102,7 @@ Debe salir **`Conexion Exitosa`** y **no** debe salir "MODO ENSAYO". Si sale "Fa
 # Primero quien administra
 sudo -u postgres psql -d nodex -c "INSERT INTO gastos_usuario_roles (usuario_id, rol_id, created_at, updated_at) SELECT u.id, r.id, NOW(), NOW() FROM \"Usuarios\" u JOIN gastos_roles r ON r.codigo='ADMIN' WHERE LOWER(u.\"correoUsuario\")='dmorasu@gmail.com' ON CONFLICT (usuario_id, rol_id) DO NOTHING;"
 # Luego los del ensayo
-sudo -u postgres psql -d nodex -f /var/backups/nodex/perfiles.sql
+sudo -u postgres psql -d nodex < /var/backups/nodex/perfiles.sql | sort | uniq -c
 sudo -u postgres psql -d nodex -c "SELECT r.codigo, COUNT(*) FROM gastos_usuario_roles ur JOIN gastos_roles r ON r.id=ur.rol_id GROUP BY 1;"
 ```
 Los que falten: Nodex Trámites → Administración.
@@ -199,6 +208,8 @@ por tabla, con cuidado (producción sigue recibiendo datos).
   y confirmación de varios lotes con un soporte (Gastos); "Activar notificaciones" (app de tramitadores).
 - `nodex5.0` pasa a ser producción y ya no hay ensayo. Para tener uno de nuevo: otra carpeta, la base
   `nodex_pruebas`, otros puertos y otros subdominios.
-- Los procesos se siguen llamando `nodex-ensayo-*` en PM2; funciona igual (se pueden renombrar después).
+- Renombrar los procesos (hecho el 2026-10-23): `git pull`, `pm2 delete nodex-ensayo-api nodex-ensayo-worker
+  nodex-ensayo-tramites nodex-ensayo-gastos nodex-ensayo-tramitadores`, `pm2 start deploy/ecosystem.config.js`
+  y `pm2 save`. Desde entonces: `nodex-api`, `nodex-worker`, `nodex-tramites`, `nodex-gastos`, `nodex-tramitadores`.
 - Si se conoce la IP de la plataforma que consume `/api/externa`, dejar solo esa en
   `/etc/nginx/sites-available/nodexgpa` (`allow IP; deny all;`) y recargar Nginx.

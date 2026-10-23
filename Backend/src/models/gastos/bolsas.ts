@@ -32,6 +32,13 @@ class Bolsas extends Model {
   @Column({ type: DataType.BOOLEAN })
   declare activo: boolean
 
+  // Bolsa general que paga sin tener dinero (el saldo puede quedar negativo): solo gastos no
+  // reembolsables, para llevar el total de lo que asume la empresa sin recargarla
+  @AllowNull(false)
+  @Default(false)
+  @Column({ type: DataType.BOOLEAN })
+  declare sinSaldo: boolean
+
   // ── Solo cajas menores (tipo CAJA_MENOR) ──
 
   // Fondo fijo asignado: saldo + pagado sin legalizar + pendiente por reembolsar debe dar este valor

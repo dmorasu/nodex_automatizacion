@@ -1,9 +1,9 @@
-import { Op, type Transaction } from 'sequelize'
+import { Op, col, fn, type Transaction } from 'sequelize'
 import Bolsas from '../../models/gastos/bolsas'
 import MovimientosBolsa from '../../models/gastos/movimientosBolsa'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import Anticipos from '../../models/gastos/anticipos'
-import { llevaSaldoPorCliente, TIPOS_BOLSA, TipoMovimientoBolsa } from './constantes'
+import { llevaSaldoPorCliente, TIPOS_BOLSA, TIPOS_MOVIMIENTO_BOLSA, TipoMovimientoBolsa } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
 
@@ -70,6 +70,22 @@ export const validarBolsaDelGasto = (gasto: SolicitudesGasto, bolsa: Bolsas) => 
   if (!gasto.anticipoId && bolsa.tipo === TIPOS_BOLSA.ANTICIPOS) {
     throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de anticipos: no puede pagar el gasto ${gasto.codigo}, que no salió de un anticipo`)
   }
+  if (bolsa.sinSaldo && gasto.reembolsable) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de no reembolsables: ${gasto.codigo} es reembolsable`)
+  }
+}
+
+// Total pagado desde cada bolsa (pagos menos reintegros): es lo que muestran las bolsas sin saldo
+// en lugar del saldo, que no sirve porque no se recargan
+export const totalPagadoPorBolsa = async (bolsaIds: number[]) => {
+  if (!bolsaIds.length) return new Map<number, number>()
+  const filas = await MovimientosBolsa.findAll({
+    where: { bolsaId: { [Op.in]: bolsaIds }, tipo: { [Op.in]: [TIPOS_MOVIMIENTO_BOLSA.PAGO, TIPOS_MOVIMIENTO_BOLSA.REINTEGRO] } },
+    attributes: ['bolsaId', [fn('SUM', col('valor')), 'total']],
+    group: ['bolsaId'],
+    raw: true
+  }) as unknown as { bolsaId: number, total: string }[]
+  return new Map(filas.map(f => [f.bolsaId, -Number(f.total)]))
 }
 
 // Un gasto de caja menor solo se paga en efectivo desde su caja (Tesorería → Caja menor):
@@ -100,8 +116,8 @@ export const registrarMovimientos = async (
   const saldoInicial = aCentavos(bolsa.saldoActual)
   const totalMovimientos = movimientos.reduce((suma, m) => suma + aCentavos(m.valor), 0)
 
-  // Por ahora una bolsa nunca puede quedar en negativo
-  if (saldoInicial + totalMovimientos < 0) {
+  // Una bolsa nunca puede quedar en negativo, salvo las sin saldo (pagan sin tener dinero)
+  if (!bolsa.sinSaldo && saldoInicial + totalMovimientos < 0) {
     throw new ErrorGastos(
       `Saldo insuficiente en la bolsa ${bolsa.nombre}: disponible ${formatoMoneda(saldoInicial / 100)}, ` +
       `requerido ${formatoMoneda(-totalMovimientos / 100)}`

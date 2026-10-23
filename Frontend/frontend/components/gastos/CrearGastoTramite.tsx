@@ -79,8 +79,11 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
     t.codigo === (tramite.placa ? "VEHICULO" : tramite.matriculaInmobiliaria ? "INMUEBLE" : "OTRO")
   )?.id ?? null
 
+  // La bolsa de no reembolsables solo aparece cuando el gasto no es reembolsable
+  const bolsasGenerales = opciones.bolsas.filter(b => !b.sinSaldo)
+
   const inicial = () => ({
-    bolsaId: opciones.bolsas.length === 1 ? opciones.bolsas[0].id : null as number | null,
+    bolsaId: bolsasGenerales.length === 1 ? bolsasGenerales[0].id : null as number | null,
     tipoGastoId: tipoSugerido,
     formaPagoId: null as number | null,
     conceptoPago: "",
@@ -96,6 +99,7 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
   })
 
   const [datos, setDatos] = useState(inicial)
+  const bolsasDelGasto = datos.reembolsable ? bolsasGenerales : opciones.bolsas
   const [beneficiario, setBeneficiario] = useState<TerceroGasto | null>(null)
   const [nuevo, setNuevo] = useState<typeof BENEFICIARIO_VACIO | null>(null)
   const [busqueda, setBusqueda] = useState("")
@@ -238,8 +242,8 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo etiqueta="Bolsa" obligatorio>
                     <SelectBuscable value={datos.bolsaId ?? ""} onChange={e => cambiar("bolsaId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
-                      <option value="">{opciones.bolsas.length ? "Seleccione la bolsa" : "No hay bolsas activas"}</option>
-                      {opciones.bolsas.map(b => <option key={b.id} value={b.id}>{b.lineaNegocio ? `${b.nombre} · ${b.lineaNegocio}` : b.nombre}</option>)}
+                      <option value="">{bolsasDelGasto.length ? "Seleccione la bolsa" : "No hay bolsas activas"}</option>
+                      {bolsasDelGasto.map(b => <option key={b.id} value={b.id}>{b.lineaNegocio ? `${b.nombre} · ${b.lineaNegocio}` : b.nombre}</option>)}
                     </SelectBuscable>
                   </Campo>
                   <Campo etiqueta="Tipo de gasto" obligatorio>
@@ -429,7 +433,16 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                     />
                   </Campo>
                   <label className="flex items-center gap-2 text-xs text-slate-600">
-                    <input type="checkbox" checked={datos.reembolsable} onChange={e => cambiar("reembolsable", e.target.checked)} className="h-4 w-4 accent-sky-500" />
+                    <input
+                      type="checkbox"
+                      checked={datos.reembolsable}
+                      onChange={e => {
+                        cambiar("reembolsable", e.target.checked)
+                        // Al volverlo reembolsable se quita la bolsa de no reembolsables si estaba elegida
+                        if (e.target.checked && opciones.bolsas.find(b => b.id === datos.bolsaId)?.sinSaldo) cambiar("bolsaId", null)
+                      }}
+                      className="h-4 w-4 accent-sky-500"
+                    />
                     Reembolsable (se le cobra al cliente)
                   </label>
                 </div>

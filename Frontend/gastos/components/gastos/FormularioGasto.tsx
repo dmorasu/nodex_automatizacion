@@ -209,6 +209,8 @@ export default function FormularioGasto({
   }))
 
   const porCajaMenor = catalogos.formasPago.find(f => f.id === datos.formaPagoId)?.codigo === "CAJA_MENOR"
+  // La bolsa de no reembolsables solo aparece cuando el gasto no es reembolsable
+  const bolsasDelGasto = datos.reembolsable ? bolsas.filter(b => !b.sinSaldo) : bolsas
 
   // Trámite asociado (opcional)
   const [numeroTramite, setNumeroTramite] = useState(gasto?.solicitudTramiteId ? String(gasto.solicitudTramiteId) : "")
@@ -400,14 +402,14 @@ export default function FormularioGasto({
             <Selector
               valor={datos.bolsaId}
               // Con Caja menor se elige la caja (Bogotá, Medellín…); si no, una bolsa general
-              opciones={(porCajaMenor ? cajas : bolsas).map(b => ({
+              opciones={(porCajaMenor ? cajas : bolsasDelGasto).map(b => ({
                 id: b.id,
                 nombre: b.lineaNegocio ? `${b.nombre} · ${b.lineaNegocio}` : b.nombre
               }))}
               onChange={v => cambiar("bolsaId", v)}
               vacio={porCajaMenor
                 ? cajas.length ? "Seleccione la caja menor" : "No hay cajas menores activas"
-                : bolsas.length ? "Seleccione la bolsa" : "No hay bolsas activas"}
+                : bolsasDelGasto.length ? "Seleccione la bolsa" : "No hay bolsas activas"}
             />
             )}
           </Campo>
@@ -457,7 +459,11 @@ export default function FormularioGasto({
               type="checkbox"
               checked={anticipo ? false : datos.reembolsable}
               disabled={Boolean(anticipo)}
-              onChange={e => cambiar("reembolsable", e.target.checked)}
+              onChange={e => {
+                cambiar("reembolsable", e.target.checked)
+                // Al volverlo reembolsable se quita la bolsa de no reembolsables si estaba elegida
+                if (e.target.checked && bolsas.find(b => b.id === datos.bolsaId)?.sinSaldo) cambiar("bolsaId", null)
+              }}
               className="h-4 w-4 accent-emerald-600"
             />
             {anticipo ? "No reembolsable (el cliente ya pagó el anticipo)" : "Reembolsable (se le cobra al cliente)"}

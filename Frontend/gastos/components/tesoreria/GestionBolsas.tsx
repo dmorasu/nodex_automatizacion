@@ -11,7 +11,7 @@ import { claseBotonPrimario, claseInput } from "../ui/estilos"
 import ModalSaldoBolsa from "./ModalSaldoBolsa"
 import SelectBuscable from "@/components/ui/SelectBuscable"
 
-type Edicion = { id?: number, nombre: string, lineaNegocio: string, tipo: string }
+type Edicion = { id?: number, nombre: string, lineaNegocio: string, tipo: string, sinSaldo: boolean }
 
 export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], esAdmin: boolean }) {
   // null = sin edición | sin id = bolsa nueva | con id = editando esa bolsa
@@ -38,8 +38,9 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
     const datos = {
       nombre: edicion.nombre.trim(),
       lineaNegocio: edicion.lineaNegocio.trim() || null,
-      // El tipo se elige solo al crear la bolsa
-      ...(edicion.id ? {} : { tipo: edicion.tipo })
+      // El tipo se elige solo al crear la bolsa; "No reembolsable" es una general sin saldo
+      ...(edicion.id ? {} : { tipo: edicion.tipo === "NO_REEMBOLSABLE" ? "GENERAL" : edicion.tipo }),
+      ...((edicion.tipo === "GENERAL" || edicion.tipo === "NO_REEMBOLSABLE") && { sinSaldo: edicion.tipo === "NO_REEMBOLSABLE" || edicion.sinSaldo })
     }
     ejecutar(() => guardarBolsa(datos, edicion.id), edicion.id ? "Bolsa actualizada" : "Bolsa creada")
   }
@@ -81,9 +82,21 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
             aria-label="Tipo de bolsa"
           >
             <option value="GENERAL">General</option>
+            <option value="NO_REEMBOLSABLE">No reembolsable</option>
             <option value="ANTICIPOS">Anticipos de clientes</option>
             <option value="FACTURAS">Anticipos facturados</option>
           </SelectBuscable>
+        )}
+        {/* Una general ya creada puede pasar a no reembolsable (el tipo no se cambia al editar) */}
+        {edicion?.id && edicion.tipo === "GENERAL" && (
+          <label className="flex items-center gap-2 text-[11px] text-slate-600">
+            <input
+              type="checkbox"
+              checked={edicion.sinSaldo}
+              onChange={e => setEdicion(actual => actual && { ...actual, sinSaldo: e.target.checked })}
+            />
+            No reembolsable
+          </label>
         )}
       </td>
       <td colSpan={2} />
@@ -103,7 +116,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => setEdicion({ nombre: "", lineaNegocio: "", tipo: "GENERAL" })}
+          onClick={() => setEdicion({ nombre: "", lineaNegocio: "", tipo: "GENERAL", sinSaldo: false })}
           disabled={edicion !== null}
           className={claseBotonPrimario}
         >
@@ -137,9 +150,15 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                   <td className="px-4 py-3">
                     {bolsa.tipo !== "GENERAL"
                       ? <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">{NOMBRES_TIPO_BOLSA[bolsa.tipo]}</span>
-                      : <span className="text-slate-500">General</span>}
+                      : bolsa.sinSaldo
+                        ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">No reembolsable</span>
+                        : <span className="text-slate-500">General</span>}
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatoMoneda(bolsa.saldoActual)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                    {bolsa.sinSaldo
+                      ? <>{formatoMoneda(bolsa.totalPagado)} <span className="block text-[10px] font-normal text-slate-400">total pagado</span></>
+                      : formatoMoneda(bolsa.saldoActual)}
+                  </td>
                   <td className="px-4 py-3">
                     <button
                       type="button"
@@ -153,7 +172,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {/* Las de anticipos se llenan con los anticipos confirmados; sus ajustes son por cliente (en el detalle) */}
-                    {bolsa.activo && bolsa.tipo === "GENERAL" && (
+                    {bolsa.activo && bolsa.tipo === "GENERAL" && !bolsa.sinSaldo && (
                       <button
                         type="button"
                         onClick={() => setMovimiento({ bolsa, tipo: "RECARGA" })}
@@ -186,7 +205,7 @@ export default function GestionBolsas({ bolsas, esAdmin }: { bolsas: Bolsa[], es
                     <button
                       type="button"
                       title="Editar"
-                      onClick={() => setEdicion({ id: bolsa.id, nombre: bolsa.nombre, lineaNegocio: bolsa.lineaNegocio ?? "", tipo: bolsa.tipo })}
+                      onClick={() => setEdicion({ id: bolsa.id, nombre: bolsa.nombre, lineaNegocio: bolsa.lineaNegocio ?? "", tipo: bolsa.tipo, sinSaldo: bolsa.sinSaldo })}
                       disabled={edicion !== null}
                       className="p-2 text-slate-400 hover:text-emerald-600 disabled:opacity-30"
                       aria-label={`Editar ${bolsa.nombre}`}

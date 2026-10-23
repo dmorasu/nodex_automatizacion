@@ -6,11 +6,12 @@ import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import Usuarios from '../../models/usuarios'
 import Terceros from '../../models/gastos/terceros'
 import Anticipos from '../../models/gastos/anticipos'
-import { registrarMovimientos } from '../../services/gastos/bolsas'
+import { registrarMovimientos, totalPagadoPorBolsa } from '../../services/gastos/bolsas'
 import { arqueoDeBolsa, estadoDeCuentaCliente, type FiltroArqueo, type OrdenArqueo } from '../../services/gastos/anticipos'
 import { generarExcelArqueo, generarExcelEstadoCuenta } from '../../services/gastos/excelArqueo'
 import { llevaSaldoPorCliente, TIPOS_BOLSA, TIPOS_MOVIMIENTO_BOLSA } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
+import { QueryTypes } from 'sequelize'
 import { ATRIBUTOS_USUARIO, responderError } from './utilidades'
 
 const bolsaDeAnticipos = async (id: number) => {
@@ -18,6 +19,25 @@ const bolsaDeAnticipos = async (id: number) => {
   if (!bolsa) throw new ErrorGastos('La bolsa no existe', 404)
   if (!llevaSaldoPorCliente(bolsa.tipo)) throw new ErrorGastos('Solo las bolsas de anticipos llevan saldo por cliente')
   return bolsa
+}
+
+// Las bolsas sin saldo muestran el total pagado en lugar del saldo
+const conTotalPagado = async (bolsas: Bolsas[]) => {
+  const totales = await totalPagadoPorBolsa(bolsas.filter(b => b.sinSaldo).map(b => b.id))
+  return bolsas.map(b => ({ ...b.toJSON(), totalPagado: b.sinSaldo ? String(totales.get(b.id) ?? 0) : null }))
+}
+
+// Una bolsa pasa a sin saldo solo si no tiene gastos reembolsables por pagar (no podría pagarlos)
+const verificarPasaASinSaldo = async (bolsa: Bolsas) => {
+  if (bolsa.tipo !== TIPOS_BOLSA.GENERAL) throw new ErrorGastos('Solo una bolsa general puede pasar a no reembolsable')
+  const [{ cantidad }] = await db.query<{ cantidad: string }>(`
+    SELECT COUNT(*) AS cantidad FROM gastos_solicitudes g
+    JOIN gastos_estados_gasto e ON e.id = g.estado_id
+    WHERE g.bolsa_id = :bolsaId AND g.reembolsable AND e.codigo IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO')
+  `, { replacements: { bolsaId: bolsa.id }, type: QueryTypes.SELECT })
+  if (Number(cantidad) > 0) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} tiene ${cantidad} gasto(s) reembolsable(s) por pagar: páguelos o cámbielos de bolsa antes`)
+  }
 }
 
 const periodo = (req: Request) => ({ desde: (req.query.desde as string) || null, hasta: (req.query.hasta as string) || null })
@@ -39,10 +59,10 @@ export class BolsasController {
   static getAll = async (req: Request, res: Response) => {
     try {
       const bolsas = await Bolsas.findAll({
-        attributes: ['id', 'nombre', 'lineaNegocio', 'tipo', 'saldoActual', 'activo'],
+        attributes: ['id', 'nombre', 'lineaNegocio', 'tipo', 'saldoActual', 'activo', 'sinSaldo'],
         order: [['activo', 'DESC'], ['nombre', 'ASC']]
       })
-      res.json(bolsas)
+      res.json(await conTotalPagado(bolsas))
     } catch (error) {
       responderError(res, error)
     }
@@ -50,14 +70,15 @@ export class BolsasController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { nombre, lineaNegocio, tipo } = req.body
+      const { nombre, lineaNegocio, tipo, sinSaldo } = req.body
 
       if (await Bolsas.findOne({ where: { nombre } })) {
         throw new ErrorGastos(`Ya existe una bolsa llamada ${nombre}`, 409)
       }
+      if (sinSaldo && tipo && tipo !== TIPOS_BOLSA.GENERAL) throw new ErrorGastos('Solo una bolsa general puede ser de no reembolsables')
 
       // El tipo se define al crearla y no cambia (la de anticipos lleva saldo por cliente)
-      const bolsa = await Bolsas.create({ nombre, lineaNegocio: lineaNegocio || null, tipo: tipo || TIPOS_BOLSA.GENERAL })
+      const bolsa = await Bolsas.create({ nombre, lineaNegocio: lineaNegocio || null, tipo: tipo || TIPOS_BOLSA.GENERAL, sinSaldo: Boolean(sinSaldo) })
       res.status(201).json({ id: bolsa.id })
     } catch (error) {
       responderError(res, error)
@@ -67,7 +88,8 @@ export class BolsasController {
   // POST /bolsas/:id/recargas  { valor, observacion }
   static recargar = async (req: Request, res: Response) => {
     try {
-      const bolsa = await Bolsas.findByPk(Number(req.params.id), { attributes: ['id', 'tipo'] })
+      const bolsa = await Bolsas.findByPk(Number(req.params.id), { attributes: ['id', 'tipo', 'sinSaldo'] })
+      if (bolsa?.sinSaldo) throw new ErrorGastos('Las bolsas de no reembolsables no se recargan: pagan sin tener dinero')
       if (bolsa && llevaSaldoPorCliente(bolsa.tipo)) {
         throw new ErrorGastos('Las bolsas de anticipos no se recargan: se llenan con lo que confirma Contabilidad')
       }
@@ -112,7 +134,7 @@ export class BolsasController {
   static movimientos = async (req: Request, res: Response) => {
     try {
       const bolsa = await Bolsas.findByPk(Number(req.params.id), {
-        attributes: ['id', 'nombre', 'lineaNegocio', 'tipo', 'saldoActual', 'activo']
+        attributes: ['id', 'nombre', 'lineaNegocio', 'tipo', 'saldoActual', 'activo', 'sinSaldo']
       })
       if (!bolsa) throw new ErrorGastos('La bolsa no existe', 404)
 
@@ -134,7 +156,8 @@ export class BolsasController {
         offset: (pagina - 1) * tamano
       })
 
-      res.json({ bolsa, total: count, pagina, tamano, registros: rows })
+      const [conTotal] = await conTotalPagado([bolsa])
+      res.json({ bolsa: conTotal, total: count, pagina, tamano, registros: rows })
     } catch (error) {
       responderError(res, error)
     }
@@ -203,9 +226,11 @@ export class BolsasController {
       const bolsa = await Bolsas.findByPk(Number(req.params.id))
       if (!bolsa) throw new ErrorGastos('La bolsa no existe', 404)
 
-      const { nombre, lineaNegocio, activo } = req.body
+      const { nombre, lineaNegocio, activo, sinSaldo } = req.body
+      if (sinSaldo === true && !bolsa.sinSaldo) await verificarPasaASinSaldo(bolsa)
 
       await bolsa.update({
+        ...(sinSaldo !== undefined && { sinSaldo }),
         ...(nombre !== undefined && { nombre }),
         ...(lineaNegocio !== undefined && { lineaNegocio: lineaNegocio || null }),
         ...(activo !== undefined && { activo })

@@ -84,7 +84,8 @@ export const validarBolsa = [
     .notEmpty().withMessage('El nombre de la bolsa es obligatorio')
     .isLength({ max: 100 }).withMessage('El nombre no puede superar 100 caracteres'),
   body('lineaNegocio').optional({ values: 'null' }).isString().trim().isLength({ max: 100 }),
-  body('activo').optional().isBoolean().withMessage('Activo debe ser verdadero o falso')
+  body('activo').optional().isBoolean().withMessage('Activo debe ser verdadero o falso'),
+  body('sinSaldo').optional().isBoolean().withMessage('Sin saldo debe ser verdadero o falso')
 ]
 
 export const validarCrearBolsa = [

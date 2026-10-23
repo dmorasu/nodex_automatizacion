@@ -22,7 +22,8 @@ export type GastoTramite = {
 }
 
 export type OpcionesGasto = {
-  bolsas: { id: number, nombre: string, lineaNegocio: string | null }[]
+  // sinSaldo: bolsa de no reembolsables (solo se ofrece cuando el gasto no es reembolsable)
+  bolsas: { id: number, nombre: string, lineaNegocio: string | null, sinSaldo?: boolean }[]
   tiposGasto: { id: number, codigo: string, nombre: string }[]
   formasPago: { id: number, codigo: string, nombre: string }[]
   // Tipos de documento que se pueden subir al crear el gasto (los de pago, en Catálogos de Gastos)

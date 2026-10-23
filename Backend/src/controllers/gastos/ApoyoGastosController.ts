@@ -35,7 +35,8 @@ export class ApoyoGastosController {
       const tipo = [TIPOS_BOLSA.ANTICIPOS, TIPOS_BOLSA.FACTURAS, TIPOS_BOLSA.CAJA_MENOR].find(t => t === req.query.tipo) ?? TIPOS_BOLSA.GENERAL
       const bolsas = await Bolsas.findAll({
         where: { activo: true, tipo },
-        attributes: ['id', 'nombre', 'lineaNegocio', 'tipo'],
+        // sinSaldo: la de no reembolsables solo se ofrece cuando el gasto no es reembolsable
+        attributes: ['id', 'nombre', 'lineaNegocio', 'tipo', 'sinSaldo'],
         order: [['nombre', 'ASC']]
       })
       res.json(bolsas)

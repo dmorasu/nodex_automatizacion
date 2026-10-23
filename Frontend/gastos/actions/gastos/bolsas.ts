@@ -11,6 +11,7 @@ type DatosBolsa = {
   // Solo al crear: GENERAL | ANTICIPOS
   tipo?: string
   activo?: boolean
+  sinSaldo?: boolean
 }
 
 // Crea (sin id) o actualiza (con id) una bolsa

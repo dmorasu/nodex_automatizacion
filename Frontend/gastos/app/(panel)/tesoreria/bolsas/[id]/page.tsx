@@ -55,8 +55,8 @@ export default async function MovimientosBolsaPage({
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[11px] uppercase tracking-wide text-slate-400">Saldo actual</p>
-          <p className="text-lg font-semibold text-slate-800">{formatoMoneda(bolsa.saldoActual)}</p>
+          <p className="text-[11px] uppercase tracking-wide text-slate-400">{bolsa.sinSaldo ? "Total pagado" : "Saldo actual"}</p>
+          <p className="text-lg font-semibold text-slate-800">{formatoMoneda(bolsa.sinSaldo ? bolsa.totalPagado : bolsa.saldoActual)}</p>
         </div>
       </div>
 
@@ -90,7 +90,8 @@ export default async function MovimientosBolsaPage({
               <th className="px-4 py-3 font-semibold">Detalle</th>
               <th className="px-4 py-3 font-semibold">Usuario</th>
               <th className="px-4 py-3 font-semibold text-right">Valor</th>
-              <th className="px-4 py-3 font-semibold text-right">Saldo</th>
+              {/* En las sin saldo el saldo corrido queda en negativo y no dice nada */}
+              {!bolsa.sinSaldo && <th className="px-4 py-3 font-semibold text-right">Saldo</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -124,7 +125,7 @@ export default async function MovimientosBolsaPage({
                   <td className={clsx("px-4 py-3 text-right font-semibold whitespace-nowrap", valor < 0 ? "text-red-600" : "text-emerald-700")}>
                     {valor > 0 && "+"}{formatoMoneda(valor)}
                   </td>
-                  <td className="px-4 py-3 text-right text-slate-700 whitespace-nowrap">{formatoMoneda(movimiento.saldoResultante)}</td>
+                  {!bolsa.sinSaldo && <td className="px-4 py-3 text-right text-slate-700 whitespace-nowrap">{formatoMoneda(movimiento.saldoResultante)}</td>}
                 </tr>
               )
             })}
@@ -132,7 +133,7 @@ export default async function MovimientosBolsaPage({
         </table>
 
         {registros.length === 0 && (
-          <p className="py-14 text-center text-sm text-slate-400">{deAnticipos ? "Esta bolsa no tiene movimientos: se llena con lo que confirma Contabilidad." : "Esta bolsa no tiene movimientos. Empiece con una recarga."}</p>
+          <p className="py-14 text-center text-sm text-slate-400">{deAnticipos ? "Esta bolsa no tiene movimientos: se llena con lo que confirma Contabilidad." : bolsa.sinSaldo ? "Esta bolsa no tiene movimientos." : "Esta bolsa no tiene movimientos. Empiece con una recarga."}</p>
         )}
       </div>
 

@@ -119,8 +119,9 @@ export const programarPago = (datos: DatosProgramacion, usuarioId: number) =>
     const total = redondear(programados.reduce((suma, p) => suma + p.valor, 0))
 
     // La bolsa se descuenta al confirmar, pero no se programa más de lo que hay disponible
+    // (las bolsas sin saldo pagan sin tener dinero)
     const disponible = aCentavos(bolsa.saldoActual) - await comprometidoEnBolsa(bolsa.id, transaction)
-    if (aCentavos(total) > disponible) {
+    if (!bolsa.sinSaldo && aCentavos(total) > disponible) {
       throw new ErrorGastos(
         `Saldo insuficiente en la bolsa ${bolsa.nombre}: disponible ${formatoMoneda(disponible / 100)} ` +
         `(saldo menos lo ya programado), requerido ${formatoMoneda(total)}`

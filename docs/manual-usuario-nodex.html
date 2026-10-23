@@ -515,7 +515,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span>En el trámite, pestaña <b>Gastos</b>, o en Nodex Gastos con <b>Nuevo gasto</b>.</span></li>
             <li><span>Llene concepto, tipo, beneficiario, operación y valor.</span></li>
             <li><span>Elija la <b>forma de pago</b> y la <b>bolsa</b>. Si es <b>Caja menor</b>, en lugar de la bolsa elija la caja: <b>Bogotá</b> o <b>Medellín</b>.</span></li>
-            <li><span>Indique si es <b>reembolsable</b> (se le cobra al cliente; lo legaliza Legalización) o si lo asume la bolsa (lo maneja Contabilidad).</span></li>
+            <li><span>Indique si es <b>reembolsable</b> (se le cobra al cliente; lo legaliza Legalización) o si lo asume la bolsa (lo maneja Contabilidad). Al quitar la marca de reembolsable aparece también la bolsa de <b>no reembolsables</b>.</span></li>
             <li><span>Si tiene el <b>Código BPR/FTF</b>, escríbalo en Cliente / banco.</span></li>
             <li><span>Si quiere, en <b>Documentos (opcional)</b> elija el tipo (<b>Soporte de pago</b> o <b>Liquidación de pago</b>) y agregue los archivos. Se suben al guardar.</span></li>
             <li><span>Guarde. Tesorería recibe un aviso.</span></li>
@@ -573,6 +573,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span><b>Confirmar:</b> en <b>Programados</b>, presione <b>Confirmar pago</b>, adjunte el <b>soporte de pago de cada gasto</b> con <b>Adjuntar</b> y ponga la fecha real. Ahí se descuenta la bolsa.<span class="quien">Tesorería</span></span></li>
           </ol>
           <div class="consejo ojo"><span class="i">!</span><span>Cada gasto lleva <b>su propio soporte</b>: es obligatorio y no puede ser el mismo archivo de otro gasto. El contador "3 de 5" le muestra cuántos faltan. El soporte del banco para el lote es <b>opcional</b>.</span></div>
+          <div class="consejo"><span class="i">i</span><span>Una bolsa de tipo <b>No reembolsable</b> paga aunque no tenga dinero y no se recarga: en lugar del saldo muestra el <b>total pagado</b> (pagos menos reintegros). Solo acepta gastos <b>no reembolsables</b>. Se crea en Tesorería → <b>Bolsas</b> eligiendo ese tipo; una general ya creada se marca con el lápiz.</span></div>
           <div class="consejo"><span class="i">i</span><span>En <b>Programados</b> puede marcar <b>varios lotes aprobados</b> y confirmarlos juntos: la ventana le pide el soporte de cada gasto de todos los lotes.</span></div>
           <div class="consejo"><span class="i">i</span><span>Cada paso le avisa por correo al siguiente. Al confirmar, se avisa a quien pidió el gasto y al analista del trámite.</span></div>
         </div>

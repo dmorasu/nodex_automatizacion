@@ -282,6 +282,11 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Bolsas de no reembolsables, sin saldo (2026-10-23)** — cambian el backend, Nodex Gastos y Nodex Trámites (compilar los tres y reiniciar `nodex-ensayo-api`, `nodex-ensayo-gastos` y `nodex-ensayo-tramites`).
+- **Sin variables nuevas.** El arranque agrega `gastos_bolsas.sin_saldo`. Comprobar:
+  `sudo -u postgres psql -d nodex_pruebas -c "SELECT nombre, sin_saldo FROM gastos_bolsas;"`
+- Después: Tesorería → Bolsas → Nueva bolsa de tipo "No reembolsable" (o lápiz de una general → marcar "No reembolsable"; no deja si tiene gastos reembolsables por pagar).
+
 **Ubicación en vivo de los mensajeros (2026-10-21)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar sus procesos).
 - **Sin variables nuevas.** El arranque crea la tabla `mensajeria_ubicaciones` (la crea `sync()`). La app necesita **HTTPS** para leer el GPS (el ensayo ya lo tiene).
 - Comprobar la base: `sudo -u postgres psql -d nodex_pruebas -c "\d mensajeria_ubicaciones"`.

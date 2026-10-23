@@ -51,7 +51,8 @@ export default async function BandejaPorPagar({
           {bolsasActivas.map(bolsa => (
             <div key={bolsa.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
               <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{bolsa.nombre}</p>
-              <p className="mt-1 text-base font-semibold text-slate-800">{formatoMoneda(bolsa.saldoActual)}</p>
+              <p className="mt-1 text-base font-semibold text-slate-800">{formatoMoneda(bolsa.sinSaldo ? bolsa.totalPagado : bolsa.saldoActual)}</p>
+              {bolsa.sinSaldo && <p className="text-[10px] text-slate-400">total pagado</p>}
             </div>
           ))}
         </div>

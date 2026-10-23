@@ -53,7 +53,8 @@ export default function ModalPago({
     [gastos, valores]
   )
   const saldoDespues = bolsa ? (aCentavos(bolsa.saldoActual) - totalCentavos) / 100 : null
-  const saldoInsuficiente = saldoDespues !== null && saldoDespues < 0
+  // Las bolsas sin saldo pagan sin tener dinero
+  const saldoInsuficiente = !bolsa?.sinSaldo && saldoDespues !== null && saldoDespues < 0
   const valoresInvalidos = gastos.some(g => !(Number(valores[g.id]) > 0))
   const cambianDeBolsa = bolsaId ? gastos.filter(g => g.bolsa?.id !== bolsaId) : []
 
@@ -136,7 +137,7 @@ export default function ModalPago({
                   >
                     <option value="">Seleccione</option>
                     {bolsas.map(b => (
-                      <option key={b.id} value={b.id}>{b.nombre} · {formatoMoneda(b.saldoActual)}</option>
+                      <option key={b.id} value={b.id}>{b.nombre} · {b.sinSaldo ? "no reembolsable" : formatoMoneda(b.saldoActual)}</option>
                     ))}
                   </SelectBuscable>
                 </label>
@@ -199,16 +200,33 @@ export default function ModalPago({
                   <p className="text-[11px] uppercase tracking-wide text-slate-400">Total programado</p>
                   <p className="text-base font-semibold text-slate-800">{formatoMoneda(totalCentavos / 100)}</p>
                 </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-slate-400">Saldo de la bolsa</p>
-                  <p className="text-sm text-slate-700">{formatoMoneda(bolsa?.saldoActual)}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-slate-400">Saldo después del pago</p>
-                  <p className={`text-sm font-semibold ${saldoInsuficiente ? "text-red-600" : "text-slate-700"}`}>
-                    {formatoMoneda(saldoDespues)}
-                  </p>
-                </div>
+                {bolsa?.sinSaldo ? (
+                  <>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-slate-400">Total pagado de la bolsa</p>
+                      <p className="text-sm text-slate-700">{formatoMoneda(bolsa.totalPagado)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-slate-400">Total pagado después del pago</p>
+                      <p className="text-sm font-semibold text-slate-700">
+                        {formatoMoneda((aCentavos(bolsa.totalPagado ?? 0) + totalCentavos) / 100)}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-slate-400">Saldo de la bolsa</p>
+                      <p className="text-sm text-slate-700">{formatoMoneda(bolsa?.saldoActual)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-slate-400">Saldo después del pago</p>
+                      <p className={`text-sm font-semibold ${saldoInsuficiente ? "text-red-600" : "text-slate-700"}`}>
+                        {formatoMoneda(saldoDespues)}
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
 
               {saldoInsuficiente && (

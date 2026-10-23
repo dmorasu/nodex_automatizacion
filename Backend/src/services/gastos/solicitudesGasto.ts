@@ -122,7 +122,7 @@ const resolverBeneficiario = async (datos: DatosGasto, transaction: Transaction 
 
 // Reglas de la bolsa de un gasto nuevo o editado: con forma de pago Caja menor solo sirve una
 // caja menor (Bogotá, Medellín…, la elige quien crea el gasto); con otra forma de pago, una caja no
-function validarBolsaDelNuevoGasto(bolsa: Bolsas | null, porCajaMenor: boolean, deAnticipo: boolean): asserts bolsa is Bolsas {
+function validarBolsaDelNuevoGasto(bolsa: Bolsas | null, porCajaMenor: boolean, deAnticipo: boolean, reembolsable: boolean): asserts bolsa is Bolsas {
   if (!bolsa?.activo) throw new ErrorGastos(porCajaMenor ? 'Seleccione la caja menor de la que sale el gasto' : 'La bolsa no existe o está inactiva')
   if (porCajaMenor && bolsa.tipo !== TIPOS_BOLSA.CAJA_MENOR) {
     throw new ErrorGastos('Con forma de pago Caja menor, seleccione la caja menor de la que sale el gasto')
@@ -135,6 +135,9 @@ function validarBolsaDelNuevoGasto(bolsa: Bolsas | null, porCajaMenor: boolean, 
   }
   if (!porCajaMenor && bolsa.tipo === TIPOS_BOLSA.CAJA_MENOR) {
     throw new ErrorGastos(`${bolsa.nombre} es una caja menor: elija la forma de pago Caja menor`)
+  }
+  if (bolsa.sinSaldo && reembolsable) {
+    throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de no reembolsables: marque el gasto como no reembolsable o elija otra bolsa`)
   }
 }
 
@@ -170,7 +173,9 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
 
   if (!tipoGasto?.activo) throw new ErrorGastos('El tipo de gasto no existe')
   if (!operacion) throw new ErrorGastos('La operación no existe')
-  validarBolsaDelNuevoGasto(bolsa, porCajaMenor, Boolean(anticipo))
+  // Por defecto reembolsable (se le cobra al cliente). El de un anticipo no: el cliente ya pagó
+  const reembolsable = anticipo ? false : datos.reembolsable ?? true
+  validarBolsaDelNuevoGasto(bolsa, porCajaMenor, Boolean(anticipo), reembolsable)
 
 
   let tramitadorId = datos.tramitadorId ?? null
@@ -228,8 +233,7 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     tipoGastoId: tipoGasto.id,
     formaPagoId: formaPago.id,
     beneficiarioId: await resolverBeneficiario(datos, transaction, soloValidar),
-    // Por defecto reembolsable (se le cobra al cliente). El de un anticipo no: el cliente ya pagó
-    reembolsable: anticipo ? false : datos.reembolsable ?? true,
+    reembolsable,
     numeroFactura: texto(datos.numeroFactura),
     conceptoPago: texto(datos.conceptoPago),
     matriculaInmobiliaria,

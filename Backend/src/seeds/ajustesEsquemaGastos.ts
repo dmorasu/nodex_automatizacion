@@ -187,6 +187,16 @@ export const ajustarEsquemaGastos = async () => {
   await solicitudesDeFactura()
   await cajaMenor()
   await usosDeTiposDocumento()
+  await bolsasSinSaldo()
+}
+
+// 2026-10-23 · Bolsas sin saldo: pagan gastos no reembolsables aunque no tengan dinero
+// (decisión del usuario: llevar el total pagado en lugar de recargarlas)
+const bolsasSinSaldo = async () => {
+  const bolsas = await columnasDe('gastos_bolsas')
+  if (bolsas && !bolsas.sin_saldo) {
+    await db.query('ALTER TABLE gastos_bolsas ADD COLUMN sin_saldo BOOLEAN NOT NULL DEFAULT false')
+  }
 }
 
 // 2026-10-19 · Cada tipo de documento dice para qué servicio se sube (pago, legalización,

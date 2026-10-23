@@ -42,13 +42,17 @@ export const BolsaApoyoSchema = z.object({
   nombre: z.string(),
   lineaNegocio: textoNulo,
   // GENERAL | ANTICIPOS | FACTURAS (las de anticipos y anticipos facturados llevan saldo por cliente)
-  tipo: z.string().default("GENERAL")
+  tipo: z.string().default("GENERAL"),
+  // Bolsa de no reembolsables: paga sin tener dinero y solo se ofrece a gastos no reembolsables
+  sinSaldo: z.boolean().default(false)
 })
 
 // Vista de Tesorería (incluye saldo)
 export const BolsaSchema = BolsaApoyoSchema.extend({
   saldoActual: z.string(),
-  activo: z.boolean()
+  activo: z.boolean(),
+  // Las de no reembolsables muestran el total pagado en lugar del saldo
+  totalPagado: z.string().nullable().default(null)
 })
 
 export const TramitadorSchema = z.object({

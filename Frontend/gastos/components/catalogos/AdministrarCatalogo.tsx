@@ -42,8 +42,14 @@ function FormularioNombre({ inicial = "", onGuardar, onCancelar }: {
   )
 }
 
-// Tipos de documento: en qué cargues aparece cada uno
-const USOS = [["paraPago", "Pago"], ["paraLegalizacion", "Legalización"], ["paraReintegro", "Reintegro"]] as const
+// Tipos de documento: en qué momento del gasto aparece cada uno en la lista para subir documentos
+// (services/gastos/tiposDocumento.ts). El soporte que adjunta Tesorería al confirmar el pago no
+// depende de esto: siempre es "Soporte de pago".
+const USOS = [
+  ["paraPago", "Al crear el gasto", "Al pedir el gasto y mientras no esté pagado (Solicitado, Programado o Aprobado)"],
+  ["paraLegalizacion", "Legalizaciones", "Después del pago: lo que se sube para legalizar el gasto"],
+  ["paraReintegro", "Reintegros", "Ya pagado y con un sobrante por devolver: soporte de la devolución"]
+] as const
 type Uso = typeof USOS[number][0]
 
 const claseIcono = "rounded-md p-1.5 text-slate-400 transition disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
@@ -146,13 +152,14 @@ export default function AdministrarCatalogo({
                     {conUsos && (
                       <td className="px-4 py-2.5">
                         <div className="flex flex-wrap gap-1">
-                          {USOS.map(([uso, etiqueta]) => (
+                          {USOS.map(([uso, etiqueta, detalle]) => (
                             <button
                               key={uso}
                               type="button"
                               onClick={() => alternarUso(r, uso)}
                               disabled={ocupado}
                               aria-pressed={Boolean(r[uso])}
+                              title={detalle}
                               className={clsx(
                                 "rounded-full border px-2 py-0.5 text-[11px] font-medium transition disabled:opacity-50",
                                 r[uso] ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"

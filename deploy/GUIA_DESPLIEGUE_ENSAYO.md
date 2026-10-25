@@ -23,7 +23,7 @@ desde la carpeta **`/home/desarrolloti/nodex5.0`**.
 ## 1. Revisar el servidor (5 min)
 
 ```bash
-node -v                      # Next 14 pide 18.17 o más (recomendado 20 o 22)
+node -v                      # Next 16 pide 20.9 o más (recomendado 22)
 pm2 list                     # procesos de producción: anotar los nombres para no tocarlos
 sudo ss -tlnp | grep -E ':(80|443|3000|4000|900[0-3]|5432|6379)\b'
 redis-cli ping               # PONG

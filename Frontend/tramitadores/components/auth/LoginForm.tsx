@@ -6,6 +6,7 @@ import { toast } from "react-toastify"
 import { IdCard, LockKeyhole, LogIn } from "lucide-react"
 import { iniciarSesion } from "@/actions/sesion"
 import { claseBotonPrimario, claseInput, claseLabel } from "../ui/estilos"
+import { conservarCampos } from "@/src/lib/formularios"
 
 function BotonIngresar() {
   const { pending } = useFormStatus()
@@ -25,7 +26,7 @@ export default function LoginForm() {
   }, [estado])
 
   return (
-    <form action={enviar} className="space-y-5" noValidate>
+    <form action={enviar} onReset={conservarCampos} className="space-y-5" noValidate>
       <label className="block">
         <span className={`${claseLabel} flex items-center gap-2`}>
           <IdCard size={14} className="text-indigo-500" />

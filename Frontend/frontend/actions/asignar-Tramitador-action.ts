@@ -30,7 +30,7 @@ export default async function AsignarTramitadorSolicitud(
   const req = await fetch(url, {
     method: 'PATCH',
     headers: {
-      ...encabezadosSesion(),
+      ...(await encabezadosSesion()),
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({

@@ -33,7 +33,7 @@ export async function autenticacion(prevState:ActionStateType, formData:FormData
         headers:{
             'Content-Type': 'application/json',
             // IP real del navegador (la pone Nginx) para el límite de intentos del backend
-            'X-IP-Cliente': headers().get('x-real-ip') ?? '',
+            'X-IP-Cliente': (await headers()).get('x-real-ip') ?? '',
         },
         body: JSON.stringify({
             contrasena:auth.data.contrasena,
@@ -53,8 +53,8 @@ export async function autenticacion(prevState:ActionStateType, formData:FormData
     }
     
     //Setear Cookies
-
-    cookies().set({
+    const almacen = await cookies()
+    almacen.set({
         name:'TOKEN',
         value: json,
         httpOnly:true,

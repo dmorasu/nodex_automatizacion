@@ -1,8 +1,7 @@
 "use client"
 
 import { autenticacion } from "@/actions/iniciarSesion"
-import { useEffect } from "react"
-import { useFormState } from "react-dom"
+import { useActionState, useEffect } from "react"
 import { toast } from "react-toastify"
 
 import {
@@ -10,12 +9,13 @@ import {
   LockKeyhole,
   LogIn
 } from "lucide-react"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 export default function LoginForm() {
 
   const [state, dispatch] =
-    useFormState(
+    useActionState(
       autenticacion,
       {
         errors: []
@@ -42,6 +42,7 @@ export default function LoginForm() {
 
     <form
       action={dispatch}
+      onReset={conservarCampos}
       className="
         space-y-5
       "

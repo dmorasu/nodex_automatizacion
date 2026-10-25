@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, use } from 'react';
 import clsx from 'clsx'
 import { FileSpreadsheet, MousePointerClick } from 'lucide-react'
 import UploadPanel from '../../../components/gestionMasiva/panel'
@@ -18,7 +18,8 @@ const tabs = [
 // en pantalla (eligiendo trámites y valores) o cargando la plantilla de Excel
 // Desde el Tablero de gestión llega con ?accion=<tipo>&ids=1,2,3: abre "En pantalla" con esos
 // trámites cargados y la acción elegida
-export default function Page({ searchParams }: { searchParams: { ids?: string, accion?: string } }) {
+export default function Page(props: { searchParams: Promise<{ ids?: string, accion?: string }> }) {
+  const searchParams = use(props.searchParams);
   const idsIniciales = (searchParams.ids ?? '').split(',').map(Number).filter(n => Number.isInteger(n) && n > 0)
 
   const [modo, setModo] = useState<'pantalla' | 'excel'>('pantalla')

@@ -11,7 +11,7 @@ export async function crearEvaluacion(
   solicitudId: number,
   respuestas: Respuesta[]
 ) {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get("TOKEN")?.value
 
   const url = `${process.env.API_URL}/solicitudes/${solicitudId}/evaluacion`

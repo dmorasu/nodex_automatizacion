@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 const leer = async (): Promise<NotificacionProgramada[] | null> => {
   try {
-    const req = await fetch(`${process.env.API_URL}/notificaciones-programadas`, { headers: encabezadosSesion(), cache: "no-store" })
+    const req = await fetch(`${process.env.API_URL}/notificaciones-programadas`, { headers: await encabezadosSesion(), cache: "no-store" })
     return req.ok ? await req.json() : null
   } catch {
     return null

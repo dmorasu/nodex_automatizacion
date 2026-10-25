@@ -1,18 +1,18 @@
 "use client"
 
 
-import { useEffect } from "react"
-import { useFormState } from "react-dom"
+import { useActionState, useEffect } from "react"
 import { crearCliente } from "@/actions/crear-Cliente-action"
 import { toast } from "react-toastify"
 import { useRouter } from "next/navigation"
 import CargueMasivaForm from "./cargueMasivaForm"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 
 export default function CrearClientesForm() {
   const router =useRouter()
-  const[state,dispatch] =useFormState(crearCliente,{
+  const[state,dispatch] =useActionState(crearCliente,{
     errors:[],
     success:''
   })
@@ -49,6 +49,7 @@ export default function CrearClientesForm() {
       className="mt-10 space-y-3  "
       noValidate
       action={dispatch}
+      onReset={conservarCampos}
     >
        
 

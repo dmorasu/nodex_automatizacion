@@ -8,11 +8,12 @@ import { cookies } from "next/headers"
 
 const ENCABEZADOS_RESPUESTA = ["content-type", "content-disposition", "content-length"]
 
-async function reenviar(req: Request, { params }: { params: { ruta: string[] } }) {
+async function reenviar(req: Request, props: { params: Promise<{ ruta: string[] }> }) {
+  const { ruta } = await props.params
   const { search } = new URL(req.url)
-  const destino = `${process.env.API_URL}/${params.ruta.map(encodeURIComponent).join("/")}${search}`
+  const destino = `${process.env.API_URL}/${ruta.map(encodeURIComponent).join("/")}${search}`
 
-  const token = cookies().get("TOKEN")?.value
+  const token = (await cookies()).get("TOKEN")?.value
   const encabezados: Record<string, string> = {}
   if (token) encabezados.Authorization = `Bearer ${token}`
 

@@ -24,7 +24,8 @@ const PESTANAS: { id: Pestana, nombre: string, icono: typeof HardHat, descripcio
 // Catálogos de Nodex Trámites. Tramitadores: Torre de control (como antes en su propia página).
 // Tipos de trámite, operaciones, rechazos y áreas: Administrador de Torre de control o Admin
 // (el backend revisa el mismo permiso).
-export default async function CatalogosPage({ searchParams }: { searchParams: { pestana?: string } }) {
+export default async function CatalogosPage(props: { searchParams: Promise<{ pestana?: string }> }) {
+  const searchParams = await props.searchParams
   const { puedeAsignarAnalistas } = await requierePerfil(["TORRE_CONTROL"])
 
   const disponibles = PESTANAS.filter(p => !p.soloAdministradores || puedeAsignarAnalistas)
@@ -35,11 +36,11 @@ export default async function CatalogosPage({ searchParams }: { searchParams: { 
   let regiones: string[] = []
   if (actual.id === "tramitadores") {
     const [req, reqSedes, reqRegiones] = await Promise.all([
-      fetch(`${process.env.API_URL}/tramitador/tramitadores`, { headers: encabezadosSesion(), cache: "no-store" }),
+      fetch(`${process.env.API_URL}/tramitador/tramitadores`, { headers: await encabezadosSesion(), cache: "no-store" }),
       // Sedes de mensajería (para marcar mensajeros)
-      fetch(`${process.env.API_URL}/mensajeria/sedes`, { headers: encabezadosSesion(), cache: "no-store" }),
+      fetch(`${process.env.API_URL}/mensajeria/sedes`, { headers: await encabezadosSesion(), cache: "no-store" }),
       // Regiones = regionales de los municipios
-      fetch(`${process.env.API_URL}/tramitador/regiones`, { headers: encabezadosSesion(), cache: "no-store" })
+      fetch(`${process.env.API_URL}/tramitador/regiones`, { headers: await encabezadosSesion(), cache: "no-store" })
     ])
     tramitadores = req.ok ? await req.json() : []
     sedes = reqSedes.ok ? await reqSedes.json() : []

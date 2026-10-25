@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 // Rutas del día de los mensajeros: un mapa con las rutas elegidas, orden editable y optimizable,
 // y lo que confirmaron en campo desde su app
-export default async function RutasPage({ searchParams }: { searchParams: { fecha?: string, sedeId?: string } }) {
+export default async function RutasPage(props: { searchParams: Promise<{ fecha?: string, sedeId?: string }> }) {
+  const searchParams = await props.searchParams
   const { token } = await verificacionSesion()
   const encabezados = { Authorization: `Bearer ${token}` }
 

@@ -11,7 +11,7 @@ type Resultado = { ok: true } | { ok: false, error: string }
 export async function subsanarNovedad(solicitudTramiteId: number, datos: { fechaEntregaResultado: string, observacion: string }): Promise<Resultado> {
   const req = await fetch(`${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}/subsanar-novedad`, {
     method: "POST",
-    headers: { ...encabezadosSesion(), "Content-Type": "application/json" },
+    headers: { ...(await encabezadosSesion()), "Content-Type": "application/json" },
     body: JSON.stringify(datos)
   })
 

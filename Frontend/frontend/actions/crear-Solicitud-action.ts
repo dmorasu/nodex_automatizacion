@@ -92,7 +92,7 @@ export async function crearSolicitud(
     // =====================================================
 
     const token =
-        cookies().get("TOKEN")?.value
+        (await cookies()).get("TOKEN")?.value
 
 
     // =====================================================

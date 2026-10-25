@@ -7,7 +7,6 @@ import AddTramitadorBoton from '@/components/tramitador/AddTramitadorBoton';
 import AddSubEstadoBoton from '@/components/subEstados/AddSubEstadosBoton';
 
 import { ArrowLeft, Pencil, Radar } from "lucide-react";
-import dynamic from "next/dynamic";
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -27,15 +26,11 @@ import Seccion from '@/components/ui/Seccion';
 import Dato from '@/components/ui/Dato';
 import UbicacionTramite from '@/components/rutas/UbicacionTramite';
 import SubsanarNovedad from '@/components/estados/SubsanarNovedad';
+import ModalContainer from '@/components/ui/ModalContainerCliente';
 
 
-const ModalContainer = dynamic(
-  () => import('@/components/ui/ModalContainer'),
-  { ssr: false }
-);
-
-
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params
   const { token } = await verificacionSesion();
 
   const res = await fetch(`${process.env.API_URL}/solicitudTramites/${params.id}`, {
@@ -53,7 +48,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 const claseBotonEnlace = "group flex items-center gap-2.5 h-10 px-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-medium whitespace-nowrap transition hover:bg-slate-100 hover:border-slate-300 hover:text-slate-700"
 
 
-export default async function DetalleSolicitudTramite({ params }: { params: { id: string } }) {
+export default async function DetalleSolicitudTramite(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
 
   const solicitudTramiteId = params.id;
 
@@ -303,5 +299,4 @@ export default async function DetalleSolicitudTramite({ params }: { params: { id
     </div>
 
   );
-
 }

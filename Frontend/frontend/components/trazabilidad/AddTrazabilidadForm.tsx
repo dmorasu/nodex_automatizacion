@@ -1,14 +1,14 @@
 "use client"
 
 import { DialogTitle } from "@headlessui/react"
-import { useFormState } from "react-dom"
 import { useParams } from "next/navigation"
-import { useEffect } from "react"
+import { useActionState, useEffect } from "react"
 import { toast } from "react-toastify"
 import { Activity } from "lucide-react"
 
 import AvisarErrores from "../ui/AvisarErrores"
 import CrearTrazabilidad from "@/actions/crear-Trazabilidad"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 export default function AddTrazabilidadForm({
@@ -17,7 +17,7 @@ export default function AddTrazabilidadForm({
   closeModal: () => void
 }) {
 
-  const { id } = useParams()
+  const { id } = useParams<{ id: string }>()
 
 
   // =====================================================
@@ -32,7 +32,7 @@ export default function AddTrazabilidadForm({
 
 
   const [state, dispatch] =
-    useFormState(
+    useActionState(
       crearTrazabilidadconId,
       {
         errors: [],
@@ -145,6 +145,7 @@ export default function AddTrazabilidadForm({
         "
         noValidate
         action={dispatch}
+        onReset={conservarCampos}
       >
 
 

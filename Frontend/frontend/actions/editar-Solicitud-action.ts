@@ -50,7 +50,7 @@ export async function EditarSolicitudTramite(solicitudTramiteId: SolicitudTramit
    const req = await fetch(url,{
     method:'PUT',
     headers: {
-      ...encabezadosSesion(),
+      ...(await encabezadosSesion()),
         'Content-Type':'application/json'
     },
     body:JSON.stringify({

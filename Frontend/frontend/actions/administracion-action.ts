@@ -18,7 +18,7 @@ export type DatosUsuario = {
 const llamar = async (ruta: string, metodo: string, cuerpo: unknown): Promise<Resultado> => {
   const req = await fetch(`${process.env.API_URL}/gastos/admin${ruta}`, {
     method: metodo,
-    headers: { ...encabezadosSesion(), "Content-Type": "application/json" },
+    headers: { ...(await encabezadosSesion()), "Content-Type": "application/json" },
     body: JSON.stringify(cuerpo),
     cache: "no-store"
   })

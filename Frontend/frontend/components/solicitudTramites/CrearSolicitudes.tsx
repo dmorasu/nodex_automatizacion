@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useFormState } from "react-dom"
+import { useActionState, useEffect, useState } from "react"
 import { toast } from "react-toastify"
 import { useRouter } from "next/navigation"
 
@@ -15,6 +14,7 @@ import SolicitudTramitesForm
 import {
   FilePlus2
 } from "lucide-react"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 export default function CrearSolicitudesForm({
@@ -31,7 +31,7 @@ export default function CrearSolicitudesForm({
   // =====================================================
 
   const [state, dispatch] =
-    useFormState(
+    useActionState(
       crearSolicitud,
       {
         errors: [],
@@ -152,6 +152,8 @@ export default function CrearSolicitudesForm({
       noValidate
 
       action={dispatch}
+
+      onReset={conservarCampos}
 
       onSubmit={(e) => {
 

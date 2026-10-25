@@ -22,7 +22,8 @@ const FILTROS = ["desde", "hasta", "analistaId", "tramitadorId", "operacionId", 
 
 // Tablero de gestión de Torre de control. El Administrador de Torre de control y Admin ven
 // todos los trámites (y la carga por analista); cada analista ve solo los suyos.
-export default async function TableroGestionPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
+export default async function TableroGestionPage(props: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const searchParams = await props.searchParams
   const { token, esAnalista } = await verificacionSesion()
   const encabezados = { Authorization: `Bearer ${token}` }
 

@@ -34,7 +34,7 @@ export default async function CrearTrazabilidad(
         }
 
         // ✅ Token dinámico
-        const token = cookies().get("TOKEN")?.value
+        const token = (await cookies()).get("TOKEN")?.value
 
         if (!token) {
             return {

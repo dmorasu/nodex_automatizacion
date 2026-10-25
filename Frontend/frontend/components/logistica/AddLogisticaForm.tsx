@@ -1,10 +1,9 @@
 "use client";
 
 import { DialogTitle } from "@headlessui/react";
-import { useFormState } from "react-dom";
 import { useParams } from "next/navigation";
 import AvisarErrores from "../ui/AvisarErrores";
-import { useEffect } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "react-toastify";
 
 import { Truck } from "lucide-react";
@@ -13,6 +12,7 @@ import CrearLogistica from "@/actions/crear-logistica-action";
 import { LogisticaType } from "@/src/type/solicitudes";
 import { toDateInput } from "@/src/ultis";
 import TransportadorasSelect from "../transportadoras/transportadoraSelect";
+import { conservarCampos } from "@/src/lib/formularios";
 
 
 export default function AddLogisticaForm({
@@ -23,7 +23,7 @@ export default function AddLogisticaForm({
   logistica?: LogisticaType | null;
 }) {
 
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
 
 
   // =====================================================
@@ -35,7 +35,7 @@ export default function AddLogisticaForm({
 
 
   const [state, dispatch] =
-    useFormState(crearLogisticaconId, {
+    useActionState(crearLogisticaconId, {
       errors: [],
       success: ""
     });
@@ -145,6 +145,7 @@ export default function AddLogisticaForm({
         "
         noValidate
         action={dispatch}
+        onReset={conservarCampos}
       >
 
 

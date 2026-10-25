@@ -3,14 +3,14 @@
 import { DialogTitle } from "@headlessui/react";
 import EstadosComboBox from "./EstadosCombobox";
 import CrearEstadoTramite from "@/actions/crear-estatoTramite";
-import { useFormState } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import AvisarErrores from "../ui/AvisarErrores";
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useTiposRechazo } from "@/hooks/useTiposRechazos";
 import { Flag } from "lucide-react";
 import SelectBuscable from "@/components/ui/SelectBuscable"
+import { conservarCampos } from "@/src/lib/formularios"
 
 export default function AddExpenseForm({
   closeModal,
@@ -19,7 +19,7 @@ export default function AddExpenseForm({
 }) {
 
   const router = useRouter();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
 
   const [estadoSeleccionado, setEstadoSeleccionado] =
     useState<number>(0);
@@ -34,7 +34,7 @@ export default function AddExpenseForm({
     CrearEstadoTramite.bind(null, +id);
 
   const [state, dispatch] =
-    useFormState(crearEstadoconId, {
+    useActionState(crearEstadoconId, {
       errors: [],
       success: "",
       requiereEvaluacion: false,
@@ -156,6 +156,7 @@ export default function AddExpenseForm({
         "
         noValidate
         action={dispatch}
+        onReset={conservarCampos}
       >
 
 

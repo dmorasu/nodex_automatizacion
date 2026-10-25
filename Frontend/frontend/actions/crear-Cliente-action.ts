@@ -33,7 +33,7 @@ export async function crearCliente(prevSatate:ActionStateType,formData: FormData
   const req = await fetch(url, {
     method: "POST",
     headers: {
-      ...encabezadosSesion(),
+      ...(await encabezadosSesion()),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

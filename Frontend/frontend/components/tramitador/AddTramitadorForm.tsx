@@ -2,9 +2,8 @@
 
 import { DialogTitle } from "@headlessui/react"
 import TramitadorComboBox from "./TramitadorCombobox"
-import { useFormState } from "react-dom"
 import { useParams } from "next/navigation"
-import { useEffect } from "react"
+import { useActionState, useEffect } from "react"
 import { toast } from "react-toastify"
 import { User } from "lucide-react"
 
@@ -12,6 +11,7 @@ import AvisarErrores from "../ui/AvisarErrores"
 
 import AsignarTramitadorSolicitud from "@/actions/asignar-Tramitador-action"
 import { TramitadorType } from "@/src/type/solicitudes"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 export default function AddTramitadorForm({
@@ -37,7 +37,7 @@ export default function AddTramitadorForm({
 
 
   const [state, dispatch] =
-    useFormState(
+    useActionState(
       asignarTramitadorConId,
       {
         errors: [],
@@ -150,6 +150,7 @@ export default function AddTramitadorForm({
         "
         noValidate
         action={dispatch}
+        onReset={conservarCampos}
       >
 
 

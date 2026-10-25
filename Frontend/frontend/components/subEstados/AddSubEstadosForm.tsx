@@ -2,8 +2,8 @@
 
 import { DialogTitle } from "@headlessui/react"
 import { useRouter } from "next/navigation"
-import { useFormState, useFormStatus } from "react-dom"
-import { useEffect } from "react"
+import { useFormStatus } from "react-dom"
+import { useActionState, useEffect } from "react"
 import { toast } from "react-toastify"
 import { Flag } from "lucide-react"
 
@@ -11,6 +11,7 @@ import CrearSubEstado from "@/actions/crear-subEstado"
 
 import AvisarErrores from "../ui/AvisarErrores"
 import SubEstadosCombobox from "./SubEstadosCombobox"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 // =====================================================
@@ -97,7 +98,7 @@ export default function AddSubEstadoForm({
 
 
   const [state, dispatch] =
-    useFormState(action, {
+    useActionState(action, {
       errors: [],
       success: ''
     })
@@ -205,6 +206,7 @@ export default function AddSubEstadoForm({
 
       <form
         action={dispatch}
+        onReset={conservarCampos}
         className="
           space-y-5
         "

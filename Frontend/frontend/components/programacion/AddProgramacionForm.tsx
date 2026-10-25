@@ -1,8 +1,7 @@
 "use client"
 
 import { DialogTitle } from "@headlessui/react"
-import { useState, useEffect } from "react"
-import { useFormState } from "react-dom"
+import { useActionState, useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Calendar } from "lucide-react"
 import { toast } from "react-toastify"
@@ -12,6 +11,7 @@ import AvisarErrores from "../ui/AvisarErrores"
 import CrearProgramacion from "@/actions/crear-Programacion-action"
 import { toDateInput } from "@/src/ultis"
 import { ProgramacionType } from "@/src/type/solicitudes"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 export default function AddProgramacionForm({
@@ -22,7 +22,7 @@ export default function AddProgramacionForm({
   programacion?: ProgramacionType | null
 }) {
 
-  const { id } = useParams()
+  const { id } = useParams<{ id: string }>()
 
 
   // =====================================================
@@ -43,7 +43,7 @@ export default function AddProgramacionForm({
 
 
   const [state, dispatch] =
-    useFormState(crearProgramacionId, {
+    useActionState(crearProgramacionId, {
       errors: [],
       success: ""
     })
@@ -153,6 +153,7 @@ export default function AddProgramacionForm({
         "
         noValidate
         action={dispatch}
+        onReset={conservarCampos}
       >
 
 

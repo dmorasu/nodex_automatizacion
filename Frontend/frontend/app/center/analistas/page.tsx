@@ -16,7 +16,7 @@ type PaginaMunicipios = { registros: MunicipioAnalista[], total: number, paginas
 
 const leer = async <T,>(ruta: string, vacio: T): Promise<T> => {
   try {
-    const req = await fetch(`${process.env.API_URL}/solicitudTramites${ruta}`, { headers: encabezadosSesion(), cache: "no-store" })
+    const req = await fetch(`${process.env.API_URL}/solicitudTramites${ruta}`, { headers: await encabezadosSesion(), cache: "no-store" })
     return req.ok ? await req.json() : vacio
   } catch {
     return vacio
@@ -25,9 +25,12 @@ const leer = async <T,>(ruta: string, vacio: T): Promise<T> => {
 
 // Administrador de Torre de control: cuántos trámites tiene cada analista, reasignación
 // masiva y analista por defecto de cada municipio (lo toman los trámites nuevos)
-export default async function AnalistasPage({ searchParams }: {
-  searchParams: { busqueda?: string, analistaId?: string, pagina?: string }
-}) {
+export default async function AnalistasPage(
+  props: {
+    searchParams: Promise<{ busqueda?: string, analistaId?: string, pagina?: string }>
+  }
+) {
+  const searchParams = await props.searchParams
   await requiereAsignarAnalistas()
 
   const consulta = new URLSearchParams()

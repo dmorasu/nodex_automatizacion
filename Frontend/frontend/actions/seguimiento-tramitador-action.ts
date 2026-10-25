@@ -8,7 +8,7 @@ type Resultado = { ok: true } | { ok: false, errores: string[] }
 const enviar = async (ruta: string, cuerpo: object, porDefecto: string): Promise<Resultado> => {
   const req = await fetch(`${process.env.API_URL}/seguimiento-tramitador${ruta}`, {
     method: "POST",
-    headers: { ...encabezadosSesion(), "Content-Type": "application/json" },
+    headers: { ...(await encabezadosSesion()), "Content-Type": "application/json" },
     body: JSON.stringify(cuerpo),
     cache: "no-store"
   })

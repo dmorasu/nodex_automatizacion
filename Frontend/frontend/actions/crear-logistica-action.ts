@@ -44,7 +44,7 @@ export default async function CrearLogistica(
     }
   }
 
-  const token = cookies().get("TOKEN")?.value
+  const token = (await cookies()).get("TOKEN")?.value
 
   const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramitesId}/logistica`
 

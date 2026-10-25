@@ -61,7 +61,7 @@ export default async function CrearCuentaCobro(
   const req = await fetch(url, {
     method: "POST",
     headers: {
-      ...encabezadosSesion(), "Content-Type": "application/json" },
+      ...(await encabezadosSesion()), "Content-Type": "application/json" },
     body: JSON.stringify(parsed.data)
   })
 

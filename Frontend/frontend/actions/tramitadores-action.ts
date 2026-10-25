@@ -21,7 +21,7 @@ export type DatosTramitador = {
 export async function guardarTramitador(datos: DatosTramitador, id?: number): Promise<Resultado> {
   const req = await fetch(`${process.env.API_URL}/tramitador${id ? `/${id}` : ""}`, {
     method: id ? "PUT" : "POST",
-    headers: { ...encabezadosSesion(), "Content-Type": "application/json" },
+    headers: { ...(await encabezadosSesion()), "Content-Type": "application/json" },
     body: JSON.stringify(datos),
     cache: "no-store"
   })
@@ -49,7 +49,7 @@ export type AccesoCreado = { usuario: string, contrasenaTemporal: string, restab
 export async function crearAccesoApp(id: number): Promise<{ ok: true, datos: AccesoCreado } | { ok: false, errores: string[] }> {
   const req = await fetch(`${process.env.API_URL}/tramitador/${id}/acceso`, {
     method: "POST",
-    headers: encabezadosSesion(),
+    headers: await encabezadosSesion(),
     cache: "no-store"
   })
 
@@ -63,7 +63,7 @@ export async function crearAccesoApp(id: number): Promise<{ ok: true, datos: Acc
 export async function quitarAccesoApp(id: number): Promise<Resultado> {
   const req = await fetch(`${process.env.API_URL}/tramitador/${id}/acceso`, {
     method: "DELETE",
-    headers: encabezadosSesion(),
+    headers: await encabezadosSesion(),
     cache: "no-store"
   })
 

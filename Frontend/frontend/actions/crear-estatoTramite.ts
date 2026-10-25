@@ -63,7 +63,7 @@ export default async function CrearEstadoTramite(
     const req = await fetch(url, {
       method: "POST",
       headers: {
-      ...encabezadosSesion(),
+      ...(await encabezadosSesion()),
         "Content-Type": "application/json"
       },
       body: JSON.stringify({

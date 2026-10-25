@@ -50,7 +50,7 @@ const SIN_SEGUIMIENTO: Seguimiento = { comentarios: [], reportes: [] }
 
 export const obtenerSeguimiento = async (solicitudTramiteId: number): Promise<Seguimiento> => {
   const req = await fetch(`${process.env.API_URL}/seguimiento-tramitador/tramites/${solicitudTramiteId}`, {
-    headers: encabezadosSesion(),
+    headers: await encabezadosSesion(),
     cache: "no-store"
   })
   if (!req.ok) return SIN_SEGUIMIENTO
@@ -60,7 +60,7 @@ export const obtenerSeguimiento = async (solicitudTramiteId: number): Promise<Se
 
 export const obtenerReportes = async (estado: "PENDIENTE" | "REVISADO" | "DEVUELTO"): Promise<ReporteBandeja[]> => {
   const req = await fetch(`${process.env.API_URL}/seguimiento-tramitador/reportes-realizado?estado=${estado}`, {
-    headers: encabezadosSesion(),
+    headers: await encabezadosSesion(),
     cache: "no-store"
   })
   if (!req.ok) return []

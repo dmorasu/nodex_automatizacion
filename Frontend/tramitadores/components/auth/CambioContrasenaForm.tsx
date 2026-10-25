@@ -7,6 +7,7 @@ import { Check } from "lucide-react"
 import { cambiarContrasena } from "@/actions/sesion"
 import { claseBotonPrimario, claseInput, claseLabel } from "../ui/estilos"
 import RequisitosContrasena from "./RequisitosContrasena"
+import { conservarCampos } from "@/src/lib/formularios"
 
 function BotonGuardar() {
   const { pending } = useFormStatus()
@@ -27,7 +28,7 @@ export default function CambioContrasenaForm({ temporal }: { temporal: boolean }
   }, [estado])
 
   return (
-    <form action={enviar} className="space-y-4" noValidate>
+    <form action={enviar} onReset={conservarCampos} className="space-y-4" noValidate>
       <label className="block">
         <span className={claseLabel}>{temporal ? "Contraseña temporal" : "Contraseña actual"}</span>
         <input name="contrasenaActual" type="password" autoComplete="current-password" className={claseInput} />

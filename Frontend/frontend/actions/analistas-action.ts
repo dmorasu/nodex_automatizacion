@@ -14,10 +14,10 @@ const leerErrores = async (req: Response, porDefecto: string) => {
   return errores.length ? errores : [porDefecto]
 }
 
-const llamar = (ruta: string, metodo: string, cuerpo: unknown) =>
+const llamar = async (ruta: string, metodo: string, cuerpo: unknown) =>
   fetch(`${process.env.API_URL}/solicitudTramites${ruta}`, {
     method: metodo,
-    headers: { ...encabezadosSesion(), "Content-Type": "application/json" },
+    headers: { ...(await encabezadosSesion()), "Content-Type": "application/json" },
     body: JSON.stringify(cuerpo),
     cache: "no-store"
   })

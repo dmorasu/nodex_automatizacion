@@ -70,7 +70,7 @@ export default async function CrearProgramacion(
     };
   }
 
-  const token = cookies().get("TOKEN")?.value;
+  const token = (await cookies()).get("TOKEN")?.value;
 
   const url = `${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}/programacion`;
 

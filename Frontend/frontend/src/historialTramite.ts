@@ -22,7 +22,7 @@ export type EventoHistorial = z.infer<typeof EventoHistorialSchema>
 // null = no se pudo cargar (distinto de un historial vacío)
 export const obtenerHistorial = async (solicitudTramiteId: number): Promise<EventoHistorial[] | null> => {
   const req = await fetch(`${process.env.API_URL}/solicitudTramites/${solicitudTramiteId}/historial`, {
-    headers: encabezadosSesion(),
+    headers: await encabezadosSesion(),
     cache: "no-store"
   })
   if (!req.ok) return null

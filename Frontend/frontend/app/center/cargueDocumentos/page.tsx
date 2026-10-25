@@ -8,7 +8,8 @@ export const metadata: Metadata = {
 
 // Documentos de varios trámites a la vez: el número del trámite sale del nombre del archivo.
 // ?tramites=1,2,3 llega desde el cargue masivo de trámites (los recién creados)
-export default function CargueDocumentosPage({ searchParams }: { searchParams: { tramites?: string } }) {
+export default async function CargueDocumentosPage(props: { searchParams: Promise<{ tramites?: string }> }) {
+  const searchParams = await props.searchParams
   const recientes = (searchParams.tramites ?? "").split(",").map(Number).filter(n => n > 0).slice(0, 300)
 
   return (

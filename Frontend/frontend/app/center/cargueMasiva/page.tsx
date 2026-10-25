@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 
 // Cargue masivo de trámites: en pantalla (por nombres, con validación fila por fila y gastos
 // en la misma fila) o con el Excel de ids de siempre
-export default function CargueMasivoPage({ searchParams }: { searchParams: { modo?: string } }) {
+export default async function CargueMasivoPage(props: { searchParams: Promise<{ modo?: string }> }) {
+  const searchParams = await props.searchParams
   const modo = searchParams.modo === "excel" ? "excel" : "pantalla"
 
   return (

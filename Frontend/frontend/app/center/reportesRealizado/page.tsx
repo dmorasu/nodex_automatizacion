@@ -14,7 +14,8 @@ const formatoFechaHora = (fecha: string) =>
 
 // Trámites que los tramitadores reportaron como realizados desde la app.
 // El reporte no cambia el estado: aquí se revisan y se actualiza el estado en el trámite.
-export default async function ReportesRealizadoPage({ searchParams }: { searchParams: { estado?: string } }) {
+export default async function ReportesRealizadoPage(props: { searchParams: Promise<{ estado?: string }> }) {
+  const searchParams = await props.searchParams
   const estado = searchParams.estado === "REVISADO" || searchParams.estado === "DEVUELTO" ? searchParams.estado : "PENDIENTE"
   const reportes = await obtenerReportes(estado)
 

@@ -12,9 +12,9 @@ export default async function AdministracionPage() {
   const { usuario, esAdmin } = await verificacionSesion()
 
   const [reqUsuarios, reqRoles, reqAreas] = await Promise.all([
-    fetch(`${process.env.API_URL}/gastos/admin/usuarios`, { headers: encabezadosSesion(), cache: "no-store" }),
-    fetch(`${process.env.API_URL}/gastos/admin/roles`, { headers: encabezadosSesion(), cache: "no-store" }),
-    fetch(`${process.env.API_URL}/catalogos-tramites/areas`, { headers: encabezadosSesion(), cache: "no-store" })
+    fetch(`${process.env.API_URL}/gastos/admin/usuarios`, { headers: await encabezadosSesion(), cache: "no-store" }),
+    fetch(`${process.env.API_URL}/gastos/admin/roles`, { headers: await encabezadosSesion(), cache: "no-store" }),
+    fetch(`${process.env.API_URL}/catalogos-tramites/areas`, { headers: await encabezadosSesion(), cache: "no-store" })
   ])
 
   const usuarios: UsuarioAdmin[] = reqUsuarios.ok ? await reqUsuarios.json() : []

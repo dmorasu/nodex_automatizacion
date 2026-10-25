@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
-import { useFormState } from "react-dom"
+import { useActionState, useEffect } from "react"
 import { toast } from "react-toastify"
 import { useRouter } from "next/navigation"
 
@@ -11,6 +10,7 @@ import ClientesForm from "./ClientesForm"
 import {
   UserPlus,
 } from "lucide-react"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 export default function CrearClientesForm() {
@@ -18,7 +18,7 @@ export default function CrearClientesForm() {
   const router = useRouter()
 
   const [state, dispatch] =
-    useFormState(crearCliente, {
+    useActionState(crearCliente, {
       errors: [],
       success: ""
     })
@@ -74,6 +74,7 @@ export default function CrearClientesForm() {
       "
       noValidate
       action={dispatch}
+      onReset={conservarCampos}
     >
 
 

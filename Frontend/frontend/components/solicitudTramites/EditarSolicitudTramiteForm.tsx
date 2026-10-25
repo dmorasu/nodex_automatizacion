@@ -8,8 +8,6 @@ import {
 import SolicitudTramitesForm
   from "./SolicitudTramitesForm"
 
-import { useFormState }
-  from "react-dom"
 
 import {
   EditarSolicitudTramite
@@ -18,6 +16,7 @@ import {
 import AvisarErrores from "../ui/AvisarErrores"
 
 import {
+  useActionState,
   useEffect
 } from "react"
 
@@ -37,6 +36,7 @@ import {
 import {
   useFormStatus
 } from "react-dom"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 type Props = {
@@ -148,7 +148,7 @@ export default function EditarSolicitudTramiteForm({
 
 
   const [state, dispatch] =
-    useFormState(
+    useActionState(
       editarSolicitudTramiteid,
       {
         errors: [],
@@ -195,6 +195,7 @@ export default function EditarSolicitudTramiteForm({
       "
       noValidate
       action={dispatch}
+      onReset={conservarCampos}
     >
 
 

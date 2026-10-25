@@ -49,12 +49,12 @@ export type DatosGastoTramite = {
   } | null
 }
 
-const llamarApi = (ruta: string, opciones: RequestInit = {}) =>
+const llamarApi = async (ruta: string, opciones: RequestInit = {}) =>
   fetch(`${process.env.API_URL}${ruta}`, {
     ...opciones,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${cookies().get("TOKEN")?.value}`
+      Authorization: `Bearer ${(await cookies()).get("TOKEN")?.value}`
     },
     cache: "no-store"
   })

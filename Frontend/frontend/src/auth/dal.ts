@@ -8,7 +8,7 @@ import { perfilDesdeRoles, permisosAnalistas, puedeConfigurarNotificaciones, typ
 // Sesión del usuario con su perfil de trámites. `cache` evita repetir las
 // consultas cuando el layout y la página la piden en la misma petición.
 export const verificacionSesion = cache(async () => {
-  const token = cookies().get('TOKEN')?.value
+  const token = (await cookies()).get('TOKEN')?.value
 
   if (!token) {
     redirect('/auth/login')

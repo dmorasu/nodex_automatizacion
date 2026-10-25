@@ -1,9 +1,8 @@
 "use client"
 
 import { DialogTitle } from "@headlessui/react"
-import { useFormState } from "react-dom"
 import { useParams } from "next/navigation"
-import { useEffect } from "react"
+import { useActionState, useEffect } from "react"
 import { toast } from "react-toastify"
 
 import { Receipt } from "lucide-react"
@@ -18,6 +17,7 @@ import { CuentaCobroType }
 
 import { toDateInput }
   from "@/src/ultis"
+import { conservarCampos } from "@/src/lib/formularios"
 
 
 export default function AddCuentaCobroForm({
@@ -28,7 +28,7 @@ export default function AddCuentaCobroForm({
   cuentaCobro?: CuentaCobroType | null
 }) {
 
-  const { id } = useParams()
+  const { id } = useParams<{ id: string }>()
 
 
   // =====================================================
@@ -43,7 +43,7 @@ export default function AddCuentaCobroForm({
 
 
   const [state, dispatch] =
-    useFormState(
+    useActionState(
       crearCuentaCobroconId,
       {
         errors: [],
@@ -160,6 +160,7 @@ export default function AddCuentaCobroForm({
         "
         noValidate
         action={dispatch}
+        onReset={conservarCampos}
       >
 
 

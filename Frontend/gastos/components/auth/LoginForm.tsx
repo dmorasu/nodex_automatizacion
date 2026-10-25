@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom"
 import { toast } from "react-toastify"
 import { Mail, LockKeyhole, LogIn } from "lucide-react"
 import { iniciarSesion } from "@/actions/iniciarSesion"
+import { conservarCampos } from "@/src/lib/formularios"
 
 const claseInput = `
   w-full h-10 px-3 rounded-md border border-slate-200 bg-white
@@ -42,7 +43,7 @@ export default function LoginForm() {
   }, [state])
 
   return (
-    <form action={dispatch} className="space-y-5" noValidate>
+    <form action={dispatch} onReset={conservarCampos} className="space-y-5" noValidate>
 
       <div className="space-y-2">
         <label htmlFor="correoUsuario" className={claseLabel}>

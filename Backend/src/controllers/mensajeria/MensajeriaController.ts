@@ -9,6 +9,7 @@ import { hoyBogota, optimizarRuta, reordenarParadas, rutasDelDia } from '../../s
 import { MAXIMO_PUNTOS_TRAZADO, trazarRuta } from '../../services/mensajeria/trazado'
 import { ubicacionesDelDia } from '../../services/mensajeria/ubicacionEnVivo'
 import { generarReporteRutas } from '../../services/mensajeria/reporteRutas'
+import { agregarTramitesARuta, revisarTramitesParaRuta } from '../../services/mensajeria/agregarARuta'
 
 const responder = (res: Response, error: unknown) => {
   if (error instanceof ErrorUbicacion) return res.status(error.status).json({ error: error.message })
@@ -130,6 +131,28 @@ export class MensajeriaController {
       const fecha = fechaValida(req.body.fecha)
       if (!fecha) throw new ErrorUbicacion('Fecha no válida')
       res.json(await optimizarRuta(fecha, Number(req.params.tramitadorId)))
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // { fecha, tramiteIds } → cada trámite con cliente, dirección y si se puede agregar
+  static revisarParaRuta = async (req: Request, res: Response) => {
+    try {
+      const fecha = fechaValida(req.body.fecha)
+      if (!fecha) throw new ErrorUbicacion('Fecha no válida')
+      res.json(await revisarTramitesParaRuta(fecha, Number(req.params.tramitadorId), req.body.tramiteIds))
+    } catch (error) {
+      responder(res, error)
+    }
+  }
+
+  // { fecha, tramiteIds } → { agregados, rechazados: [{ id, motivo }] }
+  static agregarARuta = async (req: Request, res: Response) => {
+    try {
+      const fecha = fechaValida(req.body.fecha)
+      if (!fecha) throw new ErrorUbicacion('Fecha no válida')
+      res.json(await agregarTramitesARuta(fecha, Number(req.params.tramitadorId), req.body.tramiteIds))
     } catch (error) {
       responder(res, error)
     }

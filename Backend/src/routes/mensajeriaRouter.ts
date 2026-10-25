@@ -15,6 +15,9 @@ router.get('/ubicaciones', MensajeriaController.ubicaciones)
 router.get('/reporte/exportar', MensajeriaController.exportarReporte)
 router.put('/rutas/:tramitadorId/orden', MensajeriaController.reordenar)
 router.post('/rutas/:tramitadorId/optimizar', MensajeriaController.optimizar)
+// Agregar trámites a la ruta de un mensajero: vista previa y confirmar
+router.post('/rutas/:tramitadorId/agregar/revisar', MensajeriaController.revisarParaRuta)
+router.post('/rutas/:tramitadorId/agregar', MensajeriaController.agregarARuta)
 router.post('/ubicar-pendientes', MensajeriaController.ubicarPendientes)
 router.post('/trazado', MensajeriaController.trazado)
 

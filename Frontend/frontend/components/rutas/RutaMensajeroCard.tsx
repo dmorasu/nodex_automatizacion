@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import clsx from "clsx"
-import { ArrowDown, ArrowUp, Camera, ExternalLink, Loader2, Map as IconoMapa, MapPin, MapPinOff, Navigation, Sparkles } from "lucide-react"
+import { ArrowDown, ArrowUp, Camera, ExternalLink, Loader2, Map as IconoMapa, MapPin, MapPinOff, Navigation, Plus, Sparkles } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import {
   COLOR_ESTADO,
@@ -17,6 +17,7 @@ import {
   type RutaMensajero
 } from "@/src/rutas"
 import ModalUbicacion from "./ModalUbicacion"
+import ModalAgregarTramites from "./ModalAgregarTramites"
 
 const claseBoton = "inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
 
@@ -37,6 +38,7 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
   const [guardando, setGuardando] = useState(false)
   const [optimizando, setOptimizando] = useState(false)
   const [ubicando, setUbicando] = useState<Parada | null>(null)
+  const [agregando, setAgregando] = useState(false)
 
   useEffect(() => setParadas(ruta.paradas), [ruta.paradas])
   // El mapa del día se redibuja con el orden nuevo
@@ -100,24 +102,30 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
             </p>
           ))}
         </div>
-        {paradas.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={onVerEnMapa} className={claseBoton}>
-              <IconoMapa size={13} /> Ver en el mapa
-            </button>
-            <button type="button" onClick={optimizar} disabled={optimizando || guardando} className={claseBoton}
-              title={googleDisponible ? "Orden óptimo por calles con Google" : "Orden por cercanía (sin Google)"}>
-              {optimizando ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-              Optimizar
-            </button>
-            {enlaces.map((enlace, i) => (
-              <a key={enlace} href={enlace} target="_blank" rel="noreferrer" className={claseBoton}>
-                <Navigation size={13} />
-                {enlaces.length > 1 ? `Google Maps (tramo ${i + 1})` : "Abrir en Google Maps"}
-              </a>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {paradas.length > 0 && (
+            <>
+              <button type="button" onClick={onVerEnMapa} className={claseBoton}>
+                <IconoMapa size={13} /> Ver en el mapa
+              </button>
+              <button type="button" onClick={optimizar} disabled={optimizando || guardando} className={claseBoton}
+                title={googleDisponible ? "Orden óptimo por calles con Google" : "Orden por cercanía (sin Google)"}>
+                {optimizando ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                Optimizar
+              </button>
+              {enlaces.map((enlace, i) => (
+                <a key={enlace} href={enlace} target="_blank" rel="noreferrer" className={claseBoton}>
+                  <Navigation size={13} />
+                  {enlaces.length > 1 ? `Google Maps (tramo ${i + 1})` : "Abrir en Google Maps"}
+                </a>
+              ))}
+            </>
+          )}
+          {/* También con la ruta vacía: es la forma de armarla desde aquí */}
+          <button type="button" onClick={() => setAgregando(true)} className={claseBoton}>
+            <Plus size={13} /> Agregar trámite
+          </button>
+        </div>
       </div>
 
       {paradas.length === 0 ? (
@@ -199,6 +207,16 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
             })}
           </ol>
         </div>
+      )}
+
+      {agregando && (
+        <ModalAgregarTramites
+          mensajeroId={mensajero.id}
+          mensajero={mensajero.nombre}
+          fecha={fecha}
+          onAgregados={() => router.refresh()}
+          onCerrar={() => setAgregando(false)}
+        />
       )}
 
       {ubicando && (

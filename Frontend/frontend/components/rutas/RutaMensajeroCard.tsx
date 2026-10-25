@@ -205,17 +205,19 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
         <ModalUbicacion
           titulo={`Ubicación del trámite #${ubicando.tramiteId}`}
           direccion={[ubicando.direccion, ubicando.municipio].filter(Boolean).join(", ") || null}
+          direccionEditable={ubicando.direccion ?? ""}
           puntoInicial={ubicando.latitud !== null && ubicando.longitud !== null ? { latitud: ubicando.latitud, longitud: ubicando.longitud } : null}
           centro={sede?.latitud != null && sede.longitud != null ? { latitud: sede.latitud, longitud: sede.longitud } : null}
-          onGuardar={async punto => {
-            const r = await llamarApi(`/mensajeria/tramites/${ubicando.tramiteId}/ubicacion`, "PUT", punto)
+          onGuardar={async (punto, direccionNueva) => {
+            const r = await llamarApi(`/mensajeria/tramites/${ubicando.tramiteId}/ubicacion`, "PUT", { ...punto, direccion: direccionNueva })
             if (!r.ok) { toast.error(r.error); return false }
-            toast.success("Ubicación guardada")
+            toast.success(direccionNueva ? "Dirección y ubicación guardadas" : "Ubicación guardada")
             router.refresh()
             return true
           }}
-          onBuscarGoogle={googleDisponible ? async () => {
-            const r = await llamarApi<{ latitud: number, longitud: number, ubicacionPrecisa: boolean }>(`/mensajeria/tramites/${ubicando.tramiteId}/ubicar`, "POST")
+          onBuscarGoogle={googleDisponible ? async direccionNueva => {
+            // Con la dirección escrita (si cambió) busca esa, sin guardarla todavía
+            const r = await llamarApi<{ latitud: number, longitud: number, ubicacionPrecisa: boolean }>(`/mensajeria/tramites/${ubicando.tramiteId}/ubicar`, "POST", direccionNueva ? { direccion: direccionNueva } : undefined)
             if (!r.ok) { toast.error(r.error); return null }
             if (!r.datos.ubicacionPrecisa) toast.warning("Google la ubicó de forma aproximada: verifique el punto")
             return { latitud: r.datos.latitud, longitud: r.datos.longitud }

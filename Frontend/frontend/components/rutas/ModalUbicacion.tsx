@@ -6,6 +6,7 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { Loader2, MapPin, Search, X } from "lucide-react"
 import type { Punto } from "./SelectorUbicacionLeaflet"
 import { claveMapaGoogle } from "@/src/lib/googleMaps"
+import CampoDireccion from "@/components/direcciones/CampoDireccion"
 
 const cargandoMapa = () => <div className="flex h-full items-center justify-center rounded-lg bg-slate-50 text-xs text-slate-400">Cargando mapa…</div>
 
@@ -18,17 +19,24 @@ const SelectorLibre = dynamic(() => import("./SelectorUbicacionLeaflet"), { ssr:
 const COLOMBIA: Punto = { latitud: 4.6, longitud: -74.1 }
 
 // Ventana para poner o corregir una ubicación en el mapa (trámite o sede)
-export default function ModalUbicacion({ titulo, direccion, puntoInicial, centro, onGuardar, onBuscarGoogle, onCerrar }: {
+export default function ModalUbicacion({ titulo, direccion, direccionEditable, puntoInicial, centro, onGuardar, onBuscarGoogle, onCerrar }: {
   titulo: string
   direccion: string | null
+  // Trámites: la dirección guardada, que se puede corregir aquí mismo (sin esto, solo se muestra)
+  direccionEditable?: string | null
   puntoInicial: Punto | null
   // Dónde arranca el mapa si aún no hay punto (ej: la sede del mensajero)
   centro?: Punto | null
-  onGuardar: (punto: Punto) => Promise<boolean>
-  // Si Google está disponible: vuelve a ubicar la dirección automáticamente
-  onBuscarGoogle?: () => Promise<Punto | null>
+  // `direccionNueva` solo si se cambió la dirección
+  onGuardar: (punto: Punto, direccionNueva?: string) => Promise<boolean>
+  // Si Google está disponible: vuelve a ubicar la dirección automáticamente (la escrita, si cambió)
+  onBuscarGoogle?: (direccionNueva?: string) => Promise<Punto | null>
   onCerrar: () => void
 }) {
+  const editable = direccionEditable !== undefined
+  const [textoDireccion, setTextoDireccion] = useState(direccionEditable ?? "")
+  // Lo escrito, solo si es distinto de la dirección guardada
+  const direccionNueva = editable && textoDireccion.trim() !== (direccionEditable ?? "").trim() ? textoDireccion.trim() : undefined
   const [punto, setPunto] = useState<Punto | null>(puntoInicial)
   const [guardando, setGuardando] = useState(false)
   const [buscando, setBuscando] = useState(false)
@@ -37,7 +45,7 @@ export default function ModalUbicacion({ titulo, direccion, puntoInicial, centro
   const guardar = async () => {
     if (!punto) return
     setGuardando(true)
-    const ok = await onGuardar(punto)
+    const ok = await onGuardar(punto, direccionNueva)
     setGuardando(false)
     if (ok) onCerrar()
   }
@@ -45,7 +53,7 @@ export default function ModalUbicacion({ titulo, direccion, puntoInicial, centro
   const buscar = async () => {
     if (!onBuscarGoogle) return
     setBuscando(true)
-    const encontrado = await onBuscarGoogle()
+    const encontrado = await onBuscarGoogle(direccionNueva)
     setBuscando(false)
     if (encontrado) setPunto(encontrado)
   }
@@ -58,12 +66,18 @@ export default function ModalUbicacion({ titulo, direccion, puntoInicial, centro
           <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
             <div className="min-w-0">
               <DialogTitle className="text-sm font-semibold text-slate-800">{titulo}</DialogTitle>
-              <p className="mt-0.5 truncate text-xs text-slate-500">{direccion ?? "Sin dirección"}</p>
+              {!editable && <p className="mt-0.5 truncate text-xs text-slate-500">{direccion ?? "Sin dirección"}</p>}
             </div>
             <button type="button" onClick={onCerrar} className="text-slate-400 hover:text-slate-600" aria-label="Cerrar"><X size={18} /></button>
           </div>
 
           <div className="space-y-3 px-6 py-4">
+            {editable && (
+              <div className="space-y-1.5">
+                <label htmlFor="direccionUbicacion" className="block text-xs font-medium text-slate-600">Dirección del trámite</label>
+                <CampoDireccion name="direccionUbicacion" defaultValue={direccionEditable} onTexto={setTextoDireccion} onLugar={setPunto} />
+              </div>
+            )}
             <p className="text-xs text-slate-500">Haga clic en el mapa donde queda la dirección o arrastre el marcador para corregirla.</p>
             <div className="relative z-0 h-[420px]">
               {conGoogle
@@ -89,10 +103,10 @@ export default function ModalUbicacion({ titulo, direccion, puntoInicial, centro
               <button type="button" onClick={onCerrar} disabled={guardando} className="h-10 rounded-md border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                 Cancelar
               </button>
-              <button type="button" onClick={guardar} disabled={!punto || guardando}
+              <button type="button" onClick={guardar} disabled={!punto || guardando || (editable && !textoDireccion.trim())}
                 className="inline-flex h-10 items-center gap-2 rounded-md bg-sky-500 px-4 text-xs font-semibold text-white hover:bg-sky-600 disabled:opacity-50">
                 {guardando && <Loader2 size={15} className="animate-spin" />}
-                Guardar ubicación
+                {direccionNueva ? "Guardar dirección y ubicación" : "Guardar ubicación"}
               </button>
             </div>
           </div>

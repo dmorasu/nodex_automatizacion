@@ -90,21 +90,47 @@ export const ubicarEnSegundoPlano = (solicitudId: number) => {
     console.warn(`⚠️ No se pudo ubicar el trámite ${solicitudId}:`, (error as Error).message))
 }
 
+// Dirección nueva escrita al corregir la ubicación (mismo límite de la columna, 100)
+const direccionValida = (direccion: string) => {
+  const limpia = direccion.trim()
+  if (!limpia) throw new ErrorUbicacion('La dirección no puede quedar vacía')
+  if (limpia.length > 100) throw new ErrorUbicacion('La dirección no puede superar los 100 caracteres')
+  return limpia
+}
+
 // Punto puesto a mano en el mapa (corrige o reemplaza lo de Google), o el lugar exacto que
-// se eligió con el autocompletado al crear o editar el trámite (fuente GOOGLE)
-export const ubicarManual = async (solicitudId: number, { latitud, longitud }: Coordenadas, fuente: 'MANUAL' | 'GOOGLE' = 'MANUAL') => {
+// se eligió con el autocompletado al crear o editar el trámite (fuente GOOGLE).
+// Con `direccion` también corrige la dirección del trámite (queda en el historial por el hook).
+export const ubicarManual = async (
+  solicitudId: number,
+  { latitud, longitud }: Coordenadas,
+  fuente: 'MANUAL' | 'GOOGLE' = 'MANUAL',
+  direccion?: string
+) => {
   if (!(Math.abs(latitud) <= 90 && Math.abs(longitud) <= 180)) throw new ErrorUbicacion('Coordenadas no válidas')
 
   const solicitud = await SolicitudTramites.findByPk(solicitudId)
   if (!solicitud) throw new ErrorUbicacion('El trámite no existe', 404)
 
-  await solicitud.update({
+  if (direccion !== undefined) solicitud.set('direccionTramite', direccionValida(direccion))
+  solicitud.set({
     latitud,
     longitud,
     ubicacionFuente: fuente,
     ubicacionPrecisa: true,
-    // Se guarda la dirección actual: si luego cambia, se vuelve a ubicar
+    // Se guarda la dirección actual (ya con la nueva): si luego cambia, se vuelve a ubicar
     ubicacionDireccion: await textoDireccion(solicitud)
   })
+  await solicitud.save()
   return solicitud
+}
+
+// Busca en Google una dirección escrita que aún no se guarda (al corregir en el mapa).
+// No guarda nada: el punto se guarda con ubicarManual al confirmar.
+export const buscarDireccion = async (solicitudId: number, direccion: string) => {
+  const solicitud = await SolicitudTramites.findByPk(solicitudId)
+  if (!solicitud) throw new ErrorUbicacion('El trámite no existe', 404)
+  solicitud.set('direccionTramite', direccionValida(direccion))
+  const texto = await textoDireccion(solicitud)
+  return texto ? geocodificar(texto) : null
 }

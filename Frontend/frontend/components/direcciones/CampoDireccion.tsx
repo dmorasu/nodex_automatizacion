@@ -17,10 +17,13 @@ const nuevaSesion = () => (typeof crypto !== "undefined" && "randomUUID" in cryp
 // Dirección del trámite con sugerencias de Google mientras se escribe (lugares o direcciones,
 // ej: "Alcaldía de Medellín") o pegando un enlace de Google Maps. Al elegir, guarda la
 // ubicación exacta y propone el municipio. Sin Google configurado funciona como un campo normal.
-export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
+export default function CampoDireccion({ name, defaultValue, onMunicipio, onTexto, onLugar }: {
   name: string
   defaultValue?: string | null
   onMunicipio?: (municipio: MunicipioSugerido) => void
+  // Fuera de un formulario (ej: al corregir la ubicación en Rutas): el texto y el lugar elegido
+  onTexto?: (texto: string) => void
+  onLugar?: (punto: { latitud: number, longitud: number }) => void
 }) {
   const [texto, setTexto] = useState(defaultValue ?? "")
   const [disponible, setDisponible] = useState(false)
@@ -65,6 +68,8 @@ export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
   const aplicar = (lugar: Lugar) => {
     elegido.current = true
     setTexto(lugar.direccion)
+    onTexto?.(lugar.direccion)
+    onLugar?.({ latitud: lugar.latitud, longitud: lugar.longitud })
     setUbicacion({ latitud: lugar.latitud, longitud: lugar.longitud, nombre: lugar.nombre })
     setSugerencias([])
     setAbierto(false)
@@ -121,6 +126,7 @@ export default function CampoDireccion({ name, defaultValue, onMunicipio }: {
             setUbicacion(null) // si cambia el texto, la ubicación elegida ya no aplica
             setError(null)
             setTexto(valor)
+            onTexto?.(valor)
             if (disponible && esEnlaceMaps(valor)) usarEnlace(valor)
           }}
           onFocus={() => sugerencias.length && setAbierto(true)}

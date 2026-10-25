@@ -4,7 +4,7 @@ import { db } from '../../config/db'
 import SedeMensajeria from '../../models/mensajeria/sedeMensajeria'
 import ParadaMensajeria from '../../models/mensajeria/paradaMensajeria'
 import { obtenerArchivo } from '../../services/azureFileStorage'
-import { ErrorUbicacion, geocodificar, googleDisponible, ubicarManual, ubicarTramite } from '../../services/mensajeria/ubicacion'
+import { ErrorUbicacion, buscarDireccion, geocodificar, googleDisponible, ubicarManual, ubicarTramite } from '../../services/mensajeria/ubicacion'
 import { hoyBogota, optimizarRuta, reordenarParadas, rutasDelDia } from '../../services/mensajeria/rutas'
 import { MAXIMO_PUNTOS_TRAZADO, trazarRuta } from '../../services/mensajeria/trazado'
 import { ubicacionesDelDia } from '../../services/mensajeria/ubicacionEnVivo'
@@ -158,6 +158,13 @@ export class MensajeriaController {
   // Vuelve a ubicar un trámite con Google
   static ubicar = async (req: Request, res: Response) => {
     try {
+      // Con { direccion }: busca la dirección que se está corrigiendo, sin guardarla
+      if (typeof req.body?.direccion === 'string') {
+        if (!googleDisponible()) throw new ErrorUbicacion('La ubicación automática no está configurada (falta la clave de Google Maps)', 503)
+        const resultado = await buscarDireccion(Number(req.params.id), req.body.direccion)
+        if (!resultado) throw new ErrorUbicacion('Google no encontró la dirección. Ubíquela en el mapa', 422)
+        return res.json({ latitud: resultado.latitud, longitud: resultado.longitud, ubicacionPrecisa: resultado.precisa, ubicacionFuente: 'GOOGLE' })
+      }
       const { solicitud, encontrada } = await ubicarTramite(Number(req.params.id), { forzar: true })
       if (encontrada === false) throw new ErrorUbicacion('Google no encontró la dirección. Ubíquela en el mapa', 422)
       res.json({ latitud: solicitud.latitud, longitud: solicitud.longitud, ubicacionPrecisa: solicitud.ubicacionPrecisa, ubicacionFuente: solicitud.ubicacionFuente })
@@ -172,8 +179,16 @@ export class MensajeriaController {
       const latitud = coordenada(req.body.latitud)
       const longitud = coordenada(req.body.longitud)
       if (latitud === null || longitud === null) throw new ErrorUbicacion('Indique la ubicación en el mapa')
-      const solicitud = await ubicarManual(Number(req.params.id), { latitud, longitud })
-      res.json({ latitud: solicitud.latitud, longitud: solicitud.longitud, ubicacionPrecisa: solicitud.ubicacionPrecisa, ubicacionFuente: solicitud.ubicacionFuente })
+      // `direccion` opcional: corrige también la dirección del trámite
+      const direccion = typeof req.body.direccion === 'string' ? req.body.direccion : undefined
+      const solicitud = await ubicarManual(Number(req.params.id), { latitud, longitud }, 'MANUAL', direccion)
+      res.json({
+        latitud: solicitud.latitud,
+        longitud: solicitud.longitud,
+        ubicacionPrecisa: solicitud.ubicacionPrecisa,
+        ubicacionFuente: solicitud.ubicacionFuente,
+        direccionTramite: solicitud.direccionTramite
+      })
     } catch (error) {
       responder(res, error)
     }

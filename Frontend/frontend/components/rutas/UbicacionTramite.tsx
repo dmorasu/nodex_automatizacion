@@ -50,16 +50,18 @@ export default function UbicacionTramite({ tramiteId, direccion, latitud, longit
         <ModalUbicacion
           titulo={`Ubicación del trámite #${tramiteId}`}
           direccion={direccion}
+          direccionEditable={direccion ?? ""}
           puntoInicial={ubicada ? { latitud: latitud!, longitud: longitud! } : null}
-          onGuardar={async punto => {
-            const r = await llamarApi(`/mensajeria/tramites/${tramiteId}/ubicacion`, "PUT", punto)
+          onGuardar={async (punto, direccionNueva) => {
+            const r = await llamarApi(`/mensajeria/tramites/${tramiteId}/ubicacion`, "PUT", { ...punto, direccion: direccionNueva })
             if (!r.ok) { toast.error(r.error); return false }
-            toast.success("Ubicación guardada")
+            toast.success(direccionNueva ? "Dirección y ubicación guardadas" : "Ubicación guardada")
             router.refresh()
             return true
           }}
-          onBuscarGoogle={async () => {
-            const r = await llamarApi<{ latitud: number, longitud: number, ubicacionPrecisa: boolean }>(`/mensajeria/tramites/${tramiteId}/ubicar`, "POST")
+          onBuscarGoogle={async direccionNueva => {
+            // Con la dirección escrita (si cambió) busca esa, sin guardarla todavía
+            const r = await llamarApi<{ latitud: number, longitud: number, ubicacionPrecisa: boolean }>(`/mensajeria/tramites/${tramiteId}/ubicar`, "POST", direccionNueva ? { direccion: direccionNueva } : undefined)
             if (!r.ok) { toast.error(r.error); return null }
             if (!r.datos.ubicacionPrecisa) toast.warning("Google la ubicó de forma aproximada: verifique el punto")
             return { latitud: r.datos.latitud, longitud: r.datos.longitud }

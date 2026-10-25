@@ -2,7 +2,8 @@ import { fetchApi } from "@/src/lib/api"
 
 // Abre un archivo que subió el propio tramitador. El token vive en una cookie
 // httpOnly, por eso el archivo pasa por aquí (el backend valida que sea suyo).
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const respuesta = await fetchApi(`/soportes/archivos/${Number(params.id)}/ver`)
 
   if (!respuesta.ok) {

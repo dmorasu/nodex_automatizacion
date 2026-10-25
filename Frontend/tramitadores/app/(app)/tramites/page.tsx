@@ -15,7 +15,8 @@ const FILTROS = [
 
 type Filtros = { filtro?: string, busqueda?: string, pagina?: string }
 
-export default async function TramitesPage({ searchParams }: { searchParams: Filtros }) {
+export default async function TramitesPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   const filtro = FILTROS.some(([codigo]) => codigo === searchParams.filtro) ? searchParams.filtro! : "activos"
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const consulta = new URLSearchParams({ filtro, pagina: String(pagina) })

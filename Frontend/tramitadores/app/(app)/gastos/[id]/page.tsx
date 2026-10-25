@@ -16,7 +16,8 @@ const ESTADO_SOPORTE: Record<Soporte["estado"], { tono: Tono, texto: string }> =
   RECHAZADO: { tono: "rojo", texto: "Rechazado" }
 }
 
-export default async function DetalleGastoPage({ params }: { params: { id: string } }) {
+export default async function DetalleGastoPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const gasto = await obtenerDatos(`/gastos/${Number(params.id)}`, GastoSchema)
   if (!gasto) notFound()
 

@@ -2,7 +2,11 @@ import { fetchApi } from "@/src/lib/api"
 
 // Abre un documento de un trámite del tramitador. El token vive en una cookie
 // httpOnly, por eso el archivo pasa por aquí (el backend valida que el trámite sea suyo).
-export async function GET(_req: Request, { params }: { params: { tramiteId: string, documentoId: string } }) {
+export async function GET(
+  _req: Request,
+  props: { params: Promise<{ tramiteId: string, documentoId: string }> }
+) {
+  const params = await props.params
   const respuesta = await fetchApi(`/tramites/${Number(params.tramiteId)}/documentos/${Number(params.documentoId)}/ver`)
 
   if (!respuesta.ok) {

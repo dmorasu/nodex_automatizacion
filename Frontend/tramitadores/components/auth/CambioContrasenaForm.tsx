@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useFormState, useFormStatus } from "react-dom"
+import { useActionState, useEffect, useState } from "react"
+import { useFormStatus } from "react-dom"
 import { toast } from "react-toastify"
 import { Check } from "lucide-react"
 import { cambiarContrasena } from "@/actions/sesion"
@@ -19,7 +19,7 @@ function BotonGuardar() {
 }
 
 export default function CambioContrasenaForm({ temporal }: { temporal: boolean }) {
-  const [estado, enviar] = useFormState(cambiarContrasena, { errors: [] })
+  const [estado, enviar] = useActionState(cambiarContrasena, { errors: [] })
   const [nueva, setNueva] = useState("")
 
   useEffect(() => {

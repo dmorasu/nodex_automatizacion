@@ -11,7 +11,7 @@ const direccionPublica = (request: NextRequest) => {
 
 // Sin cookie de sesión, todo (menos el login, los íconos y el service worker) lleva al login.
 // La validez del token la revisa el backend en cada página.
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (!request.cookies.has("TOKEN_TRAMITADOR")) {
     return NextResponse.redirect(new URL("/auth/login", direccionPublica(request)))
   }

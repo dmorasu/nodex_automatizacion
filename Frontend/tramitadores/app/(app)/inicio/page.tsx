@@ -8,7 +8,8 @@ import TarjetaTramite from "@/components/tramites/TarjetaTramite"
 import ActivarNotificaciones from "@/components/notificaciones/ActivarNotificaciones"
 
 // Pantalla de inicio: lo que tiene pendiente hoy
-export default async function InicioPage({ searchParams }: { searchParams: { bienvenida?: string } }) {
+export default async function InicioPage(props: { searchParams: Promise<{ bienvenida?: string }> }) {
+  const searchParams = await props.searchParams
   const [sesion, tramites, gastos, push] = await Promise.all([
     requiereSesion(),
     obtenerDatos("/tramites?filtro=activos", ListadoTramitesSchema),

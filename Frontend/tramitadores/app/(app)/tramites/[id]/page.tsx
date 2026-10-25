@@ -14,7 +14,8 @@ import Seccion, { Dato } from "@/components/ui/Seccion"
 
 const ESTADOS_CERRADOS = ["Finalizado", "Desistido"]
 
-export default async function DetalleTramitePage({ params }: { params: { id: string } }) {
+export default async function DetalleTramitePage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const datos = await obtenerDatos(`/tramites/${Number(params.id)}`, DetalleTramiteSchema)
   if (!datos) notFound()
 

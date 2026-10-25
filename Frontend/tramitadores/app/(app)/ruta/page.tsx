@@ -28,7 +28,8 @@ const ESTADOS: Record<Parada["estado"], { nombre: string, clase: string }> = {
 
 // Ruta del día del mensajero: paradas en el orden que definió Torre de control,
 // con navegación a Google Maps o Waze y la confirmación de cada visita
-export default async function MiRutaPage({ searchParams }: { searchParams: { fecha?: string } }) {
+export default async function MiRutaPage(props: { searchParams: Promise<{ fecha?: string }> }) {
+  const searchParams = await props.searchParams
   const sesion = await requiereSesion()
   if (!sesion.esMensajero) notFound()
 

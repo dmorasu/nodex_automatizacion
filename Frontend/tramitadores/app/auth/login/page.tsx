@@ -1,6 +1,7 @@
 import LoginForm from "@/components/auth/LoginForm"
 
-export default function LoginPage({ searchParams }: { searchParams: { sesion?: string } }) {
+export default async function LoginPage(props: { searchParams: Promise<{ sesion?: string }> }) {
+  const searchParams = await props.searchParams
   return (
     <div>
       <h1 className="text-2xl font-semibold text-slate-800">Iniciar sesión</h1>

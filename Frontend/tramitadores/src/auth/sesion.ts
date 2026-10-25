@@ -11,7 +11,7 @@ export const DURACION_COOKIE = 60 * 60 * 24 * 15 // 15 días, igual que el token
 // Tramitador en sesión. `cache` evita repetir la consulta en la misma petición.
 // Si el token venció, se restableció la contraseña o lo desactivaron, vuelve al login.
 export const obtenerSesion = cache(async () => {
-  const token = cookies().get(NOMBRE_COOKIE)?.value
+  const token = (await cookies()).get(NOMBRE_COOKIE)?.value
   if (!token) redirect("/auth/login")
 
   const req = await fetch(`${process.env.API_URL}/app-tramitadores/auth/me`, {

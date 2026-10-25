@@ -8,8 +8,8 @@ import { fetchApi, leerErrores } from "@/src/lib/api"
 
 type EstadoFormulario = { errors: string[] }
 
-const guardarToken = (token: string) =>
-  cookies().set({
+const guardarToken = async (token: string) =>
+  (await cookies()).set({
     name: NOMBRE_COOKIE,
     value: token,
     httpOnly: true,
@@ -41,12 +41,12 @@ export async function iniciarSesion(_estado: EstadoFormulario, formData: FormDat
   }
 
   const { token, debeCambiarContrasena } = RespuestaLoginSchema.parse(json)
-  guardarToken(token)
+  await guardarToken(token)
   redirect(debeCambiarContrasena ? "/cambiar-contrasena" : "/inicio")
 }
 
 export async function cerrarSesion() {
-  cookies().delete(NOMBRE_COOKIE)
+  (await cookies()).delete(NOMBRE_COOKIE)
   redirect("/auth/login")
 }
 
@@ -67,6 +67,6 @@ export async function cambiarContrasena(_estado: EstadoFormulario, formData: For
   if (!req.ok) return { errors: await leerErrores(req) }
 
   const { token } = await req.json() as { token: string }
-  guardarToken(token)
+  await guardarToken(token)
   redirect("/inicio?bienvenida=1")
 }

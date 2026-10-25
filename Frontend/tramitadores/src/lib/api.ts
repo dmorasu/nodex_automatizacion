@@ -6,8 +6,8 @@ import { NOMBRE_COOKIE } from "../auth/sesion"
 
 // Llamada al backend de la app (/api/app-tramitadores) con el token de la sesión.
 // Ej: fetchApi("/tramites?filtro=activos")
-export const fetchApi = (ruta: string, opciones: RequestInit = {}) => {
-  const token = cookies().get(NOMBRE_COOKIE)?.value
+export const fetchApi = async (ruta: string, opciones: RequestInit = {}) => {
+  const token = (await cookies()).get(NOMBRE_COOKIE)?.value
   const esFormulario = opciones.body instanceof FormData
 
   return fetch(`${process.env.API_URL}/app-tramitadores${ruta}`, {

@@ -6,7 +6,8 @@ import Paginacion from "@/components/ui/Paginacion"
 
 // Solo los gastos en los que debe devolver un sobrante. Las facturas se suben
 // desde el trámite (llegan solas al gasto).
-export default async function GastosPage({ searchParams }: { searchParams: { pagina?: string } }) {
+export default async function GastosPage(props: { searchParams: Promise<{ pagina?: string }> }) {
+  const searchParams = await props.searchParams
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const listado = (await obtenerDatos(`/gastos?pagina=${pagina}`, ListadoGastosSchema))!
   const { resumen } = listado

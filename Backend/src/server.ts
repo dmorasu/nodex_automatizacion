@@ -44,6 +44,7 @@ import gestionMasivaRouter from "./routes/gestionMasivaRouter"
 import catalogosTramitesRouter from "./routes/catalogosTramitesRouter"
 import apiExternaRouter from "./routes/apiExternaRouter"
 import mensajeriaRouter from "./routes/mensajeriaRouter"
+import cuentasCobroTramitadoresRouter from "./routes/cuentasCobroTramitadoresRouter"
 import direccionesRouter from "./routes/direccionesRouter"
 import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
 import { iniciarNotificacionesProgramadas } from "./services/notificacionesProgramadas"
@@ -162,6 +163,8 @@ app.use('/api/bulk/estados', ...soloTorreControl, estadosActualizacionesRouter)
 app.use('/api/bulk/tramitador', ...soloTorreControl, tramitadorActualizacionesRouter)
 app.use('/api/bulk/tramites', ...soloTorreControl, gestionMasivaRouter)
 app.use('/api/mensajeria', ...soloTorreControl, mensajeriaRouter)
+// Cuentas de cobro de los tramitadores: precuenta, revisión, envío a la app y visto bueno
+app.use('/api/cuentas-cobro-tramitadores', ...soloTorreControl, cuentasCobroTramitadoresRouter)
 
 // 🔹 Gastos: cada ruta valida sesión y rol dentro de su router
 app.use('/api/gastos', gastosRouter)

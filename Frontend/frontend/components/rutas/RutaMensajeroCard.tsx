@@ -10,6 +10,7 @@ import { llamarApi } from "@/src/lib/apiCliente"
 import {
   COLOR_ESTADO,
   NOMBRE_ESTADO_PARADA,
+  NOMBRE_TRANSPORTE,
   distanciaMetros,
   duracion,
   enlacesGoogleMaps,
@@ -177,6 +178,7 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
                         <div className={clsx("mt-2 rounded-md px-2.5 py-1.5", p.estado === "ENTREGADO" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700")}>
                           <p className="font-semibold">
                             {NOMBRE_ESTADO_PARADA[p.estado]}{p.fechaConfirmacion && ` · ${hora(p.fechaConfirmacion)}`}
+                            {p.transporte && <span className="font-normal"> · {NOMBRE_TRANSPORTE[p.transporte]}</span>}
                             {p.inicioDiligencia && p.fechaConfirmacion && (
                               <span className="font-normal"> · duró {duracion(Math.max(0, Math.round((Date.parse(p.fechaConfirmacion) - Date.parse(p.inicioDiligencia)) / 60_000)))}</span>
                             )}

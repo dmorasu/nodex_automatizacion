@@ -31,6 +31,30 @@ const documentosDelTramitador = async () => {
   }
 }
 
+// 2026-10-25 · Cuentas de cobro de tramitadores: datos que salen en el PDF y la firma del tramitador
+const datosCuentaCobro = async () => {
+  let columnas
+  try {
+    columnas = await db.getQueryInterface().describeTable('Tramitador')
+  } catch {
+    return
+  }
+  const nuevas: [string, string][] = [
+    ['direccion', 'VARCHAR(200)'],
+    ['ciudad', 'VARCHAR(100)'],
+    ['banco', 'VARCHAR(100)'],
+    ['tipoCuenta', 'VARCHAR(20)'],
+    ['numeroCuenta', 'VARCHAR(50)'],
+    ['declaracionArt383', 'BOOLEAN NOT NULL DEFAULT true'],
+    ['firmaRuta', 'VARCHAR(500)'],
+    ['firmaNombre', 'VARCHAR(255)']
+  ]
+  for (const [columna, tipo] of nuevas) {
+    if (!columnas[columna]) await db.query(`ALTER TABLE "Tramitador" ADD COLUMN "${columna}" ${tipo}`)
+  }
+}
+
 export const ajustarEsquemaTramitadores = async () => {
   await documentosDelTramitador()
+  await datosCuentaCobro()
 }

@@ -26,7 +26,13 @@ const VACIO: DatosTramitador = {
   region: "",
   activo: true,
   esMensajero: false,
-  sedeId: null
+  sedeId: null,
+  direccion: "",
+  ciudad: "",
+  banco: "",
+  tipoCuenta: "",
+  numeroCuenta: "",
+  declaracionArt383: true
 }
 
 // Ventana para crear o editar un tramitador
@@ -57,7 +63,7 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
     <Dialog open onClose={() => !guardando && onCerrar()} className="relative z-50">
       <div className="fixed inset-0 bg-slate-900/30" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+        <DialogPanel className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl">
           <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
             <DialogTitle className="text-sm font-semibold text-slate-800">
               {tramitador ? `Editar ${tramitador.nombreTramitador}` : "Nuevo tramitador"}
@@ -65,7 +71,7 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
             <button type="button" onClick={onCerrar} className="text-slate-400 hover:text-slate-600" aria-label="Cerrar"><X size={18} /></button>
           </div>
 
-          <div className="grid gap-4 px-6 py-5 sm:grid-cols-2">
+          <div className="grid gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2">
             <label className="block sm:col-span-2">
               <span className={claseLabel}>Nombre <span className="text-red-400">*</span></span>
               <input value={datos.nombreTramitador} onChange={e => cambiar("nombreTramitador", e.target.value)} maxLength={200} className={claseInput} autoFocus />
@@ -124,6 +130,42 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
                 </label>
               )}
             </div>
+
+            {/* Cuenta de cobro (los mensajeros no hacen cuenta de cobro) */}
+            {!datos.esMensajero && (
+              <div className="grid gap-4 rounded-md border border-slate-200 px-3 py-3 sm:col-span-2 sm:grid-cols-2">
+                <p className="text-xs font-semibold text-slate-700 sm:col-span-2">Cuenta de cobro</p>
+                <label className="block sm:col-span-2">
+                  <span className={claseLabel}>Dirección</span>
+                  <input value={datos.direccion ?? ""} onChange={e => cambiar("direccion", e.target.value)} maxLength={200} className={claseInput} />
+                </label>
+                <label className="block">
+                  <span className={claseLabel}>Ciudad</span>
+                  <input value={datos.ciudad ?? ""} onChange={e => cambiar("ciudad", e.target.value)} maxLength={100} className={claseInput} />
+                </label>
+                <label className="block">
+                  <span className={claseLabel}>Banco o billetera</span>
+                  <input value={datos.banco ?? ""} onChange={e => cambiar("banco", e.target.value)} maxLength={100} placeholder="Bancolombia, Nequi…" className={claseInput} />
+                </label>
+                <label className="block">
+                  <span className={claseLabel}>Tipo de cuenta</span>
+                  <select value={datos.tipoCuenta ?? ""} onChange={e => cambiar("tipoCuenta", e.target.value)} className={claseInput}>
+                    <option value="">Seleccione</option>
+                    <option value="AHORROS">Ahorros</option>
+                    <option value="CORRIENTE">Corriente</option>
+                    <option value="BILLETERA">Billetera digital</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className={claseLabel}>Número de cuenta</span>
+                  <input value={datos.numeroCuenta ?? ""} onChange={e => cambiar("numeroCuenta", e.target.value)} maxLength={50} className={claseInput} />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-slate-600 sm:col-span-2">
+                  <input type="checkbox" checked={datos.declaracionArt383 !== false} onChange={e => cambiar("declaracionArt383", e.target.checked)} className="h-4 w-4 accent-sky-500" />
+                  Firmó la declaración del art. 383 (retención por tabla)
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">

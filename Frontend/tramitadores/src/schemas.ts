@@ -37,6 +37,8 @@ export const ParadaSchema = z.object({
   orden: z.number(),
   estado: z.enum(["PENDIENTE", "ENTREGADO", "NO_SE_PUDO"]),
   observacion: z.string().nullable(),
+  // Desplazamiento de la realizada; las de antes del 2026-10-25 no lo tienen
+  transporte: z.enum(["MOTO", "INTERMUNICIPAL"]).nullable().optional(),
   fechaConfirmacion: z.string().nullable(),
   // Hora en que el mensajero inició la diligencia (la confirmación es su fin)
   inicioDiligencia: z.string().nullable(),
@@ -270,3 +272,37 @@ export type DetalleTramite = z.infer<typeof DetalleTramiteSchema>
 export type GastoDelTramite = z.infer<typeof GastoDelTramiteSchema>
 export type Gasto = z.infer<typeof GastoSchema>
 export type Soporte = z.infer<typeof SoporteSchema>
+
+// ── Cuentas de cobro ──
+
+export const ESTADOS_CUENTA_APP = ["CON_TRAMITADOR", "POR_CORREGIR", "APROBADA", "EN_TESORERIA", "PAGADA"] as const
+
+export const CuentaCobroSchema = z.object({
+  id: z.number(),
+  numero: z.string(),
+  estado: z.enum(ESTADOS_CUENTA_APP),
+  total: z.number(),
+  enviadaEn: z.string().nullable(),
+  aprobadaEn: z.string().nullable(),
+  fechaPago: z.string().nullable()
+})
+
+export const DetalleCuentaCobroSchema = CuentaCobroSchema.extend({
+  fechaRadicacion: z.string().nullable(),
+  tieneFirma: z.boolean(),
+  tramites: z.array(z.object({
+    tramiteId: z.number(),
+    placa: z.string().nullable(),
+    total: z.number(),
+    lineas: z.array(z.object({
+      id: z.number(),
+      tipo: z.enum(["TRAMITE", "VISITA_FALLIDA", "ADICIONAL"]),
+      concepto: z.string(),
+      fecha: z.string(),
+      valor: z.number()
+    }))
+  }))
+})
+
+export type CuentaCobro = z.infer<typeof CuentaCobroSchema>
+export type DetalleCuentaCobro = z.infer<typeof DetalleCuentaCobroSchema>

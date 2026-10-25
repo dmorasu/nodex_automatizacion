@@ -253,7 +253,9 @@ export const ajustarEsquemaMensajeria = async () => {
       ['inicio_diligencia', 'TIMESTAMP WITH TIME ZONE'],
       ['latitud_inicio', 'DOUBLE PRECISION'],
       ['longitud_inicio', 'DOUBLE PRECISION'],
-      ['jornada_id', 'INTEGER REFERENCES mensajeria_jornadas (id) ON UPDATE CASCADE ON DELETE SET NULL']
+      ['jornada_id', 'INTEGER REFERENCES mensajeria_jornadas (id) ON UPDATE CASCADE ON DELETE SET NULL'],
+      // 2026-10-25 · Desplazamiento de la diligencia realizada: moto o transporte intermunicipal
+      ['transporte', 'VARCHAR(20)']
     ]
     for (const [columna, tipo] of nuevas) {
       if (!paradas[columna]) await db.query(`ALTER TABLE mensajeria_paradas ADD COLUMN ${columna} ${tipo}`)

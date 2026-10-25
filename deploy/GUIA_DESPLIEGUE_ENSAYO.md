@@ -282,6 +282,21 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Cuentas de cobro de tramitadores, fase 1 (2026-10-25)** — cambian el backend y las **tres** apps (compilar las cuatro y reiniciar `nodex-api`, `nodex-worker`, `nodex-tramites`, `nodex-gastos` y `nodex-tramitadores`).
+- **Variable nueva (opcional) en el backend:** `URL_NODEX_TRAMITADORES=https://tramitadores.nodexgpa.com` (botón "Abrir la app" en los correos al tramitador). Usa además `URL_NODEX_TRAMITES`, `URL_NODEX_GASTOS`, `CORREO_TESORERIA` y `CORREO_TORRE_CONTROL`, que ya existen.
+- El arranque agrega a `"Tramitador"` las columnas `direccion`, `ciudad`, `banco`, `tipoCuenta`, `numeroCuenta`, `declaracionArt383`, `firmaRuta` y `firmaNombre` (antes de sync) y `sync()` crea `tramitadores_cuentas_cobro`, `tramitadores_cuentas_cobro_lineas` y `tramitadores_cuentas_cobro_historial`. Comprobar:
+  `sudo -u postgres psql -d nodex -c "\dt tramitadores_cuentas_cobro*" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'Tramitador' AND column_name IN ('direccion','ciudad','banco','tipoCuenta','numeroCuenta','declaracionArt383','firmaRuta')"`
+- Después: completar en Catálogos → Tramitadores la dirección, ciudad, banco y número de cuenta de cada tramitador (sin esos datos la cuenta no se envía) y que tengan acceso a la app.
+- Pruebas: Cuentas de cobro → Por generar → Generar precuenta → corregir un valor y agregar una visita fallida → Enviar; en la app, Cuentas → Aprobar (firmar) y otra con Pedir corrección; Por visto bueno → Dar visto bueno a la semana; en Gastos, Tesorería → Cuentas de tramitadores → PDF y Marcar pagada. Ver que el trámite quede con su número CCT en la pestaña de cuenta de cobro.
+- Para volver: el commit anterior ignora las tablas y columnas nuevas (no hay que borrarlas).
+
+**Desplazamiento de la diligencia: moto o transporte intermunicipal (2026-10-25)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-tramitadores`).
+- **Sin variables nuevas.** El arranque agrega `mensajeria_paradas.transporte` (después de `sync()`, idempotente). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'mensajeria_paradas' AND column_name = 'transporte'"`
+- Pruebas: en la app, Finalizar diligencia → Realizado muestra **En moto** marcado y **Transporte intermunicipal**; en Rutas de mensajeros la tarjeta lo dice y el Excel de tiempos y km trae la columna "Desplazamiento".
+- Un celular con la app anterior abierta sigue funcionando: si no lo envía, la realizada queda en moto.
+- Para volver: el commit anterior ignora la columna (no hay que borrarla).
+
 **Next 16 y mejoras de Trámites y Rutas (2026-10-24, commit `841a87b5`)** — cambian el backend y las **tres** apps (compilar las cuatro y reiniciar los cinco procesos).
 - **Sin variables nuevas y sin cambios de base.** Next 16 pide Node 20.9 o más (el servidor tiene 20.20.0). `npm ci` instala Next 16 y React 19; el build usa Turbopack.
 - Compilar **una por una** (memoria). Si un build falla, no seguir y volver al commit anterior.

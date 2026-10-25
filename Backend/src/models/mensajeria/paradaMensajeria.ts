@@ -9,6 +9,13 @@ export const ESTADOS_PARADA = {
   NO_SE_PUDO: 'NO_SE_PUDO'
 } as const
 
+// Cómo se desplazó el mensajero a una diligencia realizada (pedido de 2026-10-25): casi siempre en
+// moto, por eso es lo predeterminado; las de otro municipio pueden ir en transporte intermunicipal.
+export const TRANSPORTES_PARADA = {
+  MOTO: 'MOTO',
+  INTERMUNICIPAL: 'INTERMUNICIPAL'
+} as const
+
 // Una visita del mensajero a un trámite en un día. Las paradas se generan solas con los
 // trámites del mensajero cuya fecha de diligencia es ese día; aquí se guarda el orden de la
 // ruta y la confirmación de la visita (estado, foto y ubicación GPS).
@@ -79,6 +86,11 @@ class ParadaMensajeria extends Model {
 
   @Column({ type: DataType.TEXT })
   declare observacion: string | null
+
+  // Solo en las realizadas (MOTO / INTERMUNICIPAL); null en las no realizadas y en las de antes del
+  // 2026-10-25. Columna agregada en ajustarEsquemaMensajeria (después de sync).
+  @Column({ type: DataType.STRING(20) })
+  declare transporte: string | null
 
   @Column({ type: DataType.DATE })
   declare fechaConfirmacion: Date | null

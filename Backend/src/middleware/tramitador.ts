@@ -69,7 +69,14 @@ export const validateTramitadorInput = [
     }),
   body("activo").optional().isBoolean().withMessage("Activo debe ser verdadero o falso").toBoolean(),
   body("esMensajero").optional().isBoolean().withMessage("Mensajero debe ser verdadero o falso").toBoolean(),
-  body("sedeId").optional({ values: "null" }).isInt({ min: 1 }).withMessage("Sede no válida").toInt()
+  body("sedeId").optional({ values: "null" }).isInt({ min: 1 }).withMessage("Sede no válida").toInt(),
+  // Datos de la cuenta de cobro (opcionales al crear; se exigen al enviar la cuenta)
+  body("direccion").optional({ values: "null" }).isString().isLength({ max: 200 }).withMessage("La dirección puede tener máximo 200 caracteres"),
+  body("ciudad").optional({ values: "null" }).isString().isLength({ max: 100 }).withMessage("La ciudad puede tener máximo 100 caracteres"),
+  body("banco").optional({ values: "null" }).isString().isLength({ max: 100 }).withMessage("El banco puede tener máximo 100 caracteres"),
+  body("tipoCuenta").optional({ values: "falsy" }).isIn(["AHORROS", "CORRIENTE", "BILLETERA"]).withMessage("Tipo de cuenta no válido"),
+  body("numeroCuenta").optional({ values: "null" }).isString().isLength({ max: 50 }).withMessage("El número de cuenta puede tener máximo 50 caracteres"),
+  body("declaracionArt383").optional().isBoolean().withMessage("Declaración debe ser verdadero o falso").toBoolean()
 ]
 
 export const validateTramitadorId = async (

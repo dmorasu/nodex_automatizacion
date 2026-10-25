@@ -23,6 +23,7 @@ export default async function TesoreriaLayout({ children }: { children: React.Re
     ...(administraBolsas ? [{ href: "/tesoreria/bolsas", nombre: "Bolsas" }] : []),
     ...(pagos ? [{ href: "/tesoreria/lotes", nombre: "Pagos realizados" }] : []),
     ...(general ? [{ href: "/tesoreria/cuentas", nombre: "Cuentas de cobro" }] : []),
+    ...(general ? [{ href: "/tesoreria/cuentas-tramitadores", nombre: "Cuentas de tramitadores" }] : []),
     ...(administraBolsas ? [{ href: "/tesoreria/reintegros-tramitador", nombre: "Reintegros por tramitador" }] : [])
   ]
 

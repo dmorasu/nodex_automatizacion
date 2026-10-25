@@ -476,7 +476,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
           <p>El borde de cada número muestra el estado: <span class="chip verde">Realizado</span> <span class="chip rojo">No realizado</span>.</p>
           <p><b>En vivo:</b> cuando el mensajero inicia la ruta en su app, aparece en el mapa con sus iniciales y la hora de su última posición ("hace 2 min"); se actualiza sola cada minuto. Solo envía mientras tiene la app abierta: si lleva más de 10 minutos sin enviar, se ve en gris ("Sin señal"). La línea de puntos es el <b>recorrido real</b>: las visitas que confirmó, en el orden en que las hizo.</p>
           <p><b>Corregir una parada:</b> en la tarjeta del mensajero, abra la ubicación del trámite. Puede cambiar la <b>dirección</b> (con las sugerencias de Google) y mover el punto en el mapa con un clic o arrastrando el marcador. <b>Buscar la dirección con Google</b> busca lo que esté escrito. Al guardar, la dirección nueva queda en el trámite y en su historial.</p>
-          <p>En la tarjeta de cada mensajero se ven sus rutas del día (hora de inicio y fin, tiempo efectivo sin el almuerzo y kilómetros por GPS) y cuánto duró cada diligencia. Con <b>Tiempos y km (Excel)</b> descarga, para un rango de fechas, los tiempos y kilómetros por día, por ruta y por diligencia (PESV). Los kilómetros son aproximados: el celular solo los registra con la app abierta.</p>
+          <p>En la tarjeta de cada mensajero se ven sus rutas del día (hora de inicio y fin, tiempo efectivo sin el almuerzo y kilómetros por GPS) y cuánto duró cada diligencia, con el desplazamiento de las realizadas (en moto o transporte intermunicipal). Con <b>Tiempos y km (Excel)</b> descarga, para un rango de fechas, los tiempos y kilómetros por día, por ruta y por diligencia (PESV). Los kilómetros son aproximados: el celular solo los registra con la app abierta.</p>
         </div>
       </details>
 
@@ -489,6 +489,20 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><b>Devolver trámite:</b> falta algo. Escriba el <b>motivo</b> (es obligatorio) y presione <b>Devolver</b>. Al tramitador le llega un aviso en el celular con el motivo y, cuando lo corrija, puede volver a reportarlo como realizado.</li>
           </ul>
           <p>Las pestañas <b>Pendientes de revisión</b>, <b>Revisados</b> y <b>Devueltos</b> separan los reportes. Lo mismo se puede hacer desde la pestaña <b>Tramitador</b> del detalle del trámite.</p>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Cuentas de cobro <span class="etq">Torre de control</span></span><span class="resumen">La cuenta semanal de cada tramitador, del borrador al pago.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>En <b>Cuentas de cobro → Por generar</b> están los trámites finalizados (desde el 15 de octubre de 2026) sin cuenta de cobro, agrupados por semana (sábado a viernes) y por tramitador. Presione <b>Generar precuenta</b> en un tramitador, <b>Generar las de la semana</b> o elija varios. La cuenta toma los datos del tramitador (dirección, banco, cuenta…) de Catálogos → Tramitadores. Si el tramitador ya tiene un borrador de esa semana, los trámites se le agregan.</span></li>
+            <li><span>Abra la cuenta y revísela: corrija el <b>valor</b> de cada trámite (los que no tienen valor quedan en cero y resaltados), agregue una <b>visita fallida</b> o un <b>adicional</b> (papelería, sobres…) al trámite que corresponda, o quite un trámite (vuelve a "Por generar"). Los cambios se guardan al salir de cada campo.</span></li>
+            <li><span>Presione <b>Enviar al tramitador</b>. Antes, el tramitador debe tener completos en Catálogos → Tramitadores su dirección, ciudad, banco y número de cuenta, y tener acceso a la app.</span></li>
+            <li><span>El tramitador la aprueba con su firma, pide corrección o agrega un adicional con su soporte desde la app. Si pide corrección o agrega un adicional, la cuenta vuelve a <b>Borradores y por corregir</b> con lo que hizo (el soporte se abre con <b>Ver soporte</b>); revísela y envíela de nuevo.</span></li>
+            <li><span>En <b>Por visto bueno</b> las aprobadas se agrupan por semana: presione <b>Dar visto bueno a la semana</b> (o elija algunas). Pasan a Tesorería y quedan radicadas ese día; a cada trámite se le anota la cuenta de cobro.</span></li>
+          </ol>
+          <p>El PDF trae la cuenta de cobro, el Anexo 1 con el detalle de los trámites y el formato de distribución de centros de costos (sale del centro de costos de la operación de cada trámite). Mientras la cuenta está con el tramitador o aprobada se puede <b>Retirar para corregir</b> o <b>Anular</b> (sus trámites vuelven a "Por generar").</p>
         </div>
       </details>
 
@@ -694,6 +708,13 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
       </details>
 
       <details class="tema">
+        <summary><span class="titulo">Cuentas de tramitadores <span class="etq">Tesorería</span></span><span class="resumen">Las cuentas de cobro de los tramitadores con el visto bueno de Torre de control.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <p>En Tesorería → <b>Cuentas de tramitadores</b> están las pendientes de pago y las pagadas. Cada cuenta tiene los datos para el pago, la distribución por centro de costos y el PDF con la cuenta, el anexo y el formato de distribución. Al pagarla, indique la fecha, una observación y el soporte (opcionales) y presione <b>Marcar pagada</b>: el tramitador recibe el aviso.</p>
+        </div>
+      </details>
+
+      <details class="tema">
         <summary><span class="titulo">Legalización <span class="etq">Legalización</span></span><span class="resumen">Facturas, soportes de los tramitadores y reintegros.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo">
           <p>Legalización ve solo los gastos <b>reembolsables</b>; los no reembolsables los maneja Contabilidad.</p>
@@ -825,12 +846,25 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
       </details>
 
       <details class="tema">
+        <summary><span class="titulo">Cuentas de cobro</span><span class="resumen">Revisar, firmar y aprobar su cuenta de cobro.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>Cuando Torre de control le envía una cuenta, le llega un aviso. Entre a <b>Cuentas</b> y ábrala: verá los trámites, los valores y el total. Con <b>Descargar PDF</b> la ve completa.</span></li>
+            <li><span>Si está bien, presione <b>Aprobar</b>. La primera vez firme con el dedo en la pantalla; la firma queda guardada para las siguientes (puede cambiarla).</span></li>
+            <li><span>Si algo no está bien, presione <b>Pedir corrección</b> y cuente qué hay que corregir. Torre de control se la envía de nuevo.</span></li>
+            <li><span>Si tuvo gastos adicionales (papelería, impresiones, sobres…), presione <b>Agregar adicional</b>: elija el trámite, escriba el concepto, la fecha y el valor, y tome la foto o suba el PDF del soporte. Torre de control lo revisa y le envía la cuenta de nuevo para aprobarla.</span></li>
+          </ol>
+          <p>Después verá cuando pasa a pago y cuando queda <b>Pagada</b>.</p>
+        </div>
+      </details>
+
+      <details class="tema">
         <summary><span class="titulo">Mi ruta <span class="etq">Mensajeros</span></span><span class="resumen">Las paradas del día, navegar y confirmar cada visita.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
         <div class="cuerpo">
           <ol class="pasos">
             <li><span>Entre a <b>Mi ruta</b> para ver las paradas del día en orden.</span></li>
             <li><span>Al salir, toque <b>Iniciar ruta</b>. La primera vez le pide su autorización. Arriba verá el aviso <b>Ubicación compartida</b>: Torre de control ve dónde va mientras tenga la app abierta (queda activa todo el día).</span></li>
-            <li><span>Al llegar a cada sitio toque <b>Iniciar diligencia</b>; al terminar, <b>Finalizar diligencia</b> (Realizado o No realizado). Así queda cuánto duró cada una.</span></li>
+            <li><span>Al llegar a cada sitio toque <b>Iniciar diligencia</b>; al terminar, <b>Finalizar diligencia</b> (Realizado o No realizado). Así queda cuánto duró cada una. Si la realizó, indique el desplazamiento: <b>En moto</b> (viene marcado) o <b>Transporte intermunicipal</b>.</span></li>
             <li><span>Para almorzar toque <b>Salir a almorzar</b> y al volver <b>Volver del almuerzo</b>. Al terminar toque <b>Finalizar ruta</b>; si sale de nuevo, inicie otra ruta.</span></li>
             <li><span>Toque <b>Abrir ruta completa en Google Maps</b>, o en cada parada <b>Google Maps</b> o <b>Waze</b>.</span></li>
             <li><span>En cada parada toque <b>Confirmar visita</b>: Realizado o No realizado, una observación y una foto.</span></li>

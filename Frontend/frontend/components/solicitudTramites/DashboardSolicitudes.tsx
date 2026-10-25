@@ -4,7 +4,7 @@ import { FormEvent } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import clsx from "clsx"
-import { ChevronLeft, ChevronRight, Filter, Pencil, Search, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Eye, Filter, Pencil, Search, X } from "lucide-react"
 
 import { useTramites } from "@/hooks/useTramites"
 import { useTramitadores } from "@/hooks/useTramitadores"
@@ -230,11 +230,20 @@ export default function DashboardPageClient() {
                 <tr key={s.id} className="align-top transition hover:bg-slate-50/70">
 
                   <td className="px-3 py-3">
-                    {/* El número abre el trámite y el lápiz lo edita (antes estaban en un menú al
-                        final de la fila, escondido cuando la tabla se desplaza) */}
+                    {/* El número y el ojo abren el trámite y el lápiz lo edita (antes estaban en un
+                        menú al final de la fila, escondido cuando la tabla se desplaza; el ojo se
+                        conserva porque los usuarios ya lo usan) */}
                     <span className="inline-flex items-center gap-1">
                       <Link href={`/center/solicitudTramites/${s.id}`} className="font-semibold text-sky-700 hover:underline">
                         #{s.id}
+                      </Link>
+                      <Link
+                        href={`/center/solicitudTramites/${s.id}`}
+                        title="Ver trámite"
+                        aria-label={`Ver trámite ${s.id}`}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition hover:bg-sky-50 hover:text-sky-600"
+                      >
+                        <Eye size={14} />
                       </Link>
                       <Link
                         href={`/center/solicitudTramites/${s.id}/edit`}

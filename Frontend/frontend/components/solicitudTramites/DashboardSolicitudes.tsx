@@ -4,7 +4,7 @@ import { FormEvent } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import clsx from "clsx"
-import { ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Filter, Pencil, Search, X } from "lucide-react"
 
 import { useTramites } from "@/hooks/useTramites"
 import { useTramitadores } from "@/hooks/useTramitadores"
@@ -14,7 +14,6 @@ import { useSolicitudesFiltradas } from "@/hooks/useSolicitudesFiltradas"
 import { useAnalistas } from "@/hooks/useAnalistas"
 import { usePermisosAnalistas } from "@/src/auth/PerfilContexto"
 
-import SolicitudTramiteMenu from "@/components/solicitudTramites/MenuSolicitudTramites"
 import EstadoTramite from "@/components/solicitudTramites/EstadoTramite"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/components/ui/estilos"
 import SelectBuscable from "@/components/ui/SelectBuscable"
@@ -202,9 +201,6 @@ export default function DashboardPageClient() {
         <table className="w-full min-w-[960px] text-left text-xs">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
-              {/* Opciones (Editar...) al inicio de la fila: en pantallas medianas la tabla se
-                  desplaza y al final quedaban escondidas */}
-              <th className="w-10 py-3 pl-3 pr-0"><span className="sr-only">Opciones</span></th>
               <th className="px-3 py-3 font-semibold">Trámite</th>
               <th className="px-3 py-3 font-semibold">Estado</th>
               <th className="px-3 py-3 font-semibold">Cliente</th>
@@ -217,7 +213,7 @@ export default function DashboardPageClient() {
 
             {loading && solicitudes.length === 0 && Array.from({ length: 5 }).map((_, i) => (
               <tr key={i}>
-                <td colSpan={7} className="px-3 py-4">
+                <td colSpan={6} className="px-3 py-4">
                   <div className="h-10 animate-pulse rounded-md bg-slate-100" />
                 </td>
               </tr>
@@ -233,14 +229,22 @@ export default function DashboardPageClient() {
               return (
                 <tr key={s.id} className="align-top transition hover:bg-slate-50/70">
 
-                  <td className="py-3 pl-3 pr-0">
-                    <SolicitudTramiteMenu solicitudId={s.id} />
-                  </td>
-
                   <td className="px-3 py-3">
-                    <Link href={`/center/solicitudTramites/${s.id}`} className="font-semibold text-sky-700 hover:underline">
-                      #{s.id}
-                    </Link>
+                    {/* El número abre el trámite y el lápiz lo edita (antes estaban en un menú al
+                        final de la fila, escondido cuando la tabla se desplaza) */}
+                    <span className="inline-flex items-center gap-1">
+                      <Link href={`/center/solicitudTramites/${s.id}`} className="font-semibold text-sky-700 hover:underline">
+                        #{s.id}
+                      </Link>
+                      <Link
+                        href={`/center/solicitudTramites/${s.id}/edit`}
+                        title="Editar trámite"
+                        aria-label={`Editar trámite ${s.id}`}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition hover:bg-sky-50 hover:text-sky-600"
+                      >
+                        <Pencil size={13} />
+                      </Link>
+                    </span>
                     {esAnalista && s.analistaAsignado !== usuarioId && (
                       <span className="ml-1.5 rounded-full border border-slate-200 bg-slate-50 px-1.5 py-px text-[10px] font-medium text-slate-500">
                         No asignado a ti

@@ -254,8 +254,10 @@ export const transportadoraSchema= z.object({
 })
 export const transportadorasSchema = z.array(transportadoraSchema)
 export const logisticaSchema =z.object({
-         numeroGuia:  z.string()
-                .min(1, "Debe Digitar el nuemro de guia")
+         // Sin guía el formulario envía null: sin el mensaje propio zod lo explicaba en inglés
+         numeroGuia:  z.string({ error: "Debe digitar el número de guía" })
+                .trim()
+                .min(1, "Debe digitar el número de guía")
 })
 
 

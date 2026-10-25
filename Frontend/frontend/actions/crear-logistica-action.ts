@@ -57,12 +57,16 @@ export default async function CrearLogistica(
     body: JSON.stringify(logisticaData)
   })
 
-  const json = await req.json()
+  const json = await req.json().catch(() => null)
 
   if (!req.ok) {
-    const { error } = ErrorResponoseSchema.parse(json)
+    // El backend responde { error } (reglas de negocio) o { errors: [{ msg }] } (validaciones)
+    const error = ErrorResponoseSchema.safeParse(json)
+    const errores: string[] = error.success
+      ? [error.data.error]
+      : (json?.errors ?? []).map((e: { msg: string }) => e.msg)
     return {
-      errors: [error],
+      errors: errores.length ? errores : ["No se pudo guardar la logística"],
       success: ""
     }
   }

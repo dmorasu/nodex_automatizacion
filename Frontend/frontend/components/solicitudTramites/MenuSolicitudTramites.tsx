@@ -134,16 +134,17 @@ export default function SolicitudTramiteMenu({
         "
       >
 
-        {/* `anchor` lo dibuja fuera de la tabla (con scroll horizontal) para que no se recorte */}
+        {/* `anchor` lo dibuja fuera de la tabla (con scroll horizontal) para que no se recorte; el botón
+            está al inicio de la fila, por eso abre hacia la derecha */}
         <MenuItems
-          anchor="bottom end"
+          anchor="bottom start"
           className="
             z-50
             [--anchor-gap:6px]
 
             w-48
 
-            origin-top-right
+            origin-top-left
 
             rounded-lg
 

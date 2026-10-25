@@ -3,14 +3,15 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import clsx from "clsx"
-import { CircleCheckBig, FilePlus2, LayoutDashboard, Radar, Route, type LucideIcon } from "lucide-react"
+import { CircleCheckBig, FilePlus2, LayoutDashboard, Radar, Route, Settings2, type LucideIcon } from "lucide-react"
 
 import type { PerfilTramites } from "@/src/auth/perfiles"
 
 type Acceso = { href: string, nombre: string, icono: LucideIcon, visible: boolean }
 
 // Accesos del encabezado (siempre a la vista, el encabezado queda fijo al bajar): pasar del
-// Dashboard al Tablero de gestión o a un trámite nuevo sin abrir el menú. Mismos permisos del menú.
+// Dashboard al Tablero de gestión, a la gestión masiva o a un trámite nuevo sin abrir el menú.
+// Mismos permisos del menú.
 export default function AccesosRapidos({ perfil }: { perfil: PerfilTramites }) {
   const ruta = usePathname()
   const esTorreControl = perfil === "TORRE_CONTROL"
@@ -20,6 +21,7 @@ export default function AccesosRapidos({ perfil }: { perfil: PerfilTramites }) {
     { href: "/center/torreControl", nombre: "Tablero de gestión", icono: Radar, visible: esTorreControl },
     { href: "/center/reportesRealizado", nombre: "Realizados", icono: CircleCheckBig, visible: esTorreControl },
     { href: "/center/rutas", nombre: "Rutas", icono: Route, visible: esTorreControl },
+    { href: "/center/gestionMasiva", nombre: "Gestión masiva", icono: Settings2, visible: esTorreControl },
     { href: "/center/solicitudTramites/nueva", nombre: "Nuevo trámite", icono: FilePlus2, visible: true }
   ]
 

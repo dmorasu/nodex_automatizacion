@@ -4,7 +4,7 @@ import { FormEvent } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import clsx from "clsx"
-import { ChevronLeft, ChevronRight, Database, Filter, Plus, Search, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react"
 
 import { useTramites } from "@/hooks/useTramites"
 import { useTramitadores } from "@/hooks/useTramitadores"
@@ -12,7 +12,7 @@ import { useOperaciones } from "@/hooks/useOperaciones"
 import { useEstados } from "@/hooks/useEstadosSelect"
 import { useSolicitudesFiltradas } from "@/hooks/useSolicitudesFiltradas"
 import { useAnalistas } from "@/hooks/useAnalistas"
-import { usePerfil, usePermisosAnalistas } from "@/src/auth/PerfilContexto"
+import { usePermisosAnalistas } from "@/src/auth/PerfilContexto"
 
 import SolicitudTramiteMenu from "@/components/solicitudTramites/MenuSolicitudTramites"
 import EstadoTramite from "@/components/solicitudTramites/EstadoTramite"
@@ -29,9 +29,6 @@ const TAMANO_PAGINA = 10 // el backend devuelve 10 por página
 
 const claseFiltro = `${claseInput} h-9`
 const claseEtiqueta = "block mb-1 text-[11px] font-medium text-slate-500"
-// Columna de opciones pegada a la derecha: en pantallas medianas la tabla se desplaza
-// y Editar quedaba escondido al final. La sombra la separa de lo que pasa por debajo.
-const COLUMNA_FIJA = "sticky right-0 shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.18)]"
 
 // "2026-10-05T14:00:00Z" → "5 oct 2026". `sinZona` para fechas guardadas sin hora (no se corren un día)
 const fechaCorta = (iso?: string | null, sinZona?: boolean) => {
@@ -60,7 +57,6 @@ export default function DashboardPageClient() {
   const { data: estados } = useEstados()
   const { data: analistas } = useAnalistas()
   const { esAnalista, usuarioId } = usePermisosAnalistas()
-  const perfil = usePerfil()
 
   // El analista ve solo sus trámites asignados; al buscar por número o identificación el
   // backend le devuelve cualquiera (la regla vive en SolicitudTramitesController)
@@ -113,17 +109,6 @@ export default function DashboardPageClient() {
                 : "Solo se listan tus trámites asignados. Busca por número o identificación para encontrar cualquier trámite."}
             </p>
           )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {/* Gestión masiva: solo Torre de control (Gestión de activos no la ve) */}
-          {perfil === "TORRE_CONTROL" && (
-            <Link href="/center/gestionMasiva" className={claseBotonSecundario}>
-              <Database size={15} /> Gestión masiva
-            </Link>
-          )}
-          <Link href="/center/solicitudTramites/nueva" className={claseBotonPrimario}>
-            <Plus size={15} /> Nuevo trámite
-          </Link>
         </div>
       </div>
 
@@ -217,13 +202,15 @@ export default function DashboardPageClient() {
         <table className="w-full min-w-[960px] text-left text-xs">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
+              {/* Opciones (Editar...) al inicio de la fila: en pantallas medianas la tabla se
+                  desplaza y al final quedaban escondidas */}
+              <th className="w-10 py-3 pl-3 pr-0"><span className="sr-only">Opciones</span></th>
               <th className="px-3 py-3 font-semibold">Trámite</th>
               <th className="px-3 py-3 font-semibold">Estado</th>
               <th className="px-3 py-3 font-semibold">Cliente</th>
               <th className="px-3 py-3 font-semibold">Ubicación</th>
               <th className="px-3 py-3 font-semibold">Responsables</th>
               <th className="px-3 py-3 font-semibold">Fechas</th>
-              <th className={clsx("w-10 bg-slate-50 px-3 py-3", COLUMNA_FIJA)}><span className="sr-only">Opciones</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -244,7 +231,11 @@ export default function DashboardPageClient() {
               const identificador = s.placa || s.matriculaInmobiliaria
 
               return (
-                <tr key={s.id} className="group align-top transition hover:bg-slate-50/70">
+                <tr key={s.id} className="align-top transition hover:bg-slate-50/70">
+
+                  <td className="py-3 pl-3 pr-0">
+                    <SolicitudTramiteMenu solicitudId={s.id} />
+                  </td>
 
                   <td className="px-3 py-3">
                     <Link href={`/center/solicitudTramites/${s.id}`} className="font-semibold text-sky-700 hover:underline">
@@ -320,9 +311,6 @@ export default function DashboardPageClient() {
                       : <p className="text-slate-400">Sin finalizar</p>}
                   </td>
 
-                  <td className={clsx("bg-white px-3 py-3 text-right transition group-hover:bg-slate-50", COLUMNA_FIJA)}>
-                    <SolicitudTramiteMenu solicitudId={s.id} />
-                  </td>
                 </tr>
               )
             })}

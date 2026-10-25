@@ -282,6 +282,12 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Next 16 y mejoras de Trámites y Rutas (2026-10-24, commit `841a87b5`)** — cambian el backend y las **tres** apps (compilar las cuatro y reiniciar los cinco procesos).
+- **Sin variables nuevas y sin cambios de base.** Next 16 pide Node 20.9 o más (el servidor tiene 20.20.0). `npm ci` instala Next 16 y React 19; el build usa Turbopack.
+- Compilar **una por una** (memoria). Si un build falla, no seguir y volver al commit anterior.
+- Comprobar: login y cierre de sesión en las tres apps; en Trámites, abrir y guardar un modal del detalle (logística, estado), crear un trámite con documentos, el lápiz y el ojo del Dashboard, la barra de accesos y en Rutas "Agregar trámite" y corregir la ubicación con dirección; en la app de tramitadores, finalizar una diligencia (Realizado / No realizado).
+- Para volver: `git checkout <commit anterior>`, `npm ci` y `npm run build` en las cuatro (vuelve a Next 14) y reiniciar.
+
 **Perfiles por app y Analista de Tesorería (2026-10-23)** — cambian el backend, Nodex Gastos y Nodex Trámites (compilar los tres y reiniciar `nodex-api`, `nodex-gastos` y `nodex-tramites`).
 - **Sin variables nuevas.** El arranque crea los perfiles Administrador de Gastos, Administrador de Trámites y Analista de Tesorería, da los dos administradores a quien tenga Administrador y deja Administrador inactivo (sale "Perfiles: Administrador separado…" en el log). Comprobar:
   `sudo -u postgres psql -d nodex -c "SELECT r.codigo, r.activo, COUNT(ur.usuario_id) FROM gastos_roles r LEFT JOIN gastos_usuario_roles ur ON ur.rol_id = r.id WHERE r.codigo LIKE 'ADMIN%' OR r.codigo = 'ANALISTA_TESORERIA' GROUP BY 1, 2;"`

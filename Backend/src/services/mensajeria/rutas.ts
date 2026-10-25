@@ -35,7 +35,7 @@ const candidatosDelDia = (fecha: string, tramitadorIds: number[]) =>
   `, { type: QueryTypes.SELECT, replacements: { fecha, tramitadorIds, cerrados: ESTADOS_CERRADOS } })
 
 // Crea, mueve o quita paradas para que coincidan con lo programado.
-// Las paradas ya visitadas (Entregado / No se pudo) nunca se tocan.
+// Las paradas ya visitadas (Realizado / No realizado) nunca se tocan.
 const sincronizarParadas = async (fecha: string, tramitadorIds: number[]) => {
   if (tramitadorIds.length === 0) return
 
@@ -349,7 +349,7 @@ export const confirmarParada = async (
 
   if (![ESTADOS_PARADA.ENTREGADO, ESTADOS_PARADA.NO_SE_PUDO].includes(datos.estado as any)) throw new ErrorUbicacion('Estado no válido')
   const observacion = datos.observacion?.trim() || null
-  if (datos.estado === ESTADOS_PARADA.NO_SE_PUDO && !observacion) throw new ErrorUbicacion('Cuente por qué no se pudo hacer la visita')
+  if (datos.estado === ESTADOS_PARADA.NO_SE_PUDO && !observacion) throw new ErrorUbicacion('Cuente por qué no se realizó la diligencia')
   // Hoy, la confirmación es el fin de la diligencia: debe estar iniciada (para medir su tiempo).
   // Las de días anteriores se pueden confirmar como antes.
   if (parada.fecha === hoyBogota() && parada.estado === ESTADOS_PARADA.PENDIENTE && !parada.inicioDiligencia) {

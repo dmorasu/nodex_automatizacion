@@ -12,7 +12,8 @@ import { claseBotonPrimario, claseBotonSecundario, claseTextarea } from "../ui/e
 type Estado = "ENTREGADO" | "NO_SE_PUDO"
 type Gps = { estado: "buscando" } | { estado: "listo", latitud: number, longitud: number, precision: number } | { estado: "sin", motivo: string }
 
-// Confirmar la visita: Entregado o No se pudo, con foto y la ubicación del celular.
+// Confirmar la visita: Realizado o No realizado, con foto y la ubicación del celular.
+// (Los códigos siguen siendo ENTREGADO / NO_SE_PUDO: solo cambió el nombre que se ve.)
 // La ubicación sirve como prueba de que la visita se hizo en el lugar.
 export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, textoBoton }: { paradaId: number, tramiteId: number, estadoActual: string, textoBoton?: string }) {
   const [abierto, setAbierto] = useState(false)
@@ -68,8 +69,8 @@ export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, tex
   }
 
   const enviar = () => {
-    if (!estado) return toast.error("Indique si se entregó o no se pudo")
-    if (estado === "NO_SE_PUDO" && !observacion.trim()) return toast.error("Cuente por qué no se pudo hacer la visita")
+    if (!estado) return toast.error("Indique si la diligencia se realizó o no")
+    if (estado === "NO_SE_PUDO" && !observacion.trim()) return toast.error("Cuente por qué no se realizó la diligencia")
 
     const datos = new FormData()
     datos.append("estado", estado)
@@ -114,8 +115,8 @@ export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, tex
         {/* Resultado */}
         <div className="grid grid-cols-2 gap-3">
           {([
-            { valor: "ENTREGADO", nombre: "Entregado", Icono: CheckCircle2, activo: "border-emerald-500 bg-emerald-50 text-emerald-700" },
-            { valor: "NO_SE_PUDO", nombre: "No se pudo", Icono: XCircle, activo: "border-red-500 bg-red-50 text-red-700" }
+            { valor: "ENTREGADO", nombre: "Realizado", Icono: CheckCircle2, activo: "border-emerald-500 bg-emerald-50 text-emerald-700" },
+            { valor: "NO_SE_PUDO", nombre: "No realizado", Icono: XCircle, activo: "border-red-500 bg-red-50 text-red-700" }
           ] as const).map(({ valor, nombre, Icono, activo }) => (
             <button
               key={valor}

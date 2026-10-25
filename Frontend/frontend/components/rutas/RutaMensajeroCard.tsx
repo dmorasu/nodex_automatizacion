@@ -91,8 +91,8 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
           </h2>
           <p className="mt-0.5 text-xs text-slate-400">
             {sede ? `Sale de ${sede.nombre}` : "Sin sede asignada"} · {resumen.total} parada(s)
-            {resumen.total > 0 && ` · ${resumen.entregadas} entregada(s)`}
-            {resumen.noSePudo > 0 && ` · ${resumen.noSePudo} no se pudo`}
+            {resumen.total > 0 && ` · ${resumen.entregadas} realizada(s)`}
+            {resumen.noSePudo > 0 && ` · ${resumen.noSePudo} no realizada(s)`}
           </p>
           {/* Rutas marcadas en la app: horas, tiempo efectivo (sin almuerzo) y km por GPS */}
           {ruta.jornadas.map((j, i) => (

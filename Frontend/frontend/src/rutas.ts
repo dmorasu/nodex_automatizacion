@@ -62,8 +62,8 @@ export type RutasDelDia = { fecha: string, googleDisponible: boolean, rutas: Rut
 
 export const NOMBRE_ESTADO_PARADA: Record<Parada["estado"], string> = {
   PENDIENTE: "Pendiente",
-  ENTREGADO: "Entregado",
-  NO_SE_PUDO: "No se pudo"
+  ENTREGADO: "Realizado",
+  NO_SE_PUDO: "No realizado"
 }
 
 // Colores de estado de la parada (siempre con número y nombre al lado: nunca solo color)

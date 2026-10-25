@@ -97,7 +97,7 @@ export const generarReporteRutas = async (desde: string, hasta: string, sedeId?:
   }
 
   const minutosDiligencia = (d: FilaDiligencia) => (d.inicio && d.fin ? Math.max(0, Math.round((Date.parse(d.fin) - Date.parse(d.inicio)) / 60_000)) : null)
-  const nombreEstado = (estado: string) => ({ ENTREGADO: 'Entregado', NO_SE_PUDO: 'No se pudo', PENDIENTE: 'Pendiente' }[estado] ?? estado)
+  const nombreEstado = (estado: string) => ({ ENTREGADO: 'Realizado', NO_SE_PUDO: 'No realizado', PENDIENTE: 'Pendiente' }[estado] ?? estado)
 
   // ── Por día ──
   const dias_ = new Map<string, { fecha: string, tramitadorId: number }>()
@@ -120,8 +120,8 @@ export const generarReporteRutas = async (desde: string, hasta: string, sedeId?:
         'Tiempo efectivo (min)': suyas.reduce((s, j) => s + j.minutosEfectivos, 0),
         'Km (GPS)': Math.round(suyas.reduce((s, j) => s + j.km, 0) * 100) / 100,
         'Diligencias': hechas.length,
-        'Entregadas': hechas.filter(d => d.estado === 'ENTREGADO').length,
-        'No se pudo': hechas.filter(d => d.estado === 'NO_SE_PUDO').length,
+        'Realizadas': hechas.filter(d => d.estado === 'ENTREGADO').length,
+        'No realizadas': hechas.filter(d => d.estado === 'NO_SE_PUDO').length,
         'Tiempo promedio por diligencia (min)': conTiempo.length ? Math.round(conTiempo.reduce((s, m) => s + m, 0) / conTiempo.length) : ''
       }
     })

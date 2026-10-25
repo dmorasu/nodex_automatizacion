@@ -22,8 +22,8 @@ const fechaLarga = (fecha: string) =>
 
 const ESTADOS: Record<Parada["estado"], { nombre: string, clase: string }> = {
   PENDIENTE: { nombre: "Pendiente", clase: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  ENTREGADO: { nombre: "Entregado", clase: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  NO_SE_PUDO: { nombre: "No se pudo", clase: "bg-red-50 text-red-700 border-red-200" }
+  ENTREGADO: { nombre: "Realizado", clase: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  NO_SE_PUDO: { nombre: "No realizado", clase: "bg-red-50 text-red-700 border-red-200" }
 }
 
 // Ruta del día del mensajero: paradas en el orden que definió Torre de control,

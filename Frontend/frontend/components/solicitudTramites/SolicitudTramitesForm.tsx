@@ -61,9 +61,6 @@ export default function SolicitudTramitesForm({
   const [municipioSugerido, setMunicipioSugerido] =
     useState<MunicipioSugerido | null>(null);
 
-// TODO: el valor no se usa (el panel de documentos no se muestra en el formulario)
-const [, setMostrarDocumentos] =
-  useState(false);
   return (
 
     <div className="
@@ -439,26 +436,37 @@ const [, setMostrarDocumentos] =
         </label>
 
 
-        {/* En edición la placa / matrícula no se puede modificar */}
+        {/* En edición la placa / matrícula se ve pero no se puede modificar (sin name: no se envía) */}
         {solicitud?.id ? (
 
-          <div className="
-            w-full
-            px-3
-            py-2.5
-            text-xs
-            text-slate-500
-            bg-slate-50
-            border
-            border-slate-200
-            rounded-md
-          ">
+          <div className="space-y-1.5">
 
-            {solicitud.placa
-              ? `Placa: ${solicitud.placa}`
-              : solicitud.matriculaInmobiliaria
-                ? `Matrícula inmobiliaria: ${solicitud.matriculaInmobiliaria}`
-                : "Sin placa ni matrícula registrada"}
+            <label
+              htmlFor="identificacionTramite"
+              className="block text-xs font-medium text-slate-600"
+            >
+              {solicitud.matriculaInmobiliaria && !solicitud.placa ? "Matrícula inmobiliaria" : "Placa"}
+            </label>
+
+            <input
+              id="identificacionTramite"
+              type="text"
+              readOnly
+              disabled
+              value={solicitud.placa || solicitud.matriculaInmobiliaria || "Sin placa ni matrícula registrada"}
+              className="
+                w-full
+                h-10
+                px-3
+                text-xs
+                text-slate-500
+                bg-slate-50
+                border
+                border-slate-200
+                rounded-md
+                cursor-not-allowed
+              "
+            />
 
           </div>
 
@@ -615,9 +623,10 @@ const [, setMostrarDocumentos] =
       </div>
 
 {/* ================================================= */}
-{/* DOCUMENTOS                                     */}
+{/* DOCUMENTOS (solo al crear; luego van en la pestaña Documentos) */}
 {/* ================================================= */}
 
+{!solicitud?.id && (
 <div className="space-y-1.5">
 
   <label
@@ -632,62 +641,7 @@ const [, setMostrarDocumentos] =
   </label>
 
 
-  {solicitud?.id ? (
-
-    <button
-      type="button"
-      onClick={() =>
-        setMostrarDocumentos(true)
-      }
-      className="
-        w-full
-        h-10
-        px-3
-        flex
-        items-center
-        justify-between
-        text-xs
-        text-slate-600
-        bg-white
-        border
-        border-slate-200
-        rounded-md
-        hover:border-sky-400
-        hover:bg-sky-50
-        transition
-      "
-    >
-
-      <span className="
-        flex
-        items-center
-        gap-2
-      ">
-
-        <Paperclip
-          size={17}
-          className="text-sky-500"
-        />
-
-        Cargar documentos
-
-      </span>
-
-
-      <span className="
-        text-sky-600
-        font-medium
-      ">
-
-        Gestionar
-
-      </span>
-
-    </button>
-
-  ) : (
-
-    <div className="space-y-2">
+  <div className="space-y-2">
 
       <button
         type="button"
@@ -751,9 +705,8 @@ const [, setMostrarDocumentos] =
 
     </div>
 
-  )}
-
 </div>
+)}
 
     </div>
 

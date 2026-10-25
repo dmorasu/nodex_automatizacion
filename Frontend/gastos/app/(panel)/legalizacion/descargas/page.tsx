@@ -18,7 +18,8 @@ const GRUPOS = [
 
 // Seleccione los gastos y descargue todos sus documentos en un ZIP, sin carpetas (las operaciones
 // con descarga de pago unificada bajan un solo PDF de pago por gasto)
-export default async function DescargasPage({ searchParams }: { searchParams: Filtros & { grupo?: string } }) {
+export default async function DescargasPage(props: { searchParams: Promise<Filtros & { grupo?: string }> }) {
+  const searchParams = await props.searchParams
   const grupo = GRUPOS.find(g => g.codigo === (searchParams.grupo ?? "")) ?? GRUPOS[0]
   const filtros = filtrosActivos(searchParams)
 

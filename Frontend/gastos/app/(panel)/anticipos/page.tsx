@@ -19,7 +19,8 @@ const urlCon = (filtros: Filtros, cambios: Filtros) =>
 
 // Anticipos (ingresos) de clientes del banco y solicitudes de factura: los registra la operación
 // y los confirma (o factura) Contabilidad. Es también el inventario de quién ha pagado
-export default async function AnticiposPage({ searchParams }: { searchParams: Filtros }) {
+export default async function AnticiposPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   const sesion = await requiereAcceso([])
   const puedeVerTodos = tieneRolDeGastos(sesion.roles)
   const alcance = puedeVerTodos && searchParams.alcance === "todos" ? "todos" : "mios"

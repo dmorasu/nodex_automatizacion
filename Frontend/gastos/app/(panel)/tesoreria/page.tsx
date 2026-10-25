@@ -4,7 +4,8 @@ import { ROLES, TESORERIA_OPERATIVA, soloCertificados, tieneAcceso } from "@/src
 import BandejaPorPagar from "@/components/tesoreria/BandejaPorPagar"
 
 // Por pagar (general): todo menos las compras de certificados y los gastos de anticipos
-export default async function PorPagarPage({ searchParams }: { searchParams: { bolsaId?: string, busqueda?: string } }) {
+export default async function PorPagarPage(props: { searchParams: Promise<{ bolsaId?: string, busqueda?: string }> }) {
+  const searchParams = await props.searchParams
   const sesion = await obtenerSesion()
   // Quien solo paga certificados va directo a su bandeja
   if (soloCertificados(sesion.roles)) redirect("/tesoreria/certificados")

@@ -4,7 +4,8 @@ import FiltrosLegalizacion, { filtrosActivos, type FiltrosLegalizacion as Filtro
 // Gastos reembolsables ya pagados que aún no tienen factura: el trámite no ha terminado.
 // Se muestra cómo va el trámite en Nodex Trámites. Cuando el tramitador sube la factura
 // desde su app, el gasto pasa a "Gastos con factura".
-export default function GastosSinFacturaPage({ searchParams }: { searchParams: Filtros }) {
+export default async function GastosSinFacturaPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   return (
     <div className="space-y-4">
       <FiltrosLegalizacion valores={searchParams} limpiar="/legalizacion" />

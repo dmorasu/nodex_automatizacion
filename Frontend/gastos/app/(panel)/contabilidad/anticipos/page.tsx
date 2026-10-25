@@ -12,7 +12,10 @@ const FILTROS = [
 
 // Contabilidad verifica en el banco que entró el dinero de cada anticipo y lo confirma con el
 // recibo de caja (uno o varios a la vez) o lo devuelve con novedad desde su detalle
-export default async function AnticiposContabilidadPage({ searchParams }: { searchParams: { estado?: string, busqueda?: string, pagina?: string } }) {
+export default async function AnticiposContabilidadPage(
+  props: { searchParams: Promise<{ estado?: string, busqueda?: string, pagina?: string }> }
+) {
+  const searchParams = await props.searchParams
   const estado = FILTROS.some(([codigo]) => codigo === searchParams.estado) ? searchParams.estado! : "POR_CONFIRMAR"
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const porConfirmar = estado === "POR_CONFIRMAR"

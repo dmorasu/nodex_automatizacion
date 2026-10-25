@@ -11,7 +11,8 @@ const FILTROS = [
 ] as const
 
 // Reembolsos de caja menor que envía Tesorería para aprobación de Dirección de Negocio
-export default async function ReembolsosDireccionPage({ searchParams }: { searchParams: { estado?: string, pagina?: string } }) {
+export default async function ReembolsosDireccionPage(props: { searchParams: Promise<{ estado?: string, pagina?: string }> }) {
+  const searchParams = await props.searchParams
   const estado = FILTROS.some(([codigo]) => codigo === searchParams.estado) ? searchParams.estado! : "POR_APROBAR"
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const { total, tamano, registros } = await obtenerReembolsos({ estado, pagina })

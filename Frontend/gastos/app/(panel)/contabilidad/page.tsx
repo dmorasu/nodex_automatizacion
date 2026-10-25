@@ -10,7 +10,8 @@ const FILTROS = [
 ] as const
 
 // Pagos de Tesorería (lotes) para registrarles el número de egreso contable
-export default async function EgresosPage({ searchParams }: { searchParams: { egreso?: string, pagina?: string } }) {
+export default async function EgresosPage(props: { searchParams: Promise<{ egreso?: string, pagina?: string }> }) {
+  const searchParams = await props.searchParams
   const egreso = searchParams.egreso === "registrado" ? "registrado" : "pendiente"
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const { total, tamano, registros } = await obtenerLotes({ pagina, egreso })

@@ -12,7 +12,8 @@ const MAXIMO_BANDEJA = 100
 // Gastos reembolsables con factura:
 //  1. La factura ya está registrada: listos para agregarlos a una cuenta de cobro.
 //  2. El tramitador ya subió la factura desde su app: falta registrar sus valores.
-export default async function GastosConFacturaPage({ searchParams }: { searchParams: Filtros }) {
+export default async function GastosConFacturaPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   const filtros = filtrosActivos(searchParams)
   const consulta = new URLSearchParams({ alcance: "todos", estado: "FACTURADO", reembolsable: "si", tamano: String(MAXIMO_BANDEJA), ...filtros })
 

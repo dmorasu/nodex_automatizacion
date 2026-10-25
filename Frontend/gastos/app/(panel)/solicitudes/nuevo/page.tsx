@@ -5,7 +5,8 @@ import { obtenerDatosFormulario } from "@/src/lib/datosGastos"
 import { obtenerAnticipo } from "@/src/lib/datosAnticipos"
 
 // ?anticipo=<id> → gasto creado desde un anticipo confirmado (botón "Crear gasto")
-export default async function NuevoGastoPage({ searchParams }: { searchParams: { anticipo?: string } }) {
+export default async function NuevoGastoPage(props: { searchParams: Promise<{ anticipo?: string }> }) {
+  const searchParams = await props.searchParams
   await requiereAcceso([])
   const anticipoId = Number(searchParams.anticipo) || null
 

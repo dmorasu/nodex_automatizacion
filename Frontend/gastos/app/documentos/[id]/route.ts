@@ -2,7 +2,8 @@ import { fetchApi } from "@/src/lib/api"
 
 // Abre un documento de gasto en el navegador. El backend exige el token,
 // que vive en una cookie httpOnly, por eso el archivo pasa por aquí.
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const respuesta = await fetchApi(`/gastos/documentos/${Number(params.id)}/ver`)
 
   if (!respuesta.ok) {

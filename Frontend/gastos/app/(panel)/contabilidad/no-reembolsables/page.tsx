@@ -18,7 +18,8 @@ type Parametros = { vista?: string, busqueda?: string, estado?: string }
 
 // Gastos NO reembolsables: los asume la bolsa y no pasan por Legalización.
 // Contabilidad registra su factura (o aprueba la que sube el tramitador) y los contabiliza.
-export default async function NoReembolsablesPage({ searchParams }: { searchParams: Parametros }) {
+export default async function NoReembolsablesPage(props: { searchParams: Promise<Parametros> }) {
+  const searchParams = await props.searchParams
   const vista = VISTAS.some(v => v.codigo === searchParams.vista) ? searchParams.vista! : "sin-factura"
 
   return (

@@ -3,7 +3,8 @@ import FormularioGasto from "@/components/gastos/FormularioGasto"
 import { requiereAcceso } from "@/src/auth/dal"
 import { obtenerDatosFormulario, obtenerGasto } from "@/src/lib/datosGastos"
 
-export default async function EditarGastoPage({ params }: { params: { id: string } }) {
+export default async function EditarGastoPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   await requiereAcceso([])
 
   const [gasto, datosFormulario] = await Promise.all([

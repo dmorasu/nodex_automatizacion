@@ -4,8 +4,8 @@ import { NOMBRE_COOKIE } from "../auth/dal"
 
 // Llamada al backend desde el servidor (server components y server actions)
 // con el token de la sesión. Ej: fetchApi("/gastos/catalogos")
-export const fetchApi = (ruta: string, opciones: RequestInit = {}) => {
-  const token = cookies().get(NOMBRE_COOKIE)?.value
+export const fetchApi = async (ruta: string, opciones: RequestInit = {}) => {
+  const token = (await cookies()).get(NOMBRE_COOKIE)?.value
 
   // Con FormData (archivos) el navegador/fetch arma el Content-Type con su boundary
   const esFormulario = opciones.body instanceof FormData

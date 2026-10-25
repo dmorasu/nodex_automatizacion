@@ -12,7 +12,10 @@ const FILTROS = [
 
 // Solicitudes de factura: Contabilidad confirma que el dinero entró y adjunta la factura (PDF y XML)
 // en un solo paso, una o varias a la vez; o la devuelve con novedad desde su detalle
-export default async function FacturasContabilidadPage({ searchParams }: { searchParams: { estado?: string, busqueda?: string, pagina?: string } }) {
+export default async function FacturasContabilidadPage(
+  props: { searchParams: Promise<{ estado?: string, busqueda?: string, pagina?: string }> }
+) {
+  const searchParams = await props.searchParams
   const estado = FILTROS.some(([codigo]) => codigo === searchParams.estado) ? searchParams.estado! : "POR_CONFIRMAR"
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const porFacturar = estado === "POR_CONFIRMAR"

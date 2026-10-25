@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect } from "react"
-import { useFormState, useFormStatus } from "react-dom"
+import { useActionState, useEffect } from "react"
+import { useFormStatus } from "react-dom"
 import { toast } from "react-toastify"
 import { Mail, LockKeyhole, LogIn } from "lucide-react"
 import { iniciarSesion } from "@/actions/iniciarSesion"
@@ -35,7 +35,7 @@ function BotonIngresar() {
 }
 
 export default function LoginForm() {
-  const [state, dispatch] = useFormState(iniciarSesion, { errors: [] })
+  const [state, dispatch] = useActionState(iniciarSesion, { errors: [] })
 
   useEffect(() => {
     state.errors.forEach(error => toast.error(error))

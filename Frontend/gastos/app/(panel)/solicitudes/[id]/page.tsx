@@ -14,7 +14,8 @@ import Seccion from "@/components/ui/Seccion"
 import Dato from "@/components/ui/Dato"
 import { claseBotonSecundario } from "@/components/ui/estilos"
 
-export default async function DetalleGastoPage({ params }: { params: { id: string } }) {
+export default async function DetalleGastoPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const sesion = await requiereAcceso([])
 
   const [gasto, catalogos, tasas] = await Promise.all([

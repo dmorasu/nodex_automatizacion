@@ -28,7 +28,8 @@ const urlCon = (filtros: Filtros, cambios: Filtros) => {
   return `/solicitudes?${parametros}`
 }
 
-export default async function SolicitudesPage({ searchParams }: { searchParams: Filtros }) {
+export default async function SolicitudesPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   const sesion = await requiereAcceso([])
   const puedeVerTodos = tieneRolDeGastos(sesion.roles)
 

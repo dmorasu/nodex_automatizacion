@@ -26,7 +26,7 @@ export async function iniciarSesion(estadoAnterior: EstadoFormulario, formData: 
   const req = await fetch(`${process.env.API_URL}/auth/login`, {
     method: "POST",
     // IP real del navegador (la pone Nginx) para el límite de intentos del backend
-    headers: { "Content-Type": "application/json", "X-IP-Cliente": headers().get("x-real-ip") ?? "" },
+    headers: { "Content-Type": "application/json", "X-IP-Cliente": (await headers()).get("x-real-ip") ?? "" },
     body: JSON.stringify(credenciales.data)
   })
 
@@ -37,7 +37,8 @@ export async function iniciarSesion(estadoAnterior: EstadoFormulario, formData: 
     return { errors: [error] }
   }
 
-  cookies().set({
+  const almacen = await cookies()
+  almacen.set({
     name: NOMBRE_COOKIE,
     value: json,
     httpOnly: true,

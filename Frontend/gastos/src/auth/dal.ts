@@ -10,7 +10,7 @@ export const NOMBRE_COOKIE = "TOKEN"
 // Usuario en sesión con sus roles. `cache` evita repetir la consulta
 // cuando el layout y la página la piden en la misma petición.
 export const obtenerSesion = cache(async () => {
-  const token = cookies().get(NOMBRE_COOKIE)?.value
+  const token = (await cookies()).get(NOMBRE_COOKIE)?.value
 
   if (!token) {
     redirect("/auth/login")

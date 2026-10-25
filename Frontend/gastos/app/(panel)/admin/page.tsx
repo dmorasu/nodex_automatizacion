@@ -32,7 +32,8 @@ const claseFiltro = `${claseInput} h-9`
 const claseEtiqueta = "block mb-1 text-[11px] font-medium text-slate-500"
 
 // Panel de administración: todos los gastos, con filtros, totales y paginación (solo administradores)
-export default async function TodosLosGastosPage({ searchParams }: { searchParams: Filtros }) {
+export default async function TodosLosGastosPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const tamano = ["20", "50", "100"].includes(searchParams.tamano ?? "") ? searchParams.tamano! : "20"
 

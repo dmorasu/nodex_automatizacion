@@ -33,7 +33,8 @@ const claseChip = (activo: boolean) => clsx(
 
 // Caja menor: saldo siempre visible y el trabajo de cada paso (pagar, legalizar, armar el
 // reembolso y seguir los reembolsos). Tesorería ve todas las cajas; la auxiliar, solo la suya.
-export default async function CajaMenorPage({ searchParams }: { searchParams: Filtros }) {
+export default async function CajaMenorPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   const sesion = await obtenerSesion()
   const configura = tieneAcceso(sesion.roles, [ROLES.TESORERIA])
   const cajas = await obtenerCajas()

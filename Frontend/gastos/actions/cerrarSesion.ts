@@ -9,6 +9,7 @@ export async function cerrarSesion() {
   // El backend invalida la sesión en todos los equipos (y en Nodex Trámites); si no responde,
   // igual se borra la cookie
   await fetchApi("/auth/logout", { method: "POST" }).catch(() => undefined)
-  cookies().delete(NOMBRE_COOKIE)
+  const almacen = await cookies()
+  almacen.delete(NOMBRE_COOKIE)
   redirect("/auth/login")
 }

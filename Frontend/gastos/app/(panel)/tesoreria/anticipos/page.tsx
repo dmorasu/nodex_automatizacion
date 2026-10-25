@@ -5,7 +5,8 @@ import BandejaPorPagar from "@/components/tesoreria/BandejaPorPagar"
 // Gastos que nacen de anticipos de clientes: el cliente ya pagó, así que no pasan por Dirección
 // de Negocio. Tesorería los paga directo con el soporte del banco (bolsa de anticipos) y al
 // creador le llega el aviso de pagado.
-export default async function GastosAnticiposPage({ searchParams }: { searchParams: { bolsaId?: string, busqueda?: string } }) {
+export default async function GastosAnticiposPage(props: { searchParams: Promise<{ bolsaId?: string, busqueda?: string }> }) {
+  const searchParams = await props.searchParams
   await requiereAcceso(TESORERIA_OPERATIVA)
 
   return (

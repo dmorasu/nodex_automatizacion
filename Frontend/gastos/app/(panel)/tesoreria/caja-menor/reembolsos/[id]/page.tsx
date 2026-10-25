@@ -1,7 +1,8 @@
 import { obtenerReembolso } from "@/src/lib/datosCajaMenor"
 import DetalleReembolso from "@/components/cajaMenor/DetalleReembolso"
 
-export default async function ReembolsoCajaPage({ params }: { params: { id: string } }) {
+export default async function ReembolsoCajaPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const reembolso = await obtenerReembolso(Number(params.id))
   return (
     <DetalleReembolso

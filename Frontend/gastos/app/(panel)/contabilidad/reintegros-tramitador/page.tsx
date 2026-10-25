@@ -1,5 +1,6 @@
 import PaginaReintegrosTramitador, { type FiltrosReintegrosTramitador } from "@/components/tablero/PaginaReintegrosTramitador"
 
-export default function ReintegrosTramitadorPage({ searchParams }: { searchParams: FiltrosReintegrosTramitador }) {
+export default async function ReintegrosTramitadorPage(props: { searchParams: Promise<FiltrosReintegrosTramitador> }) {
+  const searchParams = await props.searchParams
   return <PaginaReintegrosTramitador ruta="/contabilidad/reintegros-tramitador" filtros={searchParams} />
 }

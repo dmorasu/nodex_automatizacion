@@ -1,7 +1,8 @@
 import ListadoLotes, { type FiltrosListadoLotes } from "@/components/tesoreria/ListadoLotes"
 
 // Lotes ya revisados: aprobados (falta que Tesorería confirme), pagados y rechazados
-export default function HistorialDireccionPage({ searchParams }: { searchParams: FiltrosListadoLotes }) {
+export default async function HistorialDireccionPage(props: { searchParams: Promise<FiltrosListadoLotes> }) {
+  const searchParams = await props.searchParams
   return (
     <ListadoLotes
       searchParams={searchParams}

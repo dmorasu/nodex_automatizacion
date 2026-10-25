@@ -27,7 +27,8 @@ const rangos = () => {
   ]
 }
 
-export default async function TableroPage({ searchParams }: { searchParams: Filtros }) {
+export default async function TableroPage(props: { searchParams: Promise<Filtros> }) {
+  const searchParams = await props.searchParams
   const sesion = await requiereAcceso([ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD])
 
   const consulta = new URLSearchParams(

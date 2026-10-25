@@ -1,6 +1,7 @@
 import ListadoLotes, { type FiltrosListadoLotes } from "@/components/tesoreria/ListadoLotes"
 
-export default function DireccionPage({ searchParams }: { searchParams: FiltrosListadoLotes }) {
+export default async function DireccionPage(props: { searchParams: Promise<FiltrosListadoLotes> }) {
+  const searchParams = await props.searchParams
   return (
     <ListadoLotes
       searchParams={searchParams}

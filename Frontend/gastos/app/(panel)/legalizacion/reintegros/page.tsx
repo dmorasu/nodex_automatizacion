@@ -5,7 +5,8 @@ import EstadoGasto from "@/components/gastos/EstadoGasto"
 import { BotonMarcarReintegrado } from "@/components/legalizacion/BotonReintegro"
 import Paginacion from "@/components/ui/Paginacion"
 
-export default async function ReintegrosPage({ searchParams }: { searchParams: { estado?: string, pagina?: string } }) {
+export default async function ReintegrosPage(props: { searchParams: Promise<{ estado?: string, pagina?: string }> }) {
+  const searchParams = await props.searchParams
   // Por defecto se muestran los pendientes: es lo que hay que gestionar
   const estado = searchParams.estado === "TODOS" ? undefined : (searchParams.estado ?? "PENDIENTE")
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)

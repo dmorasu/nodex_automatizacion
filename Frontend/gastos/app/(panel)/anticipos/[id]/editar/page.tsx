@@ -5,7 +5,8 @@ import FormularioAnticipo from "@/components/anticipos/FormularioAnticipo"
 import { requiereAcceso } from "@/src/auth/dal"
 import { obtenerAnticipo, obtenerDatosFormularioAnticipo } from "@/src/lib/datosAnticipos"
 
-export default async function EditarAnticipoPage({ params }: { params: { id: string } }) {
+export default async function EditarAnticipoPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   await requiereAcceso([])
   const [anticipo, datos] = await Promise.all([obtenerAnticipo(Number(params.id)), obtenerDatosFormularioAnticipo()])
 

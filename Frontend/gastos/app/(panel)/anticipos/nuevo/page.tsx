@@ -3,7 +3,8 @@ import { requiereAcceso } from "@/src/auth/dal"
 import { obtenerDatosFormularioAnticipo } from "@/src/lib/datosAnticipos"
 
 // ?clase=FACTURA abre el formulario en solicitud de factura (se puede cambiar antes de guardar)
-export default async function NuevoAnticipoPage({ searchParams }: { searchParams: { clase?: string } }) {
+export default async function NuevoAnticipoPage(props: { searchParams: Promise<{ clase?: string }> }) {
+  const searchParams = await props.searchParams
   await requiereAcceso([])
   const datos = await obtenerDatosFormularioAnticipo()
   const clase = searchParams.clase === "FACTURA" ? "FACTURA" : "ANTICIPO"

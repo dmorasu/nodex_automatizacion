@@ -14,7 +14,8 @@ import ListaDocumentos from "@/components/gastos/ListaDocumentos"
 import Seccion from "@/components/ui/Seccion"
 import Dato from "@/components/ui/Dato"
 
-export default async function DetalleAnticipoPage({ params }: { params: { id: string } }) {
+export default async function DetalleAnticipoPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const sesion = await requiereAcceso([])
   const anticipo = await obtenerAnticipo(Number(params.id))
   const saldo = anticipo.saldoCliente

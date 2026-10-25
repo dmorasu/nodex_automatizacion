@@ -20,13 +20,14 @@ const NOMBRES_TIPO: Record<string, string> = {
   ANTICIPO: "Anticipo"
 }
 
-export default async function MovimientosBolsaPage({
-  params,
-  searchParams
-}: {
-  params: { id: string }
-  searchParams: { pagina?: string, vista?: string, busqueda?: string, filtro?: string, orden?: string }
-}) {
+export default async function MovimientosBolsaPage(
+  props: {
+    params: Promise<{ id: string }>
+    searchParams: Promise<{ pagina?: string, vista?: string, busqueda?: string, filtro?: string, orden?: string }>
+  }
+) {
+  const searchParams = await props.searchParams
+  const params = await props.params
   // Solo Tesorería general (Tesorería - Certificados solo ve su bandeja y sus pagos)
   const sesion = await requiereAcceso([ROLES.TESORERIA])
 

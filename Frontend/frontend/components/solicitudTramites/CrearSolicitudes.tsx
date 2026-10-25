@@ -15,6 +15,7 @@ import {
   FilePlus2
 } from "lucide-react"
 import { conservarCampos } from "@/src/lib/formularios"
+import { subirDocumentosTramite } from "@/src/lib/documentosTramite"
 
 
 export default function CrearSolicitudesForm({
@@ -47,6 +48,10 @@ export default function CrearSolicitudesForm({
 
   const [isSubmitting, setIsSubmitting] =
     useState(false)
+
+  // Documentos elegidos al crear: se suben apenas el backend crea el trámite
+  const [documentos, setDocumentos] =
+    useState<File[]>([])
 
 
   // =====================================================
@@ -81,64 +86,31 @@ export default function CrearSolicitudesForm({
 
     if (state.success) {
 
-      toast.success(
-        state.success,
-        {
-          autoClose: 320,
+      const solicitudId = state.solicitudId
+      const irAlTramite = () => {
+        router.push(solicitudId ? `/center/solicitudTramites/${solicitudId}` : "/center/dashboard")
+        router.refresh()
+      }
 
-          // =============================================
-          // CUANDO SE CIERRA EL TOAST
-          // =============================================
+      // El trámite ya quedó creado: los documentos elegidos se suben ahora. Si fallan,
+      // se avisa y se abre el detalle, donde se pueden volver a subir.
+      const subirDocumentos = solicitudId && documentos.length > 0
+        ? subirDocumentosTramite(solicitudId, documentos).then(
+          () => true,
+          (error: Error) => {
+            toast.error(`El trámite se creó, pero no se subieron los documentos: ${error.message}`)
+            return false
+          })
+        : Promise.resolve(true)
 
-          onClose: () => {
-
-            if (state.solicitudId) {
-
-              router.push(
-                `/center/solicitudTramites/${state.solicitudId}`
-              )
-
-            } else {
-
-              router.push(
-                "/center/dashboard"
-              )
-
-            }
-
-            router.refresh()
-
-          },
-
-          // =============================================
-          // SI EL USUARIO HACE CLICK EN EL TOAST
-          // =============================================
-
-          onClick: () => {
-
-            if (state.solicitudId) {
-
-              router.push(
-                `/center/solicitudTramites/${state.solicitudId}`
-              )
-
-            } else {
-
-              router.push(
-                "/center/dashboard"
-              )
-
-            }
-
-            router.refresh()
-
-          }
-
-        }
-      )
+      subirDocumentos.then(() => {
+        toast.success(state.success, { autoClose: 320, onClose: irAlTramite, onClick: irAlTramite })
+      })
 
     }
 
+    // Solo cuando responde la acción (los documentos se leen del último render)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, router])
 
 
@@ -265,7 +237,10 @@ export default function CrearSolicitudesForm({
         {/* FORMULARIO                                       */}
         {/* ================================================= */}
 
-        <SolicitudTramitesForm />
+        <SolicitudTramitesForm
+          documentos={documentos}
+          onDocumentos={setDocumentos}
+        />
 
       </div>
 

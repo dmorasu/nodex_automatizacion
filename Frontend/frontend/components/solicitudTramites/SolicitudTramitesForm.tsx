@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import clsx from "clsx";
 import { SolicitudTramites } from "@/src/schemas";
 
@@ -21,23 +21,37 @@ import TramitesSelect
 
 import { toDateInput } from "@/src/ultis";
 
-import { Paperclip } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
+import { toast } from "react-toastify";
+import { TIPOS_DOCUMENTO, validarDocumentos } from "@/src/lib/documentosTramite";
 import CampoDireccion, { type MunicipioSugerido } from "../direcciones/CampoDireccion";
-import SelectBuscable from "@/components/ui/SelectBuscable"
 
 
 
 // Largo máximo del detalle (lo valida también el backend)
 const MAXIMO_DETALLE = 200;
 
+const OPCIONES_IDENTIFICACION = [
+  ["placa", "Placa"],
+  ["matricula", "Matrícula inmobiliaria"]
+] as const;
+
 export default function SolicitudTramitesForm({
-  solicitud
+  solicitud,
+  documentos = [],
+  onDocumentos
 }: {
   solicitud?: SolicitudTramites
+  // Al crear: documentos elegidos, que se suben apenas se guarda el trámite
+  documentos?: File[]
+  onDocumentos?: (documentos: File[]) => void
 }) {
 
+  // Placa (vehículos) o matrícula inmobiliaria (inmuebles): solo se muestra el campo elegido
   const [tipoDocumento, setTipoDocumento] =
-    useState("");
+    useState<"placa" | "matricula">("placa");
+
+  const entradaDocumentos = useRef<HTMLInputElement>(null);
 
   // Municipio que propone la dirección elegida en Google
   // Contador del detalle (máximo 200 caracteres, igual que el backend)
@@ -420,7 +434,7 @@ const [, setMostrarDocumentos] =
           "
         >
 
-          Identificación del inmueble
+          Placa o matrícula inmobiliaria
 
         </label>
 
@@ -455,46 +469,28 @@ const [, setMostrarDocumentos] =
         {/* TIPO DE IDENTIFICACIÓN                          */}
         {/* =============================================== */}
 
-        <SelectBuscable
-          name="tipoDocumento"
-          value={tipoDocumento}
-          onChange={(e) =>
-            setTipoDocumento(
-              e.target.value
-            )
-          }
-          required
-          className="
-            w-full
-            h-10
-            px-3
-            text-xs
-            text-slate-700
-            bg-white
-            border
-            border-slate-200
-            rounded-md
-            outline-none
-            transition
-            focus:border-sky-400
-            focus:ring-2
-            focus:ring-sky-100
-          "
+        <div
+          role="radiogroup"
+          className="grid grid-cols-2 gap-2"
         >
-
-          <option value="">
-            Seleccione una opción
-          </option>
-
-          <option value="placa">
-            Placa
-          </option>
-
-          <option value="matricula">
-            Matrícula inmobiliaria
-          </option>
-
-        </SelectBuscable>
+          {OPCIONES_IDENTIFICACION.map(([valor, texto]) => (
+            <button
+              key={valor}
+              type="button"
+              role="radio"
+              aria-checked={tipoDocumento === valor}
+              onClick={() => setTipoDocumento(valor)}
+              className={clsx(
+                "h-10 px-3 text-xs font-medium border rounded-md transition focus:outline-none focus:ring-2 focus:ring-sky-100",
+                tipoDocumento === valor
+                  ? "bg-sky-50 text-sky-700 border-sky-400"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-sky-300"
+              )}
+            >
+              {texto}
+            </button>
+          ))}
+        </div>
 
 
 
@@ -691,25 +687,67 @@ const [, setMostrarDocumentos] =
 
   ) : (
 
-    <div className="
-      w-full
-      min-h-10
-      px-3
-      py-2
-      flex
-      items-center
-      gap-2
-      text-xs
-      text-slate-400
-      bg-slate-50
-      border
-      border-slate-200
-      rounded-md
-    ">
+    <div className="space-y-2">
 
-      <Paperclip size={17} />
+      <button
+        type="button"
+        onClick={() => entradaDocumentos.current?.click()}
+        className="
+          w-full
+          h-10
+          px-3
+          flex
+          items-center
+          gap-2
+          text-xs
+          text-slate-600
+          bg-white
+          border
+          border-slate-200
+          rounded-md
+          hover:border-sky-400
+          hover:bg-sky-50
+          transition
+        "
+      >
+        <Paperclip size={17} className="text-sky-500" />
+        Seleccionar documentos
+      </button>
 
-      Guarde primero la solicitud para cargar documentos
+      {/* Sin name: los archivos no viajan con el formulario, se suben al crear el trámite */}
+      <input
+        ref={entradaDocumentos}
+        type="file"
+        accept={TIPOS_DOCUMENTO.join(",")}
+        multiple
+        className="hidden"
+        onChange={e => {
+          const elegidos = [...documentos, ...Array.from(e.target.files ?? [])]
+            .filter((archivo, i, todos) => todos.findIndex(a => a.name === archivo.name && a.size === archivo.size) === i)
+          e.target.value = ""
+          const error = validarDocumentos(elegidos)
+          if (error) return void toast.error(error)
+          onDocumentos?.(elegidos)
+        }}
+      />
+
+      {documentos.length > 0 && (
+        <ul className="divide-y divide-slate-100 rounded-md border border-slate-200 bg-white">
+          {documentos.map(archivo => (
+            <li key={`${archivo.name}-${archivo.size}`} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600">
+              <span className="flex-1 truncate">{archivo.name}</span>
+              <button
+                type="button"
+                aria-label={`Quitar ${archivo.name}`}
+                onClick={() => onDocumentos?.(documentos.filter(a => a !== archivo))}
+                className="text-slate-400 hover:text-red-600"
+              >
+                <X size={14} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
     </div>
 

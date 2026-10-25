@@ -14,7 +14,7 @@ export default function MapaMunicipiosLeaflet({ municipios }: { municipios: Fila
   const radio = (abiertos: number) => 5 + Math.sqrt(abiertos / maximo) * 22
 
   return (
-    <MapContainer center={CENTRO} zoom={5} scrollWheelZoom={false} className="h-full w-full rounded-lg" attributionControl>
+    <MapContainer center={CENTRO} zoom={5} scrollWheelZoom={false} className="isolate h-full w-full rounded-lg" attributionControl>
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

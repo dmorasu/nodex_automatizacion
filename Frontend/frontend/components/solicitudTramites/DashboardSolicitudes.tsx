@@ -29,6 +29,9 @@ const TAMANO_PAGINA = 10 // el backend devuelve 10 por página
 
 const claseFiltro = `${claseInput} h-9`
 const claseEtiqueta = "block mb-1 text-[11px] font-medium text-slate-500"
+// Columna de opciones pegada a la derecha: en pantallas medianas la tabla se desplaza
+// y Editar quedaba escondido al final. La sombra la separa de lo que pasa por debajo.
+const COLUMNA_FIJA = "sticky right-0 shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.18)]"
 
 // "2026-10-05T14:00:00Z" → "5 oct 2026". `sinZona` para fechas guardadas sin hora (no se corren un día)
 const fechaCorta = (iso?: string | null, sinZona?: boolean) => {
@@ -220,7 +223,7 @@ export default function DashboardPageClient() {
               <th className="px-3 py-3 font-semibold">Ubicación</th>
               <th className="px-3 py-3 font-semibold">Responsables</th>
               <th className="px-3 py-3 font-semibold">Fechas</th>
-              <th className="w-10 px-3 py-3"><span className="sr-only">Opciones</span></th>
+              <th className={clsx("w-10 bg-slate-50 px-3 py-3", COLUMNA_FIJA)}><span className="sr-only">Opciones</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -241,7 +244,7 @@ export default function DashboardPageClient() {
               const identificador = s.placa || s.matriculaInmobiliaria
 
               return (
-                <tr key={s.id} className="align-top transition hover:bg-slate-50/70">
+                <tr key={s.id} className="group align-top transition hover:bg-slate-50/70">
 
                   <td className="px-3 py-3">
                     <Link href={`/center/solicitudTramites/${s.id}`} className="font-semibold text-sky-700 hover:underline">
@@ -317,7 +320,7 @@ export default function DashboardPageClient() {
                       : <p className="text-slate-400">Sin finalizar</p>}
                   </td>
 
-                  <td className="px-3 py-3 text-right">
+                  <td className={clsx("bg-white px-3 py-3 text-right transition group-hover:bg-slate-50", COLUMNA_FIJA)}>
                     <SolicitudTramiteMenu solicitudId={s.id} />
                   </td>
                 </tr>

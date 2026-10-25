@@ -34,7 +34,7 @@ export default function SelectorUbicacionLeaflet({ punto, centroInicial, onCambi
   onCambiar: (p: Punto) => void
 }) {
   return (
-    <MapContainer center={[centroInicial.latitud, centroInicial.longitud]} zoom={punto ? 16 : 12} className="h-full w-full rounded-lg">
+    <MapContainer center={[centroInicial.latitud, centroInicial.longitud]} zoom={punto ? 16 : 12} className="isolate h-full w-full rounded-lg">
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

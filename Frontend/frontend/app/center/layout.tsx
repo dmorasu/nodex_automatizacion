@@ -1,4 +1,5 @@
 import CenterMenu from "@/components/menuCenter/centerMenu";
+import AccesosRapidos from "@/components/menuCenter/AccesosRapidos";
 import LogoEncabezado from "@/components/ui/LogoEncabezado";
 import ToastNotificaciones from "@/components/ui/notificaciones";
 import { verificacionSesion } from "@/src/auth/dal";
@@ -22,7 +23,11 @@ export default async function CenterLayout({
       {/* HEADER                                                */}
       {/* ===================================================== */}
 
+      {/* Fijo arriba: el menú y los accesos quedan a la mano aunque se baje en la página */}
       <header className="
+        sticky
+        top-0
+        z-40
         bg-white
         border-b
         border-slate-200
@@ -64,7 +69,7 @@ export default async function CenterLayout({
 
 
           {/* =============================================== */}
-          {/* INFORMACIÓN DEL MÓDULO                           */}
+          {/* ACCESOS RÁPIDOS                                  */}
           {/* =============================================== */}
 
           <div className="
@@ -73,59 +78,10 @@ export default async function CenterLayout({
             flex-1
             items-center
             justify-center
-            px-8
+            px-6
           ">
 
-            <div className="
-              flex
-              items-center
-              gap-3
-            ">
-
-
-              {/* =========================================== */}
-              {/* SEPARADOR                                   */}
-              {/* =========================================== */}
-
-              <div className="
-                h-8
-                w-px
-                bg-slate-200
-              " />
-
-
-              {/* =========================================== */}
-              {/* INFORMACIÓN                                 */}
-              {/* =========================================== */}
-
-              <div>
-
-                <p className="
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                  leading-tight
-                ">
-
-                  Módulo de Gestión de Trámites
-
-                </p>
-
-
-                <p className="
-                  text-xs
-                  text-slate-400
-                  mt-0.5
-                ">
-
-                  Administración y seguimiento de solicitudes
-
-                </p>
-
-              </div>
-
-
-            </div>
+            <AccesosRapidos perfil={perfil} />
 
           </div>
 

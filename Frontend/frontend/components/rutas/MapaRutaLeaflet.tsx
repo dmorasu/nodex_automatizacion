@@ -50,7 +50,7 @@ export default function MapaRutaLeaflet({ rutas }: { rutas: RutaEnMapa[] }) {
   const sedes = [...new Map(rutas.filter(r => r.sede && r.sede.latitud !== null && r.sede.longitud !== null).map(r => [r.sede!.id, r.sede!])).values()]
 
   return (
-    <MapContainer center={todos[0] ?? [4.6, -74.1]} zoom={todos.length ? 12 : 6} scrollWheelZoom={false} className="h-full w-full rounded-lg">
+    <MapContainer center={todos[0] ?? [4.6, -74.1]} zoom={todos.length ? 12 : 6} scrollWheelZoom={false} className="isolate h-full w-full rounded-lg">
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

@@ -527,6 +527,12 @@ Reemplaza la búsqueda "de cualquier usuario" del 2026-10-15 (commit `c6f1bee8`)
 - **Encontrado (sin corregir):** en `Backend/src/middleware/uploadDocumento.ts` la validación de tipo (PDF/JPG) quedó dentro de una etiqueta `fileFilter:` y nunca se ejecuta; el backend solo revisa el largo del nombre. Hoy lo frena la pantalla.
 - **Probado:** `tsc` y lint. **Falta en el navegador:** crear con placa, con matrícula, con y sin documentos, y con un archivo no permitido.
 
+### Nodex Trámites: encabezado fijo con accesos rápidos y Editar siempre visible en el Dashboard (2026-10-24, rama `next16`)
+- **Pedido del usuario:** pasar entre el Dashboard, el Tablero de gestión y los trámites sin subir hasta el menú, y no tener que desplazar la tabla del Dashboard a la derecha para llegar a Editar.
+- **Encabezado** (`app/center/layout.tsx`): `sticky top-0 z-40`. En el centro, en lugar del texto "Módulo de Gestión de Trámites", `components/menuCenter/AccesosRapidos.tsx`: Dashboard, Tablero de gestión, Realizados y Rutas (los tres para Torre de control, igual que el menú) y Nuevo trámite; desde `md` (en `md` solo íconos con `title`, nombres desde `lg`). Los modales son `z-50` o más y quedan encima. Los mapas (Leaflet y Google) llevan `isolate`: sus capas internas (z-index 400–1000) tapaban el encabezado fijo al bajar.
+- **Dashboard** (`DashboardSolicitudes.tsx`): la columna de opciones queda `sticky right-0` con fondo y sombra; el menú ya se dibujaba fuera de la tabla (`anchor`), no se recorta.
+- **Probado:** `tsc` y lint. **Falta en el navegador:** bajar en el Dashboard, el detalle y el tablero (encabezado arriba, mapas por debajo), abrir modales y el menú de opciones con la tabla desplazada, y ver los accesos con un usuario de Gestión de activos (solo Dashboard y Nuevo trámite).
+
 ### Migración de las tres apps a Next 16 y React 19 (2026-10-24, rama `next16`)
 - **Por qué:** Next 14 ya no recibe correcciones; `npm audit` mostraba 27 fallas de Next (3 críticas de ejecución remota en el optimizador de imágenes, varias de caída del servicio con server actions y SSRF). Con 16.4.3 quedan en 0. Decisión del usuario: hacerla en una **rama aparte** (`next16`, salida de `desarrollo`, 3 commits, uno por app).
 - **Versiones:** `next` y `eslint-config-next` 16.4.3 (fijas), React 19.3, `@types/react` 19, ESLint 9, zod 4.6 (falla de memoria), `react-leaflet` 5 (la 4 no sirve con React 19). Sin cambios de base ni de variables.

@@ -207,7 +207,7 @@ export default function MapaRutasGoogle({ rutas }: { rutas: RutaEnMapa[] }) {
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative isolate h-full w-full">
       <div ref={contenedor} className="h-full w-full rounded-lg" />
       {!listo && (
         <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-slate-50 text-xs text-slate-400">Cargando mapa…</div>

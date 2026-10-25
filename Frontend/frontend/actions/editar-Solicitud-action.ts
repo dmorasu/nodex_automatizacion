@@ -1,11 +1,12 @@
 "use server"
 
 import { encabezadosSesion } from "@/src/lib/sesionApi"
-import { CrearSolicitudSchema, ErrorResponoseSchema, SolicitudTramites, SuccessSchema ,EditarSolicitudSchema} from "@/src/schemas"
+import { CrearSolicitudSchema, SolicitudTramites, SuccessSchema ,EditarSolicitudSchema} from "@/src/schemas"
 import { error } from "console"
 import { revalidatePath } from "next/cache"
 import { Solitreo } from "next/font/google"
 import { success } from "zod"
+import { mensajesDeError } from "@/src/lib/erroresBackend"
 
 type ActiosStateType={
     errors:string[],
@@ -69,11 +70,10 @@ export async function EditarSolicitudTramite(solicitudTramiteId: SolicitudTramit
     })
    })
 
-   const json =await req.json()
+   const json =await req.json().catch(() => null)
    if(!req.ok){
-    const {error}=ErrorResponoseSchema.parse(json)
     return{
-        errors:[error],
+        errors: mensajesDeError(json, "No se pudo guardar la solicitud"),
         success:''
     }
    }

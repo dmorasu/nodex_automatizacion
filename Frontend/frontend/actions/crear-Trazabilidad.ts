@@ -1,9 +1,10 @@
 "use server"
 
-import { ErrorResponoseSchema, TrazabilidadSchema, SuccessSchema } from "@/src/schemas"
+import { TrazabilidadSchema, SuccessSchema } from "@/src/schemas"
 import { verificacionSesion } from "@/src/auth/dal"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import { mensajesDeError } from "@/src/lib/erroresBackend"
 
 type ActionStateType = {
     errors: string[],
@@ -60,12 +61,11 @@ export default async function CrearTrazabilidad(
             })
         })
 
-        const json = await req.json()
+        const json = await req.json().catch(() => null)
 
         if (!req.ok) {
-            const { error } = ErrorResponoseSchema.parse(json)
             return {
-                errors: [error],
+                errors: mensajesDeError(json, "No se pudo guardar la trazabilidad"),
                 success: ''
             }
         }

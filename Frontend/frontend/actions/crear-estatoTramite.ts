@@ -1,7 +1,8 @@
 "use server"
 
 import { encabezadosSesion } from "@/src/lib/sesionApi"
-import { ErrorResponoseSchema, EstadoTramitesSchema } from "@/src/schemas"
+import { EstadoTramitesSchema } from "@/src/schemas"
+import { mensajesDeError } from "@/src/lib/erroresBackend"
 
 type ActionStateType = {
   errors: string[]
@@ -74,17 +75,15 @@ export default async function CrearEstadoTramite(
       })
     })
 
-    const json = await req.json()
+    const json = await req.json().catch(() => null)
 
     console.log("RESPUESTA BACKEND:", json)
     console.log("STATUS:", req.status)
 
     if (!req.ok) {
 
-      const { error } = ErrorResponoseSchema.parse(json)
-
       return {
-        errors: [error],
+        errors: mensajesDeError(json, "No se pudo cambiar el estado"),
         success: "",
         requiereEvaluacion: false
       }

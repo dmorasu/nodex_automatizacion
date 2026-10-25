@@ -2,7 +2,6 @@
 
 import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { 
-  ErrorResponoseSchema,
   SuccessSchema, 
 
   cuentaCobroSchema
@@ -10,6 +9,7 @@ import {
 
 import { revalidatePath } from "next/cache"
 import { sumarDiasHabilesColombia } from "@/src/ultis/fechasHabiles"
+import { mensajesDeError } from "@/src/lib/erroresBackend"
 
 type ActionStateType = {
   errors: string[],
@@ -65,12 +65,11 @@ export default async function CrearCuentaCobro(
     body: JSON.stringify(parsed.data)
   })
 
-  const json = await req.json()
+  const json = await req.json().catch(() => null)
 
   if (!req.ok) {
-    const { error } = ErrorResponoseSchema.parse(json)
     return {
-      errors: [error],
+      errors: mensajesDeError(json, "No se pudo guardar la cuenta de cobro"),
       success: ""
     }
   }

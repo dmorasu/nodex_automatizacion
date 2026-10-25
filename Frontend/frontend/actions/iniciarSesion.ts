@@ -1,7 +1,8 @@
 "use server"
 import {cookies, headers} from 'next/headers'
 import {redirect} from 'next/navigation'
-import { ErrorResponoseSchema, inicioSesionSchema } from "@/src/schemas"
+import { inicioSesionSchema } from "@/src/schemas"
+import { mensajesDeError } from "@/src/lib/erroresBackend"
 
 
 type ActionStateType ={
@@ -42,13 +43,12 @@ export async function autenticacion(prevState:ActionStateType, formData:FormData
     })
 
 
-    const json =await req.json()
+    const json =await req.json().catch(() => null)
     
 
     if(!req.ok){
-        const {error}=ErrorResponoseSchema.parse(json)
         return{
-            errors:[error]
+            errors: mensajesDeError(json, "No se pudo iniciar sesión, intente de nuevo")
         }
     }
     

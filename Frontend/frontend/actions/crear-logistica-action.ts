@@ -1,6 +1,7 @@
 "use server"
 
-import { ErrorResponoseSchema, SuccessSchema, logisticaSchema } from "@/src/schemas"
+import { SuccessSchema, logisticaSchema } from "@/src/schemas"
+import { mensajesDeError } from "@/src/lib/erroresBackend"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 
@@ -60,13 +61,8 @@ export default async function CrearLogistica(
   const json = await req.json().catch(() => null)
 
   if (!req.ok) {
-    // El backend responde { error } (reglas de negocio) o { errors: [{ msg }] } (validaciones)
-    const error = ErrorResponoseSchema.safeParse(json)
-    const errores: string[] = error.success
-      ? [error.data.error]
-      : (json?.errors ?? []).map((e: { msg: string }) => e.msg)
     return {
-      errors: errores.length ? errores : ["No se pudo guardar la logística"],
+      errors: mensajesDeError(json, "No se pudo guardar la logística"),
       success: ""
     }
   }

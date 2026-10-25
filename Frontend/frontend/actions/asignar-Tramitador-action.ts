@@ -1,7 +1,8 @@
 "use server"
 
 import { encabezadosSesion } from "@/src/lib/sesionApi"
-import { ErrorResponoseSchema, SuccessSchema } from "@/src/schemas"
+import { SuccessSchema } from "@/src/schemas"
+import { mensajesDeError } from "@/src/lib/erroresBackend"
 
 type ActionStateType = {
   errors: string[],
@@ -38,13 +39,12 @@ export default async function AsignarTramitadorSolicitud(
     })
   })
 
-  const json = await req.json()
+  const json = await req.json().catch(() => null)
 
   // 3. Manejo de error API
   if (!req.ok) {
-    const { error } = ErrorResponoseSchema.parse(json)
     return {
-      errors:[error],
+      errors: mensajesDeError(json, "No se pudo asignar el tramitador"),
             success:''
     }
   }

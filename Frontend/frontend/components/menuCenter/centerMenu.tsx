@@ -18,6 +18,7 @@ import {
   Receipt,
   Route,
   Settings2,
+  Star,
   ShieldCheck,
   Tags,
   Upload,
@@ -68,7 +69,8 @@ export default function CenterMenu({
         { href: "/center/torreControl", nombre: "Tablero de gestión", icono: Radar, visible: esTorreControl },
         { href: "/center/reportesRealizado", nombre: "Reportados como realizados", icono: CircleCheckBig, visible: esTorreControl },
         { href: "/center/rutas", nombre: "Rutas de mensajeros", icono: Route, visible: esTorreControl },
-        { href: "/center/cuentasCobro", nombre: "Cuentas de cobro", icono: HandCoins, visible: esTorreControl }
+        { href: "/center/cuentasCobro", nombre: "Cuentas de cobro", icono: HandCoins, visible: esTorreControl },
+        { href: "/center/calificaciones", nombre: "Calificaciones", icono: Star, visible: esTorreControl }
       ]
     },
     {

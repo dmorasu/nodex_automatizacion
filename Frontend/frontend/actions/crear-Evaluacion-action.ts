@@ -29,7 +29,7 @@ export async function crearEvaluacion(
 
   if (!req.ok) {
     return {
-      error: json.message || "Error al crear evaluación"
+      error: json.error || json.message || "Error al crear evaluación"
     }
   }
 

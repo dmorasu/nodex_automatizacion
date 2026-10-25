@@ -1,11 +1,10 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { abrirModal } from "@/src/lib/modalesDetalle"
 import { User } from "lucide-react"
 
 export default function AddTramitadorBoton() {
-
-  const router = useRouter()
   const pathname = usePathname()
 
   return (
@@ -33,9 +32,7 @@ export default function AddTramitadorBoton() {
         focus:ring-indigo-100
       "
       onClick={() =>
-        router.push(
-          `${pathname}?addTramitador=true&showModal=true`
-        )
+        abrirModal(pathname, "addTramitador")
       }
     >
 

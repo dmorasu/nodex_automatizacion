@@ -1,11 +1,10 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { abrirModal } from "@/src/lib/modalesDetalle"
 import { Activity } from "lucide-react"
 
 export default function AddTrazabilidadBoton() {
-
-  const router = useRouter()
   const pathname = usePathname()
 
   return (
@@ -33,9 +32,7 @@ export default function AddTrazabilidadBoton() {
         focus:ring-blue-100
       "
       onClick={() =>
-        router.push(
-          `${pathname}?addTrazabilidad=true&showModal=true`
-        )
+        abrirModal(pathname, "addTrazabilidad")
       }
     >
 

@@ -1,11 +1,10 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { abrirModal } from "@/src/lib/modalesDetalle"
 import { Flag } from "lucide-react"
 
 export default function AddSubEstadoBoton() {
-
-  const router = useRouter()
   const pathname = usePathname()
 
   return (
@@ -33,9 +32,7 @@ export default function AddSubEstadoBoton() {
         focus:ring-violet-100
       "
       onClick={() =>
-        router.push(
-          `${pathname}?addSubEstado=true&showModal=true`
-        )
+        abrirModal(pathname, "addSubEstado")
       }
     >
 

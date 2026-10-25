@@ -1,11 +1,10 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { abrirModal } from "@/src/lib/modalesDetalle"
 import { Truck } from "lucide-react"
 
 export default function AddLogisticatoBoton() {
-
-  const router = useRouter()
   const pathname = usePathname()
 
   return (
@@ -33,9 +32,7 @@ export default function AddLogisticatoBoton() {
         focus:ring-amber-100
       "
       onClick={() =>
-        router.push(
-          `${pathname}?addLogistica=true&showModal=true`
-        )
+        abrirModal(pathname, "addLogistica")
       }
     >
 

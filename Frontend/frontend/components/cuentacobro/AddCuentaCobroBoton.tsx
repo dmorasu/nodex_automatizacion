@@ -1,11 +1,10 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { abrirModal } from "@/src/lib/modalesDetalle"
 import { Receipt } from "lucide-react"
 
 export default function AddCuentaCobroBoton() {
-
-  const router = useRouter()
   const pathname = usePathname()
 
   return (
@@ -33,9 +32,7 @@ export default function AddCuentaCobroBoton() {
         focus:ring-cyan-100
       "
       onClick={() =>
-        router.push(
-          `${pathname}?addCuentaCobro=true&showModal=true`
-        )
+        abrirModal(pathname, "addCuentaCobro")
       }
     >
 

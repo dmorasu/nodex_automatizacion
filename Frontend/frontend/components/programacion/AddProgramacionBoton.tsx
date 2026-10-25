@@ -1,11 +1,10 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { abrirModal } from "@/src/lib/modalesDetalle"
 import { Calendar } from "lucide-react"
 
 export default function AddProgramacionBoton() {
-
-  const router = useRouter()
   const pathname = usePathname()
 
   return (
@@ -33,9 +32,7 @@ export default function AddProgramacionBoton() {
         focus:ring-teal-100
       "
       onClick={() =>
-        router.push(
-          `${pathname}?addProgramacion=true&showModal=true`
-        )
+        abrirModal(pathname, "addProgramacion")
       }
     >
 

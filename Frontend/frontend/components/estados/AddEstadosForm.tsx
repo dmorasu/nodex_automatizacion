@@ -3,7 +3,7 @@
 import { DialogTitle } from "@headlessui/react";
 import EstadosComboBox from "./EstadosCombobox";
 import CrearEstadoTramite from "@/actions/crear-estatoTramite";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import AvisarErrores from "../ui/AvisarErrores";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -11,6 +11,7 @@ import { useTiposRechazo } from "@/hooks/useTiposRechazos";
 import { Flag } from "lucide-react";
 import SelectBuscable from "@/components/ui/SelectBuscable"
 import { conservarCampos } from "@/src/lib/formularios"
+import { cambiarModal } from "@/src/lib/modalesDetalle"
 
 export default function AddExpenseForm({
   closeModal,
@@ -19,6 +20,7 @@ export default function AddExpenseForm({
 }) {
 
   const router = useRouter();
+  const pathname = usePathname();
   const { id } = useParams<{ id: string }>();
 
   const [estadoSeleccionado, setEstadoSeleccionado] =
@@ -53,9 +55,7 @@ export default function AddExpenseForm({
 
       if (state.requiereEvaluacion) {
 
-        router.replace(
-          `?evaluar=true&showModal=true`
-        );
+        cambiarModal(pathname, "evaluar");
 
         return;
       }

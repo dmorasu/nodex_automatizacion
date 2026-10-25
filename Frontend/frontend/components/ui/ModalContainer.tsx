@@ -3,7 +3,6 @@
 import { Fragment } from "react"
 
 import {
-  useRouter,
   useSearchParams,
   usePathname
 } from "next/navigation"
@@ -25,6 +24,7 @@ import EvaluacionModal from "../evaluacion/evaluacionModal"
 import AddSubEstadoForm from "../subEstados/AddSubEstadosForm"
 
 import { SolicitudTramiteType } from "@/src/type/solicitudes"
+import { cerrarModal } from "@/src/lib/modalesDetalle"
 
 
 export default function ModalContainer({
@@ -33,7 +33,6 @@ export default function ModalContainer({
   solicitudTramite: SolicitudTramiteType
 }) {
 
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -119,34 +118,8 @@ export default function ModalContainer({
   // CERRAR MODAL
   // =====================================================
 
-  const closeModal = () => {
-
-    const hideModal =
-      new URLSearchParams(
-        searchParams.toString()
-      )
-
-
-    Array
-      .from(hideModal.entries())
-      .forEach(([key]) => {
-
-        hideModal.delete(key)
-
-      })
-
-
-    const query =
-      hideModal.toString()
-
-
-    router.replace(
-      query
-        ? `${pathname}?${query}`
-        : pathname
-    )
-
-  }
+  // Solo cambia la dirección en el navegador (ver src/lib/modalesDetalle): cierra al instante
+  const closeModal = () => cerrarModal(pathname)
 
 
   return (

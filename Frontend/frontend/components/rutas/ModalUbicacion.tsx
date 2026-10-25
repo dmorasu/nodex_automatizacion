@@ -5,11 +5,14 @@ import dynamic from "next/dynamic"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { Loader2, MapPin, Search, X } from "lucide-react"
 import type { Punto } from "./SelectorUbicacionLeaflet"
+import { claveMapaGoogle } from "@/src/lib/googleMaps"
 
-const Selector = dynamic(() => import("./SelectorUbicacionLeaflet"), {
-  ssr: false,
-  loading: () => <div className="flex h-full items-center justify-center rounded-lg bg-slate-50 text-xs text-slate-400">Cargando mapa…</div>
-})
+const cargandoMapa = () => <div className="flex h-full items-center justify-center rounded-lg bg-slate-50 text-xs text-slate-400">Cargando mapa…</div>
+
+// Con la clave del navegador se usa Google (igual que el mapa de rutas); sin ella, o si Google
+// no carga, el mapa libre (OpenStreetMap)
+const SelectorGoogle = dynamic(() => import("./SelectorUbicacionGoogle"), { ssr: false, loading: cargandoMapa })
+const SelectorLibre = dynamic(() => import("./SelectorUbicacionLeaflet"), { ssr: false, loading: cargandoMapa })
 
 // Centro de Colombia, si no hay otra referencia
 const COLOMBIA: Punto = { latitud: 4.6, longitud: -74.1 }
@@ -29,6 +32,7 @@ export default function ModalUbicacion({ titulo, direccion, puntoInicial, centro
   const [punto, setPunto] = useState<Punto | null>(puntoInicial)
   const [guardando, setGuardando] = useState(false)
   const [buscando, setBuscando] = useState(false)
+  const [conGoogle, setConGoogle] = useState(Boolean(claveMapaGoogle))
 
   const guardar = async () => {
     if (!punto) return
@@ -62,7 +66,9 @@ export default function ModalUbicacion({ titulo, direccion, puntoInicial, centro
           <div className="space-y-3 px-6 py-4">
             <p className="text-xs text-slate-500">Haga clic en el mapa donde queda la dirección o arrastre el marcador para corregirla.</p>
             <div className="relative z-0 h-[420px]">
-              <Selector punto={punto} centroInicial={punto ?? centro ?? COLOMBIA} onCambiar={setPunto} />
+              {conGoogle
+                ? <SelectorGoogle punto={punto} centroInicial={punto ?? centro ?? COLOMBIA} onCambiar={setPunto} onError={() => setConGoogle(false)} />
+                : <SelectorLibre punto={punto} centroInicial={punto ?? centro ?? COLOMBIA} onCambiar={setPunto} />}
             </div>
             {punto && (
               <p className="flex items-center gap-1.5 text-[11px] text-slate-400">

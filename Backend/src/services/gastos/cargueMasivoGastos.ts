@@ -42,8 +42,12 @@ const COLUMNAS: { clave: string, titulo: string, ancho: number, nota: string }[]
   { clave: 'observacion', titulo: 'observacion', ancho: 30, nota: 'Opcional' }
 ]
 
-// Columnas agregadas después: las plantillas descargadas antes no las traen y se siguen aceptando
-const COLUMNAS_NO_EXIGIDAS = ['contrato', 'codigoBpr']
+// Columnas que el archivo puede no traer: las de datos opcionales (pueden borrarlas del Excel)
+// y las agregadas después (las plantillas descargadas antes no las tienen)
+const COLUMNAS_NO_EXIGIDAS = [
+  'contrato', 'codigoBpr', 'observacion', 'beneficiarioTipoIdentificacion', 'beneficiarioNombre',
+  'beneficiarioBanco', 'beneficiarioTipoCuenta', 'beneficiarioNumeroCuenta'
+]
 
 export type ErrorFila = { fila: number, error: string }
 

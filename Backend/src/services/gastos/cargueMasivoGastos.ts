@@ -6,6 +6,7 @@ import Operaciones from '../../models/operaciones'
 import Bolsas from '../../models/gastos/bolsas'
 import TiposGasto from '../../models/gastos/tiposGasto'
 import FormasPago from '../../models/gastos/formasPago'
+import Terceros from '../../models/gastos/terceros'
 import { crearGastoEnTransaccion, validarGasto, type DatosGasto } from './solicitudesGasto'
 import { ErrorGastos } from './errores'
 import { TIPOS_GASTO } from './constantes'
@@ -29,8 +30,10 @@ const COLUMNAS: { clave: string, titulo: string, ancho: number, nota: string }[]
   { clave: 'placa', titulo: 'placa', ancho: 10, nota: 'Obligatoria si el tipo es Vehículo' },
   { clave: 'transito', titulo: 'transito', ancho: 22, nota: 'Obligatorio si el tipo es Vehículo' },
   { clave: 'matriculaInmobiliaria', titulo: 'matriculaInmobiliaria', ancho: 20, nota: 'Obligatoria si el tipo es Inmueble' },
+  { clave: 'contrato', titulo: 'contrato', ancho: 16, nota: 'Opcional. Máximo 50 caracteres' },
+  { clave: 'codigoBpr', titulo: 'codigoBPR/FTF', ancho: 16, nota: 'Opcional. Máximo 50 caracteres' },
   { clave: 'reembolsable', titulo: 'reembolsable', ancho: 12, nota: 'Si (se le cobra al cliente) o No (lo asume la bolsa). Vacío = Si' },
-  { clave: 'beneficiarioIdentificacion', titulo: 'beneficiarioIdentificacion', ancho: 24, nota: 'Obligatorio. Si ya existe, se usan sus datos registrados' },
+  { clave: 'beneficiarioIdentificacion', titulo: 'beneficiarioIdentificacion', ancho: 24, nota: 'Obligatorio (hoja Beneficiarios). Si ya existe, se usan sus datos registrados' },
   { clave: 'beneficiarioTipoIdentificacion', titulo: 'beneficiarioTipoIdentificacion', ancho: 16, nota: 'NIT, CC, CE o PAS (solo para beneficiarios nuevos; vacío = NIT)' },
   { clave: 'beneficiarioNombre', titulo: 'beneficiarioNombre', ancho: 30, nota: 'Obligatorio solo si el beneficiario es nuevo' },
   { clave: 'beneficiarioBanco', titulo: 'beneficiarioBanco', ancho: 18, nota: 'Opcional (beneficiarios nuevos)' },
@@ -38,6 +41,9 @@ const COLUMNAS: { clave: string, titulo: string, ancho: number, nota: string }[]
   { clave: 'beneficiarioNumeroCuenta', titulo: 'beneficiarioNumeroCuenta', ancho: 20, nota: 'Opcional (beneficiarios nuevos)' },
   { clave: 'observacion', titulo: 'observacion', ancho: 30, nota: 'Opcional' }
 ]
+
+// Columnas agregadas después: las plantillas descargadas antes no las traen y se siguen aceptando
+const COLUMNAS_NO_EXIGIDAS = ['contrato', 'codigoBpr']
 
 export type ErrorFila = { fila: number, error: string }
 
@@ -51,11 +57,13 @@ type Fila = { numero: number, valores: Record<string, string> }
 // Si se indican trámites, la plantilla viene con una fila por trámite (número, operación,
 // placa/matrícula y tipo sugerido) para completar solo los que tengan gasto
 export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: number[] | null) => {
-  const [bolsas, tipos, formas, operaciones, tramites] = await Promise.all([
+  const [bolsas, tipos, formas, operaciones, terceros, tramites] = await Promise.all([
     Bolsas.findAll({ where: { activo: true }, attributes: ['id', 'nombre', 'lineaNegocio'], order: [['nombre', 'ASC']] }),
     TiposGasto.findAll({ where: { activo: true }, attributes: ['id', 'codigo', 'nombre'], order: [['id', 'ASC']] }),
     FormasPago.findAll({ where: { activo: true }, attributes: ['id', 'nombre'], order: [['nombre', 'ASC']] }),
     Operaciones.findAll({ attributes: ['id', 'nombreOperacion'], order: [['nombreOperacion', 'ASC']] }),
+    // Para buscar la identificación del beneficiario (sin la cuenta bancaria)
+    Terceros.findAll({ where: { activo: true }, attributes: ['identificacion', 'tipoIdentificacion', 'nombre', 'banco'], order: [['nombre', 'ASC']] }),
     tramiteIds.length
       ? SolicitudTramites.findAll({
         where: {
@@ -98,6 +106,7 @@ export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: numb
     h.columns = columnas
     h.addRows(filas)
     h.getRow(1).font = { bold: true }
+    return h
   }
 
   apoyo('Bolsas', [{ header: 'id', key: 'id', width: 6 }, { header: 'nombre', key: 'nombre', width: 24 }, { header: 'lineaNegocio', key: 'lineaNegocio', width: 24 }],
@@ -108,6 +117,15 @@ export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: numb
     formas.map(f => ({ id: f.id, nombre: f.nombre })))
   apoyo('Operaciones', [{ header: 'id', key: 'id', width: 6 }, { header: 'nombre', key: 'nombre', width: 40 }],
     operaciones.map(o => ({ id: o.id, nombre: o.nombreOperacion })))
+  // Puede ser larga: encabezado fijo y filtro para buscar por nombre o identificación
+  const hojaBeneficiarios = apoyo('Beneficiarios', [
+    { header: 'identificacion', key: 'identificacion', width: 18 },
+    { header: 'tipoIdentificacion', key: 'tipo', width: 16 },
+    { header: 'nombre', key: 'nombre', width: 40 },
+    { header: 'banco', key: 'banco', width: 22 }
+  ], terceros.map(t => ({ identificacion: t.identificacion, tipo: t.tipoIdentificacion, nombre: t.nombre, banco: t.banco })))
+  hojaBeneficiarios.views = [{ state: 'frozen', ySplit: 1 }]
+  hojaBeneficiarios.autoFilter = { from: 'A1', to: 'D1' }
 
   const instrucciones = libro.addWorksheet('Instrucciones')
   instrucciones.columns = [{ header: 'Columna', key: 'columna', width: 30 }, { header: 'Cómo llenarla', key: 'nota', width: 90 }]
@@ -150,7 +168,9 @@ const leerArchivo = async (buffer: Buffer): Promise<Fila[]> => {
   if (!hoja) throw new ErrorGastos('El archivo no tiene hojas')
 
   const encabezados = (hoja.getRow(1).values as ExcelJS.CellValue[]).map(textoCelda)
-  const faltantes = COLUMNAS.filter(c => !encabezados.includes(c.titulo)).map(c => c.titulo)
+  const faltantes = COLUMNAS
+    .filter(c => !COLUMNAS_NO_EXIGIDAS.includes(c.clave) && !encabezados.includes(c.titulo))
+    .map(c => c.titulo)
   if (faltantes.length) {
     throw new ErrorGastos(`Faltan columnas de la plantilla: ${faltantes.join(', ')}. Descargue la plantilla nuevamente.`)
   }
@@ -158,8 +178,13 @@ const leerArchivo = async (buffer: Buffer): Promise<Fila[]> => {
   const filas: Fila[] = []
   hoja.eachRow((row, numero) => {
     if (numero === 1) return
-    const valores: Record<string, string> = {}
-    encabezados.forEach((titulo, i) => { if (titulo) valores[titulo] = textoCelda(row.getCell(i).value) })
+    // Los valores quedan por clave (el título puede ser distinto, ej. codigoBPR/FTF) y todas
+    // las columnas con texto, aunque el archivo no traiga las no exigidas
+    const valores: Record<string, string> = Object.fromEntries(COLUMNAS.map(c => [c.clave, '']))
+    encabezados.forEach((titulo, i) => {
+      const columna = COLUMNAS.find(c => c.titulo === titulo)
+      if (columna) valores[columna.clave] = textoCelda(row.getCell(i).value)
+    })
     // Filas en blanco (o solo con datos prellenados del trámite) no se cargan
     const conDatosDeGasto = ['conceptoPago', 'valorSolicitado', 'beneficiarioIdentificacion', 'bolsaId', 'formaPagoId']
       .some(c => valores[c])
@@ -201,6 +226,8 @@ const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null
   if (tipoCuenta && !['AHORROS', 'CORRIENTE'].includes(tipoCuenta)) errores.push('beneficiarioTipoCuenta debe ser AHORROS o CORRIENTE')
 
   largo('conceptoPago', 200); largo('placa', 20); largo('transito', 100); largo('matriculaInmobiliaria', 50)
+  largo('contrato', 50)
+  if (v.codigoBpr.length > 50) errores.push('codigoBPR/FTF supera 50 caracteres')
   largo('beneficiarioIdentificacion', 30); largo('beneficiarioNombre', 200); largo('beneficiarioBanco', 100)
   largo('beneficiarioNumeroCuenta', 30); largo('observacion', 2000)
 
@@ -232,6 +259,8 @@ const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null
     placa: v.placa || null,
     transito: v.transito || null,
     matriculaInmobiliaria: v.matriculaInmobiliaria || null,
+    contrato: v.contrato || null,
+    codigoBpr: v.codigoBpr || null,
     // Vacío = Sí (por defecto los gastos son reembolsables)
     reembolsable: reembolsable !== 'no',
     observacion: v.observacion || null,

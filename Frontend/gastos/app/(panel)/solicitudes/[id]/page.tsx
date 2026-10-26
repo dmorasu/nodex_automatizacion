@@ -89,6 +89,7 @@ export default async function DetalleGastoPage(props: { params: Promise<{ id: st
               <Dato etiqueta="Forma de pago" valor={gasto.formaPago.nombre} />
               <Dato etiqueta="Trámite" valor={gasto.solicitudTramiteId && `#${gasto.solicitudTramiteId}`} />
               <Dato etiqueta="Tramitador" valor={gasto.tramitador?.nombreTramitador} />
+              {gasto.tramitador && <Dato etiqueta="Identificación del tramitador" valor={gasto.tramitador.identificacion} />}
               <Dato etiqueta="Número de factura" valor={gasto.numeroFactura} />
               {gasto.placa && <Dato etiqueta="Placa" valor={gasto.placa} />}
               {gasto.transito && <Dato etiqueta="Tránsito" valor={gasto.transito} />}

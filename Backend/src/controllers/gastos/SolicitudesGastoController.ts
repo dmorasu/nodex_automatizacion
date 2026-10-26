@@ -93,7 +93,7 @@ const INCLUDES_LISTADO = [
   ...INCLUDES_BASE,
   { model: Terceros, attributes: ['id', 'identificacion', 'nombre'] },
   { model: FacturasGasto, attributes: ['id', 'numeroFactura', 'valorFactura', 'cuatroXMil', 'valorLegalizado'] },
-  { model: Tramitador, attributes: ['id', 'nombreTramitador'] },
+  { model: Tramitador, attributes: ['id', 'nombreTramitador', 'identificacion'] },
   // Caja menor: lo que registró Tesorería al legalizar (bandejas de caja menor)
   { model: LegalizacionesCaja, attributes: ['id', 'numeroFactura', 'fechaFactura', 'beneficiario', 'quienLegaliza', 'valorSoporte', 'diferencia', 'reembolsoCajaId'] },
   { model: Anticipos, attributes: ['id', 'codigo'] }
@@ -371,6 +371,7 @@ export class SolicitudesGastoController {
         ['Reporte realizado del tramitador', g => REPORTE_REALIZADO[String(g.get('reporteRealizado'))] ?? ''],
         ['Factura del tramitador', g => SOPORTE_TRAMITADOR[String(g.get('soporteTramitador'))] ?? ''],
         ['Tramitador', g => g.tramitador?.nombreTramitador],
+        ['Identificación del tramitador', g => g.tramitador?.identificacion],
         ['Beneficiario', g => g.beneficiario?.nombre],
         ['Identificación del beneficiario', g => g.beneficiario?.identificacion],
         ['Creado por', g => g.creador?.nombreUsuario],

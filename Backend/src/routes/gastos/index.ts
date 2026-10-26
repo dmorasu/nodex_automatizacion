@@ -118,12 +118,12 @@ router.get('/tramites/:id/gastos',
 )
 
 
-// ── Cargue masivo de gastos (desde Nodex Trámites, Gestión de activos) ──
-const cargueMasivo = requiereRol(ROLES.GESTION_ACTIVOS)
-
-router.get('/cargue-masivo/plantilla', cargueMasivo, CargueMasivoGastosController.plantilla)
-router.post('/cargue-masivo/validar', cargueMasivo, recibirExcel, CargueMasivoGastosController.validar)
-router.post('/cargue-masivo/cargar', cargueMasivo, recibirExcel, CargueMasivoGastosController.cargar)
+// ── Cargue masivo de gastos (Nodex Trámites y Nodex Gastos) ──
+// Como crear un gasto uno a uno: cualquier usuario. Gestión de activos sigue limitado a
+// los trámites de su área (lo valida el servicio)
+router.get('/cargue-masivo/plantilla', CargueMasivoGastosController.plantilla)
+router.post('/cargue-masivo/validar', recibirExcel, CargueMasivoGastosController.validar)
+router.post('/cargue-masivo/cargar', recibirExcel, CargueMasivoGastosController.cargar)
 
 
 // ── Solicitudes de gasto ────────────

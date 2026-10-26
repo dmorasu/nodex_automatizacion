@@ -237,7 +237,7 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
   formaPago: ItemCatalogoSchema,
   bolsaId: z.number().nullable(),
   lotePagoId: z.number().nullable(),
-  tramitador: z.object({ id: z.number(), nombreTramitador: z.string() }).nullable(),
+  tramitador: z.object({ id: z.number(), nombreTramitador: z.string(), identificacion: textoNulo }).nullable(),
   beneficiario: TerceroSchema,
   actualizador: UsuarioCortoSchema,
   trazabilidad: z.array(TrazabilidadSchema),

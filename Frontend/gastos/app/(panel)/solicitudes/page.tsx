@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Search, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
 import { tieneRolDeGastos } from "@/src/auth/permisos"
 import { fetchApi } from "@/src/lib/api"
@@ -63,10 +63,16 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
           </h1>
           <p className="mt-1 text-sm text-slate-400">{total} gasto(s) encontrado(s)</p>
         </div>
-        <Link href="/solicitudes/nuevo" className={claseBotonPrimario}>
-          <Plus size={15} />
-          Nuevo gasto
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/solicitudes/cargue" className={claseBotonSecundario}>
+            <FileSpreadsheet size={15} />
+            Cargue masivo
+          </Link>
+          <Link href="/solicitudes/nuevo" className={claseBotonPrimario}>
+            <Plus size={15} />
+            Nuevo gasto
+          </Link>
+        </div>
       </div>
 
       {/* FILTROS: formulario GET, los filtros quedan en la URL */}

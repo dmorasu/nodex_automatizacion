@@ -68,6 +68,14 @@ declare fechaCita: Date | null
 })
 declare horaCita: string | null
 
+// 2026-10-25 · Hora en que termina la cita (la pone el analista; opcional: sin ella la agenda
+// del mensajero cuenta una hora desde el inicio)
+@Column({
+  type: DataType.TIME,
+  allowNull: true
+})
+declare horaFinCita: string | null
+
   @ForeignKey(() => SolicitudTramites)
   @Column({ unique: true,field: 'solicitudTramiteId'  })
   declare solicitudTramiteId: number

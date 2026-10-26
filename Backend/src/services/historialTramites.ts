@@ -89,7 +89,8 @@ const CAMPOS_PROGRAMACION: Record<string, Campo> = {
   conceptoViaticos: { etiqueta: 'Concepto viáticos' },
   requiereCita: { etiqueta: 'Requiere cita', formato: 'siNo' },
   fechaCita: { etiqueta: 'Fecha de la cita', formato: 'fecha' },
-  horaCita: { etiqueta: 'Hora de la cita' }
+  horaCita: { etiqueta: 'Hora de la cita' },
+  horaFinCita: { etiqueta: 'Hora final de la cita' }
 }
 
 const CAMPOS_LOGISTICA: Record<string, Campo> = {

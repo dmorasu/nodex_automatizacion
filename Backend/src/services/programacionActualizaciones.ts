@@ -1,6 +1,7 @@
 import { db } from '../config/db'
 import Programacion from '../models/programacion'
 import { excelDateToString } from '../utils/excelDate'
+import { verificarCitaDelTramite } from './mensajeria/agenda'
 
 export const procesarProgramacion = async (data: any[]) => {
 
@@ -22,6 +23,8 @@ export const procesarProgramacion = async (data: any[]) => {
 
        
         const fechaEntrega = excelDateToString(row.fechaProbableEntrega)
+        // Si tiene cita, el horario debe estar libre en la agenda del mensajero el nuevo día
+        await verificarCitaDelTramite(Number(row.solicitudTramiteId), { fecha: fechaEntrega }, t)
        
 
         if (existe) {

@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import clsx from "clsx"
+import { Download } from "lucide-react"
 import { encabezadosSesion } from "@/src/lib/sesionApi"
 import { PESTANAS, type ClavePestana, type ListadoCuentas, type PorGenerar } from "@/src/cuentasCobro"
 import PanelCuentasCobro from "@/components/cuentasCobro/PanelCuentasCobro"
@@ -40,11 +41,24 @@ export default async function CuentasCobroPage(props: { searchParams: Promise<{ 
     const estados = PESTANAS.find(p => p.clave === clave)!.estados
     return estados.reduce((suma, estado) => suma + (listado?.conteos[estado] ?? 0), 0)
   }
-  const resaltar = (clave: ClavePestana) => clave === "borradores" && (listado?.conteos.POR_CORREGIR ?? 0) > 0
+  const exportar = new URLSearchParams({ estados: pestana.estados.join(",") })
+  if (searchParams.q && pestana.clave !== "porGenerar") exportar.set("q", searchParams.q)
+
+  const resaltar =(clave: ClavePestana) => clave === "borradores" && (listado?.conteos.POR_CORREGIR ?? 0) > 0
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold text-slate-800">Cuentas de cobro</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-800">Cuentas de cobro</h1>
+        {/* Lo de la pestaña con su búsqueda, sin paginar; en Por generar, todas las cuentas */}
+        <a
+          href={`/api/backend/cuentas-cobro-tramitadores/exportar?${exportar}`}
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+        >
+          <Download size={15} />
+          Descargar Excel
+        </a>
+      </div>
 
       <nav className="flex flex-wrap border-b border-slate-200 sm:flex-nowrap" aria-label="Cuentas de cobro">
         {PESTANAS.map(p => {

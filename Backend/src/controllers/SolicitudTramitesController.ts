@@ -25,6 +25,8 @@ import { ATRIBUTO_NOMBRE_ANALISTA } from '../services/analistasTramites'
 import { obtenerTablero } from '../services/tableroTramites'
 import { generarExcelTablero } from '../services/exportarTablero'
 import { ubicarEnSegundoPlano, ubicarManual } from '../services/mensajeria/ubicacion'
+import { verificarCitaDelTramite } from '../services/mensajeria/agenda'
+import { ErrorGastos } from '../services/gastos/errores'
 
 
 
@@ -234,8 +236,17 @@ static asignarTramitador = async (req: Request, res: Response) => {
       // =========================
       // UPDATE
       // =========================
-      solicitud.tramitadorId = tramitadorId
-      await solicitud.save()
+      // Si tiene cita, el horario debe estar libre en la agenda del nuevo mensajero
+      try {
+        await db.transaction(async transaction => {
+          await verificarCitaDelTramite(solicitud.id, { tramitadorId: Number(tramitadorId) }, transaction)
+          solicitud.tramitadorId = tramitadorId
+          await solicitud.save({ transaction })
+        })
+      } catch (error) {
+        if (error instanceof ErrorGastos) return res.status(error.status).json({ error: error.message })
+        throw error
+      }
 
       // =========================
       // 🔥 TRAMITADOR
@@ -452,7 +463,17 @@ static getAll = async (req: Request, res: Response) => {
         // usuarioId es quien creó el trámite: no cambia al editar
         // El analista se cambia solo por PATCH /:id/analista (Administrador de Torre de control)
         const { placa, matriculaInmobiliaria, usuarioId, analistaAsignado, ...datos } = req.body
-        await req.solicitudTramites.update(datos)
+        // Si cambia el mensajero y el trámite tiene cita, el horario debe estar libre en su agenda
+        const cambiaTramitador = datos.tramitadorId !== undefined && Number(datos.tramitadorId) !== Number(req.solicitudTramites.tramitadorId)
+        try {
+          await db.transaction(async transaction => {
+            if (cambiaTramitador) await verificarCitaDelTramite(req.solicitudTramites.id, { tramitadorId: datos.tramitadorId ? Number(datos.tramitadorId) : null }, transaction)
+            await req.solicitudTramites.update(datos, { transaction })
+          })
+        } catch (error) {
+          if (error instanceof ErrorGastos) return res.status(error.status).json({ error: error.message })
+          throw error
+        }
         // Lugar elegido en el autocompletado; si no, si cambió la dirección se vuelve a ubicar
         await guardarUbicacionDelFormulario(req.solicitudTramites.id, req.body)
         res.json('Solicitud Actualizada')

@@ -93,7 +93,8 @@ const ProgramacionSchema = z.object({
   fechaFinalizacionServicio: texto,
   requiereCita: z.boolean().nullish(),
   fechaCita: texto,
-  horaCita: texto
+  horaCita: texto,
+  horaFinCita: texto
 }).nullish()
 
 const EstadoSchema = z.object({ nombreEstado: z.string() }).nullish()

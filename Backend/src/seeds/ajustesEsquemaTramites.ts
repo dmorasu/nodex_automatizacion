@@ -98,6 +98,15 @@ export const ajustarEsquemaTramites = async () => {
   await areasDeUsuarios()
   await descargaPagoUnificada()
   await regionalDeMunicipios()
+  await horaFinDeLaCita()
+}
+
+// 2026-10-25 · Agenda de mensajeros: hora en que termina la cita del trámite
+const horaFinDeLaCita = async () => {
+  const programacion = await columnasDe('Programacion')
+  if (programacion && !programacion.horaFinCita) {
+    await db.query(`ALTER TABLE "Programacion" ADD COLUMN "horaFinCita" TIME`)
+  }
 }
 
 // Regional de cada departamento, tomada del listado de municipios entregado el 2026-10-21

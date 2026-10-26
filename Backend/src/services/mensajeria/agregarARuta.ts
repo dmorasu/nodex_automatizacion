@@ -5,6 +5,8 @@ import SolicitudTramites from '../../models/solicitudTramites'
 import Programacion from '../../models/programacion'
 import { notificarProgramacion } from '../notificacionesProgramacion'
 import { ErrorUbicacion } from './ubicacion'
+import { verificarCitaDelTramite } from './agenda'
+import { ErrorGastos } from '../gastos/errores'
 
 // =====================================
 // AGREGAR TRÁMITES A LA RUTA DE UN MENSAJERO (desde Rutas)
@@ -88,6 +90,8 @@ export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, 
       await db.transaction(async transaction => {
         const solicitud = await SolicitudTramites.findByPk(tramite.id, { transaction, lock: transaction.LOCK.UPDATE })
         if (!solicitud) throw new ErrorUbicacion('No existe', 404)
+        // Si tiene cita, el horario debe estar libre en la agenda de este mensajero ese día
+        await verificarCitaDelTramite(tramite.id, { tramitadorId, fecha }, transaction)
 
         // El aviso push al mensajero sale solo (hook del modelo) si cambia el tramitador
         const cambiaMensajero = Number(solicitud.tramitadorId) !== tramitadorId
@@ -111,8 +115,9 @@ export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, 
       await notificarProgramacion(tramite.id, { avisarAsignado }).catch(error =>
         console.error(`❌ Avisos de programación del trámite ${tramite.id}:`, error))
     } catch (error) {
-      rechazados.push({ id: tramite.id, motivo: error instanceof ErrorUbicacion ? error.message : 'No se pudo agregar' })
-      if (!(error instanceof ErrorUbicacion)) console.error(`❌ Agregar el trámite ${tramite.id} a la ruta:`, error)
+      const conocido = error instanceof ErrorUbicacion || error instanceof ErrorGastos
+      rechazados.push({ id: tramite.id, motivo: conocido ? error.message : 'No se pudo agregar' })
+      if (!conocido) console.error(`❌ Agregar el trámite ${tramite.id} a la ruta:`, error)
     }
   }
 

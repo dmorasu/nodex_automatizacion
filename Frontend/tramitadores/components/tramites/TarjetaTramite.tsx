@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { CalendarClock, ChevronRight, MapPin } from "lucide-react"
-import { formatoFecha } from "@/src/lib/formato"
+import { formatoFecha, formatoHoraCita } from "@/src/lib/formato"
 import type { TramiteListado } from "@/src/schemas"
 import Etiqueta, { tonoEstadoTramite } from "../ui/Etiqueta"
 
@@ -37,7 +37,7 @@ export default function TarjetaTramite({ tramite }: { tramite: TramiteListado })
           <p className="flex items-center gap-1.5">
             <CalendarClock size={14} className="text-slate-400" />
             {cita
-              ? <>Cita {formatoFecha(tramite.programacion!.fechaCita)}{tramite.programacion?.horaCita && ` · ${tramite.programacion.horaCita}`}</>
+              ? <>Cita {formatoFecha(tramite.programacion!.fechaCita)}{tramite.programacion?.horaCita && ` · ${formatoHoraCita(tramite.programacion.horaCita, tramite.programacion.horaFinCita)}`}</>
               : <>Diligencia {formatoFecha(diligencia)}</>}
           </p>
         )}

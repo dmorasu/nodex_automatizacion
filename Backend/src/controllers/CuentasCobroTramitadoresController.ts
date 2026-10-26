@@ -27,6 +27,7 @@ import {
   soportePago
 } from '../services/cuentasCobroTramitador/cuentasCobro'
 import { generarPdfCuenta } from '../services/cuentasCobroTramitador/pdfCuentaCobro'
+import { generarExcelCuentasCobro } from '../services/cuentasCobroTramitador/excelCuentasCobro'
 import {
   avisarEnTesoreria,
   avisarEnviada,
@@ -93,6 +94,20 @@ export class CuentasCobroTorreController {
         q: req.query.q ? String(req.query.q) : undefined,
         pagina: req.query.pagina ? Number(req.query.pagina) : 1
       }))
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // Excel con los mismos filtros de la pestaña (sin estados: todas las cuentas)
+  static exportar = async (req: Request, res: Response) => {
+    try {
+      const estados = String(req.query.estados ?? '').split(',').filter(e => Object.values(ESTADOS).includes(e as any))
+      const archivo = await generarExcelCuentasCobro(estados, req.query.q ? String(req.query.q) : undefined)
+      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', `attachment; filename="cuentas-cobro-tramitadores-${hoy}.xlsx"`)
+      res.send(archivo)
     } catch (error) {
       responderError(res, error)
     }

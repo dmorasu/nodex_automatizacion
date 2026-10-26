@@ -1,5 +1,6 @@
 import { db } from '../config/db'
 import SolicitudTramites from '../models/solicitudTramites'
+import { verificarCitaDelTramite } from './mensajeria/agenda'
 
 export const procesarTramitador = async (data: any[]) => {
 
@@ -22,6 +23,9 @@ export const procesarTramitador = async (data: any[]) => {
         if (!solicitud) {
           throw new Error('Solicitud no existe')
         }
+
+        // Si tiene cita, el horario debe estar libre en la agenda del nuevo mensajero
+        await verificarCitaDelTramite(solicitud.id, { tramitadorId: Number(row.tramitadorId) }, t)
 
         await solicitud.update({
           tramitadorId: row.tramitadorId

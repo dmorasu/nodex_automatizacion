@@ -25,6 +25,7 @@ router.post('/generar',
 router.post('/visto-bueno', listaIds('cuentaIds'), handleInputErrors, CuentasCobroTorreController.vistoBueno)
 
 router.get('/', CuentasCobroTorreController.listar)
+router.get('/exportar', CuentasCobroTorreController.exportar)
 router.get('/:id', idCuenta, handleInputErrors, CuentasCobroTorreController.detalle)
 router.get('/:id/pdf', idCuenta, handleInputErrors, CuentasCobroTorreController.pdf)
 router.get('/:id/soporte-pago', idCuenta, handleInputErrors, CuentasCobroTorreController.soportePago)

@@ -282,6 +282,12 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Agenda de mensajeros y Excel de cuentas de cobro (2026-10-25)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-tramitadores`).
+- **Sin variables nuevas.** El arranque agrega `"Programacion"."horaFinCita"` (antes de sync, idempotente) y `sync()` crea `mensajeria_reservas`. Comprobar:
+  `sudo -u postgres psql -d nodex -c "\dt mensajeria_reservas" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'Programacion' AND column_name = 'horaFinCita'"`
+- Pruebas: en un trámite de un mensajero, Programación con cita, hora y hora final; Seguimiento → **Agenda de mensajeros** muestra la cita; con un usuario de Gestión de activos, abrir la agenda, reservar un espacio libre (y otro que se cruce: debe rechazarlo) y cancelarlo; programar en Torre de control una cita sobre una reserva ajena (debe rechazarla) y sobre la reserva de su propio trámite (la reserva se cierra). Cuentas de cobro → Descargar Excel.
+- Para volver: el commit anterior ignora la tabla y la columna nuevas (no hay que borrarlas). Ojo: con el commit anterior nada impide los cruces de horario.
+
 **Cuentas de cobro de tramitadores, fase 1 (2026-10-25)** — cambian el backend y las **tres** apps (compilar las cuatro y reiniciar `nodex-api`, `nodex-worker`, `nodex-tramites`, `nodex-gastos` y `nodex-tramitadores`).
 - **Variable nueva (opcional) en el backend:** `URL_NODEX_TRAMITADORES=https://tramitadores.nodexgpa.com` (botón "Abrir la app" en los correos al tramitador). Usa además `URL_NODEX_TRAMITES`, `URL_NODEX_GASTOS`, `CORREO_TESORERIA` y `CORREO_TORRE_CONTROL`, que ya existen.
 - El arranque agrega a `"Tramitador"` las columnas `direccion`, `ciudad`, `banco`, `tipoCuenta`, `numeroCuenta`, `declaracionArt383`, `firmaRuta` y `firmaNombre` (antes de sync) y `sync()` crea `tramitadores_cuentas_cobro`, `tramitadores_cuentas_cobro_lineas` y `tramitadores_cuentas_cobro_historial`. Comprobar:

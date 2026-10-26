@@ -44,6 +44,7 @@ import gestionMasivaRouter from "./routes/gestionMasivaRouter"
 import catalogosTramitesRouter from "./routes/catalogosTramitesRouter"
 import apiExternaRouter from "./routes/apiExternaRouter"
 import mensajeriaRouter from "./routes/mensajeriaRouter"
+import agendaMensajerosRouter from "./routes/agendaMensajerosRouter"
 import cuentasCobroTramitadoresRouter from "./routes/cuentasCobroTramitadoresRouter"
 import calificacionesRouter from "./routes/calificacionesRouter"
 import direccionesRouter from "./routes/direccionesRouter"
@@ -164,6 +165,8 @@ app.use('/api/bulk/estados', ...soloTorreControl, estadosActualizacionesRouter)
 app.use('/api/bulk/tramitador', ...soloTorreControl, tramitadorActualizacionesRouter)
 app.use('/api/bulk/tramites', ...soloTorreControl, gestionMasivaRouter)
 app.use('/api/mensajeria', ...soloTorreControl, mensajeriaRouter)
+// Agenda de los mensajeros: Gestión de activos la consulta y aparta espacios; Torre de control también
+app.use('/api/agenda-mensajeros', ...accesoTramites, agendaMensajerosRouter)
 // Cuentas de cobro de los tramitadores: precuenta, revisión, envío a la app y visto bueno
 app.use('/api/cuentas-cobro-tramitadores', ...soloTorreControl, cuentasCobroTramitadoresRouter)
 // Calificaciones de la encuesta de finalizado, por trámite y por tramitador

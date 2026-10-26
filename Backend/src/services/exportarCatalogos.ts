@@ -11,7 +11,7 @@ import { db } from '../config/db'
 const siNo = (valor: unknown) => (valor ? 'Sí' : 'No')
 
 // Hoja con encabezados en español y ancho de columnas según el contenido
-const hoja = (filas: Record<string, unknown>[]) => {
+export const hoja = (filas: Record<string, unknown>[]) => {
   const ws = XLSX.utils.json_to_sheet(filas.length ? filas : [{ 'Sin datos': '' }])
   const encabezados = Object.keys(filas[0] ?? { 'Sin datos': '' })
   ws['!cols'] = encabezados.map(e => ({

@@ -14,6 +14,10 @@ import LineaCuentaCobroTramitador, { TIPOS_LINEA_CUENTA as TIPOS, type TipoLinea
 import HistorialCuentaCobroTramitador from '../../models/cuentasCobroTramitador/historialCuentaCobroTramitador'
 import { ErrorGastos } from '../gastos/errores'
 import { obtenerArchivo, subirArchivo } from '../azureFileStorage'
+import Bolsas from '../../models/gastos/bolsas'
+import { registrarMovimientos } from '../gastos/bolsas'
+import { TIPOS_MOVIMIENTO_BOLSA } from '../gastos/constantes'
+import { asegurarRetencion } from './retencion'
 
 // =====================================
 // CUENTAS DE COBRO DE LOS TRAMITADORES (2026-10-25)
@@ -353,10 +357,13 @@ export const detalleCuenta = async (id: number) => {
     AccesoTramitador.findOne({ where: { tramitadorId: cuenta.tramitadorId }, attributes: ['id'] })
   ])
   const datos = EDITABLES.includes(cuenta.estado) || !cuenta.datosTramitador ? datosDelTramitador(cuenta.tramitador) : cuenta.datosTramitador
-  const usuarios = await Usuarios.findAll({
-    where: { id: [cuenta.vistoBuenoPor, cuenta.pagadaPor].filter(Boolean) as number[] },
-    attributes: ['id', 'nombreUsuario']
-  })
+  const [usuarios, bolsa] = await Promise.all([
+    Usuarios.findAll({
+      where: { id: [cuenta.vistoBuenoPor, cuenta.pagadaPor].filter(Boolean) as number[] },
+      attributes: ['id', 'nombreUsuario']
+    }),
+    cuenta.bolsaId ? Bolsas.findByPk(cuenta.bolsaId, { attributes: ['id', 'nombre'] }) : null
+  ])
   const nombreUsuario = (id: number | null) => usuarios.find(u => u.id === id)?.nombreUsuario ?? null
 
   return {
@@ -366,6 +373,12 @@ export const detalleCuenta = async (id: number) => {
     editable: EDITABLES.includes(cuenta.estado),
     semana: cuenta.semana,
     total: Number(cuenta.total),
+    // Retención (fase 2): null hasta que llega a Tesorería
+    retencion: cuenta.retencion === null ? null : Number(cuenta.retencion),
+    neto: Number(cuenta.total) - Number(cuenta.retencion ?? 0),
+    calculoRetencion: cuenta.calculoRetencion,
+    retencionAjustada: cuenta.retencionAjustada,
+    bolsa: bolsa ? { id: bolsa.id, nombre: bolsa.nombre } : null,
     tramitador: { id: cuenta.tramitadorId, ...datos, tieneAcceso: Boolean(acceso), tieneFirma: Boolean(cuenta.tramitador.firmaRuta) },
     faltantes: datosFaltantes(datos),
     tramites: agruparPorTramite(lineas),
@@ -546,7 +559,8 @@ export const anularCuenta = async (id: number, motivo: string, usuario: { id: nu
 export const darVistoBueno = async (ids: number[], usuario: { id: number, nombreUsuario: string }) =>
   db.transaction(async transaction => {
     await bloquear(transaction)
-    const cuentas = await CuentaCobroTramitador.findAll({ where: { id: [...new Set(ids)] }, include: [{ model: Tramitador }], transaction })
+    // En orden: si un tramitador tiene varias, cada retención ve lo retenido en las anteriores del mes
+    const cuentas = await CuentaCobroTramitador.findAll({ where: { id: [...new Set(ids)] }, include: [{ model: Tramitador }], order: [['id', 'ASC']], transaction })
     if (cuentas.length === 0) throw new ErrorGastos('Elija las cuentas')
     const noAprobadas = cuentas.filter(c => c.estado !== ESTADOS.APROBADA)
     if (noAprobadas.length) {
@@ -556,7 +570,8 @@ export const darVistoBueno = async (ids: number[], usuario: { id: number, nombre
 
     for (const cuenta of cuentas) {
       await cuenta.update({ estado: ESTADOS.EN_TESORERIA, vistoBuenoPor: usuario.id, vistoBuenoEn: new Date(), fechaRadicacion: hoy }, { transaction })
-      await registrar(cuenta, autorUsuario(usuario), 'Visto bueno: pasa a Tesorería', `Radicada el ${hoy}`, transaction)
+      await asegurarRetencion(cuenta, transaction)
+      await registrar(cuenta, autorUsuario(usuario), 'Visto bueno: pasa a Tesorería', `Radicada el ${hoy} · retención ${pesos(cuenta.retencion ?? 0)}`, transaction)
 
       const numero = numeroCuentaTramitador(cuenta.consecutivo)
       const lineas = await LineaCuentaCobroTramitador.findAll({ where: { cuentaId: cuenta.id }, transaction })
@@ -578,10 +593,37 @@ export const darVistoBueno = async (ids: number[], usuario: { id: number, nombre
     return cuentas
   })
 
-// Tesorería marca la cuenta como pagada (el pago con bolsas se define después)
+// Retención de una cuenta que ya está en Tesorería (la calcula si llegó antes de la fase 2)
+export const prepararParaTesoreria = (id: number) =>
+  db.transaction(async transaction => {
+    await bloquear(transaction)
+    const cuenta = await buscarCuenta(id, transaction)
+    if (cuenta.estado === ESTADOS.EN_TESORERIA) await asegurarRetencion(cuenta, transaction)
+  })
+
+// Tesorería ajusta la retención que calculó Nodex (basta con el motivo, decisión del usuario)
+export const ajustarRetencion = async (id: number, datos: { valor: unknown, motivo: string }, usuario: { id: number, nombreUsuario: string }) =>
+  db.transaction(async transaction => {
+    await bloquear(transaction)
+    const cuenta = await asegurarRetencion(await buscarCuenta(id, transaction), transaction)
+    if (cuenta.estado !== ESTADOS.EN_TESORERIA) throw new ErrorGastos('Solo se ajusta la retención de cuentas pendientes de pago en Tesorería')
+    const valor = Math.round(aCentavos(datos.valor) / 100) * 100
+    if (valor > Number(cuenta.total)) throw new ErrorGastos('La retención no puede ser mayor que el total de la cuenta')
+    const motivo = datos.motivo?.trim()
+    if (!motivo) throw new ErrorGastos('Indique el motivo del ajuste')
+    const anterior = Number(cuenta.retencion ?? 0)
+    if (valor === anterior) throw new ErrorGastos('La retención es igual a la actual')
+
+    await cuenta.update({ retencion: String(valor), retencionAjustada: true }, { transaction })
+    await registrar(cuenta, autorUsuario(usuario), 'Retención ajustada', `${pesos(anterior)} → ${pesos(valor)} · ${motivo}`, transaction)
+    return cuenta
+  })
+
+// Tesorería marca la cuenta como pagada: el neto (total − retención) sale de la bolsa de no
+// reembolsables que elija, en un solo movimiento ligado a la cuenta (fase 3, sin crear gastos)
 export const marcarPagada = async (
   id: number,
-  datos: { fechaPago: string, observacion?: string | null },
+  datos: { fechaPago: string, observacion?: string | null, bolsaId: unknown },
   soporte: Express.Multer.File | undefined,
   usuario: { id: number, nombreUsuario: string }
 ) => {
@@ -598,12 +640,25 @@ export const marcarPagada = async (
 
   return db.transaction(async transaction => {
     await bloquear(transaction)
-    const cuenta = await buscarCuenta(id, transaction)
+    const cuenta = await asegurarRetencion(await buscarCuenta(id, transaction), transaction)
     if (cuenta.estado !== ESTADOS.EN_TESORERIA) throw new ErrorGastos('Solo se pagan cuentas pendientes de pago en Tesorería')
+
+    const bolsa = await Bolsas.findByPk(Number(datos.bolsaId), { transaction })
+    if (!bolsa?.activo || !bolsa.sinSaldo) throw new ErrorGastos('Elija una bolsa de no reembolsables activa')
+    const numero = numeroCuentaTramitador(cuenta.consecutivo)
+    const neto = Number(cuenta.total) - Number(cuenta.retencion ?? 0)
+    if (neto > 0) {
+      await registrarMovimientos(bolsa.id, [{
+        tipo: TIPOS_MOVIMIENTO_BOLSA.PAGO,
+        valor: -neto / 100,
+        observacion: `Cuenta de cobro ${numero} · ${cuenta.tramitador.nombreTramitador} (total ${pesos(cuenta.total)}, retención ${pesos(cuenta.retencion ?? 0)})`
+      }], usuario.id, transaction)
+    }
+
     await cuenta.update({
-      estado: ESTADOS.PAGADA, fechaPago, pagadaPor: usuario.id, observacionPago: datos.observacion?.trim() || null, ...soporteDatos
+      estado: ESTADOS.PAGADA, fechaPago, pagadaPor: usuario.id, observacionPago: datos.observacion?.trim() || null, bolsaId: bolsa.id, ...soporteDatos
     }, { transaction })
-    await registrar(cuenta, autorUsuario(usuario), 'Pagada', `Fecha de pago ${fechaPago}${datos.observacion?.trim() ? ` · ${datos.observacion.trim()}` : ''}`, transaction)
+    await registrar(cuenta, autorUsuario(usuario), 'Pagada', `Fecha de pago ${fechaPago} · neto ${pesos(neto)} de la bolsa ${bolsa.nombre}${datos.observacion?.trim() ? ` · ${datos.observacion.trim()}` : ''}`, transaction)
 
     const tramites = await LineaCuentaCobroTramitador.findAll({ where: { cuentaId: id, tipo: TIPOS.TRAMITE }, attributes: ['solicitudTramiteId'], transaction })
     for (const { solicitudTramiteId } of tramites) {

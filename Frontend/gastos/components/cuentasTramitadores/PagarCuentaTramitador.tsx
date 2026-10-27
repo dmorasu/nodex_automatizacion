@@ -5,20 +5,32 @@ import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import { CircleDollarSign, Loader2 } from "lucide-react"
 import { pagarCuentaTramitador } from "@/actions/gastos/cuentasTramitadores"
+import { formatoMoneda } from "@/src/lib/formato"
 import { claseBotonPrimario, claseInput, claseLabel } from "@/components/ui/estilos"
 
-// Marcar pagada la cuenta de cobro del tramitador (fecha, observación y soporte opcional)
-export default function PagarCuentaTramitador({ id, hoy }: { id: number, hoy: string }) {
+// Marcar pagada la cuenta de cobro del tramitador: el neto sale de la bolsa de no reembolsables
+// que se elija (si hay una sola, ya viene elegida), con fecha, observación y soporte opcional
+export default function PagarCuentaTramitador({ id, hoy, neto, bolsas }: {
+  id: number
+  hoy: string
+  // Neto a pagar en centavos (total − retención)
+  neto: number
+  bolsas: { id: number, nombre: string }[]
+}) {
   const router = useRouter()
+  const [bolsaId, setBolsaId] = useState(bolsas.length === 1 ? String(bolsas[0].id) : "")
   const [fecha, setFecha] = useState(hoy)
   const [observacion, setObservacion] = useState("")
   const [soporte, setSoporte] = useState<File | null>(null)
   const [enviando, startEnviar] = useTransition()
 
   const pagar = () => {
+    if (!bolsaId) return toast.error("Elija la bolsa")
     if (!fecha) return toast.error("Indique la fecha de pago")
-    if (!confirm("¿Marcar la cuenta como pagada? Se avisa al tramitador.")) return
+    const bolsa = bolsas.find(b => String(b.id) === bolsaId)?.nombre
+    if (!confirm(`¿Marcar la cuenta como pagada? Se registran ${formatoMoneda(neto / 100)} en la bolsa ${bolsa} y se avisa al tramitador.`)) return
     const datos = new FormData()
+    datos.append("bolsaId", bolsaId)
     datos.append("fechaPago", fecha)
     if (observacion.trim()) datos.append("observacion", observacion.trim())
     if (soporte) datos.append("soporte", soporte)
@@ -31,7 +43,14 @@ export default function PagarCuentaTramitador({ id, hoy }: { id: number, hoy: st
   }
 
   return (
-    <div className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 sm:grid-cols-[10rem_1fr_1fr_auto] sm:items-end">
+    <div className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_10rem_1fr_1fr_auto] lg:items-end">
+      <label className="block">
+        <span className={claseLabel}>Bolsa</span>
+        <select value={bolsaId} onChange={e => setBolsaId(e.target.value)} className={claseInput}>
+          {bolsas.length !== 1 && <option value="">{bolsas.length ? "Elija la bolsa" : "No hay bolsas de no reembolsables"}</option>}
+          {bolsas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+        </select>
+      </label>
       <label className="block">
         <span className={claseLabel}>Fecha de pago</span>
         <input type="date" value={fecha} max={hoy} onChange={e => setFecha(e.target.value)} className={claseInput} />

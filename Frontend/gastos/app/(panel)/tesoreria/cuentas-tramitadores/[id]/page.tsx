@@ -10,6 +10,24 @@ import Seccion from "@/components/ui/Seccion"
 import Dato from "@/components/ui/Dato"
 import { claseBotonSecundario } from "@/components/ui/estilos"
 import PagarCuentaTramitador from "@/components/cuentasTramitadores/PagarCuentaTramitador"
+import AjustarRetencion from "@/components/cuentasTramitadores/AjustarRetencion"
+import { obtenerBolsas } from "@/src/lib/datosTesoreria"
+
+// Cómo salió la retención, solo con datos (ej: "Tabla art. 383 · octubre · base del mes $6.000.000 (114,56 UVT)")
+const detalleRetencion = (cuenta: DetalleCuentaTramitador) => {
+  const c = cuenta.calculoRetencion
+  if (!c) return null
+  const partes = c.metodo === "TARIFA_FIJA"
+    ? [`Tarifa fija ${String(Math.round((c.tarifa ?? 0) * 1000) / 10).replace(".", ",")} %`]
+    : [
+      "Tabla art. 383",
+      `mes ${c.mes}`,
+      `base del mes ${formatoMoneda((c.baseMes ?? 0) / 100)} (${String(Math.round((c.baseMes ?? 0) / 100 / c.uvt * 100) / 100).replace(".", ",")} UVT)`,
+      ...(c.retenidoAntes ? [`retenido antes en el mes ${formatoMoneda(c.retenidoAntes / 100)}`] : [])
+    ]
+  if (cuenta.retencionAjustada) partes.push(`calculada ${formatoMoneda(c.calculada / 100)}, ajustada por Tesorería`)
+  return partes.join(" · ")
+}
 
 // Cuenta de cobro de un tramitador: datos para el pago, trámites, distribución por centro de
 // costos y el PDF completo; Tesorería la marca pagada
@@ -22,6 +40,10 @@ export default async function CuentaTramitadorPage(props: { params: Promise<{ id
   const cuenta: DetalleCuentaTramitador = await req.json()
   const t = cuenta.tramitador
   const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
+  // Fase 3: se paga con una bolsa de no reembolsables
+  const bolsas = cuenta.estado === "EN_TESORERIA"
+    ? (await obtenerBolsas()).filter(b => b.activo && b.sinSaldo).map(b => ({ id: b.id, nombre: b.nombre }))
+    : []
 
   return (
     <div className="space-y-5">
@@ -46,7 +68,22 @@ export default async function CuentaTramitadorPage(props: { params: Promise<{ id
         </div>
       </div>
 
-      {cuenta.estado === "EN_TESORERIA" && <PagarCuentaTramitador id={cuenta.id} hoy={hoy} />}
+      {cuenta.estado === "EN_TESORERIA" && <PagarCuentaTramitador id={cuenta.id} hoy={hoy} neto={cuenta.neto} bolsas={bolsas} />}
+
+      <Seccion titulo="Valores">
+        <dl className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <Dato etiqueta="Total de la cuenta" valor={<span className="tabular-nums">{formatoMoneda(cuenta.total / 100)}</span>} />
+          <Dato etiqueta="Retención" valor={
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              {formatoMoneda((cuenta.retencion ?? 0) / 100)}
+              {cuenta.estado === "EN_TESORERIA" && <AjustarRetencion id={cuenta.id} retencion={cuenta.retencion ?? 0} />}
+            </span>
+          } />
+          <Dato etiqueta="Neto a pagar" valor={<span className="text-sm font-semibold tabular-nums text-slate-800">{formatoMoneda(cuenta.neto / 100)}</span>} />
+          <Dato etiqueta="Bolsa" valor={cuenta.bolsa?.nombre} />
+        </dl>
+        {detalleRetencion(cuenta) && <p className="mt-3 text-[11px] text-slate-400">{detalleRetencion(cuenta)}</p>}
+      </Seccion>
 
       <Seccion titulo="Datos para el pago">
         <dl className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">

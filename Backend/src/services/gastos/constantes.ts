@@ -136,7 +136,11 @@ export const PARAMETROS = {
   GMF: 'GMF',
   // Hora de Colombia (en horas: 9.5 = 9:30 a. m.) hasta la que un gasto nuevo se programa para
   // pago el mismo día; después, el siguiente día hábil
-  HORA_CORTE_PROGRAMACION: 'HORA_CORTE_PROGRAMACION'
+  HORA_CORTE_PROGRAMACION: 'HORA_CORTE_PROGRAMACION',
+  // Retención de las cuentas de cobro de los tramitadores (2026-10-27): valor de la UVT del año
+  // (tabla del art. 383, se actualiza cada enero) y tarifa fija de quien no firmó la declaración
+  UVT: 'UVT',
+  RETENCION_TRAMITADORES: 'RETENCION_TRAMITADORES'
 } as const
 
 export type ClaveParametro = typeof PARAMETROS[keyof typeof PARAMETROS]

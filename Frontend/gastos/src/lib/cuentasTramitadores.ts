@@ -14,11 +14,28 @@ export type CuentaTramitadorResumen = {
 
 export type ListadoCuentasTramitador = { cuentas: CuentaTramitadorResumen[], total: number, porPagina: number }
 
+// Cómo calculó Nodex la retención (valores en centavos)
+export type CalculoRetencion = {
+  metodo: "TABLA_383" | "TARIFA_FIJA"
+  mes: string
+  uvt: number
+  tarifa?: number
+  baseMes?: number
+  retencionMes?: number
+  retenidoAntes?: number
+  calculada: number
+}
+
 export type DetalleCuentaTramitador = {
   id: number
   numero: string
   estado: "EN_TESORERIA" | "PAGADA"
   total: number
+  retencion: number | null
+  neto: number
+  calculoRetencion: CalculoRetencion | null
+  retencionAjustada: boolean
+  bolsa: { id: number, nombre: string } | null
   tramitador: {
     nombre: string
     identificacion: string

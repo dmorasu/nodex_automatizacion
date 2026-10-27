@@ -395,8 +395,18 @@ router.post('/cuentas-tramitadores/:id/pagar',
   validarId,
   body('fechaPago').isISO8601({ strict: true }).withMessage('Indique la fecha de pago'),
   body('observacion').optional({ values: 'falsy' }).isString().isLength({ max: 1000 }),
+  body('bolsaId').isInt({ min: 1 }).withMessage('Elija la bolsa con que se paga'),
   handleInputErrors,
   CuentasCobroTesoreriaController.pagar
+)
+// Ajuste de la retención que calculó Nodex (con motivo)
+router.put('/cuentas-tramitadores/:id/retencion',
+  tesoreriaTramitadores,
+  validarId,
+  body('valor').isFloat({ min: 0 }).withMessage('La retención debe ser un valor de cero o más'),
+  body('motivo').isString().trim().notEmpty().withMessage('Indique el motivo del ajuste').isLength({ max: 1000 }),
+  handleInputErrors,
+  CuentasCobroTesoreriaController.ajustarRetencion
 )
 
 export default router

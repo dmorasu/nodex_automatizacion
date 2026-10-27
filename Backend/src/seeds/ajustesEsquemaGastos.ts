@@ -188,6 +188,19 @@ export const ajustarEsquemaGastos = async () => {
   await cajaMenor()
   await usosDeTiposDocumento()
   await bolsasSinSaldo()
+  await parametrosConValoresGrandes()
+}
+
+// 2026-10-27 · La UVT (52.374) no cabía en DECIMAL(10,6) (hasta 9.999,999999): se amplía a
+// DECIMAL(16,6). No cambia ningún valor guardado. Va antes de seedGastos, que crea el parámetro UVT
+const parametrosConValoresGrandes = async () => {
+  const [filas] = await db.query(`
+    SELECT numeric_precision FROM information_schema.columns
+    WHERE table_name = 'gastos_parametros' AND column_name = 'valor'
+  `) as [{ numeric_precision: number }[], unknown]
+  if (filas[0] && filas[0].numeric_precision < 16) {
+    await db.query('ALTER TABLE gastos_parametros ALTER COLUMN valor TYPE DECIMAL(16, 6)')
+  }
 }
 
 // 2026-10-23 · Bolsas sin saldo: pagan gastos no reembolsables aunque no tengan dinero

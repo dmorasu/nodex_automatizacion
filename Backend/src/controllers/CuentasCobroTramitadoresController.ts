@@ -19,6 +19,8 @@ import {
   guardarFirma,
   listarCuentas,
   marcarPagada,
+  prepararParaTesoreria,
+  ajustarRetencion,
   pedirCorreccion,
   porGenerar,
   quitarLinea,
@@ -235,8 +237,9 @@ export class CuentasCobroTesoreriaController {
     }
   }
 
-  // Tesorería solo ve las que ya pasaron el visto bueno
+  // Tesorería solo ve las que ya pasaron el visto bueno (con la retención calculada)
   private static visible = async (cuentaId: number) => {
+    await prepararParaTesoreria(cuentaId)
     const detalle = await detalleCuenta(cuentaId)
     if (detalle.estado !== ESTADOS.EN_TESORERIA && detalle.estado !== ESTADOS.PAGADA) throw new ErrorGastos('La cuenta de cobro no existe', 404)
     return detalle
@@ -260,9 +263,19 @@ export class CuentasCobroTesoreriaController {
 
   static pagar = async (req: Request, res: Response) => {
     try {
-      await marcarPagada(id(req), { fechaPago: String(req.body.fechaPago ?? ''), observacion: req.body.observacion }, req.file, usuarioDe(req))
+      await marcarPagada(id(req), { fechaPago: String(req.body.fechaPago ?? ''), observacion: req.body.observacion, bolsaId: req.body.bolsaId }, req.file, usuarioDe(req))
       void avisarPagadaTramitador(id(req))
       void avisarPagadaTorre(id(req))
+      res.json(await CuentasCobroTesoreriaController.visible(id(req)))
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // PUT /:id/retencion  { valor, motivo }  (en pesos)
+  static ajustarRetencion = async (req: Request, res: Response) => {
+    try {
+      await ajustarRetencion(id(req), { valor: req.body.valor, motivo: String(req.body.motivo ?? '') }, usuarioDe(req))
       res.json(await CuentasCobroTesoreriaController.visible(id(req)))
     } catch (error) {
       responderError(res, error)

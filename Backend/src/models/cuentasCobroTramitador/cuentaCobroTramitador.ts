@@ -33,6 +33,18 @@ export type DatosTramitadorCuenta = {
   declaracionArt383: boolean
 }
 
+// Cómo calculó Nodex la retención (para mostrarlo en Tesorería; los valores en centavos)
+export type CalculoRetencion = {
+  metodo: 'TABLA_383' | 'TARIFA_FIJA'
+  mes: string               // YYYY-MM de la radicación
+  uvt: number               // valor de la UVT usada
+  tarifa?: number           // TARIFA_FIJA: 0.10 = 10 %
+  baseMes?: number          // TABLA_383: lo acumulado del tramitador en el mes con esta cuenta
+  retencionMes?: number     // TABLA_383: retención de la tabla sobre la base del mes
+  retenidoAntes?: number    // TABLA_383: lo retenido en sus otras cuentas del mes
+  calculada: number         // la que propuso Nodex para esta cuenta
+}
+
 // Cuenta de cobro de un tramitador (Nodex le da el consecutivo: CCT-0001)
 @Table({
   tableName: 'tramitadores_cuentas_cobro',
@@ -134,6 +146,22 @@ class CuentaCobroTramitador extends Model {
 
   @Column({ type: DataType.TEXT })
   declare motivoAnulacion: string | null
+
+  // Retención vigente en centavos (la calcula Nodex al llegar a Tesorería; Tesorería la puede
+  // ajustar con un motivo). Neto a pagar = total − retención
+  @Column({ type: DataType.BIGINT })
+  declare retencion: string | null
+
+  @Column({ type: DataType.JSONB })
+  declare calculoRetencion: CalculoRetencion | null
+
+  @Default(false)
+  @Column({ type: DataType.BOOLEAN })
+  declare retencionAjustada: boolean
+
+  // Bolsa de no reembolsables con que Tesorería la pagó
+  @Column({ type: DataType.INTEGER })
+  declare bolsaId: number | null
 
   @HasMany(() => LineaCuentaCobroTramitador)
   declare lineas: LineaCuentaCobroTramitador[]

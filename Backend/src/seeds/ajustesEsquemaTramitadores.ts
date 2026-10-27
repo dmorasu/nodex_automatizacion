@@ -54,7 +54,28 @@ const datosCuentaCobro = async () => {
   }
 }
 
+// 2026-10-27 · Cuentas de cobro fases 2 y 3: retención (en centavos, la vigente; el cálculo de Nodex
+// queda en calculo_retencion) y la bolsa con que se pagó. Si la tabla aún no existe la crea sync()
+const retencionYPagoCuentaCobro = async () => {
+  let columnas
+  try {
+    columnas = await db.getQueryInterface().describeTable('tramitadores_cuentas_cobro')
+  } catch {
+    return
+  }
+  const nuevas: [string, string][] = [
+    ['retencion', 'BIGINT'],
+    ['calculo_retencion', 'JSONB'],
+    ['retencion_ajustada', 'BOOLEAN NOT NULL DEFAULT false'],
+    ['bolsa_id', 'INTEGER']
+  ]
+  for (const [columna, tipo] of nuevas) {
+    if (!columnas[columna]) await db.query(`ALTER TABLE tramitadores_cuentas_cobro ADD COLUMN ${columna} ${tipo}`)
+  }
+}
+
 export const ajustarEsquemaTramitadores = async () => {
   await documentosDelTramitador()
   await datosCuentaCobro()
+  await retencionYPagoCuentaCobro()
 }

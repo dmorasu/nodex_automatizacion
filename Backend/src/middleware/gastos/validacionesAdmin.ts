@@ -58,6 +58,8 @@ export const validarActualizarParametro = [
     const numero = Number(valor)
     if (req.params?.clave === PARAMETROS.HORA_CORTE_PROGRAMACION) {
       if (!(numero >= 0 && numero < 24)) throw new Error('La hora debe estar entre 00:00 y 23:59')
+    } else if (req.params?.clave === PARAMETROS.UVT) {
+      if (!(numero > 0 && numero < 10_000_000)) throw new Error('El valor de la UVT no es válido')
     } else if (!(numero >= 0 && numero <= 1)) {
       throw new Error('El valor debe ser un número entre 0 y 1 (ej: 0.11 = 11 %)')
     }

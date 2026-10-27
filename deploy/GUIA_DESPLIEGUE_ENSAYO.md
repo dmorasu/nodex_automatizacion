@@ -302,6 +302,13 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 - Pruebas: Cuentas de cobro → Por generar → Generar precuenta → corregir un valor y agregar una visita fallida → Enviar; en la app, Cuentas → Aprobar (firmar) y otra con Pedir corrección; Por visto bueno → Dar visto bueno a la semana; en Gastos, Tesorería → Cuentas de tramitadores → PDF y Marcar pagada. Ver que el trámite quede con su número CCT en la pestaña de cuenta de cobro.
 - Para volver: el commit anterior ignora las tablas y columnas nuevas (no hay que borrarlas).
 
+**Cuentas de cobro de tramitadores, fases 2 y 3: retención y pago con bolsa (2026-10-27)** — cambian el backend y Nodex Gastos (compilar los dos y reiniciar `nodex-api` y `nodex-gastos`). Se lleva junto con la fase 1 o después de ella.
+- **Sin variables nuevas.** El arranque agrega a `tramitadores_cuentas_cobro` las columnas `retencion`, `calculo_retencion`, `retencion_ajustada` y `bolsa_id` (antes de sync, idempotente; si la tabla no existe la crea `sync()`), **amplía `gastos_parametros.valor` de `DECIMAL(10,6)` a `DECIMAL(16,6)`** (para que quepa la UVT; no cambia los valores guardados) y `seedGastos` crea los parámetros `UVT` (52374) y `RETENCION_TRAMITADORES` (0.10). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'tramitadores_cuentas_cobro' AND column_name IN ('retencion','calculo_retencion','retencion_ajustada','bolsa_id')" -c "SELECT clave, valor FROM gastos_parametros WHERE clave IN ('UVT','RETENCION_TRAMITADORES')"`
+- **Antes de pagar la primera:** crear en Tesorería → Bolsas una bolsa de **No reembolsables** (si no existe) y confirmar la UVT en Gastos → Catálogos → **Retención tramitadores**.
+- Pruebas: dar el visto bueno a una cuenta; en Gastos → Tesorería → Cuentas de tramitadores ver total, retención y neto; ajustar la retención con un motivo; Marcar pagada eligiendo la bolsa y ver el movimiento por el neto en la bolsa.
+- Para volver: el commit anterior ignora las columnas y los parámetros nuevos (no hay que borrarlos); la columna ampliada no afecta a la versión anterior.
+
 **Desplazamiento de la diligencia: moto o transporte intermunicipal (2026-10-25)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-tramitadores`).
 - **Sin variables nuevas.** El arranque agrega `mensajeria_paradas.transporte` (después de `sync()`, idempotente). Comprobar:
   `sudo -u postgres psql -d nodex -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'mensajeria_paradas' AND column_name = 'transporte'"`

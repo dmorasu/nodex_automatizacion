@@ -68,7 +68,7 @@ export default async function DetalleGastoPage(props: { params: Promise<{ id: st
             )}
             {gasto.permisos.anular && <AnularGasto gastoId={gasto.id} codigo={gasto.codigo} />}
             {/* Corregir un pago confirmado con un valor equivocado: solo Administrador de Gastos (el backend lo revisa) */}
-            {sesion.roles.includes(ROLES.ADMIN) && gasto.estado.codigo === "PAGADO" && (
+            {sesion.roles.includes(ROLES.ADMIN) && ["PAGADO", "PAGADO_CAJA"].includes(gasto.estado.codigo) && (
               <CorregirValorPagado
                 gastoId={gasto.id}
                 codigo={gasto.codigo}

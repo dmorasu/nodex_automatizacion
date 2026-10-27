@@ -523,11 +523,6 @@ export default function FormularioGasto({
           </div>
         )}
 
-        {(codigoTipo === "CTL" || codigoTipo === "CAMARA_COMERCIO" || codigoTipo === "RUNT") && (
-          <p className="mt-3 rounded-md bg-sky-50 px-3 py-2 text-xs text-sky-800">
-            Compra de certificados: la paga Tesorería - Certificados (no sale en el &quot;Por pagar&quot; general).
-          </p>
-        )}
       </Seccion>
 
 

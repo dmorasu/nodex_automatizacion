@@ -9,7 +9,7 @@ import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
 import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { registrarMovimientos, validarBolsaDelGasto, validarQueNoSeaDeCaja } from './bolsas'
-import { cambiarEstadoGasto, codigoEstadoGasto } from './estadosGasto'
+import { cambiarEstadoGasto, codigoEstadoGasto, registrarTrazabilidad } from './estadosGasto'
 import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
@@ -487,3 +487,78 @@ const confirmarPagoEn = async (transaction: Transaction, loteId: number, datos: 
 
     return { lote, gastoIds: gastos.map(g => g.id) }
 }
+
+// ── Corregir el valor de un gasto pagado ──
+
+export type DatosCorreccionValor = {
+  valorSolicitado: number
+  valorPagado: number
+  motivo: string
+}
+
+// Solo el Administrador de Gastos y solo con el gasto en PAGADO (decisión del usuario, 2026-10-27:
+// Tesorería confirmó un pago con un cero de menos). Corrige el valor solicitado y el pagado, y la
+// bolsa del pago se mueve por la diferencia con un AJUSTE (se pagó de más → vuelve dinero; de
+// menos → se descuenta). El total del lote también se corrige.
+export const corregirValorPagado = (gastoId: number, datos: DatosCorreccionValor, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const gasto = await SolicitudesGasto.findByPk(gastoId, { transaction, lock: transaction.LOCK.UPDATE })
+    if (!gasto) throw new ErrorGastos('El gasto no existe', 404)
+    if (await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.PAGADO) {
+      throw new ErrorGastos('Solo se puede corregir el valor de un gasto en estado Pagado')
+    }
+
+    const valorSolicitado = redondear(Number(datos.valorSolicitado))
+    const valorPagado = redondear(Number(datos.valorPagado))
+    if (!(valorSolicitado > 0) || !(valorPagado > 0)) throw new ErrorGastos('Los valores deben ser mayores a cero')
+
+    const solicitadoAntes = aCentavos(gasto.valorSolicitadoPago)
+    const pagadoAntes = aCentavos(gasto.valorRealmentePagado)
+    const diferencia = aCentavos(valorPagado) - pagadoAntes
+    if (aCentavos(valorSolicitado) === solicitadoAntes && diferencia === 0) {
+      throw new ErrorGastos('Los valores son iguales a los actuales')
+    }
+
+    const cambios: string[] = []
+    if (aCentavos(valorSolicitado) !== solicitadoAntes) {
+      cambios.push(`valor solicitado ${formatoMoneda(solicitadoAntes / 100)} → ${formatoMoneda(valorSolicitado)}`)
+    }
+    if (diferencia !== 0) {
+      cambios.push(`valor pagado ${formatoMoneda(pagadoAntes / 100)} → ${formatoMoneda(valorPagado)}`)
+    }
+    const detalle = `Valor corregido: ${cambios.join(', ')}. Motivo: ${datos.motivo.trim()}`
+
+    if (diferencia !== 0) {
+      // Valida saldo suficiente si se descuenta (salvo las bolsas sin saldo)
+      await registrarMovimientos(gasto.bolsaId, [{
+        tipo: TIPOS_MOVIMIENTO_BOLSA.AJUSTE,
+        valor: -diferencia / 100,
+        solicitudGastoId: gasto.id,
+        lotePagoId: gasto.lotePagoId ?? null,
+        observacion: `Corrección del pago ${gasto.codigo}: ${formatoMoneda(pagadoAntes / 100)} → ${formatoMoneda(valorPagado)}`
+      }], usuarioId, transaction)
+
+      if (gasto.lotePagoId) {
+        const lote = await LotesPago.findByPk(gasto.lotePagoId, { transaction, lock: transaction.LOCK.UPDATE })
+        if (lote) await lote.update({ total: String((aCentavos(lote.total) + diferencia) / 100) }, { transaction })
+      }
+    }
+
+    await gasto.update({
+      valorSolicitadoPago: String(valorSolicitado),
+      valorProgramado: String(valorPagado),
+      valorRealmentePagado: String(valorPagado),
+      actualizadoPor: usuarioId
+    }, { transaction })
+
+    // Queda en el historial del gasto sin cambiar de estado
+    await registrarTrazabilidad({
+      solicitudGastoId: gasto.id,
+      estadoAnteriorId: gasto.estadoId,
+      estadoNuevoId: gasto.estadoId,
+      usuarioId,
+      observacion: detalle
+    }, transaction)
+
+    return gasto
+  })

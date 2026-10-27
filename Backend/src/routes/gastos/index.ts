@@ -49,6 +49,7 @@ import {
   validarConfirmacionPagos,
   validarRecarga,
   validarAnulacion,
+  validarCorreccionValor,
   validarBolsa,
   validarCrearBolsa,
   validarGasto,
@@ -224,6 +225,8 @@ router.post('/lotes/:id/aprobar', soloDireccion, validarAprobacionLote, handleIn
 router.post('/lotes/:id/rechazar', soloDireccion, validarSalidaLote, handleInputErrors, PagosController.rechazar)
 router.post('/lotes/:id/quitar', tesoreriaOCertificados, validarSalidaLote, handleInputErrors, PagosController.quitar)
 router.post('/lotes/:id/confirmar', tesoreriaOCertificados, validarConfirmacionPago, handleInputErrors, PagosController.confirmar)
+// Corregir el valor de un gasto ya pagado y ajustar la bolsa por la diferencia (solo Administrador de Gastos)
+router.put('/solicitudes/:id/valor-pagado', soloAdmin, validarCorreccionValor, handleInputErrors, PagosController.corregirValor)
 // Uno o varios lotes aprobados a la vez, adjuntando el soporte del banco en el mismo paso
 // (multipart: datos = JSON con loteIds, fechaPago y observacion; archivos[])
 router.post('/lotes/confirmar', tesoreriaOCertificados, recibirSoportesPago, leerDatosJson, validarConfirmacionPagos, handleInputErrors, PagosController.confirmarVarios)

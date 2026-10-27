@@ -13,8 +13,23 @@ export const ESTADOS_RESERVA = {
 
 export type EstadoReserva = typeof ESTADOS_RESERVA[keyof typeof ESTADOS_RESERVA]
 
-// Espacio que Gestión de activos (o Torre de control) aparta en la agenda de un mensajero para
-// una diligencia que todavía no tiene cita. No cambia nada del mensajero ni de sus trámites.
+// RESERVA = espacio apartado para una diligencia sin cita (Gestión de activos o Torre de control);
+// NO_DISPONIBLE = el mensajero no puede atender (permiso, incapacidad...), solo Torre de control
+export const TIPOS_RESERVA = {
+  RESERVA: 'RESERVA',
+  NO_DISPONIBLE: 'NO_DISPONIBLE'
+} as const
+
+export type TipoReserva = typeof TIPOS_RESERVA[keyof typeof TIPOS_RESERVA]
+
+// Motivos de "No disponible" (decisión del usuario); con "Otro" se escribe el motivo
+export const MOTIVOS_NO_DISPONIBLE = ['Permiso', 'Incapacidad', 'Mantenimiento de la moto', 'Capacitación'] as const
+
+// Día completo: se guarda de 00:00 a 23:59 para que choque con cualquier cita o reserva del día
+export const HORA_INICIO_DIA = '00:00'
+export const HORA_FIN_DIA = '23:59'
+
+// Espacio apartado en la agenda de un mensajero. No cambia nada del mensajero ni de sus trámites.
 @Table({
   tableName: 'mensajeria_reservas',
   underscored: true,
@@ -45,6 +60,16 @@ class ReservaAgenda extends Model {
   @AllowNull(false)
   @Column({ type: DataType.STRING(300) })
   declare motivo: string
+
+  @AllowNull(false)
+  @Default(TIPOS_RESERVA.RESERVA)
+  @Column({ type: DataType.STRING(20) })
+  declare tipo: TipoReserva
+
+  @AllowNull(false)
+  @Default(false)
+  @Column({ type: DataType.BOOLEAN })
+  declare diaCompleto: boolean
 
   // Opcional: al programar la cita de este trámite la reserva se cierra sola
   @ForeignKey(() => SolicitudTramites)

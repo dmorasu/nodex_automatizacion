@@ -1,14 +1,17 @@
 import { QueryTypes, type Transaction } from 'sequelize'
 import { db } from '../../config/db'
 import Tramitador from '../../models/tramitador'
-import ReservaAgenda, { ESTADOS_RESERVA } from '../../models/mensajeria/reservaAgenda'
+import ReservaAgenda, { ESTADOS_RESERVA, HORA_FIN_DIA, HORA_INICIO_DIA, TIPOS_RESERVA, type TipoReserva } from '../../models/mensajeria/reservaAgenda'
+import SolicitudTramites from '../../models/solicitudTramites'
+import Programacion from '../../models/programacion'
 import { ErrorGastos } from '../gastos/errores'
+import { notificarProgramacion } from '../notificacionesProgramacion'
 import { hoyBogota } from './rutas'
 
 // =====================================
 // AGENDA DE LOS MENSAJEROS (Nodex Trámites → Agenda de mensajeros)
 // Por día (la fecha de diligencia, como en Rutas) y mensajero: las citas con su hora, los
-// trámites sin hora y las reservas de espacio de Gestión de activos.
+// trámites sin hora, las reservas de espacio y los "No disponible" del mensajero.
 // Regla del usuario: un horario ocupado no se puede volver a ocupar. Las citas y las reservas
 // activas del mismo mensajero y día no se cruzan; se revisa en cada lugar que cambia la hora,
 // la fecha o el mensajero de un trámite con cita, y al reservar.
@@ -16,7 +19,10 @@ import { hoyBogota } from './rutas'
 
 // Sin hora final, la cita cuenta como una hora (decisión del usuario)
 export const DURACION_CITA_SIN_FIN = 60
+// Carga del mensajero: diligencias por día que se consideran su capacidad (decisión del usuario)
+export const CAPACIDAD_DIA = 6
 const ESTADO_DESISTIDO = 5
+const ESTADO_FINALIZADO = 6
 
 // "08:30" o "08:30:00" → minutos del día
 export const aMinutos = (hora: string) => {
@@ -59,7 +65,9 @@ const ocupadoDelDia = async (tramitadorId: number, fecha: string, transaction?: 
     ...reservas.map(r => ({
       inicio: aMinutos(r.horaInicio),
       fin: aMinutos(r.horaFin),
-      descripcion: `la reserva "${r.motivo}"${r.solicitudTramiteId ? ` (trámite #${r.solicitudTramiteId})` : ''}`,
+      descripcion: r.tipo === TIPOS_RESERVA.NO_DISPONIBLE
+        ? `no está disponible (${r.motivo})${r.diaCompleto ? ' todo el día' : ''}`
+        : `la reserva "${r.motivo}"${r.solicitudTramiteId ? ` (trámite #${r.solicitudTramiteId})` : ''}`,
       tramiteId: r.solicitudTramiteId,
       reservaId: r.id
     }))
@@ -149,6 +157,7 @@ type FilaTramite = {
   tramite: string | null
   placa: string | null
   municipio: string | null
+  direccion: string | null
   estado: string | null
 }
 
@@ -159,13 +168,16 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
     order: [['nombreTramitador', 'ASC']]
   })
   const ids = mensajeros.map(m => m.id)
-  if (ids.length === 0) return { fecha, hoy: hoyBogota(), duracionSinFin: DURACION_CITA_SIN_FIN, mensajeros: [] }
+  // Contador del botón "Sin mensajero" (solo Torre de control lo ve)
+  const sinMensajero = usuario.esTorreControl ? await contarSinMensajero() : null
+  if (ids.length === 0) return { fecha, hoy: hoyBogota(), duracionSinFin: DURACION_CITA_SIN_FIN, capacidad: CAPACIDAD_DIA, sinMensajero, mensajeros: [] }
 
   const [tramites, reservas, sedes] = await Promise.all([
     db.query<FilaTramite>(`
       SELECT s.id, s."tramitadorId", p."horaCita"::text AS "horaCita", p."horaFinCita"::text AS "horaFinCita", p."requiereCita",
         to_char(p."fechaCita", 'YYYY-MM-DD') AS "fechaCita", t."nombreTramite" AS tramite,
-        COALESCE(s.placa, s."matriculaInmobiliaria") AS placa, m."nombreMunicipio" AS municipio, e."nombreEstado" AS estado
+        COALESCE(s.placa, s."matriculaInmobiliaria") AS placa, m."nombreMunicipio" AS municipio, s."direccionTramite" AS direccion,
+        e."nombreEstado" AS estado
       FROM "SolicitudTramites" s
       JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
       LEFT JOIN "Tramites" t ON t.id = s."tramiteId"
@@ -176,8 +188,9 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
         AND COALESCE(s."estadoActualTramite", 0) <> :desistido
       ORDER BY p."horaCita" NULLS LAST, s.id
     `, { type: QueryTypes.SELECT, replacements: { ids, fecha, desistido: ESTADO_DESISTIDO } }),
-    db.query<{ id: number, tramitadorId: number, horaInicio: string, horaFin: string, motivo: string, solicitudTramiteId: number | null, creadaPor: number, creador: string | null, creadaEn: string }>(`
+    db.query<{ id: number, tramitadorId: number, horaInicio: string, horaFin: string, motivo: string, tipo: TipoReserva, diaCompleto: boolean, solicitudTramiteId: number | null, creadaPor: number, creador: string | null, creadaEn: string }>(`
       SELECT r.id, r.tramitador_id AS "tramitadorId", r.hora_inicio::text AS "horaInicio", r.hora_fin::text AS "horaFin", r.motivo,
+        r.tipo, r.dia_completo AS "diaCompleto",
         r.solicitud_tramite_id AS "solicitudTramiteId", r.creada_por AS "creadaPor", u."nombreUsuario" AS creador, r.created_at AS "creadaEn"
       FROM mensajeria_reservas r
       LEFT JOIN "Usuarios" u ON u.id = r.creada_por
@@ -193,6 +206,8 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
     fecha,
     hoy: hoyBogota(),
     duracionSinFin: DURACION_CITA_SIN_FIN,
+    capacidad: CAPACIDAD_DIA,
+    sinMensajero,
     mensajeros: mensajeros.map(m => {
       const propios = tramites.filter(t => t.tramitadorId === m.id)
       const conHora = propios.filter(t => t.requiereCita && t.horaCita)
@@ -210,6 +225,7 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
             tramite: t.tramite,
             placa: t.placa,
             municipio: t.municipio,
+            direccion: t.direccion,
             estado: t.estado ?? 'Sin iniciar',
             // La agenda va por la fecha de diligencia: aviso si la de la cita es otra
             fechaCitaDistinta: t.fechaCita && t.fechaCita !== fecha ? t.fechaCita : null
@@ -220,6 +236,7 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
           tramite: t.tramite,
           placa: t.placa,
           municipio: t.municipio,
+          direccion: t.direccion,
           estado: t.estado ?? 'Sin iniciar',
           requiereCita: Boolean(t.requiereCita)
         })),
@@ -228,6 +245,8 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
           inicio: corta(r.horaInicio),
           fin: corta(r.horaFin),
           motivo: r.motivo,
+          tipo: r.tipo,
+          diaCompleto: r.diaCompleto,
           tramiteId: r.solicitudTramiteId,
           creadaPor: r.creador ?? '',
           creadaEn: r.creadaEn,
@@ -240,15 +259,29 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
 
 // ── Reservas ──
 
+// Reserva de espacio o "No disponible" del mensajero (este solo lo marca Torre de control; puede
+// ser de todo el día, que se guarda de 00:00 a 23:59 para que choque con todo lo del día)
 export const crearReserva = async (
-  datos: { tramitadorId: number, fecha: string, horaInicio: string, horaFin: string, motivo: string, solicitudTramiteId?: number | null },
-  usuarioId: number
+  datos: {
+    tramitadorId: number, fecha: string, horaInicio?: string, horaFin?: string, motivo: string,
+    solicitudTramiteId?: number | null, tipo?: TipoReserva, diaCompleto?: boolean
+  },
+  usuario: { id: number, esTorreControl: boolean }
 ) => {
+  const tipo = datos.tipo ?? TIPOS_RESERVA.RESERVA
+  const noDisponible = tipo === TIPOS_RESERVA.NO_DISPONIBLE
+  if (noDisponible && !usuario.esTorreControl) throw new ErrorGastos('Solo Torre de control marca a un mensajero como no disponible', 403)
+  if (datos.diaCompleto && !noDisponible) throw new ErrorGastos('Solo "No disponible" puede ser de todo el día')
+  if (noDisponible && datos.solicitudTramiteId) throw new ErrorGastos('"No disponible" no va atado a un trámite')
+
   const motivo = datos.motivo.trim()
-  if (!motivo) throw new ErrorGastos('Indique el motivo de la reserva')
+  if (!motivo) throw new ErrorGastos(noDisponible ? 'Indique el motivo' : 'Indique el motivo de la reserva')
   if (datos.fecha < hoyBogota()) throw new ErrorGastos('No se puede reservar un día que ya pasó')
-  const inicio = aMinutos(datos.horaInicio)
-  const fin = aMinutos(datos.horaFin)
+  const horaInicio = datos.diaCompleto ? HORA_INICIO_DIA : datos.horaInicio
+  const horaFin = datos.diaCompleto ? HORA_FIN_DIA : datos.horaFin
+  if (!horaValida(horaInicio) || !horaValida(horaFin)) throw new ErrorGastos('Indique la hora de inicio y la hora final')
+  const inicio = aMinutos(horaInicio)
+  const fin = aMinutos(horaFin)
   if (fin <= inicio) throw new ErrorGastos('La hora final debe ser posterior a la hora de inicio')
 
   const mensajero = await Tramitador.findByPk(datos.tramitadorId, { attributes: ['id', 'esMensajero', 'activo'] })
@@ -262,7 +295,7 @@ export const crearReserva = async (
         WHERE s.id = :id
       `, { type: QueryTypes.SELECT, replacements: { id: datos.solicitudTramiteId }, transaction })
       if (!tramite) throw new ErrorGastos(`El trámite #${datos.solicitudTramiteId} no existe`, 404)
-      if (tramite.estado === ESTADO_DESISTIDO || tramite.estado === 6) throw new ErrorGastos(`El trámite #${tramite.id} ya está cerrado`)
+      if (tramite.estado === ESTADO_DESISTIDO || tramite.estado === ESTADO_FINALIZADO) throw new ErrorGastos(`El trámite #${tramite.id} ya está cerrado`)
       if (tramite.cita) throw new ErrorGastos(`El trámite #${tramite.id} ya tiene la cita programada`)
     }
 
@@ -271,11 +304,13 @@ export const crearReserva = async (
     const reserva = await ReservaAgenda.create({
       tramitadorId: datos.tramitadorId,
       fecha: datos.fecha,
-      horaInicio: datos.horaInicio,
-      horaFin: datos.horaFin,
+      horaInicio,
+      horaFin,
       motivo,
+      tipo,
+      diaCompleto: Boolean(datos.diaCompleto),
       solicitudTramiteId: datos.solicitudTramiteId || null,
-      creadaPor: usuarioId
+      creadaPor: usuario.id
     }, { transaction })
     return { id: reserva.id }
   })
@@ -288,4 +323,78 @@ export const cancelarReserva = async (id: number, usuario: { id: number, esTorre
   if (!usuario.esTorreControl && reserva.creadaPor !== usuario.id) throw new ErrorGastos('Solo quien hizo la reserva o Torre de control pueden cancelarla', 403)
   if (reserva.estado !== ESTADOS_RESERVA.ACTIVA) throw new ErrorGastos('La reserva ya no está activa')
   await reserva.update({ estado: ESTADOS_RESERVA.CANCELADA, canceladaPor: usuario.id, canceladaEn: new Date() })
+  return reserva.tipo
+}
+
+
+// ── Bandeja: trámites sin mensajero (Torre de control) ──
+
+const contarSinMensajero = async () => {
+  const [fila] = await db.query<{ total: string }>(`
+    SELECT count(*) AS total FROM "SolicitudTramites"
+    WHERE "tramitadorId" IS NULL AND COALESCE("estadoActualTramite", 0) NOT IN (:cerrados)
+  `, { type: QueryTypes.SELECT, replacements: { cerrados: [ESTADO_DESISTIDO, ESTADO_FINALIZADO] } })
+  return Number(fila?.total ?? 0)
+}
+
+// Abiertos y sin tramitador asignado; primero los que requieren cita y los de diligencia más próxima
+export const tramitesSinMensajero = (busqueda: string) => {
+  const texto = busqueda.trim()
+  const numero = /^#?\d+$/.test(texto) ? Number(texto.replace('#', '')) : null
+  return db.query<{
+    id: number, tramite: string | null, placa: string | null, municipio: string | null, direccion: string | null,
+    cliente: string | null, estado: string | null, requiereCita: boolean, fechaDiligencia: string | null
+  }>(`
+    SELECT s.id, t."nombreTramite" AS tramite, COALESCE(s.placa, s."matriculaInmobiliaria") AS placa,
+      m."nombreMunicipio" AS municipio, s."direccionTramite" AS direccion, c."nombreCliente" AS cliente,
+      COALESCE(e."nombreEstado", 'Sin iniciar') AS estado, COALESCE(p."requiereCita", false) AS "requiereCita",
+      to_char((p."fechaProbableEntrega" AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD') AS "fechaDiligencia"
+    FROM "SolicitudTramites" s
+    LEFT JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
+    LEFT JOIN "Tramites" t ON t.id = s."tramiteId"
+    LEFT JOIN "Municipios" m ON m.id = s."municipiosId"
+    LEFT JOIN "Clientes" c ON c.id = s."clienteId"
+    LEFT JOIN "Estados" e ON e.id = s."estadoActualTramite"
+    WHERE s."tramitadorId" IS NULL
+      AND COALESCE(s."estadoActualTramite", 0) NOT IN (:cerrados)
+      ${texto ? `AND (${numero ? 's.id = :numero OR ' : ''}s.placa ILIKE :texto OR s."matriculaInmobiliaria" ILIKE :texto
+        OR t."nombreTramite" ILIKE :texto OR m."nombreMunicipio" ILIKE :texto OR s."direccionTramite" ILIKE :texto)` : ''}
+    ORDER BY COALESCE(p."requiereCita", false) DESC, p."fechaProbableEntrega" NULLS LAST, s.id DESC
+    LIMIT 100
+  `, { type: QueryTypes.SELECT, replacements: { cerrados: [ESTADO_DESISTIDO, ESTADO_FINALIZADO], numero, texto: `%${texto}%` } })
+}
+
+// Asigna el mensajero a un trámite sin tramitador y le programa la cita en el espacio elegido:
+// fecha de diligencia y de la cita = el día de la agenda, con hora y hora final. Mismas reglas y
+// avisos que asignar el tramitador y guardar la programación a mano.
+export const asignarDesdeAgenda = async (datos: { tramiteId: number, tramitadorId: number, fecha: string, horaInicio: string, horaFin: string }) => {
+  if (datos.fecha < hoyBogota()) throw new ErrorGastos('No se puede programar en un día que ya pasó')
+  validarHorasCita({ requiereCita: true, horaCita: datos.horaInicio, horaFinCita: datos.horaFin })
+
+  const mensajero = await Tramitador.findByPk(datos.tramitadorId, { attributes: ['id', 'esMensajero', 'activo'] })
+  if (!mensajero?.esMensajero || !mensajero.activo) throw new ErrorGastos('El mensajero no existe o no está activo', 404)
+
+  let avisarAsignado = false
+  await db.transaction(async transaction => {
+    const tramite = await SolicitudTramites.findByPk(datos.tramiteId, { attributes: ['id', 'tramitadorId', 'estadoActualTramite'], transaction })
+    if (!tramite) throw new ErrorGastos(`El trámite #${datos.tramiteId} no existe`, 404)
+    if (tramite.tramitadorId) throw new ErrorGastos(`El trámite #${tramite.id} ya tiene tramitador asignado`)
+    if ([ESTADO_DESISTIDO, ESTADO_FINALIZADO].includes(Number(tramite.estadoActualTramite))) throw new ErrorGastos(`El trámite #${tramite.id} ya está cerrado`)
+
+    const cita = { requiereCita: true, fechaCita: datos.fecha, horaCita: datos.horaInicio, horaFinCita: datos.horaFin }
+    await verificarCitaDelTramite(tramite.id, { tramitadorId: datos.tramitadorId, fecha: datos.fecha, ...cita }, transaction)
+
+    // Como la programación a mano: el aviso de asignado sale si la fecha de diligencia es nueva o posterior
+    const programacion = await Programacion.findOne({ where: { solicitudTramiteId: tramite.id }, transaction })
+    const anterior = programacion?.fechaProbableEntrega ?? null
+    avisarAsignado = !anterior || new Date(datos.fecha).getTime() > new Date(anterior).getTime()
+    if (programacion) await programacion.update({ fechaProbableEntrega: datos.fecha, ...cita }, { transaction })
+    else await Programacion.create({ solicitudTramiteId: tramite.id, fechaProbableEntrega: datos.fecha, ...cita }, { transaction })
+
+    tramite.tramitadorId = datos.tramitadorId
+    await tramite.save({ transaction })
+    await cerrarReservasDelTramite(tramite.id, transaction)
+  })
+
+  await notificarProgramacion(datos.tramiteId, { avisarAsignado })
 }

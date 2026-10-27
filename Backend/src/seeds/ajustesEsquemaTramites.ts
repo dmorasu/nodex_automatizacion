@@ -270,4 +270,12 @@ export const ajustarEsquemaMensajeria = async () => {
       if (!paradas[columna]) await db.query(`ALTER TABLE mensajeria_paradas ADD COLUMN ${columna} ${tipo}`)
     }
   }
+
+  // 2026-10-26 · Agenda: "No disponible" del mensajero (por franja o día completo). Donde la tabla
+  // ya existía (la crea sync() sin estas columnas solo la primera vez)
+  const reservas = await columnasDe('mensajeria_reservas')
+  if (reservas) {
+    if (!reservas.tipo) await db.query(`ALTER TABLE mensajeria_reservas ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT 'RESERVA'`)
+    if (!reservas.dia_completo) await db.query(`ALTER TABLE mensajeria_reservas ADD COLUMN dia_completo BOOLEAN NOT NULL DEFAULT false`)
+  }
 }

@@ -7,14 +7,14 @@ import { CheckCircle2, Loader2, Paperclip } from "lucide-react"
 import { confirmarLotes, gastosDeLotes } from "@/actions/gastos/tesoreria"
 import { formatoMoneda } from "@/src/lib/formato"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
-import SoportesPorGasto, { faltanSoportes, type GastoConSoporte, type SoportesElegidos } from "./SoportesPorGasto"
+import SoportesPorGasto, { ConfirmarSoporteCompartido, faltanSoportes, gruposSoporteCompartido, type GastoConSoporte, type SoportesElegidos } from "./SoportesPorGasto"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
 export type LoteAConfirmar = { id: number, total: string, cantidadGastos: number, bolsa: { nombre: string } }
 
 // Último paso del pago, para uno o varios lotes aprobados por Dirección de Negocio: se adjunta
-// el soporte de pago de cada gasto (obligatorio, uno distinto por gasto), si se quiere el del
+// el soporte de pago de cada gasto (obligatorio; el mismo en varios solo si se confirma), si se quiere el del
 // banco para el lote, la fecha real y se confirma. Ahí se descuentan las bolsas, los gastos
 // quedan Pagados y se avisa a quienes los crearon.
 export default function ModalConfirmarLotes({
@@ -39,19 +39,28 @@ export default function ModalConfirmarLotes({
   const [fechaPago, setFechaPago] = useState(hoyEnBogota)
   const [observacion, setObservacion] = useState("")
   const [confirmando, start] = useTransition()
+  // Gastos con el mismo soporte, esperando que Tesorería confirme que un pago los cubre
+  const [repetidos, setRepetidos] = useState<string[][] | null>(null)
 
   const total = lotes.reduce((t, l) => t + Math.round(Number(l.total) * 100), 0) / 100
   const cantidadGastos = lotes.reduce((t, l) => t + l.cantidadGastos, 0)
   const uno = lotes.length === 1
 
-  const confirmar = () => {
+  const confirmar = async () => {
     if (!gastos) return
     const faltan = faltanSoportes(gastos, soportes)
     if (faltan.length) return toast.error(`Falta el soporte de pago de ${faltan.join(", ")}`)
     if (!fechaPago) return toast.error("Indique la fecha del pago")
 
+    const grupos = await gruposSoporteCompartido(gastos, soportes)
+    if (grupos.length) return setRepetidos(grupos)
+    enviar(false)
+  }
+
+  const enviar = (soporteCompartido: boolean) => {
+    if (!gastos) return
     const formData = new FormData()
-    formData.append("datos", JSON.stringify({ loteIds: lotes.map(l => l.id), fechaPago, observacion: observacion.trim() || null }))
+    formData.append("datos", JSON.stringify({ loteIds: lotes.map(l => l.id), fechaPago, observacion: observacion.trim() || null, soporteCompartido }))
     gastos.forEach(g => formData.append(`soporte_${g.id}`, soportes[g.id]!))
     archivos.forEach(archivo => formData.append("archivos", archivo))
 
@@ -133,6 +142,14 @@ export default function ModalConfirmarLotes({
           </div>
         </DialogPanel>
       </div>
+
+      {repetidos && (
+        <ConfirmarSoporteCompartido
+          grupos={repetidos}
+          onCancelar={() => setRepetidos(null)}
+          onAceptar={() => { setRepetidos(null); enviar(true) }}
+        />
+      )}
     </Dialog>
   )
 }

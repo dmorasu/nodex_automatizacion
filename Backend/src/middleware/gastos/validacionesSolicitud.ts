@@ -145,7 +145,8 @@ export const validarPagoDirecto = [
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 }),
   body('gastos').isArray({ min: 1, max: 200 }).withMessage('Debe seleccionar entre 1 y 200 gastos'),
   body('gastos.*.id').isInt({ min: 1 }).withMessage('Gasto no válido').toInt(),
-  body('gastos.*.valorRealmentePagado').isFloat({ gt: 0 }).withMessage('El valor pagado de cada gasto debe ser mayor a cero').toFloat()
+  body('gastos.*.valorRealmentePagado').isFloat({ gt: 0 }).withMessage('El valor pagado de cada gasto debe ser mayor a cero').toFloat(),
+  body('soporteCompartido').optional().isBoolean().toBoolean()
 ]
 
 // Gastos del lote a aprobar (opcional: sin lista se aprueban todos los pendientes)
@@ -174,7 +175,8 @@ export const validarConfirmacionPagos = [
   body('loteIds').isArray({ min: 1, max: 100 }).withMessage('Seleccione entre 1 y 100 lotes'),
   body('loteIds.*').isInt({ min: 1 }).withMessage('Lote no válido').toInt(),
   body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha de pago no válida'),
-  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
+  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 }),
+  body('soporteCompartido').optional().isBoolean().toBoolean()
 ]
 
 // ── Legalización ──────────────────────────

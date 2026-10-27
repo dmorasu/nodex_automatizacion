@@ -38,11 +38,15 @@ export type DatosPagoDirecto = {
   fechaPago: string
   observacion?: string | null
   gastos: { id: number, valorRealmentePagado: number }[]
+  // Un mismo soporte cubre varios gastos (Tesorería lo confirmó en la ventana)
+  soporteCompartido?: boolean
 }
 
 export type DatosConfirmacion = {
   fechaPago: string            // fecha real del pago
   observacion?: string | null
+  // Un mismo soporte cubre varios gastos (Tesorería lo confirmó en la ventana)
+  soporteCompartido?: boolean
 }
 
 const redondear = (valor: number) => Math.round(valor * 100) / 100
@@ -259,15 +263,17 @@ const guardarSoporte = async (
   }, { transaction })
 }
 
-// Cada gasto pagado debe llevar su propio soporte de pago (decisión de Tesorería): se exige uno
-// por gasto y que no sea el mismo archivo de otro gasto. Queda en los documentos del gasto
-// (así lo toma también el PDF de pago unificado de Legalización)
+// Cada gasto pagado debe llevar su soporte de pago (decisión de Tesorería): se exige uno por gasto
+// y que no sea el mismo archivo de otro gasto, salvo que Tesorería confirme que un solo pago del
+// banco cubre esos gastos (`compartido`, 2026-10-27); entonces cada gasto guarda su copia. Queda en
+// los documentos del gasto (así lo toma también el PDF de pago unificado de Legalización)
 const adjuntarSoportesDeGastos = async (
   gastos: SolicitudesGasto[],
   porGasto: Map<number, Express.Multer.File[]>,
   usuarioId: number,
   transaction: Transaction,
-  subidos: ArchivoSubido[]
+  subidos: ArchivoSubido[],
+  compartido = false
 ) => {
   const ids = new Set(gastos.map(g => g.id))
   for (const gastoId of porGasto.keys()) {
@@ -281,7 +287,7 @@ const adjuntarSoportesDeGastos = async (
     for (const archivo of archivos) {
       const huella = createHash('sha256').update(archivo.buffer).digest('hex')
       const otro = huellas.get(huella)
-      if (otro && otro !== gasto.codigo) {
+      if (otro && otro !== gasto.codigo && !compartido) {
         throw new ErrorGastos(`El soporte de ${gasto.codigo} es el mismo archivo de ${otro}: cada gasto lleva su propio soporte`)
       }
       huellas.set(huella, gasto.codigo)
@@ -384,7 +390,7 @@ export const pagarDirecto = (datos: DatosPagoDirecto, archivos: Express.Multer.F
     }
 
     const { porGasto, delLote } = separarSoportes(archivos)
-    await adjuntarSoportesDeGastos(gastos, porGasto, usuarioId, transaction, subidos)
+    await adjuntarSoportesDeGastos(gastos, porGasto, usuarioId, transaction, subidos, datos.soporteCompartido)
     await adjuntarSoportesDelLote(lote.id, delLote, usuarioId, transaction, subidos)
 
     return lote
@@ -418,7 +424,7 @@ export const confirmarPagos = (
     // Los soportes de todos los gastos de todos los lotes, juntos: así se detecta el mismo
     // archivo en gastos de lotes distintos
     const gastosDeLosLotes = await SolicitudesGasto.findAll({ where: { lotePagoId: loteIds }, order: [['id', 'ASC']], transaction })
-    await adjuntarSoportesDeGastos(gastosDeLosLotes, porGasto, usuarioId, transaction, subidos)
+    await adjuntarSoportesDeGastos(gastosDeLosLotes, porGasto, usuarioId, transaction, subidos, datos.soporteCompartido)
 
     const gastoIds: number[] = []
     for (const loteId of loteIds) {

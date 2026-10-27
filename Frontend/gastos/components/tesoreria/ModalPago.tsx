@@ -9,7 +9,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import type { Bolsa, GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
 import SelectBuscable from "@/components/ui/SelectBuscable"
-import SoportesPorGasto, { faltanSoportes, type SoportesElegidos } from "./SoportesPorGasto"
+import SoportesPorGasto, { ConfirmarSoporteCompartido, faltanSoportes, gruposSoporteCompartido, type SoportesElegidos } from "./SoportesPorGasto"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
@@ -45,6 +45,8 @@ export default function ModalPago({
     () => Object.fromEntries(gastos.map(g => [g.id, String(Number(g.valorSolicitadoPago))]))
   )
   const [pagando, startPagar] = useTransition()
+  // Pago directo: gastos con el mismo soporte, esperando que Tesorería confirme que un pago los cubre
+  const [repetidos, setRepetidos] = useState<string[][] | null>(null)
   const gastosConSoporte = gastos.map(g => ({ id: g.id, codigo: g.codigo, detalle: `${g.beneficiario.nombre} · ${g.conceptoPago}`, valor: valores[g.id] }))
 
   const bolsa = bolsas.find(b => b.id === bolsaId)
@@ -58,7 +60,30 @@ export default function ModalPago({
   const valoresInvalidos = gastos.some(g => !(Number(valores[g.id]) > 0))
   const cambianDeBolsa = bolsaId ? gastos.filter(g => g.bolsa?.id !== bolsaId) : []
 
-  const programar = () => {
+  const pagarDirecto = (soporteCompartido: boolean) => {
+    const formData = new FormData()
+    formData.append("datos", JSON.stringify({
+      bolsaId,
+      fechaPago,
+      observacion,
+      gastos: gastos.map(g => ({ id: g.id, valorRealmentePagado: Number(valores[g.id]) })),
+      soporteCompartido
+    }))
+    gastos.forEach(g => formData.append(`soporte_${g.id}`, soportes[g.id]!))
+    archivos.forEach(archivo => formData.append("archivos", archivo))
+
+    startPagar(async () => {
+      const resultado = await pagarCertificados(formData)
+      if (!resultado.ok) {
+        resultado.errores.forEach(error => toast.error(error))
+        return
+      }
+      toast.success(`${gastos.length} gasto(s) pagado(s) · lote #${resultado.datos.loteId}`)
+      onPagado()
+    })
+  }
+
+  const programar = async () => {
     if (!bolsaId) return toast.error("Seleccione la bolsa")
     if (!fechaPago) return toast.error(directo ? "Indique la fecha de pago" : "Indique la fecha programada")
     if (valoresInvalidos) return toast.error("Todos los valores a pagar deben ser mayores a cero")
@@ -67,25 +92,9 @@ export default function ModalPago({
       const faltan = faltanSoportes(gastosConSoporte, soportes)
       if (faltan.length) return toast.error(`Falta el soporte de pago de ${faltan.join(", ")}`)
 
-      const formData = new FormData()
-      formData.append("datos", JSON.stringify({
-        bolsaId,
-        fechaPago,
-        observacion,
-        gastos: gastos.map(g => ({ id: g.id, valorRealmentePagado: Number(valores[g.id]) }))
-      }))
-      gastos.forEach(g => formData.append(`soporte_${g.id}`, soportes[g.id]!))
-      archivos.forEach(archivo => formData.append("archivos", archivo))
-
-      return startPagar(async () => {
-        const resultado = await pagarCertificados(formData)
-        if (!resultado.ok) {
-          resultado.errores.forEach(error => toast.error(error))
-          return
-        }
-        toast.success(`${gastos.length} gasto(s) pagado(s) · lote #${resultado.datos.loteId}`)
-        onPagado()
-      })
+      const grupos = await gruposSoporteCompartido(gastosConSoporte, soportes)
+      if (grupos.length) return setRepetidos(grupos)
+      return pagarDirecto(false)
     }
 
     startPagar(async () => {
@@ -278,6 +287,13 @@ export default function ModalPago({
           </DialogPanel>
         </div>
       </div>
+      {repetidos && (
+        <ConfirmarSoporteCompartido
+          grupos={repetidos}
+          onCancelar={() => setRepetidos(null)}
+          onAceptar={() => { setRepetidos(null); pagarDirecto(true) }}
+        />
+      )}
     </Dialog>
   )
 }

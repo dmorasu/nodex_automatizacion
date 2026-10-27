@@ -27,9 +27,9 @@ const COLUMNAS: { clave: string, titulo: string, ancho: number, nota: string }[]
   { clave: 'formaPagoId', titulo: 'formaPagoId', ancho: 12, nota: 'Obligatorio (hoja FormasPago)' },
   { clave: 'conceptoPago', titulo: 'conceptoPago', ancho: 34, nota: 'Obligatorio. Máximo 200 caracteres' },
   { clave: 'valorSolicitado', titulo: 'valorSolicitado', ancho: 15, nota: 'Obligatorio. Número sin puntos ni signo $ (ej: 150000)' },
-  { clave: 'placa', titulo: 'placa', ancho: 10, nota: 'Obligatoria si el tipo es Vehículo' },
+  { clave: 'placa', titulo: 'placa', ancho: 10, nota: 'Obligatoria si el tipo es Vehículo (opcional en CTL, RUNT y Cámara de Comercio)' },
   { clave: 'transito', titulo: 'transito', ancho: 22, nota: 'Obligatorio si el tipo es Vehículo' },
-  { clave: 'matriculaInmobiliaria', titulo: 'matriculaInmobiliaria', ancho: 20, nota: 'Obligatoria si el tipo es Inmueble' },
+  { clave: 'matriculaInmobiliaria', titulo: 'matriculaInmobiliaria', ancho: 20, nota: 'Obligatoria si el tipo es Inmueble (opcional en CTL y Cámara de Comercio)' },
   { clave: 'contrato', titulo: 'contrato', ancho: 16, nota: 'Opcional. Máximo 50 caracteres' },
   { clave: 'codigoBpr', titulo: 'codigoBPR/FTF', ancho: 16, nota: 'Opcional. Máximo 50 caracteres' },
   { clave: 'reembolsable', titulo: 'reembolsable', ancho: 12, nota: 'Si (se le cobra al cliente) o No (lo asume la bolsa). Vacío = Si' },
@@ -211,6 +211,12 @@ const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null
   for (const campo of ['tramiteId', 'operacionId', 'bolsaId', 'tipoGastoId', 'formaPagoId']) {
     ids[campo] = entero(v[campo])
     if (Number.isNaN(ids[campo])) errores.push(`${campo} debe ser un número entero`)
+    // 0 no es un id: antes un tramiteId 0 pasaba como "sin trámite" y fallaba al guardar
+    else if (ids[campo] === 0) {
+      errores.push(campo === 'tramiteId' || campo === 'operacionId'
+        ? `${campo} no puede ser 0: déjelo vacío si no aplica`
+        : `${campo} no puede ser 0`)
+    }
   }
 
   for (const campo of ['bolsaId', 'tipoGastoId', 'formaPagoId', 'conceptoPago', 'valorSolicitado', 'beneficiarioIdentificacion']) {
@@ -309,8 +315,9 @@ const validarArchivo = async (buffer: Buffer, soloPropiosDe: number[] | null) =>
       try {
         await validarGasto(datos)
       } catch (error) {
-        if (!(error instanceof ErrorGastos)) throw error
-        erroresFila.push(error.message)
+        // Un error inesperado también se reporta en su fila (antes salía solo "Hubo un error")
+        if (!(error instanceof ErrorGastos)) console.error(`Cargue masivo de gastos, fila ${fila.numero}:`, error)
+        erroresFila.push(error instanceof ErrorGastos ? error.message : 'No se pudo validar: revise el trámite, la operación, la bolsa, el tipo, la forma de pago y el beneficiario')
       }
     }
 
@@ -334,9 +341,15 @@ export const cargarGastos = async (buffer: Buffer, usuarioId: number, soloPropio
 
   const creados = await db.transaction(async transaction => {
     const creados: { id: number, codigo: string }[] = []
-    for (const { datos } of gastos) {
-      const gasto = await crearGastoEnTransaccion(datos, usuarioId, transaction)
-      creados.push({ id: gasto.id, codigo: gasto.codigo })
+    for (const { fila, datos } of gastos) {
+      try {
+        const gasto = await crearGastoEnTransaccion(datos, usuarioId, transaction)
+        creados.push({ id: gasto.id, codigo: gasto.codigo })
+      } catch (error) {
+        // No se crea ninguno; se dice en qué fila falló en lugar de "Hubo un error"
+        if (!(error instanceof ErrorGastos)) console.error(`Cargue masivo de gastos, fila ${fila}:`, error)
+        throw new ErrorGastos(`Fila ${fila}: ${error instanceof ErrorGastos ? error.message : 'no se pudo crear el gasto, revise los datos de esa fila'}. No se cargó ningún gasto.`)
+      }
     }
     return creados
   })

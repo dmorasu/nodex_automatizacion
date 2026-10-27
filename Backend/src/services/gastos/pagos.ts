@@ -502,16 +502,19 @@ export type DatosCorreccionValor = {
   motivo: string
 }
 
-// Solo el Administrador de Gastos y solo con el gasto en PAGADO (decisión del usuario, 2026-10-27:
-// Tesorería confirmó un pago con un cero de menos). Corrige el valor solicitado y el pagado, y la
-// bolsa del pago se mueve por la diferencia con un AJUSTE (se pagó de más → vuelve dinero; de
-// menos → se descuenta). El total del lote también se corrige.
+// Solo el Administrador de Gastos y solo con el gasto en PAGADO o, en caja menor, PAGADO_CAJA (aún
+// sin legalizar; si ya se legalizó, primero se deshace la legalización) (decisión del usuario,
+// 2026-10-27: Tesorería confirmó un pago con un cero de menos). Corrige el valor solicitado y el
+// pagado, y la bolsa o la caja se mueve por la diferencia con un AJUSTE (se pagó de más → vuelve
+// dinero; de menos → se descuenta). El total del lote también se corrige. En la caja el cuadre
+// sigue en cero: cambian a la vez el saldo y el valor entregado sin legalizar.
 export const corregirValorPagado = (gastoId: number, datos: DatosCorreccionValor, usuarioId: number) =>
   db.transaction(async transaction => {
     const gasto = await SolicitudesGasto.findByPk(gastoId, { transaction, lock: transaction.LOCK.UPDATE })
     if (!gasto) throw new ErrorGastos('El gasto no existe', 404)
-    if (await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.PAGADO) {
-      throw new ErrorGastos('Solo se puede corregir el valor de un gasto en estado Pagado')
+    const estado = await codigoEstadoGasto(gasto.estadoId)
+    if (estado !== ESTADOS_GASTO.PAGADO && estado !== ESTADOS_GASTO.PAGADO_CAJA) {
+      throw new ErrorGastos('Solo se puede corregir el valor de un gasto pagado (o pagado por caja menor y aún sin legalizar)')
     }
 
     const valorSolicitado = redondear(Number(datos.valorSolicitado))

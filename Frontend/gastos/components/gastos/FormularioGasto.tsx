@@ -502,6 +502,15 @@ export default function FormularioGasto({
           </div>
         )}
 
+        {/* Cámara de Comercio: matrícula inmobiliaria opcional. Lo paga Tesorería - Certificados */}
+        {codigoTipo === "CAMARA_COMERCIO" && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Campo etiqueta="Matrícula inmobiliaria">
+              <input value={datos.matriculaInmobiliaria} onChange={e => cambiar("matriculaInmobiliaria", e.target.value)} maxLength={50} className={claseInput} />
+            </Campo>
+          </div>
+        )}
+
         {/* Certificado RUNT: de un vehículo (placa opcional). Lo paga Tesorería - Certificados */}
         {codigoTipo === "RUNT" && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

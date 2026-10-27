@@ -210,8 +210,7 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     // El CTL puede ser de un vehículo o de un inmueble: placa y matrícula opcionales
     transito = null
   } else if (tipoGasto.codigo === TIPOS_GASTO.CAMARA_COMERCIO) {
-    // El certificado de Cámara de Comercio puede ir con la matrícula del inmueble (opcional)
-    placa = null
+    // El certificado de Cámara de Comercio puede ir con la placa o la matrícula (ambas opcionales)
     transito = null
   } else if (tipoGasto.codigo === TIPOS_GASTO.RUNT) {
     // El certificado RUNT es de un vehículo: placa opcional

@@ -77,6 +77,17 @@ export const validarAnulacion = [
     .isLength({ max: 1000 }).withMessage('El motivo no puede superar 1000 caracteres')
 ]
 
+// Corrección del valor de un gasto pagado (Administrador de Gastos)
+export const validarCorreccionValor = [
+  validarId,
+  body('valorSolicitado').isFloat({ gt: 0 }).withMessage('El valor solicitado debe ser mayor a cero').toFloat(),
+  body('valorPagado').isFloat({ gt: 0 }).withMessage('El valor pagado debe ser mayor a cero').toFloat(),
+  body('motivo')
+    .isString().trim()
+    .notEmpty().withMessage('Debe indicar el motivo de la corrección')
+    .isLength({ max: 1000 }).withMessage('El motivo no puede superar 1000 caracteres')
+]
+
 export const validarBolsa = [
   body('nombre')
     .optional()

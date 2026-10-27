@@ -11,7 +11,7 @@ import Usuarios from '../../models/usuarios'
 import EstadosGasto from '../../models/gastos/estadosGasto'
 import Anticipos from '../../models/gastos/anticipos'
 import { atributosSaldoAnticipo } from './SolicitudesGastoController'
-import { aprobarGastos, confirmarPago, confirmarPagos, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
+import { aprobarGastos, confirmarPago, confirmarPagos, corregirValorPagado, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
 import { notificarGastosPagados, notificarLoteProgramado, notificarRevisionLote } from '../../services/gastos/notificacionesGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
@@ -153,6 +153,16 @@ export class PagosController {
       void notificarGastosPagados(gastoIds)
 
       res.json({ loteId: lote.id, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // PUT /solicitudes/:id/valor-pagado  { valorSolicitado, valorPagado, motivo }  (Administrador de Gastos)
+  static corregirValor = async (req: Request, res: Response) => {
+    try {
+      const gasto = await corregirValorPagado(Number(req.params.id), req.body, req.usuario.id)
+      res.json({ id: gasto.id, valorRealmentePagado: gasto.valorRealmentePagado })
     } catch (error) {
       responderError(res, error)
     }

@@ -8,6 +8,7 @@ import { obtenerCatalogos, obtenerGasto, obtenerTasas } from "@/src/lib/datosGas
 import { formatoFecha, formatoFechaHora, formatoMoneda, formatoPorcentaje } from "@/src/lib/formato"
 import EstadoGasto from "@/components/gastos/EstadoGasto"
 import AnularGasto from "@/components/gastos/AnularGasto"
+import CorregirValorPagado from "@/components/gastos/CorregirValorPagado"
 import DocumentosGasto from "@/components/gastos/DocumentosGasto"
 import LineaTiempo from "@/components/gastos/LineaTiempo"
 import Seccion from "@/components/ui/Seccion"
@@ -66,6 +67,16 @@ export default async function DetalleGastoPage(props: { params: Promise<{ id: st
               </Link>
             )}
             {gasto.permisos.anular && <AnularGasto gastoId={gasto.id} codigo={gasto.codigo} />}
+            {/* Corregir un pago confirmado con un valor equivocado: solo Administrador de Gastos (el backend lo revisa) */}
+            {sesion.roles.includes(ROLES.ADMIN) && gasto.estado.codigo === "PAGADO" && (
+              <CorregirValorPagado
+                gastoId={gasto.id}
+                codigo={gasto.codigo}
+                bolsa={gasto.bolsa?.nombre ?? null}
+                valorSolicitado={String(gasto.valorSolicitadoPago)}
+                valorPagado={String(gasto.valorRealmentePagado)}
+              />
+            )}
           </div>
         </div>
 

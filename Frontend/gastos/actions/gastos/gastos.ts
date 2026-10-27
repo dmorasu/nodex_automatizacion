@@ -40,6 +40,19 @@ export async function anularGasto(id: number, motivo: string): Promise<Resultado
   return { ok: true, datos: undefined }
 }
 
+// Administrador de Gastos: corrige el valor de un gasto pagado; el backend ajusta la bolsa por la diferencia
+export async function corregirValorPagado(id: number, datos: { valorSolicitado: number, valorPagado: number, motivo: string }): Promise<Resultado> {
+  const req = await fetchApi(`/gastos/solicitudes/${id}/valor-pagado`, {
+    method: "PUT",
+    body: JSON.stringify(datos)
+  })
+
+  if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+
+  revalidatePath(`/solicitudes/${id}`)
+  return { ok: true, datos: undefined }
+}
+
 export async function buscarTerceros(busqueda: string) {
   if (busqueda.trim().length < 3) return []
 

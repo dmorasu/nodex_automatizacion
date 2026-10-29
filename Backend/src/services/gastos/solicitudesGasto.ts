@@ -122,7 +122,7 @@ const resolverBeneficiario = async (datos: DatosGasto, transaction: Transaction 
 
 // Reglas de la bolsa de un gasto nuevo o editado: con forma de pago Caja menor solo sirve una
 // caja menor (Bogotá, Medellín…, la elige quien crea el gasto); con otra forma de pago, una caja no
-function validarBolsaDelNuevoGasto(bolsa: Bolsas | null, porCajaMenor: boolean, deAnticipo: boolean, reembolsable: boolean): asserts bolsa is Bolsas {
+export function validarBolsaDelNuevoGasto(bolsa: Bolsas | null, porCajaMenor: boolean, deAnticipo: boolean, reembolsable: boolean): asserts bolsa is Bolsas {
   if (!bolsa?.activo) throw new ErrorGastos(porCajaMenor ? 'Seleccione la caja menor de la que sale el gasto' : 'La bolsa no existe o está inactiva')
   if (porCajaMenor && bolsa.tipo !== TIPOS_BOLSA.CAJA_MENOR) {
     throw new ErrorGastos('Con forma de pago Caja menor, seleccione la caja menor de la que sale el gasto')
@@ -139,6 +139,39 @@ function validarBolsaDelNuevoGasto(bolsa: Bolsas | null, porCajaMenor: boolean, 
   if (bolsa.sinSaldo && reembolsable) {
     throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de no reembolsables: marque el gasto como no reembolsable o elija otra bolsa`)
   }
+}
+
+type Identificacion = { placa: string | null, transito: string | null, matriculaInmobiliaria: string | null }
+
+// Reglas por tipo: cada tipo guarda solo sus campos de identificación (también la usa la
+// corrección masiva al cambiar el tipo). Recibe los valores ya limpios
+export const identificacionPorTipo = (codigoTipo: string, datos: Identificacion): Identificacion => {
+  let { placa, transito, matriculaInmobiliaria } = datos
+
+  if (codigoTipo === TIPOS_GASTO.VEHICULO) {
+    if (!placa || !transito) throw new ErrorGastos('Para gastos de vehículo la placa y el tránsito son obligatorios')
+    matriculaInmobiliaria = null
+  } else if (codigoTipo === TIPOS_GASTO.INMUEBLE) {
+    if (!matriculaInmobiliaria) throw new ErrorGastos('Para gastos de inmueble la matrícula inmobiliaria es obligatoria')
+    placa = null
+    transito = null
+  } else if (codigoTipo === TIPOS_GASTO.CTL) {
+    // El CTL puede ser de un vehículo o de un inmueble: placa y matrícula opcionales
+    transito = null
+  } else if (codigoTipo === TIPOS_GASTO.CAMARA_COMERCIO) {
+    // El certificado de Cámara de Comercio puede ir con la placa o la matrícula (ambas opcionales)
+    transito = null
+  } else if (codigoTipo === TIPOS_GASTO.RUNT) {
+    // El certificado RUNT es de un vehículo: placa opcional
+    matriculaInmobiliaria = null
+    transito = null
+  } else {
+    placa = null
+    transito = null
+    matriculaInmobiliaria = null
+  }
+
+  return { placa, transito, matriculaInmobiliaria }
 }
 
 // Valida relaciones y reglas por tipo de gasto, y calcula los valores.
@@ -196,31 +229,7 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     throw new ErrorGastos('El tramitador no existe')
   }
 
-  // Reglas por tipo: cada tipo guarda solo sus campos de identificación
-  let transito = texto(datos.transito)
-
-  if (tipoGasto.codigo === TIPOS_GASTO.VEHICULO) {
-    if (!placa || !transito) throw new ErrorGastos('Para gastos de vehículo la placa y el tránsito son obligatorios')
-    matriculaInmobiliaria = null
-  } else if (tipoGasto.codigo === TIPOS_GASTO.INMUEBLE) {
-    if (!matriculaInmobiliaria) throw new ErrorGastos('Para gastos de inmueble la matrícula inmobiliaria es obligatoria')
-    placa = null
-    transito = null
-  } else if (tipoGasto.codigo === TIPOS_GASTO.CTL) {
-    // El CTL puede ser de un vehículo o de un inmueble: placa y matrícula opcionales
-    transito = null
-  } else if (tipoGasto.codigo === TIPOS_GASTO.CAMARA_COMERCIO) {
-    // El certificado de Cámara de Comercio puede ir con la placa o la matrícula (ambas opcionales)
-    transito = null
-  } else if (tipoGasto.codigo === TIPOS_GASTO.RUNT) {
-    // El certificado RUNT es de un vehículo: placa opcional
-    matriculaInmobiliaria = null
-    transito = null
-  } else {
-    placa = null
-    transito = null
-    matriculaInmobiliaria = null
-  }
+  const identificacion = identificacionPorTipo(tipoGasto.codigo, { placa, transito: texto(datos.transito), matriculaInmobiliaria })
 
   const valorSolicitado = Math.round(Number(datos.valorSolicitado) * 100) / 100
   if (!(valorSolicitado > 0)) throw new ErrorGastos('El valor solicitado debe ser mayor a cero')
@@ -239,9 +248,7 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     reembolsable,
     numeroFactura: texto(datos.numeroFactura),
     conceptoPago: texto(datos.conceptoPago),
-    matriculaInmobiliaria,
-    placa,
-    transito,
+    ...identificacion,
     contrato: texto(datos.contrato),
     nombreClienteBanco: anticipo ? anticipo.cliente.nombre : texto(datos.nombreClienteBanco),
     identificacionClienteBanco: anticipo ? anticipo.cliente.identificacion : texto(datos.identificacionClienteBanco),
@@ -253,10 +260,10 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
 }
 
 // Los gastos que no son de inmueble no llevan retención
-const RETENCION_VACIA = { retencionBase: null, retencionPorcentaje: null, retencionValor: null, retencionTotalPagar: null }
+export const RETENCION_VACIA = { retencionBase: null, retencionPorcentaje: null, retencionValor: null, retencionTotalPagar: null }
 
 // Retención de un gasto de inmueble: base por defecto 0 y porcentaje por defecto el parámetro (11 %)
-const prepararRetencion = async (datos: DatosGasto) => {
+export const prepararRetencion = async (datos: Pick<DatosGasto, 'baseRetencion' | 'porcentajeRetencion'>) => {
   const base = Number(datos.baseRetencion ?? 0)
   if (!(base >= 0)) throw new ErrorGastos('La base de retención no puede ser negativa')
 

@@ -194,6 +194,9 @@ export default async function TodosLosGastosPage(props: { searchParams: Promise<
             <button type="submit" className={`${claseBotonPrimario} h-9 flex-1`}>Filtrar</button>
             <Link href="/admin" className={`${claseBotonSecundario} h-9`}>Limpiar</Link>
           </div>
+          <div className="flex items-end">
+            <Link href={`/admin/correccion?${new URLSearchParams(activos)}`} className={`${claseBotonSecundario} h-9 w-full`}>Corrección masiva</Link>
+          </div>
         </div>
       </form>
 

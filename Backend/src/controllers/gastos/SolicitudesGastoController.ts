@@ -144,7 +144,7 @@ const hastaBogota = (fecha: string) => new Date(`${fecha}T23:59:59.999-05:00`)
 //  codigoBpr · placa · matricula (contienen el texto, sin importar mayúsculas, espacios ni guiones)
 //  Sin rol (o en "mis gastos") se ven los propios; al buscar o filtrar por operación, también los
 //  que crearon los de su misma área
-const condicionesListado = async (req: Request) => {
+export const condicionesListado = async (req: Request) => {
   const q = req.query
   const condiciones: WhereOptions[] = []
 
@@ -269,7 +269,7 @@ const fechaCsv = (valor: unknown) =>
 const SOPORTE_TRAMITADOR: Record<string, string> = { PENDIENTE: 'Pendiente de revisión', APROBADO: 'Aprobada', RECHAZADO: 'Rechazada' }
 const REPORTE_REALIZADO: Record<string, string> = { PENDIENTE: 'Por revisar', REVISADO: 'Revisado' }
 
-const ORDENES: Record<string, Order> = {
+export const ORDENES: Record<string, Order> = {
   recientes: [['createdAt', 'DESC']],
   antiguos: [['createdAt', 'ASC']],
   pagoReciente: [['fechaPago', 'DESC NULLS LAST'], ['createdAt', 'DESC']],

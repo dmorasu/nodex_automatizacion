@@ -28,6 +28,7 @@ import { ReintegrosController } from '../../controllers/gastos/ReintegrosControl
 import { ContabilidadController } from '../../controllers/gastos/ContabilidadController'
 import { TableroController } from '../../controllers/gastos/TableroController'
 import { CargueMasivoGastosController, recibirExcel } from '../../controllers/gastos/CargueMasivoGastosController'
+import { CorreccionMasivaGastosController } from '../../controllers/gastos/CorreccionMasivaGastosController'
 import {
   validarAgregarGastos,
   validarContabilizacion,
@@ -228,6 +229,11 @@ router.post('/lotes/:id/quitar', tesoreriaOCertificados, validarSalidaLote, hand
 router.post('/lotes/:id/confirmar', tesoreriaOCertificados, validarConfirmacionPago, handleInputErrors, PagosController.confirmar)
 // Corregir el valor de un gasto ya pagado y ajustar la bolsa por la diferencia (solo Administrador de Gastos)
 router.put('/solicitudes/:id/valor-pagado', soloAdmin, validarCorreccionValor, handleInputErrors, PagosController.corregirValor)
+// Corrección masiva por Excel: tipo, bolsa, valores y placa / tránsito / matrícula (solo Administrador de
+// Gastos). La plantilla sale con los filtros del Tablero de Control
+router.get('/correccion-masiva/plantilla', soloAdmin, validarListado, handleInputErrors, CorreccionMasivaGastosController.plantilla)
+router.post('/correccion-masiva/validar', soloAdmin, recibirExcel, CorreccionMasivaGastosController.validar)
+router.post('/correccion-masiva/aplicar', soloAdmin, recibirExcel, CorreccionMasivaGastosController.aplicar)
 // Uno o varios lotes aprobados a la vez, adjuntando el soporte del banco en el mismo paso
 // (multipart: datos = JSON con loteIds, fechaPago y observacion; archivos[])
 router.post('/lotes/confirmar', tesoreriaOCertificados, recibirSoportesPago, leerDatosJson, validarConfirmacionPagos, handleInputErrors, PagosController.confirmarVarios)

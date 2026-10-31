@@ -136,7 +136,9 @@ export const PARAMETROS = {
   GMF: 'GMF',
   // Hora de Colombia (en horas: 9.5 = 9:30 a. m.) hasta la que un gasto nuevo se programa para
   // pago el mismo día; después, el siguiente día hábil
-  HORA_CORTE_PROGRAMACION: 'HORA_CORTE_PROGRAMACION'
+  HORA_CORTE_PROGRAMACION: 'HORA_CORTE_PROGRAMACION',
+  // IVA de las solicitudes de factura (2026-10-31): se suma sobre la base (el valor consignado)
+  IVA: 'IVA'
 } as const
 
 export type ClaveParametro = typeof PARAMETROS[keyof typeof PARAMETROS]

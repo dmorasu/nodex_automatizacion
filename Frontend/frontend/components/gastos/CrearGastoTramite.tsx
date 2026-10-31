@@ -51,6 +51,8 @@ export type TramiteParaGasto = {
   operacionId: number | null
   placa: string | null
   matriculaInmobiliaria: string | null
+  // Tipo de trámite: concepto inicial de los gastos de vehículo
+  nombreTramite?: string | null
 }
 
 function Campo({ etiqueta, obligatorio, children, className = "" }: {
@@ -86,9 +88,11 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
     bolsaId: bolsasGenerales.length === 1 ? bolsasGenerales[0].id : null as number | null,
     tipoGastoId: tipoSugerido,
     formaPagoId: null as number | null,
-    conceptoPago: "",
+    // Trámite de vehículo: el concepto empieza con su tipo de trámite (se puede cambiar)
+    conceptoPago: tramite.placa ? tramite.nombreTramite?.trim() ?? "" : "",
     valorSolicitado: "",
     // Retención (solo inmuebles): base por defecto 0 y porcentaje por defecto 11 %
+    valorLiquidacion: "",
     baseRetencion: "0",
     porcentajeRetencion: String(opciones.porcentajeRetencion),
     placa: tramite.placa ?? "",
@@ -124,12 +128,29 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
   const cambiar = <K extends keyof ReturnType<typeof inicial>>(campo: K, valor: ReturnType<typeof inicial>[K]) =>
     setDatos(actuales => ({ ...actuales, [campo]: valor }))
 
+  // Inmueble con liquidación: la base sigue a la liquidación mientras no se haya cambiado aparte
+  // (la retención puede aplicar solo a una parte) y el valor solicitado se propone como
+  // liquidación − retención; se puede corregir a mano después (igual que en Nodex Gastos)
+  const cambiarRetencion = (campo: "valorLiquidacion" | "baseRetencion" | "porcentajeRetencion", valor: string) =>
+    setDatos(actuales => {
+      const aCentavos = (v: string) => Math.round(Number(v || 0) * 100)
+      const nuevos = { ...actuales, [campo]: valor }
+      const baseSeguia = !Number(actuales.baseRetencion) || aCentavos(actuales.baseRetencion) === aCentavos(actuales.valorLiquidacion)
+      if (campo === "valorLiquidacion" && baseSeguia) nuevos.baseRetencion = valor || "0"
+
+      const liquidacionC = aCentavos(nuevos.valorLiquidacion)
+      if (liquidacionC <= 0) return nuevos
+      const retencion = Math.round(aCentavos(nuevos.baseRetencion) * Number(nuevos.porcentajeRetencion || 0) / 100)
+      return { ...nuevos, valorSolicitado: String((liquidacionC - retencion) / 100) }
+    })
+
   const codigoTipo = opciones.tiposGasto.find(t => t.id === datos.tipoGastoId)?.codigo
   const llevaRetencion = codigoTipo === "INMUEBLE"
 
   // Vista previa de la retención (el cálculo definitivo lo hace el backend), en centavos
   const baseC = Math.round(Number(datos.baseRetencion || 0) * 100)
   const retencionC = Math.round(baseC * Number(datos.porcentajeRetencion || 0) / 100)
+  const liquidacionC = Math.round(Number(datos.valorLiquidacion || 0) * 100)
   const moneda = (centavos: number) =>
     (centavos / 100).toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 2 })
 
@@ -180,6 +201,7 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
         formaPagoId: datos.formaPagoId!,
         conceptoPago: datos.conceptoPago,
         valorSolicitado: Number(datos.valorSolicitado),
+        valorLiquidacion: llevaRetencion && liquidacionC > 0 ? liquidacionC / 100 : null,
         baseRetencion: llevaRetencion ? baseC / 100 : null,
         porcentajeRetencion: llevaRetencion ? Number(datos.porcentajeRetencion) : null,
         placa: datos.placa,
@@ -262,7 +284,10 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                     <input type="number" min={0} step="0.01" value={datos.valorSolicitado} onChange={e => cambiar("valorSolicitado", e.target.value)} placeholder="0" className={claseInput} />
                   </Campo>
                   <Campo etiqueta="Concepto del pago" obligatorio className="sm:col-span-2">
-                    <input value={datos.conceptoPago} onChange={e => cambiar("conceptoPago", e.target.value)} maxLength={200} placeholder="Ej: Pago derechos de tránsito" className={claseInput} />
+                    <input value={datos.conceptoPago} onChange={e => cambiar("conceptoPago", e.target.value)} list={codigoTipo === "VEHICULO" && opciones.tiposTramite.length ? "tipos-tramite-gasto" : undefined} autoComplete="off" maxLength={200} placeholder="Ej: Pago derechos de tránsito" className={claseInput} />
+                    <datalist id="tipos-tramite-gasto">
+                      {opciones.tiposTramite.map(nombre => <option key={nombre} value={nombre} />)}
+                    </datalist>
                   </Campo>
 
                   {codigoTipo === "VEHICULO" && (
@@ -280,25 +305,35 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                       <Campo etiqueta="Matrícula inmobiliaria" obligatorio>
                         <input value={datos.matriculaInmobiliaria} onChange={e => cambiar("matriculaInmobiliaria", e.target.value)} maxLength={50} className={claseInput} />
                       </Campo>
-                      <div className="hidden sm:block" />
+                      <Campo etiqueta="Valor liquidación">
+                        <input type="number" min={0} step="0.01" value={datos.valorLiquidacion} onChange={e => cambiarRetencion("valorLiquidacion", e.target.value)} placeholder="0" className={claseInput} />
+                      </Campo>
                       <Campo etiqueta="Base de retención">
-                        <input type="number" min={0} step="0.01" value={datos.baseRetencion} onChange={e => cambiar("baseRetencion", e.target.value)} placeholder="0 si no aplica" className={claseInput} />
+                        <input type="number" min={0} step="0.01" value={datos.baseRetencion} onChange={e => cambiarRetencion("baseRetencion", e.target.value)} placeholder="0 si no aplica" className={claseInput} />
                       </Campo>
                       <Campo etiqueta="Porcentaje de retención (%)" obligatorio>
-                        <input type="number" min={0} max={100} step="0.01" value={datos.porcentajeRetencion} onChange={e => cambiar("porcentajeRetencion", e.target.value)} className={claseInput} />
+                        <input type="number" min={0} max={100} step="0.01" value={datos.porcentajeRetencion} onChange={e => cambiarRetencion("porcentajeRetencion", e.target.value)} className={claseInput} />
                       </Campo>
                       <p className="text-[11px] text-slate-500 sm:col-span-2">
                         Tesorería paga el valor solicitado sin deducción; la retención es informativa.
                       </p>
-                      <div className="grid gap-x-6 gap-y-2 rounded-md bg-slate-50 px-4 py-3 text-xs sm:col-span-2 sm:grid-cols-2">
-                        <p className="flex justify-between">
-                          <span className="text-slate-500">Retención ({datos.porcentajeRetencion || 0} % de la base)</span>
-                          <b>{moneda(retencionC)}</b>
+                      {/* Cálculo completo, paso a paso (igual que en Nodex Gastos) */}
+                      <div className="space-y-1.5 rounded-md bg-slate-50 px-4 py-3 text-xs sm:col-span-2">
+                        {liquidacionC > 0 && (
+                          <p className="flex justify-between gap-4"><span className="text-slate-500">Valor liquidación</span><b className="tabular-nums">{moneda(liquidacionC)}</b></p>
+                        )}
+                        <p className="flex justify-between gap-4"><span className="text-slate-500">Base de retención</span><b className="tabular-nums">{moneda(baseC)}</b></p>
+                        <p className="flex justify-between gap-4">
+                          <span className="text-slate-500">Retención ({datos.porcentajeRetencion || 0} % × {moneda(baseC)})</span>
+                          <b className="tabular-nums">− {moneda(retencionC)}</b>
                         </p>
-                        <p className="flex justify-between">
-                          <span className="text-slate-500">Total a pagar (base − retención)</span>
-                          <b className="text-slate-800">{moneda(baseC - retencionC)}</b>
+                        <p className="flex justify-between gap-4 border-t border-slate-200 pt-1.5 text-sm text-slate-800">
+                          <span className="text-slate-500">{liquidacionC > 0 ? "Valor a solicitar (liquidación − retención)" : "Total a pagar (base − retención)"}</span>
+                          <b className="tabular-nums">{moneda((liquidacionC > 0 ? liquidacionC : baseC) - retencionC)}</b>
                         </p>
+                        {liquidacionC > 0 && Number(datos.valorSolicitado) > 0 && Math.round(Number(datos.valorSolicitado) * 100) !== liquidacionC - retencionC && (
+                          <p className="flex justify-between gap-4 text-amber-700"><span>Valor solicitado escrito</span><b className="tabular-nums">{moneda(Math.round(Number(datos.valorSolicitado) * 100))}</b></p>
+                        )}
                       </div>
                     </>
                   )}

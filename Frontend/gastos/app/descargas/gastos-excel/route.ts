@@ -1,10 +1,10 @@
 import { fetchApi } from "@/src/lib/api"
 
-// Descarga en CSV (para Excel) el listado de gastos con los filtros recibidos. Pasa por aquí
+// Descarga el Excel detallado de los gastos con los filtros de la bandeja. Pasa por aquí
 // porque el backend exige el token, que vive en una cookie httpOnly.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
-  const respuesta = await fetchApi(`/gastos/solicitudes/exportar?${searchParams}`)
+  const respuesta = await fetchApi(`/gastos/solicitudes/exportar-excel?${searchParams}`)
 
   if (!respuesta.ok) {
     const json = await respuesta.json().catch(() => null)
@@ -16,8 +16,8 @@ export async function GET(req: Request) {
 
   return new Response(respuesta.body, {
     headers: {
-      "Content-Type": respuesta.headers.get("Content-Type") ?? "text/csv; charset=utf-8",
-      "Content-Disposition": respuesta.headers.get("Content-Disposition") ?? 'attachment; filename="gastos.csv"'
+      "Content-Type": respuesta.headers.get("Content-Type") ?? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": respuesta.headers.get("Content-Disposition") ?? 'attachment; filename="gastos.xlsx"'
     }
   })
 }

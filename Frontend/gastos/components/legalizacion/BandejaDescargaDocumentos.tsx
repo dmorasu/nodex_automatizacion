@@ -4,6 +4,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import type { GastoListado } from "@/src/schemas/gastos"
 import EstadoGasto from "../gastos/EstadoGasto"
 import SeleccionGastos from "../gastos/SeleccionGastos"
+import { COLUMNA_CENTRO_COSTOS, COLUMNA_CUATRO_X_MIL, COLUMNA_RETENCION, COLUMNA_TRAMITADOR } from "../gastos/columnasGastos"
 import BotonDescargarDocumentos, { MAXIMO_DESCARGA } from "./BotonDescargarDocumentos"
 
 // Selección de gastos para descargar todos sus documentos en un ZIP
@@ -16,8 +17,12 @@ export default function BandejaDescargaDocumentos({ gastos }: { gastos: GastoLis
       columnas={[
         { titulo: "Estado", valor: g => <EstadoGasto codigo={g.estado.codigo} nombre={g.estado.nombre} /> },
         { titulo: "Beneficiario", valor: g => g.beneficiario.nombre },
+        COLUMNA_TRAMITADOR,
+        COLUMNA_CENTRO_COSTOS,
         { titulo: "Trámite", valor: g => (g.solicitudTramiteId ? `#${g.solicitudTramiteId}` : "—") },
         { titulo: "Factura", valor: g => g.factura?.numeroFactura ?? (g.factura ? "Sin número" : "—") },
+        COLUMNA_RETENCION,
+        COLUMNA_CUATRO_X_MIL,
         { titulo: "Pagado", alinearDerecha: true, valor: g => formatoMoneda(g.valorRealmentePagado) }
       ]}
       accion={(seleccionados, limpiar) => (

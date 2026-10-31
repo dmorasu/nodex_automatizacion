@@ -13,6 +13,7 @@ export type AnticipoAConfirmar = {
   codigo: string
   cliente: { nombre: string, identificacion: string }
   valorConsignado: string
+  referenciaPago?: string | null
 }
 
 type Fila = { valorRecibido: string, reciboCaja: string, observacion: string }
@@ -114,6 +115,7 @@ export default function ModalConfirmarAnticipos({
                       <td className="py-3 pr-3">
                         <p className="font-semibold text-slate-700">{a.codigo}</p>
                         <p className="text-[11px] text-slate-400">{a.cliente.nombre} · {a.cliente.identificacion}</p>
+                        {a.referenciaPago && <p className="text-[11px] text-slate-400">Ref. {a.referenciaPago}</p>}
                       </td>
                       <td className="py-3 pr-3 text-right font-medium text-slate-700 whitespace-nowrap">{formatoMoneda(a.valorConsignado)}</td>
                       <td className="py-3 pr-3">

@@ -72,7 +72,9 @@ const retencionAlCrearGasto = async () => {
     ['retencion_base', 'DECIMAL(15, 2)'],
     ['retencion_porcentaje', 'DECIMAL(10, 6)'],
     ['retencion_valor', 'DECIMAL(15, 2)'],
-    ['retencion_total_pagar', 'DECIMAL(15, 2)']
+    ['retencion_total_pagar', 'DECIMAL(15, 2)'],
+    // 2026-10-31 · Valor de la liquidación del inmueble (opcional)
+    ['valor_liquidacion', 'DECIMAL(15, 2)']
   ]
   for (const [columna, tipo] of nuevas) {
     if (!columnas[columna]) await db.query(`ALTER TABLE gastos_solicitudes ADD COLUMN ${columna} ${tipo}`)
@@ -124,7 +126,8 @@ const anticiposDeClientes = async () => {
   }
 
   await agregar('gastos_bolsas', [['tipo', `VARCHAR(20) NOT NULL DEFAULT 'GENERAL'`]])
-  await agregar('gastos_terceros', [['telefono', 'VARCHAR(30)'], ['direccion', 'VARCHAR(200)']])
+  // 2026-10-31 · ciudad: de la lista de municipios de Trámites (obligatoria en solicitudes de factura)
+  await agregar('gastos_terceros', [['telefono', 'VARCHAR(30)'], ['direccion', 'VARCHAR(200)'], ['ciudad', 'VARCHAR(150)']])
   await agregar('gastos_solicitudes', [['anticipo_id', 'INTEGER REFERENCES gastos_anticipos (id) ON UPDATE CASCADE ON DELETE SET NULL']])
   await agregar('gastos_movimientos_bolsa', [
     ['cliente_id', 'INTEGER REFERENCES gastos_terceros (id) ON UPDATE CASCADE ON DELETE SET NULL'],
@@ -150,7 +153,12 @@ const solicitudesDeFactura = async () => {
   const nuevas: [string, string][] = [
     ['clase', `VARCHAR(20) NOT NULL DEFAULT 'ANTICIPO'`],
     ['numero_factura', 'VARCHAR(50)'],
-    ['fecha_facturacion', 'TIMESTAMP WITH TIME ZONE']
+    ['fecha_facturacion', 'TIMESTAMP WITH TIME ZONE'],
+    // 2026-10-31 · Referencia del pago: obligatoria cuando no hay soporte de la consignación
+    ['referencia_pago', 'VARCHAR(100)'],
+    // 2026-10-31 · IVA de las solicitudes de factura (tarifa y valor; la base es el valor consignado o recibido)
+    ['iva_porcentaje', 'DECIMAL(10, 6)'],
+    ['iva_valor', 'DECIMAL(15, 2)']
   ]
   for (const [columna, tipo] of nuevas) {
     if (!columnas[columna]) await db.query(`ALTER TABLE gastos_anticipos ADD COLUMN ${columna} ${tipo}`)

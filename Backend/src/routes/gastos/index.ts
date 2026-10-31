@@ -66,6 +66,7 @@ import {
   validarConfirmacionAnticipos,
   validarFacturacion,
   validarListadoAnticipos,
+  validarReporteAnticipos,
   validarMotivo
 } from '../../middleware/gastos/validacionesAnticipos'
 import { CajaMenorController } from '../../controllers/gastos/CajaMenorController'
@@ -107,6 +108,8 @@ router.get('/parametros', ParametrosGastosController.getAll)
 router.get('/apoyo/operaciones', ApoyoGastosController.operaciones)
 router.get('/apoyo/tramitadores', ApoyoGastosController.tramitadores)
 router.get('/apoyo/bolsas', ApoyoGastosController.bolsas)
+router.get('/apoyo/municipios', ApoyoGastosController.municipios)
+router.get('/apoyo/tipos-tramite', ApoyoGastosController.tiposTramite)
 router.get('/apoyo/tramites/:id', validarId, handleInputErrors, ApoyoGastosController.tramite)
 router.get('/terceros', ApoyoGastosController.terceros)
 
@@ -134,6 +137,7 @@ router.get('/solicitudes', validarListado, handleInputErrors, SolicitudesGastoCo
 router.post('/solicitudes', validarGasto, handleInputErrors, SolicitudesGastoController.create)
 // Antes de /solicitudes/:id: CSV con los mismos filtros del listado
 router.get('/solicitudes/exportar', validarListado, handleInputErrors, SolicitudesGastoController.exportar)
+router.get('/solicitudes/exportar-excel', validarListado, handleInputErrors, SolicitudesGastoController.exportarExcel)
 router.get('/solicitudes/:id', validarId, handleInputErrors, SolicitudesGastoController.getById)
 router.put('/solicitudes/:id', validarId, validarGasto, handleInputErrors, SolicitudesGastoController.update)
 router.post('/solicitudes/:id/anular', validarAnulacion, handleInputErrors, SolicitudesGastoController.anular)
@@ -145,6 +149,9 @@ router.post('/solicitudes/:id/anular', validarAnulacion, handleInputErrors, Soli
 const contabilidadAnticipos = requiereRol(ROLES.CONTABILIDAD)
 router.get('/anticipos', validarListadoAnticipos, handleInputErrors, AnticiposController.listar)
 router.get('/anticipos/resumen', AnticiposController.resumen)
+// Reporte por centro de costos: cualquier usuario de Gastos (va antes de /anticipos/:id)
+router.get('/anticipos/reporte', validarReporteAnticipos, handleInputErrors, AnticiposController.reporte)
+router.get('/anticipos/reporte/exportar', validarReporteAnticipos, handleInputErrors, AnticiposController.exportarReporte)
 router.post('/anticipos', recibirDocumentos, leerDatosJson, validarAnticipo, handleInputErrors, AnticiposController.crear)
 router.post('/anticipos/confirmar', contabilidadAnticipos, validarConfirmacionAnticipos, handleInputErrors, AnticiposController.confirmar)
 router.post('/anticipos/facturar', contabilidadAnticipos, recibirFacturas, leerDatosJson, validarFacturacion, handleInputErrors, AnticiposController.facturar)

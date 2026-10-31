@@ -7,6 +7,7 @@ import { formatoFecha, formatoFechaHora, formatoMoneda } from "@/src/lib/formato
 import { ESTADOS_LOTE } from "@/src/schemas/gastos"
 import SoportesLote from "./SoportesLote"
 import GastosLote from "./GastosLote"
+import ExportarExcel from "../gastos/ExportarExcel"
 import ConfirmarPagoLote from "./ConfirmarPagoLote"
 import BotonEgreso from "../contabilidad/BotonEgreso"
 import ListaDocumentos from "../gastos/ListaDocumentos"
@@ -99,6 +100,11 @@ export default async function DetalleLote({
       </Seccion>
 
       <Seccion titulo={`Gastos (${lote.gastos.length})`}>
+        {lote.gastos.length > 0 && (
+          <div className="mb-3 flex justify-end">
+            <ExportarExcel consulta={new URLSearchParams({ alcance: "todos", lotePagoId: String(lote.id) })} archivo={`lote-${lote.id}`} />
+          </div>
+        )}
         <GastosLote loteId={lote.id} gastos={lote.gastos} accion={accionGastos} />
       </Seccion>
 

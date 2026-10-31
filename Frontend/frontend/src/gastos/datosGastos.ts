@@ -30,6 +30,8 @@ export type OpcionesGasto = {
   tiposDocumentoPago: { id: number, nombre: string }[]
   // Porcentaje de retención por defecto para gastos de inmueble (ej: 11)
   porcentajeRetencion: number
+  // Sugerencias del concepto en los gastos de vehículo
+  tiposTramite: string[]
 }
 
 const leer = async <T>(ruta: string, token: string, vacio: T): Promise<T> => {
@@ -49,14 +51,15 @@ export const obtenerGastosDeTramite = (tramiteId: number, token: string) =>
 
 // Bolsas activas y catálogos para el formulario de crear gasto
 export const obtenerOpcionesGasto = async (token: string): Promise<OpcionesGasto> => {
-  const [bolsas, catalogos, parametros] = await Promise.all([
+  const [bolsas, catalogos, parametros, tiposTramite] = await Promise.all([
     leer<OpcionesGasto["bolsas"]>("/gastos/apoyo/bolsas", token, []),
     leer<{
       tiposGasto: OpcionesGasto["tiposGasto"]
       formasPago: OpcionesGasto["formasPago"]
       tiposDocumento: { id: number, nombre: string, paraPago?: boolean }[]
     }>("/gastos/catalogos", token, { tiposGasto: [], formasPago: [], tiposDocumento: [] }),
-    leer<{ clave: string, valor: string }[]>("/gastos/parametros", token, [])
+    leer<{ clave: string, valor: string }[]>("/gastos/parametros", token, []),
+    leer<string[]>("/gastos/apoyo/tipos-tramite", token, [])
   ])
 
   // 0.11 → 11 (si no se puede leer, 11 %)
@@ -68,6 +71,7 @@ export const obtenerOpcionesGasto = async (token: string): Promise<OpcionesGasto
     tiposGasto: catalogos.tiposGasto,
     formasPago: catalogos.formasPago,
     tiposDocumentoPago: (catalogos.tiposDocumento ?? []).filter(t => t.paraPago).map(({ id, nombre }) => ({ id, nombre })),
-    porcentajeRetencion
+    porcentajeRetencion,
+    tiposTramite
   }
 }

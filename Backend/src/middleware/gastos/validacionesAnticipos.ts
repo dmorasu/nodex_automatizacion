@@ -31,6 +31,8 @@ export const validarAnticipo = [
   obligatorio('cliente.nombre', 'El nombre del cliente', 200),
   obligatorio('cliente.telefono', 'El teléfono del cliente', 30),
   obligatorio('cliente.direccion', 'La dirección del cliente', 200),
+  // Obligatoria solo en las solicitudes de factura (lo revisa el servicio, que conoce la clase al editar)
+  body('cliente.ciudad').optional({ values: 'null' }).isString().trim().isLength({ max: 150 }).withMessage('La ciudad del cliente no puede superar 150 caracteres'),
   body('clienteEmpresarialId').isInt({ min: 1 }).withMessage('Seleccione el cliente empresarial').toInt(),
   body('operacionId').isInt({ min: 1 }).withMessage('Seleccione la operación').toInt(),
   body('bolsaId').isInt({ min: 1 }).withMessage('Seleccione la bolsa').toInt(),
@@ -39,6 +41,8 @@ export const validarAnticipo = [
   body('matriculaInmobiliaria').if(body('tipo').equals(TIPOS_ANTICIPO.INMUEBLE)).isString().trim().notEmpty().withMessage('La matrícula inmobiliaria es obligatoria').isLength({ max: 50 }),
   body('valorConsignado').isFloat({ gt: 0 }).withMessage('El valor consignado debe ser mayor a cero').toFloat(),
   body('fechaConsignacion').isISO8601({ strict: true }).withMessage('Indique la fecha de consignación'),
+  // Obligatoria solo sin soporte de la consignación (lo revisa el servicio, que ve los archivos)
+  body('referenciaPago').optional({ values: 'null' }).isString().trim().isLength({ max: 100 }).withMessage('La referencia del pago no puede superar 100 caracteres'),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 2000 })
 ]
 
@@ -79,4 +83,9 @@ export const validarListadoAnticipos = [
   query('busqueda').optional().isString().isLength({ max: 100 }),
   query('pagina').optional().isInt({ min: 1 }),
   query('tamano').optional().isInt({ min: 1, max: 200 })
+]
+
+// Reporte por centro de costos: rango de fechas de consignación (opcional)
+export const validarReporteAnticipos = [
+  query(['desde', 'hasta']).optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida')
 ]

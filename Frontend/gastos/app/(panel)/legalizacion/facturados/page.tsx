@@ -2,7 +2,7 @@ import { fetchApi } from "@/src/lib/api"
 import { obtenerCuentas } from "@/src/lib/datosLegalizacion"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import BandejaLegalizacion from "@/components/legalizacion/BandejaLegalizacion"
-import ExportarCsv from "@/components/legalizacion/ExportarCsv"
+import ExportarExcel from "@/components/gastos/ExportarExcel"
 import TablaGastosPorFacturar from "@/components/legalizacion/TablaGastosPorFacturar"
 import FiltrosLegalizacion, { filtrosActivos, type FiltrosLegalizacion as Filtros } from "@/components/legalizacion/FiltrosLegalizacion"
 import Seccion from "@/components/ui/Seccion"
@@ -35,7 +35,7 @@ export default async function GastosConFacturaPage(props: { searchParams: Promis
           <p className="text-xs text-amber-700">
             {total > MAXIMO_BANDEJA && `Se muestran ${MAXIMO_BANDEJA} de ${total} gastos facturados. Use los filtros o exporte el listado completo.`}
           </p>
-          {total > 0 && <ExportarCsv consulta={consulta} />}
+          {total > 0 && <ExportarExcel consulta={consulta} archivo="legalizacion-con-factura" />}
         </div>
         <BandejaLegalizacion gastos={registros} borradores={borradores.registros} />
       </Seccion>
@@ -46,6 +46,7 @@ export default async function GastosConFacturaPage(props: { searchParams: Promis
         <TablaGastosPorFacturar
           filtros={{ reembolsable: "si", soporteTramitador: "si", ...filtros }}
           vacio="No hay facturas de tramitadores por registrar."
+          archivo="legalizacion-facturas-tramitador"
           avisoSoporte
         />
       </Seccion>

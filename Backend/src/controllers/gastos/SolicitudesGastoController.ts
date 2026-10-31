@@ -19,6 +19,8 @@ import CuentasCobro from '../../models/gastos/cuentasCobro'
 import EstadosCuentaCobro from '../../models/gastos/estadosCuentaCobro'
 import FacturasGasto from '../../models/gastos/facturasGasto'
 import { actualizarGasto, anularGasto, crearGasto } from '../../services/gastos/solicitudesGasto'
+import { INCLUDES_REPORTE, libroDeGastos } from '../../services/gastos/reportes'
+import { editarGastoComoAdmin } from '../../services/gastos/edicionAdmin'
 import { registrarFactura } from '../../services/gastos/facturas'
 import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../services/gastos/estadosGasto'
 import { ESTADOS_GASTO, ESTADOS_SIN_PAGO, PARAMETROS, ROLES } from '../../services/gastos/constantes'
@@ -197,6 +199,8 @@ export const condicionesListado = async (req: Request) => {
   if (q.conTramite) condiciones.push({ solicitudTramiteId: q.conTramite === 'si' ? { [Op.ne]: null } : null })
   // Gastos de anticipos: Tesorería los paga directo en su propia bandeja
   if (q.anticipo) condiciones.push({ anticipoId: q.anticipo === 'si' ? { [Op.ne]: null } : null })
+  // Gastos de un lote de pago (exportable del detalle del lote)
+  if (q.lotePagoId) condiciones.push({ lotePagoId: Number(q.lotePagoId) })
 
   // Gastos que no están en ninguna cuenta de cobro activa (no reembolsables por contabilizar)
   if (q.sinCuentaCobro === 'si') {
@@ -401,6 +405,32 @@ export class SolicitudesGastoController {
     }
   }
 
+  // GET /solicitudes/exportar-excel  (mismos filtros que GET /solicitudes) → Excel detallado con
+  // todo lo filtrado (no solo la página): el mismo del reporte del Tablero (libroDeGastos) más el
+  // seguimiento del tramitador. Cada bandeja (Tesorería, Legalización, Contabilidad…) lo pide con
+  // sus filtros; `archivo` le da nombre (ej. tesoreria-por-pagar)
+  static exportarExcel = async (req: Request, res: Response) => {
+    try {
+      const gastos = await SolicitudesGasto.findAll({
+        where: { [Op.and]: await condicionesListado(req) },
+        include: INCLUDES_REPORTE,
+        attributes: { include: ATRIBUTOS_SEGUIMIENTO_TRAMITADOR },
+        order: ORDENES[String(req.query.orden)] ?? ORDENES.recientes,
+        limit: MAXIMO_FILAS_EXPORTAR
+      })
+
+      const buffer = await libroDeGastos(gastos)
+      const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      const nombre = String(req.query.archivo ?? '') || 'gastos'
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', `attachment; filename="${nombre}-${fecha}.xlsx"`)
+      res.setHeader('X-Filas', String(gastos.length))
+      res.send(Buffer.from(buffer as ArrayBuffer))
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
   static getById = async (req: Request, res: Response) => {
     try {
       // También lo ven los de su área; editar, anular y subir documentos queda para quien lo gestiona
@@ -526,7 +556,9 @@ export class SolicitudesGastoController {
             // un no reembolsable legalizado puede corregir su factura hasta que se contabilice
             (!gasto.reembolsable && estado === ESTADOS_GASTO.LEGALIZADO)
           ),
-          editar: creadorOAdmin && estado === ESTADOS_GASTO.SOLICITADO,
+          editar: (creadorOAdmin && estado === ESTADOS_GASTO.SOLICITADO) || (esAdmin(req) && estado !== ESTADOS_GASTO.ANULADO),
+          // Edición del Administrador fuera de Solicitado: pide motivo y no cambia valor ni forma de pago
+          edicionAdmin: esAdmin(req) && estado !== ESTADOS_GASTO.SOLICITADO && estado !== ESTADOS_GASTO.ANULADO,
           anular: creadorOAdmin && estado === ESTADOS_GASTO.SOLICITADO,
           subirDocumentos: gestiona && estado !== ESTADOS_GASTO.ANULADO && estado !== ESTADOS_GASTO.CONTABILIZADO,
           soloLectura: !gestiona
@@ -572,6 +604,12 @@ export class SolicitudesGastoController {
 
       if (!esCreadorOAdmin(req, gasto)) {
         throw new ErrorGastos('Solo quien creó el gasto puede editarlo', 403)
+      }
+
+      // Fuera de Solicitado solo lo edita el Administrador de Gastos, con motivo y ajustes de bolsa
+      if (esAdmin(req) && await codigoEstadoGasto(gasto.estadoId) !== ESTADOS_GASTO.SOLICITADO) {
+        await editarGastoComoAdmin(gasto.id, req.body, String(req.body.motivo ?? ''), req.usuario.id)
+        return res.json({ id: gasto.id, codigo: gasto.codigo, avisoSaldo: null })
       }
 
       await actualizarGasto(gasto, req.body, req.usuario.id)

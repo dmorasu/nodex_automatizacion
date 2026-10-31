@@ -10,6 +10,8 @@ import Bolsas from '../../models/gastos/bolsas'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { TIPOS_BOLSA } from '../../services/gastos/constantes'
 import { responderError } from './utilidades'
+import { buscarMunicipios } from '../../services/regionesMunicipios'
+import { nombresTiposTramite } from '../../services/catalogosTramites'
 
 // Datos de apoyo para el formulario de gastos (selects y autocompletado)
 export class ApoyoGastosController {
@@ -94,12 +96,34 @@ export class ApoyoGastosController {
             { nombre: { [Op.iLike]: `%${busqueda}%` } }
           ]
         },
-        attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'banco', 'tipoCuenta', 'numeroCuenta', 'correo', 'telefono', 'direccion'],
+        attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'banco', 'tipoCuenta', 'numeroCuenta', 'correo', 'telefono', 'direccion', 'ciudad'],
         order: [['nombre', 'ASC']],
         limit: 20
       })
 
       res.json(terceros)
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // GET /apoyo/tipos-tramite → sugerencias del concepto en los gastos de vehículo
+  static tiposTramite = async (_req: Request, res: Response) => {
+    try {
+      res.json(await nombresTiposTramite())
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // GET /apoyo/municipios?busqueda=  → ciudad del cliente en anticipos (la lista de Trámites)
+  static municipios = async (req: Request, res: Response) => {
+    try {
+      const busqueda = String(req.query.busqueda ?? '').trim()
+      if (busqueda.length < 2) return res.json([])
+
+      const municipios = await buscarMunicipios(busqueda, 15) as { id: number, nombreMunicipio: string, departamento: string }[]
+      res.json(municipios.map(({ id, nombreMunicipio, departamento }) => ({ id, nombreMunicipio, departamento })))
     } catch (error) {
       responderError(res, error)
     }

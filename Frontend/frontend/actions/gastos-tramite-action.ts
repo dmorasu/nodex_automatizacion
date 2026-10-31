@@ -31,6 +31,7 @@ export type DatosGastoTramite = {
   conceptoPago: string
   valorSolicitado: number
   // Solo inmuebles (null en los demás tipos)
+  valorLiquidacion: number | null
   baseRetencion: number | null
   porcentajeRetencion: number | null
   placa: string

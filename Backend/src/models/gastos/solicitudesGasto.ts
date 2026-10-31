@@ -159,6 +159,11 @@ class SolicitudesGasto extends Model {
 
   // ── Retención en la fuente (solo gastos de inmueble; null en los demás) ──
 
+  // Valor de la liquidación (la factura completa). Opcional: con él, el formulario propone
+  // valor solicitado = liquidación − retención (la retención se calcula sobre la base, que puede ser menor)
+  @Column({ type: DataType.DECIMAL(15, 2) })
+  declare valorLiquidacion: string
+
   @Column({ type: DataType.DECIMAL(15, 2) })
   declare retencionBase: string
 

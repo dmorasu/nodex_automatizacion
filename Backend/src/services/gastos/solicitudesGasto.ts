@@ -53,7 +53,8 @@ export type DatosGasto = {
   codigoBpr?: string | null
   // Valor del gasto (sin retención)
   valorSolicitado: number
-  // Solo inmuebles: base (por defecto 0) y porcentaje en % (por defecto el parámetro, 11)
+  // Solo inmuebles: liquidación (opcional), base (por defecto 0) y porcentaje en % (por defecto el parámetro, 11)
+  valorLiquidacion?: number | null
   baseRetencion?: number | null
   porcentajeRetencion?: number | null
   observacion?: string | null
@@ -176,7 +177,15 @@ export const identificacionPorTipo = (codigoTipo: string, datos: Identificacion)
 
 // Valida relaciones y reglas por tipo de gasto, y calcula los valores.
 // Devuelve los campos listos para guardar. Con soloValidar no escribe nada en la base de datos.
-const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloValidar = false) => {
+// `actual` (edición del Administrador en cualquier estado): la forma de pago, el tipo y la bolsa
+// que no cambian no se vuelven a validar, para que un gasto viejo con alguno ya inactivo se pueda
+// seguir corrigiendo en lo demás
+export const prepararDatos = async (
+  datos: DatosGasto,
+  transaction?: Transaction,
+  soloValidar = false,
+  actual?: Pick<SolicitudesGasto, 'formaPagoId' | 'tipoGastoId' | 'bolsaId'>
+) => {
 
   const anticipo = datos.anticipoId
     ? await Anticipos.findByPk(datos.anticipoId, { include: [{ model: Terceros, attributes: ['nombre', 'identificacion'] }], transaction })
@@ -192,7 +201,7 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
   }
 
   const formaPago = await FormasPago.findByPk(datos.formaPagoId, { transaction })
-  if (!formaPago?.activo) throw new ErrorGastos('La forma de pago no existe o está inactiva')
+  if (!formaPago || (!formaPago.activo && formaPago.id !== actual?.formaPagoId)) throw new ErrorGastos('La forma de pago no existe o está inactiva')
 
   const porCajaMenor = formaPago.codigo === FORMA_PAGO_CAJA_MENOR
   if (porCajaMenor && anticipo) throw new ErrorGastos('Los gastos de anticipos no se pagan por caja menor')
@@ -204,11 +213,14 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
     Bolsas.findByPk(anticipo?.bolsaId ?? datos.bolsaId, { transaction })
   ])
 
-  if (!tipoGasto?.activo) throw new ErrorGastos('El tipo de gasto no existe')
+  if (!tipoGasto || (!tipoGasto.activo && tipoGasto.id !== actual?.tipoGastoId)) throw new ErrorGastos('El tipo de gasto no existe')
   if (!operacion) throw new ErrorGastos('La operación no existe')
   // Por defecto reembolsable (se le cobra al cliente). El de un anticipo no: el cliente ya pagó
   const reembolsable = anticipo ? false : datos.reembolsable ?? true
-  validarBolsaDelNuevoGasto(bolsa, porCajaMenor, Boolean(anticipo), reembolsable)
+  if (!bolsa) throw new ErrorGastos('La bolsa no existe o está inactiva')
+  if (bolsa.id !== actual?.bolsaId) validarBolsaDelNuevoGasto(bolsa, porCajaMenor, Boolean(anticipo), reembolsable)
+  // Con la misma bolsa sigue valiendo la regla de los no reembolsables
+  else if (bolsa.sinSaldo && reembolsable) throw new ErrorGastos(`La bolsa ${bolsa.nombre} es de no reembolsables: marque el gasto como no reembolsable o elija otra bolsa`)
 
 
   let tramitadorId = datos.tramitadorId ?? null
@@ -260,10 +272,14 @@ const prepararDatos = async (datos: DatosGasto, transaction?: Transaction, soloV
 }
 
 // Los gastos que no son de inmueble no llevan retención
-export const RETENCION_VACIA = { retencionBase: null, retencionPorcentaje: null, retencionValor: null, retencionTotalPagar: null }
+export const RETENCION_VACIA = { valorLiquidacion: null, retencionBase: null, retencionPorcentaje: null, retencionValor: null, retencionTotalPagar: null }
 
 // Retención de un gasto de inmueble: base por defecto 0 y porcentaje por defecto el parámetro (11 %)
-export const prepararRetencion = async (datos: Pick<DatosGasto, 'baseRetencion' | 'porcentajeRetencion'>) => {
+export const prepararRetencion = async (datos: Pick<DatosGasto, 'valorLiquidacion' | 'baseRetencion' | 'porcentajeRetencion'>) => {
+  // La liquidación es informativa: el valor solicitado lo propone el formulario y se puede cambiar
+  const liquidacion = datos.valorLiquidacion ? Math.round(Number(datos.valorLiquidacion) * 100) / 100 : null
+  if (liquidacion !== null && !(liquidacion > 0)) throw new ErrorGastos('El valor de la liquidación debe ser mayor a cero')
+
   const base = Number(datos.baseRetencion ?? 0)
   if (!(base >= 0)) throw new ErrorGastos('La base de retención no puede ser negativa')
 
@@ -276,6 +292,7 @@ export const prepararRetencion = async (datos: Pick<DatosGasto, 'baseRetencion' 
   const { retencionFuente, totalPagar } = calcularRetencion(baseRedondeada, porcentaje)
 
   return {
+    valorLiquidacion: liquidacion === null ? null : String(liquidacion),
     retencionBase: String(baseRedondeada),
     retencionPorcentaje: String(porcentaje),
     retencionValor: String(retencionFuente),

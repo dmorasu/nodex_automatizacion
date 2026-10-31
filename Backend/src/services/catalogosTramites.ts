@@ -191,3 +191,14 @@ const porId = {
   rechazos: (id: number) => TiposRechazo.findByPk(id),
   areas: (id: number) => Areas.findByPk(id)
 }
+
+// Nombres de los tipos de trámite, sin repetidos: sugerencias del concepto de los gastos de
+// vehículo en Nodex Gastos (formulario y plantilla del cargue masivo)
+export const nombresTiposTramite = async (): Promise<string[]> => {
+  const filas = await db.query<{ nombre: string }>(`
+    SELECT DISTINCT TRIM("nombreTramite") AS nombre FROM "Tramites"
+    WHERE TRIM(COALESCE("nombreTramite", '')) <> ''
+    ORDER BY 1
+  `, { type: QueryTypes.SELECT })
+  return filas.map(f => f.nombre)
+}

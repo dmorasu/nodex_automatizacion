@@ -6,6 +6,7 @@ import { CalendarClock, Wallet } from "lucide-react"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { Bolsa, GastoListado } from "@/src/schemas/gastos"
 import SeleccionGastos from "../gastos/SeleccionGastos"
+import { COLUMNA_CENTRO_COSTOS, COLUMNA_CUATRO_X_MIL, COLUMNA_RETENCION, COLUMNA_TRAMITADOR, COLUMNA_VALOR_PAGADO } from "../gastos/columnasGastos"
 import { claseBotonPrimario } from "../ui/estilos"
 import ModalPago from "./ModalPago"
 import AvisoSaldoAnticipo from "../anticipos/AvisoSaldoAnticipo"
@@ -27,10 +28,15 @@ export default function BandejaPagos({ gastos, bolsas, directo = false }: { gast
             titulo: "Beneficiario",
             valor: g => <><p>{g.beneficiario.nombre}</p><p className="text-[11px] text-slate-400">{g.beneficiario.identificacion}</p></>
           },
+          COLUMNA_TRAMITADOR,
           // Gastos de anticipos: avisa si el cliente no tiene saldo suficiente
           { titulo: "Bolsa", valor: g => <>{g.bolsa?.nombre ?? "—"}<AvisoSaldoAnticipo gasto={g} /></> },
+          COLUMNA_CENTRO_COSTOS,
           { titulo: "Solicitante", valor: g => g.creador?.nombreUsuario },
-          { titulo: "Valor solicitado", alinearDerecha: true, valor: g => <b className="text-slate-800">{formatoMoneda(g.valorSolicitadoPago)}</b> }
+          { titulo: "Valor solicitado", alinearDerecha: true, valor: g => <b className="text-slate-800">{formatoMoneda(g.valorSolicitadoPago)}</b> },
+          COLUMNA_RETENCION,
+          COLUMNA_CUATRO_X_MIL,
+          COLUMNA_VALOR_PAGADO
         ]}
         accion={(seleccionados, limpiar) => (
           <button

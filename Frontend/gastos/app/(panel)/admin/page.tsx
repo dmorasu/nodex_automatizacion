@@ -1,4 +1,5 @@
 import Link from "next/link"
+import ExportarExcel from "@/components/gastos/ExportarExcel"
 import { z } from "zod"
 import { fetchApi } from "@/src/lib/api"
 import { obtenerBolsasActivas, obtenerCatalogos, obtenerOperaciones, obtenerTramitadores } from "@/src/lib/datosGastos"
@@ -194,8 +195,9 @@ export default async function TodosLosGastosPage(props: { searchParams: Promise<
             <button type="submit" className={`${claseBotonPrimario} h-9 flex-1`}>Filtrar</button>
             <Link href="/admin" className={`${claseBotonSecundario} h-9`}>Limpiar</Link>
           </div>
-          <div className="flex items-end">
-            <Link href={`/admin/correccion?${new URLSearchParams(activos)}`} className={`${claseBotonSecundario} h-9 w-full`}>Corrección masiva</Link>
+          <div className="flex items-end gap-2">
+            <Link href={`/admin/correccion?${new URLSearchParams(activos)}`} className={`${claseBotonSecundario} h-9 flex-1`}>Corrección masiva</Link>
+            <ExportarExcel consulta={consulta} archivo="tablero-control" className="h-9" />
           </div>
         </div>
       </form>
@@ -246,6 +248,7 @@ export default async function TodosLosGastosPage(props: { searchParams: Promise<
                 <td className="px-3 py-3 text-slate-600">
                   {g.bolsa?.nombre ?? "—"}
                   <p className="text-[11px] text-slate-400">{g.operacion.nombreOperacion}</p>
+                  {g.operacion.centroDeCostos && <p className="text-[11px] text-slate-400">CC {g.operacion.centroDeCostos}</p>}
                 </td>
                 <td className="px-3 py-3">
                   <div className="space-y-1">

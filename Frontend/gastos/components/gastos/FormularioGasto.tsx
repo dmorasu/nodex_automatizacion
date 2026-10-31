@@ -125,6 +125,7 @@ const datosIniciales = (porcentajeRetencion: number, gasto?: GastoDetalle): Dato
   codigoBpr: gasto?.codigoBpr ?? "",
   valorSolicitado: gasto?.valorSolicitadoPago ? String(Number(gasto.valorSolicitadoPago)) : "",
   // Retención (solo inmuebles): base por defecto 0 y porcentaje por defecto el parámetro (11 %)
+  valorLiquidacion: gasto?.valorLiquidacion ? String(Number(gasto.valorLiquidacion)) : "",
   baseRetencion: gasto?.retencionBase ? String(Number(gasto.retencionBase)) : "0",
   porcentajeRetencion: gasto?.retencionPorcentaje ? aPorcentaje(gasto.retencionPorcentaje) : String(porcentajeRetencion),
   observacion: gasto?.observacion ?? "",
@@ -172,6 +173,39 @@ function Selector({ valor, opciones, onChange, vacio = "Seleccione una opción" 
 }
 
 
+// Cálculo completo, paso a paso, para que quien crea el gasto vea de dónde sale el valor (pedido
+// del usuario: no todas las analistas manejan la retención)
+function CalculoRetencion({ liquidacionC, baseC, porcentaje, retencionC, solicitadoC }: {
+  liquidacionC: number
+  baseC: number
+  porcentaje: string
+  retencionC: number
+  solicitadoC: number
+}) {
+  const conLiquidacion = liquidacionC > 0
+  const resultadoC = (conLiquidacion ? liquidacionC : baseC) - retencionC
+  const fila = (etiqueta: string, valor: string, clase = "") => (
+    <p className={`flex justify-between gap-4 ${clase}`}>
+      <span className="text-slate-500">{etiqueta}</span>
+      <b className="tabular-nums">{valor}</b>
+    </p>
+  )
+
+  return (
+    <div className="mt-4 max-w-md space-y-1.5 rounded-md bg-slate-50 px-4 py-3 text-xs">
+      {conLiquidacion && fila("Valor liquidación", formatoMoneda(liquidacionC / 100))}
+      {fila("Base de retención", formatoMoneda(baseC / 100))}
+      {fila(`Retención (${porcentaje} % × ${formatoMoneda(baseC / 100)})`, `− ${formatoMoneda(retencionC / 100)}`)}
+      <div className="border-t border-slate-200 pt-1.5">
+        {fila(conLiquidacion ? "Valor a solicitar (liquidación − retención)" : "Total a pagar (base − retención)", formatoMoneda(resultadoC / 100), "text-sm text-slate-800")}
+      </div>
+      {conLiquidacion && solicitadoC > 0 && solicitadoC !== resultadoC &&
+        fila("Valor solicitado escrito", formatoMoneda(solicitadoC / 100), "text-amber-700")}
+    </div>
+  )
+}
+
+
 // =====================================
 // FORMULARIO
 // =====================================
@@ -184,7 +218,9 @@ export default function FormularioGasto({
   porcentajeRetencion,
   gasto,
   anticipo,
-  cajas = []
+  cajas = [],
+  tiposTramite = [],
+  edicionAdmin = false
 }: {
   catalogos: Catalogos
   operaciones: Operacion[]
@@ -195,6 +231,11 @@ export default function FormularioGasto({
   anticipo?: AnticipoDelGasto
   // Cajas menores activas (Bogotá, Medellín…): con forma de pago Caja menor se elige una
   cajas?: BolsaApoyo[]
+  // Gastos de vehículo: el concepto sugiere los tipos de trámite (y acepta cualquier texto)
+  tiposTramite?: string[]
+  // Administrador de Gastos con el gasto ya en trámite de pago o después: cambia datos y bolsa
+  // (el backend hace los ajustes de dinero) con motivo; el valor y la forma de pago no se tocan aquí
+  edicionAdmin?: boolean
 }) {
   const router = useRouter()
   const [guardando, startGuardar] = useTransition()
@@ -222,6 +263,21 @@ export default function FormularioGasto({
 
   const cambiar = <K extends keyof DatosGasto>(campo: K, valor: DatosGasto[K]) =>
     setDatos(actuales => ({ ...actuales, [campo]: valor }))
+
+  // Inmueble con liquidación: la base sigue a la liquidación mientras no se haya cambiado aparte
+  // (la retención puede aplicar solo a una parte) y el valor solicitado se propone como
+  // liquidación − retención; la analista lo puede corregir a mano después
+  const cambiarRetencion = (campo: "valorLiquidacion" | "baseRetencion" | "porcentajeRetencion", valor: string) =>
+    setDatos(actuales => {
+      const nuevos = { ...actuales, [campo]: valor }
+      const baseSeguia = !Number(actuales.baseRetencion) || centavos(actuales.baseRetencion) === centavos(actuales.valorLiquidacion)
+      if (campo === "valorLiquidacion" && baseSeguia) nuevos.baseRetencion = valor || "0"
+
+      const liquidacionC = centavos(nuevos.valorLiquidacion)
+      if (liquidacionC <= 0 || edicionAdmin) return nuevos
+      const retencion = Math.round(centavos(nuevos.baseRetencion) * Number(nuevos.porcentajeRetencion || 0) / 100)
+      return { ...nuevos, valorSolicitado: String((liquidacionC - retencion) / 100) }
+    })
 
   const codigoTipo = catalogos.tiposGasto.find(t => t.id === datos.tipoGastoId)?.codigo
 
@@ -257,6 +313,8 @@ export default function FormularioGasto({
         operacionId: actuales.operacionId ?? t.operacionesId,
         tramitadorId: actuales.tramitadorId ?? t.tramitadorId,
         placa: actuales.placa || (t.placa ?? ""),
+        // Trámite de vehículo: el concepto empieza con su tipo de trámite (se puede cambiar)
+        conceptoPago: actuales.conceptoPago || (t.placa && t.tramite ? t.tramite.nombreTramite.trim() : ""),
         matriculaInmobiliaria: actuales.matriculaInmobiliaria || (t.matriculaInmobiliaria ?? ""),
         nombreClienteBanco: actuales.nombreClienteBanco || (t.clientes?.nombreCliente ?? ""),
         identificacionClienteBanco: actuales.identificacionClienteBanco || (t.clientes?.identificacionCliente ?? "")
@@ -277,6 +335,11 @@ export default function FormularioGasto({
 
   const guardar = (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (edicionAdmin && (datos.motivo ?? "").trim().length < 3) {
+      toast.error("Escriba el motivo de la corrección")
+      return
+    }
 
     if (!beneficiario && !beneficiarioNuevo) {
       toast.error("Debe seleccionar o registrar el beneficiario del pago")
@@ -299,6 +362,7 @@ export default function FormularioGasto({
       ...datos,
       ...(anticipo ? { anticipoId: anticipo.id, bolsaId: anticipo.bolsa.id, reembolsable: false } : {}),
       // La retención solo se envía en gastos de inmueble
+      valorLiquidacion: llevaRetencion && datos.valorLiquidacion ? datos.valorLiquidacion : null,
       baseRetencion: llevaRetencion ? datos.baseRetencion : null,
       porcentajeRetencion: llevaRetencion ? datos.porcentajeRetencion : null,
       beneficiarioId: beneficiario?.id ?? null,
@@ -419,6 +483,9 @@ export default function FormularioGasto({
           </Campo>
 
           <Campo etiqueta="Forma de pago" obligatorio>
+            {edicionAdmin ? (
+              <input value={catalogos.formasPago.find(f => f.id === datos.formaPagoId)?.nombre ?? ""} disabled className={claseInput} />
+            ) : (
             <Selector
               valor={datos.formaPagoId}
               // Los gastos de anticipos se pagan de la bolsa del anticipo, nunca por caja menor
@@ -429,16 +496,22 @@ export default function FormularioGasto({
                 if (aCaja !== porCajaMenor) cambiar("bolsaId", null)
               }}
             />
+            )}
           </Campo>
 
           <Campo etiqueta="Concepto del pago" obligatorio className="sm:col-span-2">
             <input
               value={datos.conceptoPago}
               onChange={e => cambiar("conceptoPago", e.target.value)}
+              list={codigoTipo === "VEHICULO" && tiposTramite.length ? "tipos-tramite" : undefined}
+              autoComplete="off"
               maxLength={200}
               placeholder="Ej: Pago derechos de tránsito"
               className={claseInput}
             />
+            <datalist id="tipos-tramite">
+              {tiposTramite.map(nombre => <option key={nombre} value={nombre} />)}
+            </datalist>
           </Campo>
 
           <Campo etiqueta="Número de factura">
@@ -614,29 +687,28 @@ export default function FormularioGasto({
 
       {/* ── VALOR ── */}
       <Seccion titulo="Valor">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Campo etiqueta="Valor solicitado" obligatorio>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={datos.valorSolicitado}
-              onChange={e => cambiar("valorSolicitado", e.target.value)}
-              placeholder="0"
-              className={claseInput}
-            />
-          </Campo>
-
+        <div className={`grid gap-4 ${llevaRetencion ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
           {/* Retención: solo gastos de inmueble */}
           {llevaRetencion && (
             <>
+              <Campo etiqueta="Valor liquidación">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={datos.valorLiquidacion ?? ""}
+                  onChange={e => cambiarRetencion("valorLiquidacion", e.target.value)}
+                  placeholder="0"
+                  className={claseInput}
+                />
+              </Campo>
               <Campo etiqueta="Base de retención">
                 <input
                   type="number"
                   min={0}
                   step="0.01"
                   value={datos.baseRetencion ?? ""}
-                  onChange={e => cambiar("baseRetencion", e.target.value)}
+                  onChange={e => cambiarRetencion("baseRetencion", e.target.value)}
                   placeholder="0 si no aplica"
                   className={claseInput}
                 />
@@ -648,12 +720,25 @@ export default function FormularioGasto({
                   max={100}
                   step="0.01"
                   value={datos.porcentajeRetencion ?? ""}
-                  onChange={e => cambiar("porcentajeRetencion", e.target.value)}
+                  onChange={e => cambiarRetencion("porcentajeRetencion", e.target.value)}
                   className={claseInput}
                 />
               </Campo>
             </>
           )}
+
+          <Campo etiqueta="Valor solicitado" obligatorio>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={datos.valorSolicitado}
+              onChange={e => cambiar("valorSolicitado", e.target.value)}
+              placeholder="0"
+              disabled={edicionAdmin}
+              className={claseInput}
+            />
+          </Campo>
         </div>
 
         {excedeSaldo && anticipo && (
@@ -665,16 +750,13 @@ export default function FormularioGasto({
         )}
 
         {llevaRetencion && (
-          <div className="mt-4 grid gap-x-6 gap-y-2 rounded-md bg-slate-50 px-4 py-3 text-xs sm:grid-cols-2">
-            <p className="flex justify-between">
-              <span className="text-slate-500">Retención ({datos.porcentajeRetencion || 0} % de la base)</span>
-              <b>{formatoMoneda(retencionC / 100)}</b>
-            </p>
-            <p className="flex justify-between">
-              <span className="text-slate-500">Total a pagar (base − retención)</span>
-              <b className="text-slate-800">{formatoMoneda((baseC - retencionC) / 100)}</b>
-            </p>
-          </div>
+          <CalculoRetencion
+            liquidacionC={centavos(datos.valorLiquidacion)}
+            baseC={baseC}
+            porcentaje={datos.porcentajeRetencion || "0"}
+            retencionC={retencionC}
+            solicitadoC={centavos(datos.valorSolicitado)}
+          />
         )}
       </Seccion>
 
@@ -699,6 +781,19 @@ export default function FormularioGasto({
         />
       </Seccion>
 
+
+      {edicionAdmin && (
+        <Seccion titulo="Motivo de la corrección">
+          <textarea
+            value={datos.motivo ?? ""}
+            onChange={e => cambiar("motivo", e.target.value)}
+            rows={2}
+            maxLength={500}
+            required
+            className={claseTextarea}
+          />
+        </Seccion>
+      )}
 
       <div className="flex justify-end gap-3">
         <button type="button" onClick={() => router.back()} className={claseBotonSecundario}>Cancelar</button>

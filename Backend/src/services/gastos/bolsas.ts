@@ -76,11 +76,18 @@ export const validarBolsaDelGasto = (gasto: SolicitudesGasto, bolsa: Bolsas) => 
 }
 
 // Total pagado desde cada bolsa (pagos menos reintegros): es lo que muestran las bolsas sin saldo
-// en lugar del saldo, que no sirve porque no se recargan
+// en lugar del saldo, que no sirve porque no se recargan. También cuentan los reversos y ajustes de
+// un gasto (Corregir valor, corrección masiva, cambio de bolsa del administrador, 2026-10-31)
 export const totalPagadoPorBolsa = async (bolsaIds: number[]) => {
   if (!bolsaIds.length) return new Map<number, number>()
   const filas = await MovimientosBolsa.findAll({
-    where: { bolsaId: { [Op.in]: bolsaIds }, tipo: { [Op.in]: [TIPOS_MOVIMIENTO_BOLSA.PAGO, TIPOS_MOVIMIENTO_BOLSA.REINTEGRO] } },
+    where: {
+      bolsaId: { [Op.in]: bolsaIds },
+      [Op.or]: [
+        { tipo: { [Op.in]: [TIPOS_MOVIMIENTO_BOLSA.PAGO, TIPOS_MOVIMIENTO_BOLSA.REINTEGRO] } },
+        { tipo: { [Op.in]: [TIPOS_MOVIMIENTO_BOLSA.REVERSO, TIPOS_MOVIMIENTO_BOLSA.AJUSTE] }, solicitudGastoId: { [Op.ne]: null } }
+      ]
+    },
     attributes: ['bolsaId', [fn('SUM', col('valor')), 'total']],
     group: ['bolsaId'],
     raw: true

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { fetchApi } from "@/src/lib/api"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import BandejaDescargaDocumentos from "@/components/legalizacion/BandejaDescargaDocumentos"
-import ExportarCsv from "@/components/legalizacion/ExportarCsv"
+import ExportarExcel from "@/components/gastos/ExportarExcel"
 import FiltrosLegalizacion, { filtrosActivos, type FiltrosLegalizacion as Filtros } from "@/components/legalizacion/FiltrosLegalizacion"
 
 const MAXIMO_BANDEJA = 100
@@ -51,7 +51,7 @@ export default async function DescargasPage(props: { searchParams: Promise<Filtr
         <p className="text-xs text-amber-700">
           {total > MAXIMO_BANDEJA && `Se muestran ${MAXIMO_BANDEJA} de ${total} gastos. Use los filtros o exporte el listado completo.`}
         </p>
-        {total > 0 && <ExportarCsv consulta={consulta} />}
+        {total > 0 && <ExportarExcel consulta={consulta} archivo="legalizacion-documentos" />}
       </div>
 
       <BandejaDescargaDocumentos gastos={registros} />

@@ -1,10 +1,11 @@
 import Link from "next/link"
 import { fetchApi } from "@/src/lib/api"
 import { obtenerCatalogos, obtenerTasas } from "@/src/lib/datosGastos"
-import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
+import { formatoFecha, formatoFechaHoraColombia, formatoMoneda } from "@/src/lib/formato"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import BotonFactura from "./BotonFactura"
-import ExportarCsv from "./ExportarCsv"
+import ExportarExcel from "../gastos/ExportarExcel"
+import { celdaCentroCostos, celdaRetencion, celdaTramitador } from "../gastos/columnasGastos"
 import { EstadoTramiteNodex, EtiquetaSoporteTramitador } from "./SeguimientoTramitador"
 
 const MAXIMO_BANDEJA = 100
@@ -16,13 +17,19 @@ export default async function TablaGastosPorFacturar({
   filtros,
   busqueda,
   vacio,
-  avisoSoporte = false
+  archivo,
+  avisoSoporte = false,
+  conCreacion = false
 }: {
   filtros: Record<string, string>
   busqueda?: string
   vacio: string
+  // Nombre del Excel que se descarga (ej. legalizacion-sin-factura)
+  archivo: string
   // Muestra el aviso de que hay un soporte del tramitador para revisar
   avisoSoporte?: boolean
+  // Columna con la fecha y hora de creación del gasto (Contabilidad)
+  conCreacion?: boolean
 }) {
   const consulta = new URLSearchParams({ alcance: "todos", estado: "PAGADO", tamano: String(MAXIMO_BANDEJA), ...filtros })
   if (busqueda) consulta.set("busqueda", busqueda)
@@ -42,7 +49,7 @@ export default async function TablaGastosPorFacturar({
         <p className="text-xs text-amber-700">
           {total > MAXIMO_BANDEJA && `Se muestran ${MAXIMO_BANDEJA} de ${total} gastos. Use los filtros o exporte el listado completo.`}
         </p>
-        {total > 0 && <ExportarCsv consulta={consulta} />}
+        {total > 0 && <ExportarExcel consulta={consulta} archivo={archivo} />}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -51,9 +58,13 @@ export default async function TablaGastosPorFacturar({
             <tr>
               <th className="px-4 py-3 font-semibold">Gasto</th>
               <th className="px-4 py-3 font-semibold">Beneficiario</th>
+              <th className="px-4 py-3 font-semibold">Tramitador</th>
               <th className="px-4 py-3 font-semibold">Bolsa</th>
+              <th className="px-4 py-3 font-semibold">Centro de costos</th>
               <th className="px-4 py-3 font-semibold">Trámite en Nodex</th>
+              {conCreacion && <th className="px-4 py-3 font-semibold">Creado</th>}
               <th className="px-4 py-3 font-semibold">Fecha de pago</th>
+              <th className="px-4 py-3 font-semibold text-right">Retención</th>
               <th className="px-4 py-3 font-semibold text-right">Valor pagado</th>
               <th className="px-4 py-3 font-semibold text-right">4x1000</th>
               <th className="px-4 py-3" />
@@ -65,17 +76,20 @@ export default async function TablaGastosPorFacturar({
                 <td className="px-4 py-3">
                   <Link href={`/solicitudes/${gasto.id}`} className="font-semibold text-emerald-700 hover:underline">{gasto.codigo}</Link>
                   <p className="text-[11px] text-slate-400">{gasto.conceptoPago}</p>
-                  {gasto.tramitador && <p className="text-[11px] text-slate-400">Tramitador: {gasto.tramitador.nombreTramitador}</p>}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{gasto.beneficiario.nombre}</td>
+                <td className="px-4 py-3 text-slate-600">{celdaTramitador(gasto)}</td>
                 <td className="px-4 py-3 text-slate-600">{gasto.bolsa?.nombre ?? "—"}</td>
+                <td className="px-4 py-3 text-slate-600">{celdaCentroCostos(gasto)}</td>
                 <td className="px-4 py-3">
                   <div className="space-y-1">
                     <EstadoTramiteNodex tramiteId={gasto.solicitudTramiteId} estado={gasto.estadoTramite} reporteRealizado={gasto.reporteRealizado} />
                     {avisoSoporte && <EtiquetaSoporteTramitador estado={gasto.soporteTramitador} />}
                   </div>
                 </td>
+                {conCreacion && <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatoFechaHoraColombia(gasto.createdAt)}</td>}
                 <td className="px-4 py-3 text-slate-500">{formatoFecha(gasto.fechaPago)}</td>
+                <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{celdaRetencion(gasto)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatoMoneda(gasto.valorRealmentePagado)}</td>
                 <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">
                   {gasto.factura

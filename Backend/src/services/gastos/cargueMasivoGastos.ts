@@ -7,6 +7,8 @@ import Bolsas from '../../models/gastos/bolsas'
 import TiposGasto from '../../models/gastos/tiposGasto'
 import FormasPago from '../../models/gastos/formasPago'
 import Terceros from '../../models/gastos/terceros'
+import Tramite from '../../models/tramite'
+import { nombresTiposTramite } from '../catalogosTramites'
 import { crearGastoEnTransaccion, validarGasto, type DatosGasto } from './solicitudesGasto'
 import { ErrorGastos } from './errores'
 import { TIPOS_GASTO } from './constantes'
@@ -25,7 +27,7 @@ const COLUMNAS: { clave: string, titulo: string, ancho: number, nota: string }[]
   { clave: 'bolsaId', titulo: 'bolsaId', ancho: 9, nota: 'Obligatorio (hoja Bolsas)' },
   { clave: 'tipoGastoId', titulo: 'tipoGastoId', ancho: 12, nota: 'Obligatorio (hoja TiposGasto)' },
   { clave: 'formaPagoId', titulo: 'formaPagoId', ancho: 12, nota: 'Obligatorio (hoja FormasPago)' },
-  { clave: 'conceptoPago', titulo: 'conceptoPago', ancho: 34, nota: 'Obligatorio. Máximo 200 caracteres' },
+  { clave: 'conceptoPago', titulo: 'conceptoPago', ancho: 34, nota: 'Obligatorio. Máximo 200 caracteres. Se puede elegir un tipo de trámite de la lista (hoja TiposTramite) o escribir otro. En los vehículos de un trámite viene con su tipo de trámite' },
   { clave: 'valorSolicitado', titulo: 'valorSolicitado', ancho: 15, nota: 'Obligatorio. Número sin puntos ni signo $ (ej: 150000)' },
   { clave: 'placa', titulo: 'placa', ancho: 10, nota: 'Obligatoria si el tipo es Vehículo (opcional en CTL, RUNT y Cámara de Comercio)' },
   { clave: 'transito', titulo: 'transito', ancho: 22, nota: 'Obligatorio si el tipo es Vehículo' },
@@ -61,13 +63,14 @@ type Fila = { numero: number, valores: Record<string, string> }
 // Si se indican trámites, la plantilla viene con una fila por trámite (número, operación,
 // placa/matrícula y tipo sugerido) para completar solo los que tengan gasto
 export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: number[] | null) => {
-  const [bolsas, tipos, formas, operaciones, terceros, tramites] = await Promise.all([
+  const [bolsas, tipos, formas, operaciones, terceros, tiposTramite, tramites] = await Promise.all([
     Bolsas.findAll({ where: { activo: true }, attributes: ['id', 'nombre', 'lineaNegocio'], order: [['nombre', 'ASC']] }),
     TiposGasto.findAll({ where: { activo: true }, attributes: ['id', 'codigo', 'nombre'], order: [['id', 'ASC']] }),
     FormasPago.findAll({ where: { activo: true }, attributes: ['id', 'nombre'], order: [['nombre', 'ASC']] }),
     Operaciones.findAll({ attributes: ['id', 'nombreOperacion'], order: [['nombreOperacion', 'ASC']] }),
     // Para buscar la identificación del beneficiario (sin la cuenta bancaria)
     Terceros.findAll({ where: { activo: true }, attributes: ['identificacion', 'tipoIdentificacion', 'nombre', 'banco'], order: [['nombre', 'ASC']] }),
+    nombresTiposTramite(),
     tramiteIds.length
       ? SolicitudTramites.findAll({
         where: {
@@ -76,6 +79,8 @@ export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: numb
           ...(soloPropiosDe && { usuarioId: soloPropiosDe })
         },
         attributes: ['id', 'operacionesId', 'placa', 'matriculaInmobiliaria'],
+        // Su tipo de trámite precarga el concepto de los gastos de vehículo
+        include: [{ model: Tramite, attributes: ['nombreTramite'] }],
         order: [['id', 'ASC']]
       })
       : Promise.resolve([])
@@ -96,8 +101,24 @@ export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: numb
       operacionId: t.operacionesId,
       tipoGastoId: t.placa ? idTipo(TIPOS_GASTO.VEHICULO) : t.matriculaInmobiliaria ? idTipo(TIPOS_GASTO.INMUEBLE) : '',
       placa: t.placa ?? '',
-      matriculaInmobiliaria: t.matriculaInmobiliaria ?? ''
+      matriculaInmobiliaria: t.matriculaInmobiliaria ?? '',
+      conceptoPago: t.placa ? t.tramite?.nombreTramite?.trim() ?? '' : ''
     })
+  }
+
+  // Concepto: lista de tipos de trámite para elegir, pero acepta cualquier texto (sin mensaje de
+  // error), como en el formulario. Excel no deja poner la validación a la columna completa sin
+  // fórmulas: va a las filas que admite el cargue
+  const columnaConcepto = COLUMNAS.findIndex(c => c.clave === 'conceptoPago') + 1
+  if (tiposTramite.length) {
+    for (let fila = 2; fila <= MAXIMO_FILAS + 1; fila++) {
+      hoja.getRow(fila).getCell(columnaConcepto).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`TiposTramite!$A$2:$A$${tiposTramite.length + 1}`],
+        showErrorMessage: false
+      }
+    }
   }
 
   const encabezado = hoja.getRow(1)
@@ -119,6 +140,7 @@ export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: numb
     tipos.map(t => ({ id: t.id, nombre: t.nombre })))
   apoyo('FormasPago', [{ header: 'id', key: 'id', width: 6 }, { header: 'nombre', key: 'nombre', width: 24 }],
     formas.map(f => ({ id: f.id, nombre: f.nombre })))
+  apoyo('TiposTramite', [{ header: 'nombre', key: 'nombre', width: 50 }], tiposTramite.map(nombre => ({ nombre })))
   apoyo('Operaciones', [{ header: 'id', key: 'id', width: 6 }, { header: 'nombre', key: 'nombre', width: 40 }],
     operaciones.map(o => ({ id: o.id, nombre: o.nombreOperacion })))
   // Puede ser larga: encabezado fijo y filtro para buscar por nombre o identificación
@@ -189,8 +211,9 @@ const leerArchivo = async (buffer: Buffer): Promise<Fila[]> => {
       const columna = COLUMNAS.find(c => c.titulo === titulo)
       if (columna) valores[columna.clave] = textoCelda(row.getCell(i).value)
     })
-    // Filas en blanco (o solo con datos prellenados del trámite) no se cargan
-    const conDatosDeGasto = ['conceptoPago', 'valorSolicitado', 'beneficiarioIdentificacion', 'bolsaId', 'formaPagoId']
+    // Filas en blanco (o solo con datos prellenados del trámite) no se cargan. El concepto no
+    // cuenta: en los vehículos viene prellenado con el tipo de trámite (2026-10-31)
+    const conDatosDeGasto = ['valorSolicitado', 'beneficiarioIdentificacion', 'bolsaId', 'formaPagoId']
       .some(c => valores[c])
     if (conDatosDeGasto) filas.push({ numero, valores })
   })

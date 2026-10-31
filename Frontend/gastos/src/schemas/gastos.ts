@@ -72,7 +72,8 @@ export const TerceroSchema = z.object({
   correo: textoNulo,
   // Clientes del banco que pagan anticipos
   telefono: textoNulo.optional(),
-  direccion: textoNulo.optional()
+  direccion: textoNulo.optional(),
+  ciudad: textoNulo.optional()
 })
 
 export const TramiteApoyoSchema = z.object({
@@ -106,7 +107,7 @@ export const GastoListadoSchema = z.object({
   estado: ItemCatalogoSchema,
   tipoGasto: ItemCatalogoSchema,
   beneficiario: z.object({ id: z.number(), identificacion: z.string(), nombre: z.string() }),
-  operacion: z.object({ id: z.number(), nombreOperacion: z.string() }),
+  operacion: z.object({ id: z.number(), nombreOperacion: z.string(), centroDeCostos: textoNulo.optional() }),
   bolsa: z.object({ id: z.number(), nombre: z.string() }).nullable(),
   creador: UsuarioCortoSchema,
   factura: z.object({
@@ -117,6 +118,8 @@ export const GastoListadoSchema = z.object({
     valorLegalizado: z.string()
   }).nullable(),
   tramitador: z.object({ id: z.number(), nombreTramitador: z.string() }).nullish(),
+  // Solo gastos de inmueble
+  retencionValor: textoNulo.optional(),
   legalizacionCaja: z.lazy(() => LegalizacionCajaCortaSchema).nullish(),
   // Seguimiento desde la app de tramitadores
   solicitudTramiteId: z.number().nullish(),
@@ -221,6 +224,7 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
   identificacionClienteBanco: textoNulo,
   codigoBpr: textoNulo,
   // Retención (solo gastos de inmueble; null en los demás)
+  valorLiquidacion: textoNulo.optional(),
   retencionBase: textoNulo.optional(),
   retencionPorcentaje: textoNulo.optional(),
   retencionValor: textoNulo.optional(),
@@ -262,6 +266,8 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
   permisos: z.object({
     registrarFactura: z.boolean(),
     editar: z.boolean(),
+    // Administrador de Gastos fuera de Solicitado: edita con motivo, sin cambiar valor ni forma de pago
+    edicionAdmin: z.boolean().optional(),
     anular: z.boolean(),
     subirDocumentos: z.boolean(),
     soloLectura: z.boolean().optional()
@@ -334,9 +340,13 @@ export const LoteDetalleSchema = LoteListadoSchema.omit({ cantidadGastos: true }
     valorSolicitadoPago: z.string(),
     valorProgramado: dinero,
     valorRealmentePagado: dinero,
+    retencionValor: textoNulo.optional(),
     estado: z.object({ codigo: z.string(), nombre: z.string() }),
     beneficiario: z.object({ id: z.number(), identificacion: z.string(), nombre: z.string() }),
     creador: UsuarioCortoSchema,
+    tramitador: z.object({ id: z.number(), nombreTramitador: z.string() }).nullish(),
+    factura: z.object({ id: z.number(), cuatroXMil: z.string() }).nullish(),
+    operacion: z.object({ centroDeCostos: textoNulo.optional() }).nullish(),
     anticipoId: z.number().nullish(),
     anticipo: z.object({ id: z.number(), codigo: z.string(), cliente: z.object({ nombre: z.string() }).nullish() }).nullish(),
     saldoClienteAnticipo: z.coerce.string().nullish(),
@@ -563,10 +573,13 @@ export type DatosGasto = {
   identificacionClienteBanco: string
   codigoBpr: string
   valorSolicitado: string
-  // Solo inmuebles: base (por defecto 0) y porcentaje en % (por defecto 11)
+  // Solo inmuebles: liquidación (opcional), base (por defecto 0) y porcentaje en % (por defecto 11)
+  valorLiquidacion: string | null
   baseRetencion: string | null
   porcentajeRetencion: string | null
   observacion: string
+  // Edición del Administrador fuera de Solicitado (obligatorio allí)
+  motivo?: string
   beneficiarioId: number | null
   beneficiario: {
     tipoIdentificacion: string
@@ -663,6 +676,11 @@ export const AnticipoListadoSchema = z.object({
   matriculaInmobiliaria: textoNulo,
   valorConsignado: z.string(),
   fechaConsignacion: z.string(),
+  // Obligatoria cuando no hay soporte de la consignación
+  referenciaPago: textoNulo.optional(),
+  // Solicitudes de factura: tarifa (fracción) y valor del IVA sobre la base (consignado o recibido)
+  ivaPorcentaje: textoNulo.optional(),
+  ivaValor: textoNulo.optional(),
   valorRecibido: dinero,
   reciboCaja: textoNulo,
   numeroFactura: textoNulo,
@@ -695,7 +713,7 @@ export const AnticipoDetalleSchema = AnticipoListadoSchema.omit({ cantidadGastos
   fechaConfirmacion: textoNulo,
   cliente: z.object({
     id: z.number(), tipoIdentificacion: z.string(), identificacion: z.string(), nombre: z.string(),
-    telefono: textoNulo, direccion: textoNulo
+    telefono: textoNulo, direccion: textoNulo, ciudad: textoNulo.optional()
   }),
   creador: UsuarioCortoSchema,
   confirmador: UsuarioCortoSchema,
@@ -760,7 +778,8 @@ export const esDocumentoFactura = (documento: { tipoDocumento: { codigo?: string
 export type DatosAnticipo = {
   clase: "ANTICIPO" | "FACTURA"
   tipo: "VEHICULO" | "INMUEBLE"
-  cliente: { tipoIdentificacion: "CC" | "NIT", identificacion: string, nombre: string, telefono: string, direccion: string }
+  // ciudad: obligatoria solo en las solicitudes de factura
+  cliente: { tipoIdentificacion: "CC" | "NIT", identificacion: string, nombre: string, telefono: string, direccion: string, ciudad: string }
   clienteEmpresarialId: number | null
   operacionId: number | null
   bolsaId: number | null
@@ -769,6 +788,8 @@ export type DatosAnticipo = {
   matriculaInmobiliaria: string
   valorConsignado: string
   fechaConsignacion: string
+  // Obligatoria si no se adjunta el soporte de la consignación
+  referenciaPago: string
   observacion: string
 }
 
@@ -777,7 +798,7 @@ export const EstadoCuentaClienteSchema = z.object({
   bolsa: z.object({ id: z.number(), nombre: z.string() }),
   cliente: z.object({
     id: z.number(), nombre: z.string(), tipoIdentificacion: z.string(), identificacion: z.string(),
-    telefono: textoNulo.optional(), direccion: textoNulo.optional()
+    telefono: textoNulo.optional(), direccion: textoNulo.optional(), ciudad: textoNulo.optional()
   }),
   saldo: SaldoClienteSchema.nullable(),
   periodo: z.object({

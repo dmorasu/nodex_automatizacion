@@ -2,6 +2,7 @@ import Link from "next/link"
 import { fetchApi } from "@/src/lib/api"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import BandejaContabilizarGastos from "@/components/contabilidad/BandejaContabilizarGastos"
+import ExportarExcel from "@/components/gastos/ExportarExcel"
 import BandejaSoportes from "@/components/legalizacion/BandejaSoportes"
 import TablaGastosPorFacturar from "@/components/legalizacion/TablaGastosPorFacturar"
 import Buscador from "@/components/ui/Buscador"
@@ -44,6 +45,8 @@ export default async function NoReembolsablesPage(props: { searchParams: Promise
             filtros={{ reembolsable: "no" }}
             busqueda={searchParams.busqueda}
             vacio="No hay gastos no reembolsables pagados sin factura."
+            archivo="contabilidad-no-reembolsables-sin-factura"
+            conCreacion
             avisoSoporte
           />
         </>
@@ -76,9 +79,12 @@ async function PorContabilizar() {
 
   return (
     <div className="space-y-3">
-      {total > MAXIMO_BANDEJA && (
-        <p className="text-xs text-amber-700">Se muestran {MAXIMO_BANDEJA} de {total} gastos pendientes.</p>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-amber-700">
+          {total > MAXIMO_BANDEJA && `Se muestran ${MAXIMO_BANDEJA} de ${total} gastos pendientes.`}
+        </p>
+        {total > 0 && <ExportarExcel consulta={consulta} archivo="contabilidad-por-contabilizar" />}
+      </div>
       <BandejaContabilizarGastos gastos={registros} />
     </div>
   )

@@ -38,6 +38,10 @@ export const validarGasto = [
     .toFloat(),
 
   // Retención (solo inmuebles; vacía = valores por defecto)
+  body('valorLiquidacion')
+    .optional({ values: 'falsy' })
+    .isFloat({ gt: 0 }).withMessage('El valor de la liquidación debe ser un número mayor a cero')
+    .toFloat(),
   body('baseRetencion')
     .optional({ values: 'falsy' })
     .isFloat({ min: 0 }).withMessage('La base de retención debe ser un número mayor o igual a cero')
@@ -58,6 +62,8 @@ export const validarGasto = [
   textoOpcional('identificacionClienteBanco', 30),
   textoOpcional('codigoBpr', 50),
   textoOpcional('observacion', 2000),
+  // Solo en la edición del Administrador fuera de Solicitado (el servicio lo exige)
+  textoOpcional('motivo', 500),
 
   body('beneficiario').optional({ values: 'null' }).isObject().withMessage('Beneficiario no válido'),
   body('beneficiario.identificacion').optional().isString().trim().isLength({ max: 30 }),
@@ -294,7 +300,9 @@ export const validarListado = [
   query('conTramite').optional({ values: 'falsy' }).isIn(['si', 'no']),
   query('anticipo').optional({ values: 'falsy' }).isIn(['si', 'no']),
   query('reintegroPendiente').optional({ values: 'falsy' }).isIn(['si']),
-  query(['operacionId', 'tramitadorId', 'creadoPor']).optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Filtro no válido'),
+  query(['operacionId', 'tramitadorId', 'creadoPor', 'lotePagoId']).optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Filtro no válido'),
+  // Nombre del archivo exportado (solo letras, números y guiones)
+  query('archivo').optional({ values: 'falsy' }).matches(/^[a-z0-9-]{1,50}$/).withMessage('Nombre de archivo no válido'),
   query(['desde', 'hasta', 'pagoDesde', 'pagoHasta']).optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida'),
   query('orden').optional({ values: 'falsy' }).isIn(['recientes', 'antiguos', 'pagoReciente', 'valorMayor', 'valorMenor']),
   query('totales').optional({ values: 'falsy' }).isIn(['si']),

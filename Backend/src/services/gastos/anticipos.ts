@@ -12,15 +12,17 @@ import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { registrarMovimientos } from './bolsas'
 import {
-  BOLSA_DE_CLASE, CLASES_ANTICIPO, ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_ANTICIPO, TIPOS_DOCUMENTO,
+  BOLSA_DE_CLASE, CLASES_ANTICIPO, ESTADOS_ANTICIPO, ESTADOS_GASTO, PARAMETROS, TIPOS_ANTICIPO, TIPOS_DOCUMENTO,
   TIPOS_MOVIMIENTO_BOLSA, type ClaseAnticipo, type EstadoAnticipo
 } from './constantes'
 import { ErrorGastos } from './errores'
+import { obtenerParametro } from './parametros'
 import { formatoMoneda } from './formato'
 
 // =====================================
 // ANTICIPOS DE CLIENTES DEL BANCO
-// 1. La operación registra el anticipo con el soporte de la consignación (POR_CONFIRMAR).
+// 1. La operación registra el anticipo con el soporte de la consignación o, si no lo tiene, la
+//    referencia del pago (POR_CONFIRMAR).
 // 2. Contabilidad revisa en el banco que el dinero entró:
 //    · lo confirma con el recibo de caja y el valor que de verdad entró (CONFIRMADO): suma a la
 //      bolsa de anticipos a nombre del cliente;
@@ -39,6 +41,8 @@ export type DatosCliente = {
   nombre: string
   telefono: string
   direccion: string
+  // Obligatoria solo en las solicitudes de factura
+  ciudad?: string | null
 }
 
 export type DatosAnticipo = {
@@ -54,6 +58,8 @@ export type DatosAnticipo = {
   matriculaInmobiliaria?: string | null
   valorConsignado: number
   fechaConsignacion: string
+  // Obligatoria si no se adjunta el soporte de la consignación
+  referenciaPago?: string | null
   observacion?: string | null
 }
 
@@ -88,6 +94,17 @@ const generarCodigo = (clase: ClaseAnticipo, id: number, fecha: Date) =>
 
 const esFactura = (anticipo: { clase: string }) => anticipo.clase === CLASES_ANTICIPO.FACTURA
 
+// IVA sobre la base (en centavos). Sin tarifa guardada toma la del parámetro
+const calcularIva = async (base: number, porcentajeGuardado?: string | null) => {
+  const porcentaje = porcentajeGuardado !== null && porcentajeGuardado !== undefined
+    ? Number(porcentajeGuardado)
+    : await obtenerParametro(PARAMETROS.IVA)
+  return {
+    ivaPorcentaje: String(porcentaje),
+    ivaValor: String(Math.round(aCentavos(base) * porcentaje) / 100)
+  }
+}
+
 // "el anticipo ANT-…" / "la solicitud de factura FAC-…" para los mensajes
 export const nombreAnticipo = (anticipo: { clase: string, codigo: string }) =>
   esFactura(anticipo) ? `la solicitud de factura ${anticipo.codigo}` : `el anticipo ${anticipo.codigo}`
@@ -111,11 +128,13 @@ const anticipoBloqueado = async (id: number, transaction: Transaction) => {
 
 // ── Cliente (queda como tercero para llevar su saldo) ──
 
-// Lo busca por identificación; si no existe lo crea. Si existe, actualiza el teléfono y la
-// dirección (su nombre y datos bancarios no se tocan: puede ser también beneficiario de pagos)
+// Lo busca por identificación; si no existe lo crea. Si existe, actualiza el teléfono, la
+// dirección y la ciudad (su nombre y datos bancarios no se tocan: puede ser también beneficiario
+// de pagos). Un anticipo sin ciudad no borra la que ya tenga el cliente
 const resolverCliente = async (datos: DatosCliente, transaction: Transaction) => {
   const identificacion = texto(datos.identificacion)!
-  const contacto = { telefono: texto(datos.telefono), direccion: texto(datos.direccion) }
+  const ciudad = texto(datos.ciudad)
+  const contacto = { telefono: texto(datos.telefono), direccion: texto(datos.direccion), ...(ciudad ? { ciudad } : {}) }
 
   const existente = await Terceros.findOne({ where: { identificacion }, transaction })
   if (existente) {
@@ -156,8 +175,14 @@ const prepararDatos = async (datos: DatosAnticipo, clase: ClaseAnticipo, transac
   if (esVehiculo && !placa) throw new ErrorGastos('La placa es obligatoria en los anticipos de vehículo')
   if (!esVehiculo && !matriculaInmobiliaria) throw new ErrorGastos('La matrícula inmobiliaria es obligatoria en los anticipos de inmueble')
 
+  // Contabilidad la necesita para facturar
+  if (clase === CLASES_ANTICIPO.FACTURA && !texto(datos.cliente.ciudad)) throw new ErrorGastos('La ciudad del cliente es obligatoria en las solicitudes de factura')
+
   const valorConsignado = redondear(datos.valorConsignado)
   if (!(valorConsignado > 0)) throw new ErrorGastos('El valor consignado debe ser mayor a cero')
+
+  // Solicitud de factura: el consignado es la base y el IVA (parámetro, 19 %) va encima
+  const iva = clase === CLASES_ANTICIPO.FACTURA ? await calcularIva(valorConsignado) : { ivaPorcentaje: null, ivaValor: null }
 
   return {
     tipo: datos.tipo,
@@ -169,7 +194,9 @@ const prepararDatos = async (datos: DatosAnticipo, clase: ClaseAnticipo, transac
     placa,
     matriculaInmobiliaria,
     valorConsignado: String(valorConsignado),
+    ...iva,
     fechaConsignacion: datos.fechaConsignacion,
+    referenciaPago: texto(datos.referenciaPago),
     observacion: texto(datos.observacion)
   }
 }
@@ -207,8 +234,11 @@ const guardarSoportes = async (anticipo: Anticipos, archivos: Express.Multer.Fil
 
 // ── Operación: registrar, corregir y anular ──
 
+const SIN_SOPORTE_NI_REFERENCIA = 'Adjunte el soporte de la consignación o escriba la referencia del pago'
+
 export const crearAnticipo = (datos: DatosAnticipo, archivos: Express.Multer.File[], usuarioId: number) => {
-  if (!archivos.length) throw new ErrorGastos('Adjunte el soporte de la consignación')
+  // Muchas veces no hay soporte: entonces basta la referencia del pago (2026-10-31, decisión del usuario)
+  if (!archivos.length && !texto(datos.referenciaPago)) throw new ErrorGastos(SIN_SOPORTE_NI_REFERENCIA)
   const clase: ClaseAnticipo = datos.clase === CLASES_ANTICIPO.FACTURA ? CLASES_ANTICIPO.FACTURA : CLASES_ANTICIPO.ANTICIPO
 
   return db.transaction(async transaction => {
@@ -236,8 +266,8 @@ export const actualizarAnticipo = (id: number, datos: DatosAnticipo, archivos: E
 
     const campos = await prepararDatos(datos, anticipo.clase as ClaseAnticipo, transaction)
     await guardarSoportes(anticipo, archivos, usuarioId, transaction)
-    if (!(await DocumentosGasto.count({ where: { anticipoId: anticipo.id }, transaction }))) {
-      throw new ErrorGastos('Adjunte el soporte de la consignación')
+    if (!texto(datos.referenciaPago) && !(await DocumentosGasto.count({ where: { anticipoId: anticipo.id }, transaction }))) {
+      throw new ErrorGastos(SIN_SOPORTE_NI_REFERENCIA)
     }
 
     const estadoAnterior = anticipo.estado
@@ -420,6 +450,8 @@ export const facturarSolicitudes = async (lista: DatosFacturacion[], archivos: M
         await solicitud.update({
           estado: ESTADOS_ANTICIPO.FACTURADO,
           valorRecibido: String(valorRecibido),
+          // La base final es lo que de verdad entró; la tarifa es la del registro
+          ...(await calcularIva(valorRecibido, solicitud.ivaPorcentaje)),
           numeroFactura,
           fechaFacturacion: ahora,
           observacionContabilidad: texto(datos.observacion),
@@ -594,7 +626,7 @@ type FilaPorPagar = {
 // Las fechas son días de Colombia (YYYY-MM-DD).
 export const estadoDeCuentaCliente = async (bolsaId: number, clienteId: number, periodo: { desde?: string | null, hasta?: string | null } = {}) => {
   const [cliente, saldo, movimientos, porPagar, anticipos] = await Promise.all([
-    Terceros.findByPk(clienteId, { attributes: ['id', 'nombre', 'tipoIdentificacion', 'identificacion', 'telefono', 'direccion'] }),
+    Terceros.findByPk(clienteId, { attributes: ['id', 'nombre', 'tipoIdentificacion', 'identificacion', 'telefono', 'direccion', 'ciudad'] }),
     saldoDelCliente(bolsaId, clienteId),
     db.query<FilaMovimiento>(`
       SELECT m.id, m.tipo, m.valor, m.created_at AS "fecha", m.observacion, m.lote_pago_id AS "lotePagoId",

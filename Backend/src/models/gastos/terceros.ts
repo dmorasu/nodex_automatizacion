@@ -43,6 +43,10 @@ class Terceros extends Model {
   @Column({ type: DataType.STRING(200) })
   declare direccion: string | null
 
+  // "Municipio - Departamento", de la lista de municipios de Trámites
+  @Column({ type: DataType.STRING(150) })
+  declare ciudad: string | null
+
   @Default(true)
   @Column({ type: DataType.BOOLEAN })
   declare activo: boolean

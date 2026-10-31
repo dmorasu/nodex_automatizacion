@@ -6,6 +6,7 @@ import { obtenerBolsas } from "@/src/lib/datosTesoreria"
 import { formatoMoneda } from "@/src/lib/formato"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import BandejaPagos from "@/components/tesoreria/BandejaPagos"
+import ExportarExcel from "@/components/gastos/ExportarExcel"
 import { claseBotonSecundario, claseInput } from "@/components/ui/estilos"
 import SelectBuscable from "@/components/ui/SelectBuscable"
 
@@ -78,6 +79,7 @@ export default async function BandejaPorPagar({
           {bolsasActivas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
         </SelectBuscable>
         <button type="submit" className={claseBotonSecundario}>Filtrar</button>
+        {total > 0 && <ExportarExcel consulta={consulta} archivo={`tesoreria-${tipo === "general" ? "por-pagar" : tipo}`} className="" />}
       </form>
 
       {total > MAXIMO_BANDEJA && (

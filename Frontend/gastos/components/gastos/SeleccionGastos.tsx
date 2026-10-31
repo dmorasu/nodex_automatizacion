@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
+import { formatoFecha, formatoFechaHoraColombia, formatoMoneda } from "@/src/lib/formato"
 import type { GastoListado } from "@/src/schemas/gastos"
 
-type Columna = {
+export type Columna = {
   titulo: string
   valor: (gasto: GastoListado) => React.ReactNode
   alinearDerecha?: boolean
@@ -18,13 +18,16 @@ export default function SeleccionGastos({
   columnas,
   valorTotal,
   accion,
-  vacio
+  vacio,
+  fechaConHora = false
 }: {
   gastos: GastoListado[]
   columnas: Columna[]
   valorTotal: (gasto: GastoListado) => number
   accion: (seleccionados: GastoListado[], limpiar: () => void) => React.ReactNode
   vacio: string
+  // La columna de creación con la hora (Contabilidad)
+  fechaConHora?: boolean
 }) {
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set())
 
@@ -63,7 +66,7 @@ export default function SeleccionGastos({
                 <input type="checkbox" checked={todosMarcados} onChange={alternarTodos} className="h-4 w-4 accent-emerald-600" aria-label="Seleccionar todos" />
               </th>
               <th className="px-4 py-3 font-semibold">Gasto</th>
-              <th className="px-4 py-3 font-semibold">Fecha</th>
+              <th className="px-4 py-3 font-semibold">{fechaConHora ? "Creado" : "Fecha"}</th>
               {columnas.map(c => (
                 <th key={c.titulo} className={`px-4 py-3 font-semibold ${c.alinearDerecha ? "text-right" : ""}`}>{c.titulo}</th>
               ))}
@@ -92,7 +95,7 @@ export default function SeleccionGastos({
                   </Link>
                   <p className="text-[11px] text-slate-400">{gasto.conceptoPago}</p>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-slate-500">{formatoFecha(gasto.createdAt)}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-slate-500">{fechaConHora ? formatoFechaHoraColombia(gasto.createdAt) : formatoFecha(gasto.createdAt)}</td>
                 {columnas.map(c => (
                   <td key={c.titulo} className={`px-4 py-3 text-slate-600 ${c.alinearDerecha ? "text-right whitespace-nowrap" : ""}`}>
                     {c.valor(gasto)}

@@ -62,6 +62,16 @@ export async function buscarTerceros(busqueda: string) {
   return z.array(TerceroSchema).parse(await req.json())
 }
 
+// Ciudad del cliente en anticipos: la lista de municipios de Nodex Trámites
+export async function buscarMunicipios(busqueda: string) {
+  if (busqueda.trim().length < 2) return []
+
+  const req = await fetchApi(`/gastos/apoyo/municipios?busqueda=${encodeURIComponent(busqueda.trim())}`)
+  if (!req.ok) return []
+
+  return z.array(z.object({ id: z.number(), nombreMunicipio: z.string(), departamento: z.string() })).parse(await req.json())
+}
+
 export async function consultarTramite(id: number): Promise<Resultado<z.infer<typeof TramiteApoyoSchema>>> {
   const req = await fetchApi(`/gastos/apoyo/tramites/${id}`)
 

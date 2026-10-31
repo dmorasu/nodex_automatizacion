@@ -20,7 +20,7 @@ export const obtenerCatalogos = async () =>
 export const obtenerTasas = async () => {
   const parametros = ParametrosSchema.parse(await (await fetchApi("/gastos/parametros")).json())
   const valor = (clave: string) => Number(parametros.find(p => p.clave === clave)?.valor ?? 0)
-  return { retencion: valor("RETENCION_FUENTE"), gmf: valor("GMF") }
+  return { retencion: valor("RETENCION_FUENTE"), gmf: valor("GMF"), iva: valor("IVA") }
 }
 
 export const obtenerOperaciones = async () =>
@@ -28,6 +28,12 @@ export const obtenerOperaciones = async () =>
 
 export const obtenerBolsasActivas = async () =>
   z.array(BolsaApoyoSchema).parse(await (await fetchApi("/gastos/apoyo/bolsas")).json())
+
+// Sugerencias del concepto en los gastos de vehículo (si falla, el campo queda libre como antes)
+export const obtenerTiposTramite = async () => {
+  const req = await fetchApi("/gastos/apoyo/tipos-tramite")
+  return req.ok ? z.array(z.string()).parse(await req.json()) : []
+}
 
 export const obtenerTramitadores = async () =>
   z.array(TramitadorSchema).parse(await (await fetchApi("/gastos/apoyo/tramitadores")).json())
@@ -47,17 +53,18 @@ export const obtenerCajasMenores = async () =>
   z.array(BolsaApoyoSchema).parse(await (await fetchApi("/gastos/apoyo/bolsas?tipo=CAJA_MENOR")).json())
 
 export const obtenerDatosFormulario = async () => {
-  const [catalogos, operaciones, tramitadores, bolsas, tasas, cajas] = await Promise.all([
+  const [catalogos, operaciones, tramitadores, bolsas, tasas, cajas, tiposTramite] = await Promise.all([
     obtenerCatalogos(),
     obtenerOperaciones(),
     obtenerTramitadores(),
     obtenerBolsasActivas(),
     obtenerTasas(),
-    obtenerCajasMenores()
+    obtenerCajasMenores(),
+    obtenerTiposTramite()
   ])
 
   // Porcentaje de retención por defecto para los gastos de inmueble (0.11 → 11)
   const porcentajeRetencion = Math.round(tasas.retencion * 1e6) / 1e4
 
-  return { catalogos, operaciones, tramitadores, bolsas, porcentajeRetencion, cajas }
+  return { catalogos, operaciones, tramitadores, bolsas, porcentajeRetencion, cajas, tiposTramite }
 }

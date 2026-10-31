@@ -8,6 +8,7 @@ import { contabilizarGastos } from "@/actions/gastos/contabilidad"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import type { GastoListado } from "@/src/schemas/gastos"
 import SeleccionGastos from "../gastos/SeleccionGastos"
+import { COLUMNA_CENTRO_COSTOS, COLUMNA_CUATRO_X_MIL, COLUMNA_RETENCION, COLUMNA_TRAMITADOR } from "../gastos/columnasGastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
@@ -54,14 +55,19 @@ export default function BandejaContabilizarGastos({ gastos }: { gastos: GastoLis
   return (
     <>
       <SeleccionGastos
+        fechaConHora
         gastos={gastos}
         vacio="No hay gastos no reembolsables pendientes de contabilizar."
         valorTotal={g => Number(g.factura?.valorFactura ?? 0)}
         columnas={[
           { titulo: "Beneficiario", valor: g => g.beneficiario.nombre },
+          COLUMNA_TRAMITADOR,
           { titulo: "Bolsa", valor: g => g.bolsa?.nombre ?? "—" },
+          COLUMNA_CENTRO_COSTOS,
           { titulo: "Factura", valor: g => g.factura?.numeroFactura ?? "—" },
           { titulo: "Pagado", alinearDerecha: true, valor: g => formatoMoneda(g.valorRealmentePagado) },
+          COLUMNA_RETENCION,
+          COLUMNA_CUATRO_X_MIL,
           { titulo: "Valor factura", alinearDerecha: true, valor: g => <b className="text-slate-800">{formatoMoneda(g.factura?.valorFactura)}</b> }
         ]}
         accion={(seleccion, limpiar) => (

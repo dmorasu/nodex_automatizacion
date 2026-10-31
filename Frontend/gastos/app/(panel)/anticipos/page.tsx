@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { FileText, Plus } from "lucide-react"
+import { BarChart3, FileText, Plus } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
 import { tieneRolDeGastos } from "@/src/auth/permisos"
 import { obtenerAnticipos } from "@/src/lib/datosAnticipos"
@@ -45,6 +45,10 @@ export default async function AnticiposPage(props: { searchParams: Promise<Filtr
           <h1 className="text-xl font-semibold text-slate-800">{alcance === "todos" ? "Todos los anticipos" : "Mis anticipos"}</h1>
         </div>
         <div className="flex flex-wrap gap-3">
+          <Link href="/anticipos/reporte" className={claseBotonSecundario}>
+            <BarChart3 size={15} />
+            Reporte por centro de costos
+          </Link>
           <Link href="/anticipos/nuevo?clase=FACTURA" className={claseBotonSecundario}>
             <FileText size={15} />
             Solicitud de factura

@@ -100,7 +100,7 @@ export default function EstadoCuentaCliente({
                   <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-500">
                     <span>{datos.cliente.tipoIdentificacion === "CC" ? "Cédula" : datos.cliente.tipoIdentificacion} {datos.cliente.identificacion}</span>
                     {datos.cliente.telefono && <span className="inline-flex items-center gap-1"><Phone size={11} />{datos.cliente.telefono}</span>}
-                    {datos.cliente.direccion && <span className="inline-flex items-center gap-1"><MapPin size={11} />{datos.cliente.direccion}</span>}
+                    {datos.cliente.direccion && <span className="inline-flex items-center gap-1"><MapPin size={11} />{datos.cliente.direccion}{datos.cliente.ciudad && `, ${datos.cliente.ciudad}`}</span>}
                   </p>
                 )}
               </div>

@@ -14,6 +14,8 @@ export type SolicitudAFacturar = {
   codigo: string
   cliente: { nombre: string, identificacion: string }
   valorConsignado: string
+  referenciaPago?: string | null
+  ivaPorcentaje?: string | null
 }
 
 type Fila = { valorRecibido: string, numeroFactura: string, observacion: string, pdf: File | null, xml: File | null }
@@ -128,6 +130,7 @@ export default function ModalFacturarSolicitudes({
                   <div className="md:col-span-3">
                     <p className="text-xs font-semibold text-slate-700">{s.codigo}</p>
                     <p className="text-[11px] text-slate-400">{s.cliente.nombre} · {s.cliente.identificacion}</p>
+                    {s.referenciaPago && <p className="text-[11px] text-slate-400">Ref. {s.referenciaPago}</p>}
                     <p className="mt-1 text-[11px] text-slate-500">Consignó <b>{formatoMoneda(s.valorConsignado)}</b></p>
                   </div>
                   <div className="md:col-span-2">
@@ -144,6 +147,15 @@ export default function ModalFacturarSolicitudes({
                         Diferencia {diferencia > 0 && "+"}{formatoMoneda(diferencia)}
                       </p>
                     )}
+                    {/* Lo recibido es la base de la factura; el IVA va encima */}
+                    {s.ivaPorcentaje && centavos(fila.valorRecibido) > 0 && (() => {
+                      const ivaC = Math.round(centavos(fila.valorRecibido) * Number(s.ivaPorcentaje))
+                      return (
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          IVA ({Math.round(Number(s.ivaPorcentaje) * 10000) / 100} %) {formatoMoneda(ivaC / 100)} · Total <b>{formatoMoneda((centavos(fila.valorRecibido) + ivaC) / 100)}</b>
+                        </p>
+                      )
+                    })()}
                   </div>
                   <input
                     value={fila.numeroFactura}

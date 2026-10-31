@@ -99,6 +99,18 @@ class Anticipos extends Model {
   @Column({ type: DataType.DATEONLY })
   declare fechaConsignacion: string
 
+  // Solo solicitudes de factura: el valor consignado (o el recibido, al facturar) es la base y el
+  // IVA se suma encima. La tarifa queda guardada (fracción: 0.19) por si el parámetro cambia después
+  @Column({ type: DataType.DECIMAL(10, 6) })
+  declare ivaPorcentaje: string | null
+
+  @Column({ type: DataType.DECIMAL(15, 2) })
+  declare ivaValor: string | null
+
+  // Referencia del pago en el banco. Obligatoria si no se adjunta el soporte de la consignación
+  @Column({ type: DataType.STRING(100) })
+  declare referenciaPago: string | null
+
   @Column({ type: DataType.TEXT })
   declare observacion: string | null
 

@@ -11,6 +11,8 @@ import type { AnticipoDetalle, BolsaApoyo, ClienteEmpresarial, DatosAnticipo, Op
 import Seccion from "../ui/Seccion"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
 import SelectBuscable from "@/components/ui/SelectBuscable"
+import { formatoMoneda } from "@/src/lib/formato"
+import BuscadorMunicipio from "@/components/ui/BuscadorMunicipio"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
@@ -30,7 +32,8 @@ const datosIniciales = (clase: Clase, bolsas: BolsaApoyo[], anticipo?: AnticipoD
     identificacion: anticipo?.cliente.identificacion ?? "",
     nombre: anticipo?.cliente.nombre ?? "",
     telefono: anticipo?.cliente.telefono ?? "",
-    direccion: anticipo?.cliente.direccion ?? ""
+    direccion: anticipo?.cliente.direccion ?? "",
+    ciudad: anticipo?.cliente.ciudad ?? ""
   },
   clienteEmpresarialId: anticipo?.clienteEmpresarialId ?? null,
   operacionId: anticipo?.operacionId ?? null,
@@ -41,34 +44,39 @@ const datosIniciales = (clase: Clase, bolsas: BolsaApoyo[], anticipo?: AnticipoD
   valorConsignado: anticipo ? String(Number(anticipo.valorConsignado)) : "",
   // Por defecto hoy (se puede cambiar si consignó otro día)
   fechaConsignacion: anticipo?.fechaConsignacion ?? hoyEnBogota(),
+  referenciaPago: anticipo?.referenciaPago ?? "",
   observacion: anticipo?.observacion ?? ""
 })
 
-function Campo({ etiqueta, children, className }: { etiqueta: string, children: React.ReactNode, className?: string }) {
+function Campo({ etiqueta, children, className, opcional }: { etiqueta: string, children: React.ReactNode, className?: string, opcional?: boolean }) {
   return (
     <label className={`block ${className ?? ""}`}>
-      <span className={claseLabel}>{etiqueta} <span className="text-red-400">*</span></span>
+      <span className={claseLabel}>{etiqueta} {!opcional && <span className="text-red-400">*</span>}</span>
       {children}
     </label>
   )
 }
 
 // Registro (o corrección) del anticipo de un cliente del banco o de una solicitud de factura.
-// Todos los campos son obligatorios, incluido el soporte de la consignación (al corregir, basta
-// con el que ya tiene). El número de solicitud es el código que asigna el sistema (ANT-… / FAC-…).
+// Todos los campos son obligatorios. Del pago, el soporte de la consignación o, si no lo tienen,
+// la referencia del pago (al corregir, basta con el soporte que ya tiene). El número de solicitud
+// es el código que asigna el sistema (ANT-… / FAC-…).
 // La clase se elige al crearlo y después no cambia.
 export default function FormularioAnticipo({
   operaciones,
   bolsas: bolsasPorClase,
   clientesEmpresariales,
   anticipo,
-  claseInicial = "ANTICIPO"
+  claseInicial = "ANTICIPO",
+  tasaIva = 0
 }: {
   operaciones: Operacion[]
   bolsas: Record<Clase, BolsaApoyo[]>
   clientesEmpresariales: ClienteEmpresarial[]
   anticipo?: AnticipoDetalle
   claseInicial?: Clase
+  // Solicitud de factura: el valor consignado es la base y el IVA va encima (0.19)
+  tasaIva?: number
 }) {
   const router = useRouter()
   const [guardando, startGuardar] = useTransition()
@@ -113,7 +121,8 @@ export default function FormularioAnticipo({
         identificacion,
         nombre: encontrado.nombre,
         telefono: actuales.cliente.telefono || (encontrado.telefono ?? ""),
-        direccion: actuales.cliente.direccion || (encontrado.direccion ?? "")
+        direccion: actuales.cliente.direccion || (encontrado.direccion ?? ""),
+        ciudad: actuales.cliente.ciudad || (encontrado.ciudad ?? "")
       }
     }))
   }
@@ -126,6 +135,7 @@ export default function FormularioAnticipo({
       !datos.cliente.nombre.trim() && "el nombre del cliente",
       !datos.cliente.telefono.trim() && "el teléfono",
       !datos.cliente.direccion.trim() && "la dirección",
+      esFactura && !datos.cliente.ciudad.trim() && "la ciudad",
       !datos.clienteEmpresarialId && "el cliente empresarial",
       !datos.operacionId && "la operación",
       !datos.bolsaId && "la bolsa",
@@ -134,7 +144,8 @@ export default function FormularioAnticipo({
       !esVehiculo && !datos.matriculaInmobiliaria.trim() && "la matrícula inmobiliaria",
       !(Number(datos.valorConsignado) > 0) && "el valor consignado",
       !datos.fechaConsignacion && "la fecha de consignación",
-      !anticipo && archivos.length === 0 && "el soporte de la consignación"
+      // Sin soporte, la referencia del pago (al corregir, el backend cuenta los soportes que ya tiene)
+      !anticipo && archivos.length === 0 && !datos.referenciaPago.trim() && "el soporte de la consignación o la referencia del pago"
     ].filter(Boolean)
     if (faltantes.length) return toast.error(`Falta ${faltantes.join(", ")}`)
 
@@ -241,6 +252,9 @@ export default function FormularioAnticipo({
           <Campo etiqueta="Teléfono">
             <input value={datos.cliente.telefono} onChange={e => cambiarCliente("telefono", e.target.value)} maxLength={30} className={claseInput} />
           </Campo>
+          <Campo etiqueta="Ciudad" opcional={!esFactura}>
+            <BuscadorMunicipio valor={datos.cliente.ciudad} onCambiar={valor => cambiarCliente("ciudad", valor)} />
+          </Campo>
           <Campo etiqueta="Dirección" className="sm:col-span-2">
             <input value={datos.cliente.direccion} onChange={e => cambiarCliente("direccion", e.target.value)} maxLength={200} className={claseInput} />
           </Campo>
@@ -257,7 +271,7 @@ export default function FormularioAnticipo({
         </div>
         {clienteExistente && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-emerald-700">
-            <UserCheck size={14} /> Cliente ya registrado: {clienteExistente}. Se actualizan su teléfono y dirección.
+            <UserCheck size={14} /> Cliente ya registrado: {clienteExistente}. Se actualizan su teléfono, ciudad y dirección.
           </p>
         )}
       </Seccion>
@@ -302,11 +316,28 @@ export default function FormularioAnticipo({
           <Campo etiqueta="Fecha de consignación">
             <input type="date" value={datos.fechaConsignacion} onChange={e => cambiar("fechaConsignacion", e.target.value)} className={claseInput} />
           </Campo>
+          <Campo etiqueta="Referencia de pago" opcional={archivos.length > 0 || (anticipo?.documentos.length ?? 0) > 0}>
+            <input value={datos.referenciaPago} onChange={e => cambiar("referenciaPago", e.target.value)} maxLength={100} className={claseInput} />
+          </Campo>
         </div>
+
+        {/* Solicitud de factura: base + IVA = total a facturar (al corregir, con la tarifa con que se registró) */}
+        {esFactura && Number(datos.valorConsignado) > 0 && (() => {
+          const tarifa = anticipo?.ivaPorcentaje ? Number(anticipo.ivaPorcentaje) : tasaIva
+          const baseC = Math.round(Number(datos.valorConsignado) * 100)
+          const ivaC = Math.round(baseC * tarifa)
+          return (
+            <div className="mt-4 max-w-md space-y-1.5 rounded-md bg-slate-50 px-4 py-3 text-xs">
+              <p className="flex justify-between gap-4"><span className="text-slate-500">Base (valor consignado)</span><b className="tabular-nums">{formatoMoneda(baseC / 100)}</b></p>
+              <p className="flex justify-between gap-4"><span className="text-slate-500">IVA ({Math.round(tarifa * 10000) / 100} %)</span><b className="tabular-nums">+ {formatoMoneda(ivaC / 100)}</b></p>
+              <p className="flex justify-between gap-4 border-t border-slate-200 pt-1.5 text-sm text-slate-800"><span className="text-slate-500">Total a facturar</span><b className="tabular-nums">{formatoMoneda((baseC + ivaC) / 100)}</b></p>
+            </div>
+          )
+        })()}
       </Seccion>
 
       <Seccion
-        titulo="Soporte de la consignación"
+        titulo="Soporte de la consignación (o la referencia de pago)"
       >
         <label className={`${claseBotonSecundario} cursor-pointer`}>
           <Paperclip size={15} />

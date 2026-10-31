@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import { Op, WhereOptions } from 'sequelize'
+import { Includeable, Op, WhereOptions } from 'sequelize'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import EstadosGasto from '../../models/gastos/estadosGasto'
 import TiposGasto from '../../models/gastos/tiposGasto'
@@ -15,6 +15,7 @@ import EstadosCuentaCobro from '../../models/gastos/estadosCuentaCobro'
 import Contabilizaciones from '../../models/gastos/contabilizaciones'
 import Operaciones from '../../models/operaciones'
 import Tramitador from '../../models/tramitador'
+import Anticipos from '../../models/gastos/anticipos'
 import Usuarios from '../../models/usuarios'
 import { idEstadoGasto, CodigoEstadoGasto } from './estadosGasto'
 
@@ -30,6 +31,10 @@ export const MAXIMO_FILAS_REPORTE = 20000
 
 const dinero = (valor: unknown) => (valor === null || valor === undefined ? null : Number(valor))
 
+// Seguimiento desde la app de tramitadores (mismos textos que el CSV de Legalización)
+const REPORTE_REALIZADO: Record<string, string> = { PENDIENTE: 'Por revisar', REVISADO: 'Revisado' }
+const SOPORTE_TRAMITADOR: Record<string, string> = { PENDIENTE: 'Pendiente de revisión', APROBADO: 'Aprobada', RECHAZADO: 'Rechazada' }
+
 // Reporte de gastos con todo su recorrido: solicitud, pago, factura, reintegro,
 // cuenta de cobro y contabilización. Una fila por gasto.
 export const generarReporteGastos = async (filtros: FiltrosReporte) => {
@@ -42,34 +47,47 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
 
   const gastos = await SolicitudesGasto.findAll({
     where: { [Op.and]: condiciones },
-    include: [
-      { model: EstadosGasto, attributes: ['nombre'] },
-      { model: TiposGasto, attributes: ['nombre'] },
-      { model: FormasPago, attributes: ['nombre'] },
-      { model: Operaciones, attributes: ['nombreOperacion', 'centroDeCostos'] },
-      { model: Bolsas, attributes: ['nombre'] },
-      { model: Terceros, attributes: ['identificacion', 'nombre'] },
-      { model: Tramitador, attributes: ['nombreTramitador', 'identificacion'] },
-      { model: Usuarios, as: 'creador', attributes: ['nombreUsuario'] },
-      { model: FacturasGasto },
-      { model: Reintegros, include: [{ model: EstadosReintegro, attributes: ['nombre'] }] },
-      {
-        model: CuentasCobroGastos,
-        attributes: ['id'],
-        include: [{
-          model: CuentasCobro,
-          attributes: ['numeroCuentaCobro', 'fechaLegalizacion'],
-          include: [
-            { model: EstadosCuentaCobro, attributes: ['codigo', 'nombre'] },
-            { model: Contabilizaciones, attributes: ['documentoContable', 'fechaContabilizacion'] }
-          ]
-        }]
-      }
-    ],
+    include: INCLUDES_REPORTE,
     order: [['id', 'ASC']],
     limit: MAXIMO_FILAS_REPORTE
   })
 
+  return { buffer: await libroDeGastos(gastos), filas: gastos.length }
+}
+
+// Lo que necesita cada fila del Excel detallado (reporte del Tablero y exportable de cada bandeja)
+export const INCLUDES_REPORTE: Includeable[] = [
+  { model: EstadosGasto, attributes: ['nombre'] },
+  { model: TiposGasto, attributes: ['nombre'] },
+  { model: FormasPago, attributes: ['nombre'] },
+  { model: Operaciones, attributes: ['nombreOperacion', 'centroDeCostos'] },
+  { model: Bolsas, attributes: ['nombre'] },
+  { model: Terceros, attributes: ['identificacion', 'nombre'] },
+  { model: Tramitador, attributes: ['nombreTramitador', 'identificacion'] },
+  { model: Anticipos, attributes: ['codigo'] },
+  { model: Usuarios, as: 'creador', attributes: ['nombreUsuario'] },
+  { model: FacturasGasto },
+  // Los hasMany van aparte (separate): con el límite de filas y los filtros del listado sobre los
+  // includes (beneficiario en la búsqueda), en la misma consulta Sequelize arma una subconsulta que falla
+  { model: Reintegros, separate: true, include: [{ model: EstadosReintegro, attributes: ['nombre'] }] },
+  {
+    model: CuentasCobroGastos,
+    separate: true,
+    attributes: ['id', 'solicitudGastoId'],
+    include: [{
+      model: CuentasCobro,
+      attributes: ['numeroCuentaCobro', 'fechaLegalizacion'],
+      include: [
+        { model: EstadosCuentaCobro, attributes: ['codigo', 'nombre'] },
+        { model: Contabilizaciones, attributes: ['documentoContable', 'fechaContabilizacion'] }
+      ]
+    }]
+  }
+]
+
+// Excel detallado: una fila por gasto con todo su recorrido. Si los gastos traen los atributos de
+// seguimiento del tramitador (estadoTramite, reporteRealizado, soporteTramitador), también salen
+export const libroDeGastos = async (gastos: SolicitudesGasto[]) => {
   const libro = new ExcelJS.Workbook()
   libro.creator = 'Nodex Gastos'
   const hoja = libro.addWorksheet('Gastos', { views: [{ state: 'frozen', ySplit: 1 }] })
@@ -87,7 +105,15 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
     { header: 'Forma de pago', key: 'formaPago', width: 18 },
     { header: 'Concepto', key: 'concepto', width: 36 },
     { header: 'Reembolsable', key: 'reembolsable', width: 13 },
+    { header: 'Anticipo', key: 'anticipo', width: 18 },
+    { header: 'Cliente', key: 'cliente', width: 28 },
+    { header: 'Identificación cliente', key: 'idCliente', width: 18 },
+    { header: 'Contrato', key: 'contrato', width: 16 },
+    { header: 'Código BPR/FTF', key: 'codigoBpr', width: 16 },
     { header: 'Trámite', key: 'tramite', width: 10 },
+    { header: 'Estado del trámite', key: 'estadoTramite', width: 20 },
+    { header: 'Reporte realizado del tramitador', key: 'reporteRealizado', width: 16 },
+    { header: 'Factura del tramitador', key: 'soporteTramitador', width: 16 },
     { header: 'Tramitador', key: 'tramitador', width: 24 },
     { header: 'Identificación tramitador', key: 'idTramitador', width: 18 },
     { header: 'Placa', key: 'placa', width: 10 },
@@ -95,6 +121,7 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
     { header: 'Matrícula inmobiliaria', key: 'matricula', width: 20 },
     { header: 'Beneficiario', key: 'beneficiario', width: 30 },
     { header: 'Identificación beneficiario', key: 'idBeneficiario', width: 18 },
+    { header: 'Valor liquidación', key: 'liquidacion', width: 16, style: { numFmt: MONEDA } },
     { header: 'Valor solicitado', key: 'solicitado', width: 16, style: { numFmt: MONEDA } },
     { header: 'Valor pagado', key: 'pagado', width: 16, style: { numFmt: MONEDA } },
     { header: 'Fecha de pago', key: 'fechaPago', width: 14 },
@@ -104,6 +131,7 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
     { header: 'Tercero de la factura', key: 'terceroFactura', width: 30 },
     { header: 'Valor factura', key: 'valorFactura', width: 16, style: { numFmt: MONEDA } },
     { header: 'Base retención', key: 'baseRetencion', width: 16, style: { numFmt: MONEDA } },
+    { header: '% retención', key: 'porcentajeRetencion', width: 11, style: { numFmt: '0.00%' } },
     { header: 'Retención en la fuente', key: 'retencion', width: 16, style: { numFmt: MONEDA } },
     { header: 'Total a pagar', key: 'totalPagar', width: 16, style: { numFmt: MONEDA } },
     { header: '4x1000', key: 'gmf', width: 12, style: { numFmt: MONEDA } },
@@ -113,6 +141,9 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
     { header: 'Cuenta de cobro', key: 'cuentaCobro', width: 16 },
     { header: 'Estado cuenta de cobro', key: 'estadoCuenta', width: 18 },
     { header: 'Documento contable', key: 'documentoContable', width: 18 },
+    { header: 'Observación', key: 'observacion', width: 30 },
+    { header: 'Observación legalización', key: 'observacionLegalizacion', width: 30 },
+    { header: 'Observación factura', key: 'observacionFactura', width: 30 },
     { header: 'Motivo anulación', key: 'motivoAnulacion', width: 30 }
   ]
 
@@ -134,7 +165,15 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
       formaPago: g.formaPago?.nombre,
       concepto: g.conceptoPago,
       reembolsable: g.reembolsable ? 'Sí' : 'No',
+      anticipo: g.anticipo?.codigo,
+      cliente: g.nombreClienteBanco,
+      idCliente: g.identificacionClienteBanco,
+      contrato: g.contrato,
+      codigoBpr: g.codigoBpr,
       tramite: g.solicitudTramiteId,
+      estadoTramite: g.solicitudTramiteId ? g.get('estadoTramite') as string | undefined : null,
+      reporteRealizado: REPORTE_REALIZADO[String(g.get('reporteRealizado'))] ?? null,
+      soporteTramitador: SOPORTE_TRAMITADOR[String(g.get('soporteTramitador'))] ?? null,
       tramitador: g.tramitador?.nombreTramitador,
       idTramitador: g.tramitador?.identificacion,
       placa: g.placa,
@@ -142,6 +181,7 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
       matricula: g.matriculaInmobiliaria,
       beneficiario: g.beneficiario?.nombre,
       idBeneficiario: g.beneficiario?.identificacion,
+      liquidacion: dinero(g.valorLiquidacion),
       solicitado: dinero(g.valorSolicitadoPago),
       pagado: dinero(g.valorRealmentePagado),
       fechaPago: g.fechaPago,
@@ -152,6 +192,7 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
       valorFactura: dinero(factura?.valorFactura),
       // La retención se define al crear el gasto (inmuebles); los anteriores la tienen en la factura
       baseRetencion: dinero(g.retencionBase ?? factura?.baseRetencion),
+      porcentajeRetencion: dinero(g.retencionPorcentaje ?? factura?.porcentajeRetencion),
       retencion: dinero(g.retencionValor ?? factura?.retencionFuente),
       totalPagar: dinero(g.retencionTotalPagar ?? factura?.totalPagar),
       gmf: dinero(factura?.cuatroXMil),
@@ -162,6 +203,9 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
       estadoCuenta: cuenta?.estado?.nombre,
       // Reembolsables: el de su cuenta de cobro · No reembolsables: el del propio gasto
       documentoContable: cuenta?.contabilizacion?.documentoContable ?? g.documentoContable,
+      observacion: g.observacion,
+      observacionLegalizacion: g.observacionLegalizacion,
+      observacionFactura: factura?.observacion,
       motivoAnulacion: g.motivoAnulacion
     })
   }
@@ -171,5 +215,5 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
   encabezado.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } }
   hoja.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: hoja.columns.length } }
 
-  return { buffer: await libro.xlsx.writeBuffer(), filas: gastos.length }
+  return libro.xlsx.writeBuffer()
 }

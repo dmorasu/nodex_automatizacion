@@ -95,6 +95,7 @@ export default async function DetalleGastoPage(props: { params: Promise<{ id: st
           <Seccion titulo="Datos del gasto">
             <dl className="grid gap-5 sm:grid-cols-3">
               <Dato etiqueta="Operación" valor={gasto.operacion.nombreOperacion} />
+              <Dato etiqueta="Centro de costos" valor={gasto.operacion.centroDeCostos} />
               <Dato etiqueta="Bolsa" valor={gasto.bolsa?.nombre} />
               <Dato etiqueta="Tipo de gasto" valor={gasto.tipoGasto.nombre} />
               <Dato etiqueta="Forma de pago" valor={gasto.formaPago.nombre} />
@@ -201,9 +202,13 @@ export default async function DetalleGastoPage(props: { params: Promise<{ id: st
             {/* Retención: solo gastos de inmueble */}
             {gasto.retencionBase !== null && gasto.retencionBase !== undefined && (
               <dl className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+                {gasto.valorLiquidacion && <Dato etiqueta="Valor liquidación" valor={formatoMoneda(gasto.valorLiquidacion)} />}
                 <Dato etiqueta="Base de retención" valor={formatoMoneda(gasto.retencionBase)} />
-                <Dato etiqueta={`Retención (${formatoPorcentaje(gasto.retencionPorcentaje ?? 0)})`} valor={formatoMoneda(gasto.retencionValor)} />
-                <Dato etiqueta="Total a pagar (base − retención)" valor={formatoMoneda(gasto.retencionTotalPagar)} />
+                <Dato etiqueta={`Retención (${formatoPorcentaje(gasto.retencionPorcentaje ?? 0)} × ${formatoMoneda(gasto.retencionBase)})`} valor={formatoMoneda(gasto.retencionValor)} />
+                {/* Con liquidación se muestra el cálculo del valor a solicitar; si no, el de siempre */}
+                {gasto.valorLiquidacion
+                  ? <Dato etiqueta="Liquidación − retención" valor={formatoMoneda((Math.round(Number(gasto.valorLiquidacion) * 100) - Math.round(Number(gasto.retencionValor ?? 0) * 100)) / 100)} />
+                  : <Dato etiqueta="Total a pagar (base − retención)" valor={formatoMoneda(gasto.retencionTotalPagar)} />}
               </dl>
             )}
           </Seccion>

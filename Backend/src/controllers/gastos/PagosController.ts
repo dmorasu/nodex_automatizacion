@@ -17,6 +17,9 @@ import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
 import { ESTADOS_LOTE, FORMA_PAGO_CAJA_MENOR, ROLES } from '../../services/gastos/constantes'
 import FormasPago from '../../models/gastos/formasPago'
+import Tramitador from '../../models/tramitador'
+import Operaciones from '../../models/operaciones'
+import FacturasGasto from '../../models/gastos/facturasGasto'
 
 // Las compras de certificados (CTL, Cámara de Comercio y RUNT) las paga Tesorería - Certificados;
 // los demás gastos, Tesorería (también los de anticipos, aunque sean de un certificado).
@@ -281,12 +284,16 @@ export class PagosController {
           {
             model: SolicitudesGasto,
             // Gastos de anticipos: saldo del cliente, para avisar si no le alcanza
-            attributes: ['id', 'codigo', 'conceptoPago', 'valorSolicitadoPago', 'valorProgramado', 'valorRealmentePagado', 'anticipoId', ...atributosSaldoAnticipo('gastos')],
+            attributes: ['id', 'codigo', 'conceptoPago', 'valorSolicitadoPago', 'valorProgramado', 'valorRealmentePagado', 'retencionValor', 'anticipoId', ...atributosSaldoAnticipo('gastos')],
             include: [
               { model: Terceros, attributes: ['id', 'identificacion', 'nombre'] },
               { model: Anticipos, attributes: ['id', 'codigo'], include: [{ model: Terceros, attributes: ['nombre'] }] },
               { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
-              { model: EstadosGasto, attributes: ['codigo', 'nombre'] }
+              { model: EstadosGasto, attributes: ['codigo', 'nombre'] },
+              // Columnas de tramitador y 4x1000 (este solo existe con la factura registrada)
+              { model: Tramitador, attributes: ['id', 'nombreTramitador'] },
+              { model: FacturasGasto, attributes: ['id', 'cuatroXMil'] },
+              { model: Operaciones, attributes: ['centroDeCostos'] }
             ]
           },
           {

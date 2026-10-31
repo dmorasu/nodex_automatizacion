@@ -103,11 +103,14 @@ export default function TablaAnticipos({
                 </td>
                 <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                   {formatoFecha(a.fechaConsignacion)}
+                  {a.referenciaPago && <p className="text-[11px] text-slate-400">Ref. {a.referenciaPago}</p>}
                   {a.reciboCaja && <p className="text-[11px] text-slate-400">RC {a.reciboCaja}</p>}
                   {a.numeroFactura && <p className="text-[11px] text-slate-400">Factura {a.numeroFactura}</p>}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <p className="font-semibold text-slate-800">{formatoMoneda(a.valorRecibido ?? a.valorConsignado)}</p>
+                  {/* Solicitud de factura: el valor es la base; el IVA va encima */}
+                  {a.ivaValor && <p className="text-[11px] text-slate-400">+ IVA {formatoMoneda(a.ivaValor)} = {formatoMoneda(Number(a.valorRecibido ?? a.valorConsignado) + Number(a.ivaValor))}</p>}
                   {a.valorRecibido && Number(a.valorRecibido) !== Number(a.valorConsignado) && (
                     <p className="text-[11px] text-amber-700">consignó {formatoMoneda(a.valorConsignado)}</p>
                   )}

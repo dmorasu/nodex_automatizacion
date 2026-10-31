@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
 import { ROLES } from "@/src/auth/permisos"
 import { obtenerAnticipo } from "@/src/lib/datosAnticipos"
-import { formatoFecha, formatoFechaHora, formatoMoneda } from "@/src/lib/formato"
+import { formatoFecha, formatoFechaHora, formatoMoneda, formatoPorcentaje } from "@/src/lib/formato"
 import { esDocumentoFactura, TIPOS_ANTICIPO } from "@/src/schemas/gastos"
 import AccionesAnticipo from "@/components/anticipos/AccionesAnticipo"
 import EstadoAnticipo from "@/components/anticipos/EstadoAnticipo"
@@ -90,6 +90,7 @@ export default async function DetalleAnticipoPage(props: { params: Promise<{ id:
               <Dato etiqueta="Nombre" valor={anticipo.cliente.nombre} />
               <Dato etiqueta="Identificación" valor={`${anticipo.cliente.tipoIdentificacion === "CC" ? "Cédula" : "NIT"} ${anticipo.cliente.identificacion}`} />
               <Dato etiqueta="Teléfono" valor={anticipo.cliente.telefono} />
+              <Dato etiqueta="Ciudad" valor={anticipo.cliente.ciudad} />
               <Dato etiqueta="Dirección" valor={anticipo.cliente.direccion} />
             </dl>
           </Seccion>
@@ -139,6 +140,15 @@ export default async function DetalleAnticipoPage(props: { params: Promise<{ id:
             <dl className="space-y-4">
               <Dato etiqueta="Valor consignado (pagado)" valor={<span className="text-base font-semibold text-slate-800">{formatoMoneda(anticipo.valorConsignado)}</span>} />
               <Dato etiqueta="Fecha de consignación" valor={formatoFecha(anticipo.fechaConsignacion)} />
+              {anticipo.referenciaPago && <Dato etiqueta="Referencia de pago" valor={anticipo.referenciaPago} />}
+              {/* Solicitud de factura: la base es lo recibido (o lo consignado, antes de facturar) y el IVA va encima */}
+              {anticipo.ivaValor && anticipo.ivaPorcentaje && (
+                <>
+                  <Dato etiqueta={anticipo.valorRecibido ? "Base (valor recibido)" : "Base (valor consignado)"} valor={formatoMoneda(anticipo.valorRecibido ?? anticipo.valorConsignado)} />
+                  <Dato etiqueta={`IVA (${formatoPorcentaje(anticipo.ivaPorcentaje)})`} valor={formatoMoneda(anticipo.ivaValor)} />
+                  <Dato etiqueta="Total a facturar (base + IVA)" valor={<span className="text-base font-semibold text-slate-800">{formatoMoneda(Number(anticipo.valorRecibido ?? anticipo.valorConsignado) + Number(anticipo.ivaValor))}</span>} />
+                </>
+              )}
             </dl>
           </Seccion>
 

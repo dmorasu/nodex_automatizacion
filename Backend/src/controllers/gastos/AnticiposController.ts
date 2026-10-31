@@ -19,6 +19,12 @@ import { notificarAnticiposConfirmados, notificarNovedadAnticipo, notificarSolic
 import { archivosPorSolicitud } from '../../middleware/gastos/uploadDocumentosGasto'
 import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
+import { excelReporteAnticipos, reporteAnticipos } from '../../services/gastos/reporteAnticipos'
+
+const filtrosReporte = (req: Request) => ({
+  desde: req.query.desde ? String(req.query.desde) : null,
+  hasta: req.query.hasta ? String(req.query.hasta) : null
+})
 import { ATRIBUTOS_USUARIO, esAdmin, puedeVerTodos, responderError } from './utilidades'
 
 // Quien no puede ver el anticipo recibe 404 (no se revela que existe).
@@ -57,6 +63,30 @@ export class AnticiposController {
     }
   }
 
+  // GET /anticipos/reporte?desde=&hasta= → por centro de costos: facturado, por facturar y anticipos
+  // (base, IVA y total). Lo ven todos, con lo de toda la empresa (decisión del usuario)
+  static reporte = async (req: Request, res: Response) => {
+    try {
+      const { centros, totales } = await reporteAnticipos(filtrosReporte(req))
+      res.json({ centros, totales })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // GET /anticipos/reporte/exportar?desde=&hasta= → Excel con el resumen y el detalle
+  static exportarReporte = async (req: Request, res: Response) => {
+    try {
+      const buffer = await excelReporteAnticipos(filtrosReporte(req))
+      const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', `attachment; filename="anticipos-por-centro-de-costos-${fecha}.xlsx"`)
+      res.send(Buffer.from(buffer as ArrayBuffer))
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
   // GET /anticipos/resumen → pendientes para la pantalla de inicio
   static resumen = async (req: Request, res: Response) => {
     try {
@@ -86,7 +116,7 @@ export class AnticiposController {
       const { id } = await obtenerAnticipoConAcceso(req, Number(req.params.id))
       const anticipo = (await Anticipos.findByPk(id, {
         include: [
-          { model: Terceros, attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'telefono', 'direccion'] },
+          { model: Terceros, attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'telefono', 'direccion', 'ciudad'] },
           { model: ClientesEmpresariales, attributes: ['id', 'nombre'] },
           { model: Bolsas, attributes: ['id', 'nombre', 'tipo'] },
           { model: Operaciones, attributes: ['id', 'nombreOperacion', 'centroDeCostos'] },

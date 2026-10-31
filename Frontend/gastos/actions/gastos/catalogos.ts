@@ -38,6 +38,14 @@ export async function guardarParametrosRetencion(uvt: number, tarifaPorcentaje: 
   return { ok: true }
 }
 
+// Tarifa del IVA de las solicitudes de factura (llega en porcentaje: 19 → 0.19)
+export async function guardarTarifaIva(porcentaje: number): Promise<Resultado> {
+  const req = await fetchApi("/gastos/admin/parametros/IVA", { method: "PUT", body: JSON.stringify({ valor: porcentaje / 100 }) })
+  if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+  revalidatePath("/catalogos/iva")
+  return { ok: true }
+}
+
 // Solo lo que no está en uso
 export async function eliminarDeCatalogo(catalogo: string, id: number) {
   return enviar(`${catalogo}/${id}`, "DELETE")

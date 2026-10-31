@@ -10,7 +10,7 @@ import {
   ResumenAnticiposSchema,
   SaldosClientesSchema
 } from "../schemas/gastos"
-import { obtenerOperaciones } from "./datosGastos"
+import { obtenerOperaciones, obtenerTasas } from "./datosGastos"
 
 export type FiltrosAnticipos = {
   alcance?: "mios" | "todos"
@@ -60,11 +60,13 @@ export const obtenerSaldosClientes = async (bolsaId: number, filtros: FiltrosArq
 
 // Todo lo que necesita el formulario del anticipo o de la solicitud de factura
 export const obtenerDatosFormularioAnticipo = async () => {
-  const [operaciones, bolsasAnticipos, bolsasFacturas, clientesEmpresariales] = await Promise.all([
+  const [operaciones, bolsasAnticipos, bolsasFacturas, clientesEmpresariales, tasas] = await Promise.all([
     obtenerOperaciones(),
     obtenerBolsasAnticipos("ANTICIPOS"),
     obtenerBolsasAnticipos("FACTURAS"),
-    obtenerClientesEmpresariales()
+    obtenerClientesEmpresariales(),
+    obtenerTasas()
   ])
-  return { operaciones, bolsas: { ANTICIPO: bolsasAnticipos, FACTURA: bolsasFacturas }, clientesEmpresariales }
+  // Tarifa del IVA para la vista previa de las solicitudes de factura (0.19)
+  return { operaciones, bolsas: { ANTICIPO: bolsasAnticipos, FACTURA: bolsasFacturas }, clientesEmpresariales, tasaIva: tasas.iva }
 }

@@ -140,7 +140,9 @@ export const PARAMETROS = {
   // Retención de las cuentas de cobro de los tramitadores (2026-10-27): valor de la UVT del año
   // (tabla del art. 383, se actualiza cada enero) y tarifa fija de quien no firmó la declaración
   UVT: 'UVT',
-  RETENCION_TRAMITADORES: 'RETENCION_TRAMITADORES'
+  RETENCION_TRAMITADORES: 'RETENCION_TRAMITADORES',
+  // IVA de las solicitudes de factura (2026-10-31): se suma sobre la base (el valor consignado)
+  IVA: 'IVA'
 } as const
 
 export type ClaveParametro = typeof PARAMETROS[keyof typeof PARAMETROS]

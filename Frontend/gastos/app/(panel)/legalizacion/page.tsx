@@ -12,6 +12,7 @@ export default async function GastosSinFacturaPage(props: { searchParams: Promis
       <TablaGastosPorFacturar
         filtros={{ reembolsable: "si", soporteTramitador: "no", ...filtrosActivos(searchParams) }}
         vacio="No hay gastos pagados sin factura."
+        archivo="legalizacion-sin-factura"
       />
     </div>
   )

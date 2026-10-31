@@ -6,7 +6,6 @@ import Terceros from '../../models/gastos/terceros'
 import Bolsas from '../../models/gastos/bolsas'
 import TiposGasto from '../../models/gastos/tiposGasto'
 import Operaciones from '../../models/operaciones'
-import SolicitudTramites from '../../models/solicitudTramites'
 import Usuarios from '../../models/usuarios'
 import FacturasGasto from '../../models/gastos/facturasGasto'
 import Reintegros from '../../models/gastos/reintegros'
@@ -61,7 +60,7 @@ const comoSePago = (gastos: SolicitudesGasto[]) => {
     : ' El soporte del pago está en el detalle del gasto en Nodex Gastos.'
 }
 
-// Mismo correo de pago para el creador, el analista y la torre de control.
+// Mismo correo de pago para el creador y la torre de control.
 // Sale cuando Tesorería CONFIRMA el pago (no al programarlo ni al aprobarlo).
 const correoPagado = (titulo: string, saludo: string, intro: string, gastos: SolicitudesGasto[]) =>
   correoGastos({
@@ -74,6 +73,8 @@ const correoPagado = (titulo: string, saludo: string, intro: string, gastos: Sol
     etiquetaTotal: 'Total pagado',
     detalles: g => [
       ['Beneficiario', html(g.beneficiario?.nombre)],
+      // Quien hace el trámite (puede no ser el beneficiario del pago); sin tramitador no sale
+      ['Tramitador', g.tramitador ? html(g.tramitador.nombreTramitador) : null],
       ['Fecha de pago', formatoFecha(g.fechaPago)],
       ['Bolsa', html(g.bolsa?.nombre)],
       ['Trámite', tramite(g)],
@@ -101,6 +102,7 @@ export const notificarGastosCreados = async (gastoIds: number[]) => {
       include: [
         { model: Usuarios, as: 'creador', attributes: ['nombreUsuario'] },
         { model: Terceros, attributes: ['nombre'] },
+        { model: Tramitador, attributes: ['nombreTramitador'] },
         { model: Bolsas, attributes: ['nombre'] },
         { model: TiposGasto, attributes: ['nombre'] },
         { model: Operaciones, attributes: ['nombreOperacion'] }
@@ -127,6 +129,7 @@ export const notificarGastosCreados = async (gastoIds: number[]) => {
         ['Tipo', html(g.tipoGasto?.nombre)],
         ['Operación', html(g.operacion?.nombreOperacion)],
         ['Beneficiario', html(g.beneficiario?.nombre)],
+        ['Tramitador', g.tramitador ? html(g.tramitador.nombreTramitador) : null],
         ['Bolsa', html(g.bolsa?.nombre)],
         ['Trámite', tramite(g)],
         ['Creado por', html(g.creador?.nombreUsuario)]
@@ -141,8 +144,10 @@ export const notificarGastosCreados = async (gastoIds: number[]) => {
 
 // Avisa del pago confirmado (bolsa descontada y soporte del banco adjunto):
 //  - a quien creó cada gasto,
-//  - al analista asignado al trámite del gasto, con copia a la torre de control,
-//  - a la torre de control directamente por los gastos sin analista (o sin trámite).
+//  - a la torre de control, en un solo correo, por los gastos que tienen trámite.
+// 2026-10-31, decisiones del usuario: los gastos sin trámite solo le llegan al creador, y ya no
+// se escribe al analista del trámite (con copia a la torre): los analistas están en el grupo de
+// la torre de control y les llegaba doble.
 // Un solo correo por destinatario aunque se paguen varios gastos en el lote.
 // Se llama DESPUÉS de confirmar la transacción del pago; si falla, el pago no se revierte.
 export const notificarGastosPagados = async (gastoIds: number[]) => {
@@ -152,6 +157,7 @@ export const notificarGastosPagados = async (gastoIds: number[]) => {
       include: [
         { model: Usuarios, as: 'creador', attributes: ['id', 'nombreUsuario', 'correoUsuario'] },
         { model: Terceros, attributes: ['nombre'] },
+        { model: Tramitador, attributes: ['nombreTramitador'] },
         { model: Bolsas, attributes: ['nombre'] },
         {
           model: LotesPago,
@@ -181,57 +187,21 @@ export const notificarGastosPagados = async (gastoIds: number[]) => {
       )
     }
 
-    // ── Analista asignado al trámite (con copia a la torre de control) ──
-    const tramiteIds = [...new Set(gastos.map(g => g.solicitudTramiteId).filter(Boolean))]
-    const tramites = tramiteIds.length
-      ? await SolicitudTramites.findAll({ where: { id: tramiteIds }, attributes: ['id', 'analistaAsignado'] })
-      : []
-    const analistaDeTramite = new Map(tramites.map(t => [t.id, t.analistaAsignado]))
+    // ── Torre de control: solo los gastos de trámites ──
+    const gastosConTramite = gastos.filter(g => g.solicitudTramiteId)
+    if (!gastosConTramite.length) return
 
-    const analistaIds = [...new Set(tramites.map(t => t.analistaAsignado).filter((id): id is number => !!id))]
-    const analistas = analistaIds.length
-      ? await Usuarios.findAll({ where: { id: analistaIds }, attributes: ['id', 'nombreUsuario', 'correoUsuario'] })
-      : []
-    const analistaPorId = new Map(analistas.map(a => [a.id, a]))
-
-    // Analista con correo del gasto, o null si va directo a la torre de control
-    const analistaDe = (g: SolicitudesGasto) => {
-      const analista = analistaPorId.get(analistaDeTramite.get(g.solicitudTramiteId) ?? 0)
-      return analista?.correoUsuario ? analista : null
-    }
-
-    for (const [analista, gastosAnalista] of agruparPor(gastos, analistaDe)) {
-      const asunto = gastosAnalista.length === 1
-        ? `Gasto pagado ${gastosAnalista[0].codigo}`
-        : `${gastosAnalista.length} gastos pagados`
-
-      if (analista) {
-        await encolarCorreo(
-          'GASTO_PAGADO_ANALISTA',
-          analista.correoUsuario,
-          `${asunto} · trámites asignados`,
-          correoPagado(
-            'Pago en trámites asignados',
-            `Hola ${html(analista.nombreUsuario)},`,
-            `Tesorería confirmó el pago de ${plural(gastosAnalista.length, 'un gasto', 'gastos')} de trámites que tienes asignados.`,
-            gastosAnalista
-          ),
-          true // copia a la torre de control
-        )
-      } else {
-        await encolarCorreo(
-          'GASTO_PAGADO_TORRE_CONTROL',
-          correoTorreControl(),
-          asunto,
-          correoPagado(
-            gastosAnalista.length === 1 ? 'Gasto pagado' : 'Gastos pagados',
-            'Hola Torre de Control,',
-            `Tesorería confirmó el pago de ${plural(gastosAnalista.length, 'un gasto', 'gastos')} sin analista asignado.`,
-            gastosAnalista
-          )
-        )
-      }
-    }
+    await encolarCorreo(
+      'GASTO_PAGADO_TORRE_CONTROL',
+      correoTorreControl(),
+      gastosConTramite.length === 1 ? `Gasto pagado ${gastosConTramite[0].codigo}` : `${gastosConTramite.length} gastos pagados`,
+      correoPagado(
+        gastosConTramite.length === 1 ? 'Gasto pagado' : 'Gastos pagados',
+        'Hola Torre de Control,',
+        `Tesorería confirmó el pago de ${plural(gastosConTramite.length, 'un gasto', 'gastos')} de trámites.`,
+        gastosConTramite
+      )
+    )
   } catch (error) {
     console.error('⚠️ No se pudieron enviar los correos de gastos pagados:', error)
   }
@@ -366,6 +336,7 @@ const gastosConDetalle = (where: Record<string, unknown>) =>
     include: [
       { model: Usuarios, as: 'creador', attributes: ['nombreUsuario'] },
       { model: Terceros, attributes: ['nombre'] },
+      { model: Tramitador, attributes: ['nombreTramitador'] },
       { model: TiposGasto, attributes: ['nombre'] }
     ],
     order: [['id', 'ASC']]
@@ -395,6 +366,7 @@ export const notificarLoteProgramado = async (loteId: number) => {
       etiquetaTotal: 'Total programado',
       detalles: g => [
         ['Beneficiario', html(g.beneficiario?.nombre)],
+        ['Tramitador', g.tramitador ? html(g.tramitador.nombreTramitador) : null],
         ['Tipo', html(g.tipoGasto?.nombre)],
         ['Trámite', tramite(g)],
         ['Solicitado por', html(g.creador?.nombreUsuario)]
@@ -430,6 +402,7 @@ export const notificarRevisionLote = async (loteId: number, rechazadoIds: number
         etiquetaTotal: 'Total rechazado',
         detalles: g => [
           ['Beneficiario', html(g.beneficiario?.nombre)],
+          ['Tramitador', g.tramitador ? html(g.tramitador.nombreTramitador) : null],
           ['Tipo', html(g.tipoGasto?.nombre)],
           ['Trámite', tramite(g)],
           ['Solicitado por', html(g.creador?.nombreUsuario)]
@@ -451,6 +424,7 @@ export const notificarRevisionLote = async (loteId: number, rechazadoIds: number
       etiquetaTotal: 'Total aprobado',
       detalles: g => [
         ['Beneficiario', html(g.beneficiario?.nombre)],
+        ['Tramitador', g.tramitador ? html(g.tramitador.nombreTramitador) : null],
         ['Tipo', html(g.tipoGasto?.nombre)],
         ['Trámite', tramite(g)],
         ['Solicitado por', html(g.creador?.nombreUsuario)]

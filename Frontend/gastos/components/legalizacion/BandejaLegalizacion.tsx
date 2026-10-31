@@ -5,6 +5,7 @@ import { FilePlus2 } from "lucide-react"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { CuentaListado, GastoListado } from "@/src/schemas/gastos"
 import SeleccionGastos from "../gastos/SeleccionGastos"
+import { COLUMNA_CENTRO_COSTOS, COLUMNA_RETENCION, COLUMNA_TRAMITADOR } from "../gastos/columnasGastos"
 import { claseBotonPrimario } from "../ui/estilos"
 import ModalAgregarACuenta from "./ModalAgregarACuenta"
 
@@ -20,9 +21,12 @@ export default function BandejaLegalizacion({ gastos, borradores }: { gastos: Ga
         valorTotal={g => Number(g.factura?.valorLegalizado ?? 0)}
         columnas={[
           { titulo: "Beneficiario", valor: g => g.beneficiario.nombre },
+          COLUMNA_TRAMITADOR,
           { titulo: "Bolsa", valor: g => g.bolsa?.nombre ?? "—" },
+          COLUMNA_CENTRO_COSTOS,
           { titulo: "Factura", valor: g => g.factura?.numeroFactura ?? "—" },
           { titulo: "Pagado", alinearDerecha: true, valor: g => formatoMoneda(g.valorRealmentePagado) },
+          COLUMNA_RETENCION,
           { titulo: "Valor factura", alinearDerecha: true, valor: g => formatoMoneda(g.factura?.valorFactura) },
           { titulo: "4x1000", alinearDerecha: true, valor: g => formatoMoneda(g.factura?.cuatroXMil) },
           { titulo: "A legalizar", alinearDerecha: true, valor: g => <b className="text-slate-800">{formatoMoneda(g.factura?.valorLegalizado)}</b> }

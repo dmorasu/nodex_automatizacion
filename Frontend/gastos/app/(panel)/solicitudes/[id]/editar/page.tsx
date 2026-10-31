@@ -12,7 +12,7 @@ export default async function EditarGastoPage(props: { params: Promise<{ id: str
     obtenerDatosFormulario()
   ])
 
-  // Solo se edita mientras está Solicitado y si es el creador (o admin)
+  // En Solicitado lo edita el creador (o el admin); después, solo el Administrador de Gastos (con motivo)
   if (!gasto.permisos.editar) redirect(`/solicitudes/${gasto.id}`)
 
   return (
@@ -24,6 +24,7 @@ export default async function EditarGastoPage(props: { params: Promise<{ id: str
       <FormularioGasto
         {...datosFormulario}
         gasto={gasto}
+        edicionAdmin={gasto.permisos.edicionAdmin ?? false}
         anticipo={gasto.anticipo ? {
           id: gasto.anticipo.id,
           codigo: gasto.anticipo.codigo,

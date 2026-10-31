@@ -11,6 +11,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import type { LoteDetalle } from "@/src/schemas/gastos"
 import EstadoGasto from "../gastos/EstadoGasto"
 import AvisoSaldoAnticipo from "../anticipos/AvisoSaldoAnticipo"
+import { celdaCentroCostos, celdaCuatroXMil, celdaRetencion, celdaTramitador } from "../gastos/columnasGastos"
 import { claseBotonPeligro, claseBotonPrimario, claseBotonSecundario, claseLabel, claseTextarea } from "../ui/estilos"
 
 type Gasto = LoteDetalle["gastos"][number]
@@ -159,9 +160,13 @@ export default function GastosLote({ loteId, gastos, accion }: {
               )}
               <th className="px-4 py-3 font-semibold">Gasto</th>
               <th className="px-4 py-3 font-semibold">Beneficiario</th>
+              <th className="px-4 py-3 font-semibold">Tramitador</th>
+              <th className="px-4 py-3 font-semibold">Centro de costos</th>
               <th className="px-4 py-3 font-semibold">Solicitante</th>
               <th className="px-4 py-3 font-semibold">Estado</th>
               <th className="px-4 py-3 font-semibold text-right">Valor solicitado</th>
+              <th className="px-4 py-3 font-semibold text-right">Retención</th>
+              <th className="px-4 py-3 font-semibold text-right">4x1000</th>
               <th className="px-4 py-3 font-semibold text-right">{gastos.some(g => g.valorRealmentePagado) ? "Valor pagado" : "Valor a pagar"}</th>
             </tr>
           </thead>
@@ -189,9 +194,13 @@ export default function GastosLote({ loteId, gastos, accion }: {
                     <AvisoSaldoAnticipo gasto={gasto} />
                   </td>
                   <td className="px-4 py-3 text-slate-600">{gasto.beneficiario.nombre}</td>
+                  <td className="px-4 py-3 text-slate-600">{celdaTramitador(gasto)}</td>
+                  <td className="px-4 py-3 text-slate-600">{celdaCentroCostos(gasto)}</td>
                   <td className="px-4 py-3 text-slate-600">{gasto.creador?.nombreUsuario}</td>
                   <td className="px-4 py-3"><EstadoGasto codigo={gasto.estado.codigo} nombre={gasto.estado.nombre} /></td>
                   <td className="px-4 py-3 text-right text-slate-600">{formatoMoneda(gasto.valorSolicitadoPago)}</td>
+                  <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{celdaRetencion(gasto)}</td>
+                  <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{celdaCuatroXMil(gasto)}</td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatoMoneda(valor(gasto))}</td>
                 </tr>
               )

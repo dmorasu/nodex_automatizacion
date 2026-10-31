@@ -107,7 +107,8 @@ const PARAMETROS_INICIALES = [
   { clave: PARAMETROS.GMF, valor: '0.004', descripcion: '4x1000 sobre el valor de la factura' },
   { clave: PARAMETROS.HORA_CORTE_PROGRAMACION, valor: '9', descripcion: 'Hora límite para que un gasto nuevo se programe el mismo día (después, el siguiente día hábil)' },
   { clave: PARAMETROS.UVT, valor: '52374', descripcion: 'Valor de la UVT del año para la retención art. 383 de los tramitadores (actualizar cada enero)' },
-  { clave: PARAMETROS.RETENCION_TRAMITADORES, valor: '0.10', descripcion: 'Retención de los tramitadores que no firmaron la declaración del art. 383 (tarifa fija)' }
+  { clave: PARAMETROS.RETENCION_TRAMITADORES, valor: '0.10', descripcion: 'Retención de los tramitadores que no firmaron la declaración del art. 383 (tarifa fija)' },
+  { clave: PARAMETROS.IVA, valor: '0.19', descripcion: 'IVA de las solicitudes de factura, sobre la base (el valor consignado)' }
 ]
 
 

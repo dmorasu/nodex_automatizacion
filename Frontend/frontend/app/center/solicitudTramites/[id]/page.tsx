@@ -82,7 +82,8 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
         id: solicitudTramite.id,
         operacionId: Number((json as { operacionesId?: number }).operacionesId) || null,
         placa: solicitudTramite.placa,
-        matriculaInmobiliaria: solicitudTramite.matriculaInmobiliaria
+        matriculaInmobiliaria: solicitudTramite.matriculaInmobiliaria,
+        nombreTramite: solicitudTramite.tramite?.nombreTramite ?? null
       }}
       opciones={opcionesGasto}
     />

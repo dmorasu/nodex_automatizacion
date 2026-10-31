@@ -38,6 +38,17 @@ export const formatoFecha = (fecha: string | null) => {
   return `${dia}/${mes}/${anio}`
 }
 
+// ISO → "30/09/2026 2:05 p. m." en hora de Colombia (UTC−5 todo el año, sin horario de verano).
+// Sin toLocale*: da el mismo texto en el servidor y en el navegador (sirve en componentes de cliente)
+export const formatoFechaHoraColombia = (iso: string | null) => {
+  if (!iso) return "—"
+  const fecha = new Date(new Date(iso).getTime() - 5 * 60 * 60 * 1000)
+  const dos = (n: number) => String(n).padStart(2, "0")
+  const horas = fecha.getUTCHours()
+  return `${dos(fecha.getUTCDate())}/${dos(fecha.getUTCMonth() + 1)}/${fecha.getUTCFullYear()} ` +
+    `${horas % 12 || 12}:${dos(fecha.getUTCMinutes())} ${horas < 12 ? "a. m." : "p. m."}`
+}
+
 // 0.11 → "11 %"
 export const formatoPorcentaje = (valor: string | number) =>
   `${Number((Number(valor) * 100).toFixed(4))} %`

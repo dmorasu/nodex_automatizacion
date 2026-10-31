@@ -1,4 +1,6 @@
 import Link from "next/link"
+import ExportarExcel from "@/components/gastos/ExportarExcel"
+import { celdaCuatroXMil } from "@/components/gastos/columnasGastos"
 import { Plus, Search, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
 import { tieneRolDeGastos } from "@/src/auth/permisos"
@@ -64,6 +66,7 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
           <p className="mt-1 text-sm text-slate-400">{total} gasto(s) encontrado(s)</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {total > 0 && <ExportarExcel consulta={consulta} archivo="solicitudes" className="" />}
           <Link href="/solicitudes/cargue" className={claseBotonSecundario}>
             <FileSpreadsheet size={15} />
             Cargue masivo
@@ -120,6 +123,7 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
               <th className="px-4 py-3 font-semibold">Operación</th>
               <th className="px-4 py-3 font-semibold">Bolsa</th>
               <th className="px-4 py-3 font-semibold text-right">Valor solicitado</th>
+              <th className="px-4 py-3 font-semibold text-right">4x1000</th>
               <th className="px-4 py-3 font-semibold">Estado</th>
             </tr>
           </thead>
@@ -143,9 +147,14 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
                   </p>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{gasto.beneficiario.nombre}</td>
-                <td className="px-4 py-3 text-slate-600">{gasto.operacion.nombreOperacion}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {gasto.operacion.nombreOperacion}
+                  {gasto.operacion.centroDeCostos && <p className="text-[11px] text-slate-400">CC {gasto.operacion.centroDeCostos}</p>}
+                </td>
                 <td className="px-4 py-3 text-slate-600">{gasto.bolsa?.nombre ?? "—"}</td>
                 <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">{formatoMoneda(gasto.valorSolicitadoPago)}</td>
+                {/* El registrado con la factura; antes de legalizar sale "—" */}
+                <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{celdaCuatroXMil(gasto)}</td>
                 <td className="px-4 py-3"><EstadoGasto codigo={gasto.estado.codigo} nombre={gasto.estado.nombre} /></td>
               </tr>
             ))}

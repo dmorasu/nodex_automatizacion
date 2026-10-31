@@ -282,6 +282,31 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**IVA en las solicitudes de factura (2026-10-31)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
+- **Sin variables nuevas.** `ajustarEsquemaGastos()` (después de sync, idempotente) agrega `gastos_anticipos.iva_porcentaje DECIMAL(10, 6)` e `iva_valor DECIMAL(15, 2)` (nulas) y `seedGastos()` crea el parámetro `IVA` = 0.19 si no existe. Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT clave, valor FROM gastos_parametros WHERE clave = 'IVA'" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'gastos_anticipos' AND column_name LIKE 'iva%'"`
+- Las solicitudes de factura que ya existían quedan sin IVA (no se calcula hacia atrás); si se corrigen, se les calcula.
+- Pruebas: nueva solicitud de factura con 1.000.000 → IVA 190.000, total 1.190.000; Contabilidad la factura con otro valor recibido y el IVA se recalcula sobre él; Catálogos → IVA facturas cambia la tarifa (las ya registradas conservan la suya).
+- Para volver: el commit anterior ignora las columnas y el parámetro.
+
+**Referencia de pago en anticipos y solicitudes de factura (2026-10-31)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
+- **Sin variables nuevas.** `ajustarEsquemaGastos()` (después de sync, idempotente) agrega `gastos_anticipos.referencia_pago VARCHAR(100)` (nula). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'gastos_anticipos' AND column_name = 'referencia_pago'"`
+- Pruebas: registrar un anticipo sin soporte y sin referencia (debe rechazarlo), sin soporte y con referencia (lo crea) y con soporte sin referencia (lo crea); Contabilidad ve la referencia en la lista y al confirmar o facturar.
+- Para volver: el commit anterior ignora la columna, pero vuelve a exigir el soporte (los anticipos que se crearon solo con referencia no se podrían corregir sin adjuntar uno).
+
+**Ciudad del cliente en anticipos y solicitudes de factura (2026-10-31)** — cambian el backend y Nodex Gastos (y el buscador de municipios de Trámites usa el mismo servicio, sin cambio visible): compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
+- **Sin variables nuevas.** `ajustarEsquemaGastos()` (después de sync, idempotente) agrega `gastos_terceros.ciudad VARCHAR(150)` (nula). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'gastos_terceros' AND column_name = 'ciudad'"`
+- Pruebas: Anticipos → Solicitud de factura: escribir "medel" en Ciudad y elegir MEDELLÍN - ANTIOQUIA; sin ciudad no deja guardar. En un anticipo la ciudad es opcional. El detalle muestra la ciudad.
+- Para volver: el commit anterior ignora la columna.
+
+**Valor de liquidación en los gastos de inmueble (2026-10-31)** — cambian el backend, Nodex Gastos y Nodex Trámites (compilar los tres y reiniciar `nodex-api`, `nodex-gastos` y `nodex-tramites`).
+- **Sin variables nuevas.** `ajustarEsquemaGastos()` (después de sync, idempotente) agrega `gastos_solicitudes.valor_liquidacion DECIMAL(15, 2)` (nula; los gastos que ya existen quedan sin liquidación). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'gastos_solicitudes' AND column_name = 'valor_liquidacion'"`
+- Pruebas: gasto de Inmueble con liquidación 1.000.000, base 800.000 y 11 % → valor solicitado 912.000; cambiarlo a mano y guardar; el detalle muestra "Valor liquidación". Lo mismo desde un trámite en Nodex Trámites.
+- Para volver: el commit anterior ignora la columna (no hay que borrarla).
+
 **Agenda de mensajeros y Excel de cuentas de cobro (2026-10-25)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-tramitadores`).
 - **Sin variables nuevas.** El arranque agrega `"Programacion"."horaFinCita"` (antes de sync, idempotente) y `sync()` crea `mensajeria_reservas`. Comprobar:
   `sudo -u postgres psql -d nodex -c "\dt mensajeria_reservas" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'Programacion' AND column_name = 'horaFinCita'"`

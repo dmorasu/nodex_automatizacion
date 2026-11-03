@@ -9,6 +9,7 @@ import SeleccionGastos from "../gastos/SeleccionGastos"
 import { COLUMNA_CENTRO_COSTOS, COLUMNA_CUATRO_X_MIL, COLUMNA_RETENCION, COLUMNA_TRAMITADOR, COLUMNA_VALOR_PAGADO } from "../gastos/columnasGastos"
 import { claseBotonPrimario } from "../ui/estilos"
 import ModalPago from "./ModalPago"
+import BotonSinFondos from "./BotonSinFondos"
 import AvisoSaldoAnticipo from "../anticipos/AvisoSaldoAnticipo"
 
 // Gastos en estado Solicitado con selección. Los generales se programan para aprobación de
@@ -39,15 +40,18 @@ export default function BandejaPagos({ gastos, bolsas, directo = false }: { gast
           COLUMNA_VALOR_PAGADO
         ]}
         accion={(seleccionados, limpiar) => (
-          <button
-            type="button"
-            onClick={() => setAPagar({ gastos: seleccionados, limpiar })}
-            disabled={seleccionados.length === 0}
-            className={claseBotonPrimario}
-          >
-            {directo ? <Wallet size={15} /> : <CalendarClock size={15} />}
-            {directo ? "Pagar seleccionados" : "Programar pago"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <BotonSinFondos gastos={seleccionados} onMarcados={limpiar} />
+            <button
+              type="button"
+              onClick={() => setAPagar({ gastos: seleccionados, limpiar })}
+              disabled={seleccionados.length === 0}
+              className={claseBotonPrimario}
+            >
+              {directo ? <Wallet size={15} /> : <CalendarClock size={15} />}
+              {directo ? "Pagar seleccionados" : "Programar pago"}
+            </button>
+          </div>
         )}
       />
 

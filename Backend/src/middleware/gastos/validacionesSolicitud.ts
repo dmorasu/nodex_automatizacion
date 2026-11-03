@@ -170,6 +170,12 @@ export const validarSalidaLote = [
   body('motivo').isString().trim().isLength({ min: 3, max: 500 }).withMessage('Indique el motivo (mínimo 3 caracteres)')
 ]
 
+export const validarSinFondos = [
+  body('gastoIds').isArray({ min: 1, max: 200 }).withMessage('Seleccione los gastos'),
+  body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido').toInt(),
+  body('observacion').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('La observación puede tener máximo 500 caracteres')
+]
+
 export const validarConfirmacionPago = [
   validarId,
   body('fechaPago').isISO8601({ strict: true }).withMessage('Fecha de pago no válida'),

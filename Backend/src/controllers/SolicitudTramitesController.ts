@@ -235,6 +235,7 @@ static asignarTramitador = async (req: Request, res: Response) => {
       // UPDATE
       // =========================
       solicitud.tramitadorId = tramitadorId
+      solicitud.usuarioQueModifica = req.usuario.id
       await solicitud.save()
 
       // =========================
@@ -452,6 +453,7 @@ static getAll = async (req: Request, res: Response) => {
         // usuarioId es quien creó el trámite: no cambia al editar
         // El analista se cambia solo por PATCH /:id/analista (Administrador de Torre de control)
         const { placa, matriculaInmobiliaria, usuarioId, analistaAsignado, ...datos } = req.body
+        req.solicitudTramites.usuarioQueModifica = req.usuario.id
         await req.solicitudTramites.update(datos)
         // Lugar elegido en el autocompletado; si no, si cambió la dirección se vuelve a ubicar
         await guardarUbicacionDelFormulario(req.solicitudTramites.id, req.body)

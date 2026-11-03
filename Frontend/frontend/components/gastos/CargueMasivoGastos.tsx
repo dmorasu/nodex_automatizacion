@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { toast } from "react-toastify"
 import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Loader2, ShieldCheck, Upload, XCircle } from "lucide-react"
+import LiquidacionesCargue, { type GastoCargado } from "./LiquidacionesCargue"
 
 type ErrorFila = { fila: number, error: string }
 
@@ -10,7 +11,7 @@ type Estado =
   | { tipo: "inicial" }
   | { tipo: "conErrores", total: number, errores: ErrorFila[], mensaje?: string }
   | { tipo: "valido", total: number }
-  | { tipo: "cargado", total: number, codigos: string[] }
+  | { tipo: "cargado", total: number, codigos: string[], gastos: GastoCargado[], tipoLiquidacionId: number | null }
 
 const API = "/api/backend/gastos/cargue-masivo"
 
@@ -65,7 +66,7 @@ export default function CargueMasivoGastos() {
         setEstado({ tipo: "conErrores", total: json.total ?? 0, errores: json.errores ?? [], mensaje: json.error })
         return
       }
-      setEstado({ tipo: "cargado", total: json.total, codigos: json.codigos })
+      setEstado({ tipo: "cargado", total: json.total, codigos: json.codigos, gastos: json.gastos ?? [], tipoLiquidacionId: json.tipoLiquidacionId ?? null })
       setArchivo(null)
       if (entrada.current) entrada.current.value = ""
       toast.success(`${json.codigos.length} gasto(s) creados en Nodex Gastos`)
@@ -130,6 +131,10 @@ export default function CargueMasivoGastos() {
           </div>
           <p className="mt-2 text-xs text-emerald-700">{estado.codigos.join(" · ")}</p>
         </div>
+      )}
+
+      {estado.tipo === "cargado" && estado.tipoLiquidacionId && estado.gastos.length > 0 && (
+        <LiquidacionesCargue gastos={estado.gastos} tipoLiquidacionId={estado.tipoLiquidacionId} />
       )}
 
       {estado.tipo === "conErrores" && (

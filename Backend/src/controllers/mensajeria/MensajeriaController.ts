@@ -152,7 +152,7 @@ export class MensajeriaController {
     try {
       const fecha = fechaValida(req.body.fecha)
       if (!fecha) throw new ErrorUbicacion('Fecha no válida')
-      res.json(await agregarTramitesARuta(fecha, Number(req.params.tramitadorId), req.body.tramiteIds))
+      res.json(await agregarTramitesARuta(fecha, Number(req.params.tramitadorId), req.body.tramiteIds, req.usuario.id))
     } catch (error) {
       responder(res, error)
     }

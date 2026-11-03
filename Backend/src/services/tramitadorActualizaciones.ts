@@ -1,7 +1,7 @@
 import { db } from '../config/db'
 import SolicitudTramites from '../models/solicitudTramites'
 
-export const procesarTramitador = async (data: any[]) => {
+export const procesarTramitador = async (data: any[], usuarioId: number) => {
 
   const t = await db.transaction()
   const errores: any[] = []
@@ -23,6 +23,7 @@ export const procesarTramitador = async (data: any[]) => {
           throw new Error('Solicitud no existe')
         }
 
+        solicitud.usuarioQueModifica = usuarioId
         await solicitud.update({
           tramitadorId: row.tramitadorId
         }, { transaction: t })

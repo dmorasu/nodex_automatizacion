@@ -46,6 +46,7 @@ import {
   validarPagoDirecto,
   validarAprobacionLote,
   validarSalidaLote,
+  validarSinFondos,
   validarConfirmacionPago,
   validarConfirmacionPagos,
   validarRecarga,
@@ -229,6 +230,8 @@ router.post('/lotes', tesoreriaOCertificados, validarProgramacion, handleInputEr
 // Compras de certificados: pago directo, sin aprobación de Dirección
 // multipart: datos (JSON) + soporte_<gastoId> por cada gasto (obligatorio) + archivos del banco (opcional)
 router.post('/pagos', tesoreriaOCertificados, recibirSoportesPago, leerDatosJson, validarPagoDirecto, handleInputErrors, PagosController.pagarCertificados)
+// Sin fondos en la bolsa, pendiente de anticipo: solo deja la nota en el historial
+router.post('/solicitudes/sin-fondos', tesoreriaOCertificados, validarSinFondos, handleInputErrors, PagosController.sinFondos)
 router.post('/lotes/:id/aprobar', soloDireccion, validarAprobacionLote, handleInputErrors, PagosController.aprobar)
 router.post('/lotes/:id/rechazar', soloDireccion, validarSalidaLote, handleInputErrors, PagosController.rechazar)
 router.post('/lotes/:id/quitar', tesoreriaOCertificados, validarSalidaLote, handleInputErrors, PagosController.quitar)

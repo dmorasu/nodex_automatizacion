@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import clsx from "clsx"
-import { ArrowDown, ArrowUp, Camera, ExternalLink, Loader2, Map as IconoMapa, MapPin, MapPinOff, Navigation, Plus, Sparkles } from "lucide-react"
+import { ArrowDown, ArrowUp, Camera, ExternalLink, GripVertical, Loader2, Map as IconoMapa, MapPin, MapPinOff, Navigation, Plus, Sparkles } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import {
   COLOR_ESTADO,
@@ -40,6 +40,9 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
   const [optimizando, setOptimizando] = useState(false)
   const [ubicando, setUbicando] = useState<Parada | null>(null)
   const [agregando, setAgregando] = useState(false)
+  // Arrastre de una parada: cuál se arrastra y sobre cuál está
+  const [arrastrada, setArrastrada] = useState<number | null>(null)
+  const [destinoArrastre, setDestinoArrastre] = useState<number | null>(null)
 
   useEffect(() => setParadas(ruta.paradas), [ruta.paradas])
   // El mapa del día se redibuja con el orden nuevo
@@ -49,12 +52,12 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
   const { mensajero, sede, resumen } = ruta
   const enlaces = enlacesGoogleMaps(sede, paradas.filter(p => p.estado === "PENDIENTE"))
 
-  // Sube o baja una parada y guarda el orden
-  const mover = async (indice: number, paso: -1 | 1) => {
-    const destino = indice + paso
-    if (destino < 0 || destino >= paradas.length) return
+  // Lleva la parada de `desde` a la posición `hasta` y guarda el orden (botones y arrastre)
+  const mover = async (desde: number, hasta: number) => {
+    if (hasta < 0 || hasta >= paradas.length || hasta === desde) return
     const nuevas = [...paradas]
-    ;[nuevas[indice], nuevas[destino]] = [nuevas[destino], nuevas[indice]]
+    const [movida] = nuevas.splice(desde, 1)
+    nuevas.splice(hasta, 0, movida)
     const reordenadas = nuevas.map((p, i) => ({ ...p, orden: i + 1 }))
     setParadas(reordenadas)
     setGuardando(true)
@@ -140,8 +143,21 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
                 ? distanciaMetros({ latitud: p.latitud, longitud: p.longitud }, { latitud: p.latitudConfirmacion, longitud: p.longitudConfirmacion })
                 : null
               return (
-                <li key={p.id} className="rounded-lg border border-slate-200 px-3 py-2.5 text-xs">
+                <li
+                  key={p.id}
+                  draggable={!guardando}
+                  onDragStart={e => { e.dataTransfer.effectAllowed = "move"; setArrastrada(i) }}
+                  onDragOver={e => { if (arrastrada === null) return; e.preventDefault(); setDestinoArrastre(i) }}
+                  onDrop={e => { e.preventDefault(); if (arrastrada !== null) void mover(arrastrada, i); setArrastrada(null); setDestinoArrastre(null) }}
+                  onDragEnd={() => { setArrastrada(null); setDestinoArrastre(null) }}
+                  className={clsx(
+                    "rounded-lg border px-3 py-2.5 text-xs transition",
+                    guardando ? "cursor-wait" : "cursor-grab active:cursor-grabbing",
+                    arrastrada === i ? "border-slate-200 opacity-40" : destinoArrastre === i && arrastrada !== null ? "border-sky-400 ring-2 ring-sky-100" : "border-slate-200"
+                  )}
+                >
                   <div className="flex items-start gap-2.5">
+                    <GripVertical size={14} className="mt-1 -ml-1 shrink-0 text-slate-300" aria-hidden="true" />
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
                       style={{ backgroundColor: color, border: `3px solid ${p.estado === "PENDIENTE" ? "#fff" : COLOR_ESTADO[p.estado]}`, boxShadow: "0 0 0 1px #e2e8f0" }}>
                       {p.orden}
@@ -194,12 +210,12 @@ export default function RutaMensajeroCard({ ruta, fecha, googleDisponible, color
                       )}
                     </div>
 
-                    {/* Subir / bajar */}
+                    {/* Subir / bajar (también se puede arrastrar la tarjeta) */}
                     <div className="flex shrink-0 flex-col">
-                      <button type="button" onClick={() => mover(i, -1)} disabled={i === 0 || guardando} className="p-1 text-slate-400 hover:text-sky-600 disabled:opacity-30" aria-label={`Subir parada ${p.orden}`}>
+                      <button type="button" onClick={() => mover(i, i - 1)} disabled={i === 0 || guardando} className="p-1 text-slate-400 hover:text-sky-600 disabled:opacity-30" aria-label={`Subir parada ${p.orden}`}>
                         <ArrowUp size={14} />
                       </button>
-                      <button type="button" onClick={() => mover(i, 1)} disabled={i === paradas.length - 1 || guardando} className="p-1 text-slate-400 hover:text-sky-600 disabled:opacity-30" aria-label={`Bajar parada ${p.orden}`}>
+                      <button type="button" onClick={() => mover(i, i + 1)} disabled={i === paradas.length - 1 || guardando} className="p-1 text-slate-400 hover:text-sky-600 disabled:opacity-30" aria-label={`Bajar parada ${p.orden}`}>
                         <ArrowDown size={14} />
                       </button>
                     </div>

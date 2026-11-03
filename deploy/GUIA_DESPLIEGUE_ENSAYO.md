@@ -282,6 +282,9 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Agenda solo de consulta para Gestión de activos, fecha del analista y arrastrar paradas (2026-11-03)** — cambian el backend y Nodex Trámites: compilar los dos y reiniciar `nodex-api` y `nodex-tramites`.
+- **Sin variables ni cambios de base.** Pruebas: con Gestión de activos la agenda no deja reservar ni cancelar; Agregar a la ruta un trámite programado para otro día se rechaza con la fecha; Asignar desde "Sin mensajero" un trámite con fecha en otro día se rechaza; en Rutas, arrastrar una tarjeta cambia el orden (y queda guardado al recargar).
+
 **Pagado por tramitador en lugar de Reintegros por tramitador (2026-11-03)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos` (va con el pagado por estado del trámite de Indicadores).
 - **Sin variables ni cambios de base.** La ruta `GET /api/gastos/reintegros-tramitador` desaparece (la reemplaza `/pagado-tramitador`); las direcciones de las pantallas no cambian. Pruebas: con Tesorería y con un Analista de Tesorería, Tesorería → Pagado por tramitador; abrir un tramitador; filtrar por estado del trámite y "Con saldo por justificar"; Descargar Excel (hojas Por tramitador y Detalle); igual en Legalización y Contabilidad.
 

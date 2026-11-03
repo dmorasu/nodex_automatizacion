@@ -43,6 +43,8 @@ const mensajeroActivo = async (tramitadorId: number) => {
   return mensajero
 }
 
+const fechaCorta = (fecha: string) => { const [anio, mes, dia] = fecha.split('-'); return `${dia}/${mes}/${anio}` }
+
 // Vista previa: datos de cada trámite y si se puede agregar a la ruta de ese día
 export const revisarTramitesParaRuta = async (fecha: string, tramitadorId: number, ids: unknown): Promise<TramiteParaRuta[]> => {
   const lista = idsValidos(ids)
@@ -70,9 +72,12 @@ export const revisarTramitesParaRuta = async (fecha: string, tramitadorId: numbe
   return lista.map(id => {
     const f = porId.get(id)
     if (!f) return { id, cliente: null, direccion: null, municipio: null, tramitador: null, fechaDiligencia: null, problema: 'No existe' }
+    // La fecha la decide el analista en la ficha de programación: no se cambia desde la ruta
+    // (decisión del usuario, 2026-11-03). Sin fecha todavía, la ruta se la pone
     const problema = f.estado && ESTADOS_CERRADOS.includes(f.estado) ? `Está ${f.estado.toLowerCase()}`
       : Number(f.tramitadorId) === tramitadorId && f.fechaDiligencia === fecha ? 'Ya está en esta ruta'
-        : null
+        : f.fechaDiligencia && f.fechaDiligencia !== fecha ? `Su programación es para el ${fechaCorta(f.fechaDiligencia)}: cámbiela en la ficha del trámite`
+          : null
     return { id, cliente: f.cliente, direccion: f.direccion, municipio: f.municipio, tramitador: f.tramitador, fechaDiligencia: f.fechaDiligencia, problema }
   })
 }
@@ -98,17 +103,17 @@ export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, 
         solicitud.usuarioQueModifica = usuarioId
         if (cambiaMensajero) await solicitud.update({ tramitadorId }, { transaction })
 
-        // Misma regla de ProgramacionController: "asignado" si la fecha es nueva o posterior;
-        // también si el trámite pasa a otro mensajero (es nuevo para él)
+        // Solo se pone la fecha si el trámite aún no la tiene (la revisión ya rechazó otra fecha).
+        // "Asignado" si la fecha es nueva o si el trámite pasa a otro mensajero (es nuevo para él)
         const nuevaFecha = new Date(`${fecha}T00:00:00Z`)
         const programacion = await Programacion.findOne({ where: { solicitudTramiteId: tramite.id }, transaction })
         const fechaAnterior = programacion?.fechaProbableEntrega ?? null
         if (!programacion) {
           await Programacion.create({ solicitudTramiteId: tramite.id, fechaProbableEntrega: nuevaFecha }, { transaction })
-        } else {
+        } else if (!fechaAnterior) {
           await programacion.update({ fechaProbableEntrega: nuevaFecha }, { transaction })
         }
-        avisarAsignado = cambiaMensajero || !fechaAnterior || nuevaFecha.getTime() > new Date(fechaAnterior).getTime()
+        avisarAsignado = cambiaMensajero || !fechaAnterior
       })
 
       agregados.push(tramite.id)

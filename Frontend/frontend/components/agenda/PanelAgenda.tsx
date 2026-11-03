@@ -52,8 +52,8 @@ export default function PanelAgenda({ agenda, sedes, esTorreControl }: {
   const [espacio, setEspacio] = useState<ReservaPropuesta | null>(null)
   const [bandejaAbierta, setBandejaAbierta] = useState(false)
   const [busqueda, setBusqueda] = useState("")
-  // En días pasados no se reserva
-  const puedeReservar = agenda.fecha >= agenda.hoy
+  // Reserva solo Torre de control (Gestión de activos solo consulta) y nunca en días pasados
+  const puedeReservar = esTorreControl && agenda.fecha >= agenda.hoy
 
   const ir = (cambios: Record<string, string>) => {
     const nuevos = new URLSearchParams(parametros.toString())

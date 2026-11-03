@@ -250,7 +250,7 @@ export const agendaDelDia = async (fecha: string, sedeId: number | undefined, us
           tramiteId: r.solicitudTramiteId,
           creadaPor: r.creador ?? '',
           creadaEn: r.creadaEn,
-          puedeCancelar: usuario.esTorreControl || r.creadaPor === usuario.id
+          puedeCancelar: usuario.esTorreControl
         }))
       }
     })
@@ -268,9 +268,10 @@ export const crearReserva = async (
   },
   usuario: { id: number, esTorreControl: boolean }
 ) => {
+  // Gestión de activos solo consulta la agenda (decisión del usuario, 2026-11-03): reserva Torre de control
+  if (!usuario.esTorreControl) throw new ErrorGastos('Solo Torre de control puede reservar en la agenda', 403)
   const tipo = datos.tipo ?? TIPOS_RESERVA.RESERVA
   const noDisponible = tipo === TIPOS_RESERVA.NO_DISPONIBLE
-  if (noDisponible && !usuario.esTorreControl) throw new ErrorGastos('Solo Torre de control marca a un mensajero como no disponible', 403)
   if (datos.diaCompleto && !noDisponible) throw new ErrorGastos('Solo "No disponible" puede ser de todo el día')
   if (noDisponible && datos.solicitudTramiteId) throw new ErrorGastos('"No disponible" no va atado a un trámite')
 
@@ -316,11 +317,11 @@ export const crearReserva = async (
   })
 }
 
-// La cancela quien la creó o Torre de control
+// Solo Torre de control (también las que hizo antes Gestión de activos, que ahora solo consulta)
 export const cancelarReserva = async (id: number, usuario: { id: number, esTorreControl: boolean }) => {
   const reserva = await ReservaAgenda.findByPk(id)
   if (!reserva) throw new ErrorGastos('La reserva no existe', 404)
-  if (!usuario.esTorreControl && reserva.creadaPor !== usuario.id) throw new ErrorGastos('Solo quien hizo la reserva o Torre de control pueden cancelarla', 403)
+  if (!usuario.esTorreControl) throw new ErrorGastos('Solo Torre de control puede cancelar reservas', 403)
   if (reserva.estado !== ESTADOS_RESERVA.ACTIVA) throw new ErrorGastos('La reserva ya no está activa')
   await reserva.update({ estado: ESTADOS_RESERVA.CANCELADA, canceladaPor: usuario.id, canceladaEn: new Date() })
   return reserva.tipo
@@ -384,10 +385,16 @@ export const asignarDesdeAgenda = async (datos: { tramiteId: number, tramitadorI
     const cita = { requiereCita: true, fechaCita: datos.fecha, horaCita: datos.horaInicio, horaFinCita: datos.horaFin }
     await verificarCitaDelTramite(tramite.id, { tramitadorId: datos.tramitadorId, fecha: datos.fecha, ...cita }, transaction)
 
-    // Como la programación a mano: el aviso de asignado sale si la fecha de diligencia es nueva o posterior
+    // La fecha la decide el analista en la ficha de programación (decisión del usuario, 2026-11-03):
+    // si ya tiene otra, no se cambia desde aquí; sin fecha, la toma del día de la agenda
     const programacion = await Programacion.findOne({ where: { solicitudTramiteId: tramite.id }, transaction })
     const anterior = programacion?.fechaProbableEntrega ?? null
-    avisarAsignado = !anterior || new Date(datos.fecha).getTime() > new Date(anterior).getTime()
+    const delAnalista = anterior ? new Date(anterior).toISOString().slice(0, 10) : programacion?.fechaCita ? String(programacion.fechaCita).slice(0, 10) : null
+    if (delAnalista && delAnalista !== datos.fecha) {
+      const [anio, mes, dia] = delAnalista.split('-')
+      throw new ErrorGastos(`El trámite #${tramite.id} está programado para el ${dia}/${mes}/${anio}: asígnelo ese día o cambie la fecha en la ficha del trámite`)
+    }
+    avisarAsignado = !anterior
     if (programacion) await programacion.update({ fechaProbableEntrega: datos.fecha, ...cita }, { transaction })
     else await Programacion.create({ solicitudTramiteId: tramite.id, fechaProbableEntrega: datos.fecha, ...cita }, { transaction })
 

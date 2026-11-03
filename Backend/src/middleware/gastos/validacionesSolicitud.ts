@@ -1,5 +1,5 @@
 import { body, param, query } from 'express-validator'
-import { ESTADOS_GASTO } from '../../services/gastos/constantes'
+import { ESTADOS_GASTO, MOTIVOS_NOVEDAD_PAGO } from '../../services/gastos/constantes'
 
 // Validan forma y tipos. Las reglas de negocio (tipo de gasto, beneficiario,
 // relaciones) se validan en services/gastos/solicitudesGasto.ts
@@ -170,9 +170,10 @@ export const validarSalidaLote = [
   body('motivo').isString().trim().isLength({ min: 3, max: 500 }).withMessage('Indique el motivo (mínimo 3 caracteres)')
 ]
 
-export const validarSinFondos = [
+export const validarNovedadPago = [
   body('gastoIds').isArray({ min: 1, max: 200 }).withMessage('Seleccione los gastos'),
   body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido').toInt(),
+  body('motivo').isIn(Object.keys(MOTIVOS_NOVEDAD_PAGO)).withMessage('Elija el motivo'),
   body('observacion').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('La observación puede tener máximo 500 caracteres')
 ]
 

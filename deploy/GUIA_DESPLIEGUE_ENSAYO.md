@@ -282,6 +282,9 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Novedad de pago en lugar de Sin fondos (2026-11-03)** — cambian el backend y Nodex Gastos: compilar **los dos a la vez** y reiniciar `nodex-api` y `nodex-gastos` (la ruta `POST /api/gastos/solicitudes/sin-fondos`, ya en producción, pasa a `/novedad-pago`: con solo uno de los dos el botón falla).
+- **Sin variables ni cambios de base.** Las notas "sin fondos" que ya hay en el historial no cambian. Pruebas: en Tesorería → Por pagar, Novedad de pago con cada motivo (Otro sin observación debe pedirla) y ver la nota en el historial del gasto.
+
 **Agenda solo de consulta para Gestión de activos, fecha del analista y arrastrar paradas (2026-11-03)** — cambian el backend y Nodex Trámites: compilar los dos y reiniciar `nodex-api` y `nodex-tramites`.
 - **Sin variables ni cambios de base.** Pruebas: con Gestión de activos la agenda no deja reservar ni cancelar; Agregar a la ruta un trámite programado para otro día se rechaza con la fecha; Asignar desde "Sin mensajero" un trámite con fecha en otro día se rechaza; en Rutas, arrastrar una tarjeta cambia el orden (y queda guardado al recargar).
 

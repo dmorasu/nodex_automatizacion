@@ -219,3 +219,11 @@ export const ESTADOS_REEMBOLSO_CAJA = {
 } as const
 
 export type EstadoReembolsoCaja = typeof ESTADOS_REEMBOLSO_CAJA[keyof typeof ESTADOS_REEMBOLSO_CAJA]
+
+// Por qué Tesorería no programa el pago de un gasto (Novedad de pago: queda en el historial)
+export const MOTIVOS_NOVEDAD_PAGO = {
+  SIN_FONDOS: 'Bolsa sin fondos, pendiente de anticipo',
+  SIN_TRAMITADOR: 'El trámite no tiene tramitador',
+  OTRO: 'Otro motivo'
+} as const
+export type MotivoNovedadPago = keyof typeof MOTIVOS_NOVEDAD_PAGO

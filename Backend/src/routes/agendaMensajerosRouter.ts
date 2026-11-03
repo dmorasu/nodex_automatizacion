@@ -108,7 +108,7 @@ router.post('/asignar',
         fecha: String(req.body.fecha).slice(0, 10),
         horaInicio: req.body.horaInicio,
         horaFin: req.body.horaFin
-      })
+      }, usuarioDe(req).id)
       res.json({ mensaje: 'Trámite asignado y cita programada' })
     } catch (error) {
       responderError(res, error)

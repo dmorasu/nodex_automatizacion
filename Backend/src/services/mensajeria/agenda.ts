@@ -367,7 +367,7 @@ export const tramitesSinMensajero = (busqueda: string) => {
 // Asigna el mensajero a un trámite sin tramitador y le programa la cita en el espacio elegido:
 // fecha de diligencia y de la cita = el día de la agenda, con hora y hora final. Mismas reglas y
 // avisos que asignar el tramitador y guardar la programación a mano.
-export const asignarDesdeAgenda = async (datos: { tramiteId: number, tramitadorId: number, fecha: string, horaInicio: string, horaFin: string }) => {
+export const asignarDesdeAgenda = async (datos: { tramiteId: number, tramitadorId: number, fecha: string, horaInicio: string, horaFin: string }, usuarioId: number) => {
   if (datos.fecha < hoyBogota()) throw new ErrorGastos('No se puede programar en un día que ya pasó')
   validarHorasCita({ requiereCita: true, horaCita: datos.horaInicio, horaFinCita: datos.horaFin })
 
@@ -392,6 +392,7 @@ export const asignarDesdeAgenda = async (datos: { tramiteId: number, tramitadorI
     else await Programacion.create({ solicitudTramiteId: tramite.id, fechaProbableEntrega: datos.fecha, ...cita }, { transaction })
 
     tramite.tramitadorId = datos.tramitadorId
+    tramite.usuarioQueModifica = usuarioId
     await tramite.save({ transaction })
     await cerrarReservasDelTramite(tramite.id, transaction)
   })

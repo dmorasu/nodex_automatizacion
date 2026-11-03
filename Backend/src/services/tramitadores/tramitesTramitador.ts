@@ -320,6 +320,39 @@ export const reportarRealizado = async (tramitadorId: number, solicitudTramiteId
   return ReporteRealizado.create({ solicitudTramiteId, tramitadorId, observacion: observacion.trim() })
 }
 
+// La diligencia que el mensajero finaliza en su ruta llega al trámite (pedido del usuario, 2026-11-03):
+// Realizado → reporte de realizado, para que Torre la vea en "Reportados como realizados" (no si el
+// trámite ya tiene uno pendiente o está cerrado); No realizado → comentario con el motivo.
+// Devuelve si creó el reporte, para que quien llama envíe el correo
+export const reflejarDiligenciaEnTramite = async (
+  tramitadorId: number,
+  parada: { solicitudTramiteId: number, fecha: string, realizada: boolean, observacion: string | null }
+) => {
+  const [anio, mes, dia] = parada.fecha.split('-')
+  const enLaRuta = `en la ruta del ${dia}/${mes}/${anio}`
+
+  if (!parada.realizada) {
+    await ComentarioTramite.create({
+      solicitudTramiteId: parada.solicitudTramiteId,
+      tramitadorId,
+      comentario: `Diligencia no realizada ${enLaRuta}: ${parada.observacion ?? 'sin motivo'}`
+    })
+    return { reporte: null }
+  }
+
+  const tramite = await SolicitudTramites.findByPk(parada.solicitudTramiteId, {
+    include: [{ model: Estados, as: 'estadoActual', attributes: ['nombreEstado'] }]
+  })
+  if (!tramite || ESTADOS_CERRADOS.includes(tramite.estadoActual?.nombreEstado)) return { reporte: null }
+  const pendiente = await ReporteRealizado.findOne({
+    where: { solicitudTramiteId: tramite.id, estado: ESTADOS_REPORTE.PENDIENTE }
+  })
+  if (pendiente) return { reporte: null }
+
+  const observacion = `Diligencia realizada ${enLaRuta}${parada.observacion ? `: ${parada.observacion}` : ''}`
+  return { reporte: await ReporteRealizado.create({ solicitudTramiteId: tramite.id, tramitadorId, observacion }) }
+}
+
 // =====================================
 // EQUIPO INTERNO (Nodex Trámites)
 // `soloDelUsuario`: Gestión de activos sin Torre de control solo ve los trámites que crearon estos usuarios

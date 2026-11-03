@@ -493,7 +493,8 @@ export const TableroSchema = z.object({
     diasPromedio: z.number(),
     antiguedad: z.array(z.object({ clave: z.string(), nombre: z.string(), cantidad: z.number(), valor: z.number() })),
     principales: z.array(z.object({ tramitadorId: z.number().nullable(), nombre: textoNulo, cantidad: z.number(), valor: z.number() }))
-  })
+  }),
+  porEstadoTramite: z.array(z.object({ estado: z.string(), tramites: z.number(), gastos: z.number(), pagado: z.number() }))
 })
 
 export const ReintegrosTramitadorSchema = z.object({
@@ -530,6 +531,7 @@ export const ReintegrosTramitadorSchema = z.object({
 
 export type Tablero = z.infer<typeof TableroSchema>
 export type BolsaTablero = Tablero["bolsas"][number]
+export type EstadoTramiteTablero = Tablero["porEstadoTramite"][number]
 export type ResumenReintegros = Tablero["reintegros"]
 export type ReintegrosTramitador = z.infer<typeof ReintegrosTramitadorSchema>["tramitadores"][number]
 

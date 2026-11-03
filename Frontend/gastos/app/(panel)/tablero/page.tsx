@@ -7,9 +7,11 @@ import { formatoMoneda } from "@/src/lib/formato"
 import { TableroSchema } from "@/src/schemas/gastos"
 import Indicador from "@/components/tablero/Indicador"
 import GraficoDineroPagado from "@/components/tablero/GraficoDineroPagado"
+import GraficoPorEstadoTramite from "@/components/tablero/GraficoPorEstadoTramite"
 import ResumenReintegros from "@/components/tablero/ResumenReintegros"
 import Seccion from "@/components/ui/Seccion"
 import { claseBotonSecundario, claseInput } from "@/components/ui/estilos"
+import { FileSpreadsheet } from "lucide-react"
 import SelectBuscable from "@/components/ui/SelectBuscable"
 
 type Filtros = { bolsaId?: string, desde?: string, hasta?: string }
@@ -39,7 +41,7 @@ export default async function TableroPage(props: { searchParams: Promise<Filtros
     obtenerBolsasActivas()
   ])
   const tablero = TableroSchema.parse(await respuesta.json())
-  const { totales, bolsas, cuentasPorLegalizar, reintegros } = tablero
+  const { totales, bolsas, cuentasPorLegalizar, reintegros, porEstadoTramite } = tablero
 
   // El detalle por tramitador vive en cada módulo: se enlaza al primero que el usuario pueda abrir
   const rutaDetalleReintegros = ([
@@ -166,6 +168,18 @@ export default async function TableroPage(props: { searchParams: Promise<Filtros
           </table>
           {bolsas.length === 0 && <p className="py-10 text-center text-xs text-slate-400">No hay bolsas.</p>}
         </div>
+      </Seccion>
+
+      {/* PAGADO POR ESTADO DEL TRÁMITE (mismos filtros de bolsa y fecha de pago) */}
+      <Seccion
+        titulo="Pagado en gastos con trámite, por estado del trámite"
+        acciones={porEstadoTramite.length > 0 && (
+          <a href={`/descargas/pagado-estado-tramite?${consulta}`} className={`${claseBotonSecundario} h-8 text-[11px]`}>
+            <FileSpreadsheet size={14} /> Descargar Excel
+          </a>
+        )}
+      >
+        <GraficoPorEstadoTramite estados={porEstadoTramite} />
       </Seccion>
 
       {/* REINTEGROS: VISTA GERENCIAL */}

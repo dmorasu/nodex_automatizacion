@@ -315,6 +315,7 @@ router.post('/contabilidad/contabilizar-gastos', soloContabilidad, validarContab
 const verTablero = requiereRol(ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD)
 
 router.get('/tablero', verTablero, validarFiltrosTablero, handleInputErrors, TableroController.getTablero)
+router.get('/tablero/estado-tramite/exportar', verTablero, validarFiltrosTablero, handleInputErrors, TableroController.exportarPorEstadoTramite)
 router.get('/reintegros-tramitador', verTablero, validarFiltrosReintegrosTramitador, handleInputErrors, TableroController.getReintegrosPorTramitador)
 router.get('/reportes/gastos', verTablero, validarFiltrosReporte, handleInputErrors, TableroController.exportarGastos)
 

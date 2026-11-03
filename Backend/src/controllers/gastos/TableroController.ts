@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { obtenerTablero } from '../../services/gastos/tablero'
+import { excelPagadoPorEstadoTramite, obtenerTablero } from '../../services/gastos/tablero'
 import { generarReporteGastos } from '../../services/gastos/reportes'
 import { obtenerReintegrosPorTramitador } from '../../services/gastos/reintegrosTramitador'
 import { responderError } from './utilidades'
@@ -16,6 +16,23 @@ export class TableroController {
         desde: textoOpcional(req.query.desde),
         hasta: textoOpcional(req.query.hasta)
       }))
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // GET /tablero/estado-tramite/exportar?bolsaId=&desde=&hasta=  → .xlsx del pagado por estado del trámite
+  static exportarPorEstadoTramite = async (req: Request, res: Response) => {
+    try {
+      const { buffer } = await excelPagadoPorEstadoTramite({
+        bolsaId: req.query.bolsaId ? Number(req.query.bolsaId) : null,
+        desde: textoOpcional(req.query.desde),
+        hasta: textoOpcional(req.query.hasta)
+      })
+      const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', `attachment; filename="pagado-por-estado-tramite-${fecha}.xlsx"`)
+      res.send(Buffer.from(buffer as ArrayBuffer))
     } catch (error) {
       responderError(res, error)
     }

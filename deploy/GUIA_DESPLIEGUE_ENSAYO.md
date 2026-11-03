@@ -282,6 +282,9 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Indicadores: pagado por estado del trámite (2026-11-03)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
+- **Sin variables ni cambios de base.** Pruebas: Indicadores muestra la sección con barras y tabla; con los filtros de bolsa y fecha cambian los valores; lo pagado con trámite más lo pagado sin trámite da el "Pagado" de arriba; Descargar Excel baja las hojas Resumen y Gastos con los mismos filtros.
+
 **Diligencias de la ruta en Reportados como realizados (2026-11-03)** — cambia solo el backend: compilarlo y reiniciar `nodex-api`.
 - **Sin variables ni cambios de base.** Pruebas: un mensajero finaliza una diligencia como Realizado (aparece en Reportados como realizados → Pendientes, con el correo de realizado) y otra como No realizado (comentario con el motivo en la pestaña Tramitador del trámite).
 

@@ -35,7 +35,7 @@ import {
   validarContabilizacionGastos,
   validarFiltrosReporte,
   validarFiltrosTablero,
-  validarFiltrosReintegrosTramitador,
+  validarFiltrosPagadoTramitador,
   validarEgreso,
   validarCuentaCobro,
   validarLegalizar,
@@ -316,7 +316,10 @@ const verTablero = requiereRol(ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTAB
 
 router.get('/tablero', verTablero, validarFiltrosTablero, handleInputErrors, TableroController.getTablero)
 router.get('/tablero/estado-tramite/exportar', verTablero, validarFiltrosTablero, handleInputErrors, TableroController.exportarPorEstadoTramite)
-router.get('/reintegros-tramitador', verTablero, validarFiltrosReintegrosTramitador, handleInputErrors, TableroController.getReintegrosPorTramitador)
+// Pagado por tramitador (reemplaza Reintegros por tramitador): también el Analista de Tesorería
+const verPagadoTramitador = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD)
+router.get('/pagado-tramitador', verPagadoTramitador, validarFiltrosPagadoTramitador, handleInputErrors, TableroController.getPagadoPorTramitador)
+router.get('/pagado-tramitador/exportar', verPagadoTramitador, validarFiltrosPagadoTramitador, handleInputErrors, TableroController.exportarPagadoPorTramitador)
 router.get('/reportes/gastos', verTablero, validarFiltrosReporte, handleInputErrors, TableroController.exportarGastos)
 
 

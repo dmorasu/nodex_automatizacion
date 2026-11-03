@@ -497,43 +497,45 @@ export const TableroSchema = z.object({
   porEstadoTramite: z.array(z.object({ estado: z.string(), tramites: z.number(), gastos: z.number(), pagado: z.number() }))
 })
 
-export const ReintegrosTramitadorSchema = z.object({
-  totales: z.object({
-    tramitadores: z.number(),
-    pendiente: z.number(),
-    reintegrado: z.number(),
-    gastosConReintegro: z.number()
-  }),
-  tramitadores: z.array(z.object({
+const ValoresPagadoSchema = z.object({
+  pagado: z.number(),
+  facturado: z.number(),
+  reintegrado: z.number(),
+  reintegroPendiente: z.number(),
+  porJustificar: z.number()
+})
+
+export const PagadoTramitadorSchema = z.object({
+  totales: ValoresPagadoSchema.extend({ tramitadores: z.number(), gastos: z.number() }),
+  tramitadores: z.array(ValoresPagadoSchema.extend({
     tramitadorId: z.number().nullable(),
     nombre: textoNulo,
     identificacion: textoNulo,
     tramites: z.number(),
     gastos: z.number(),
-    pagado: z.number(),
-    gastosConReintegro: z.number(),
-    pendiente: z.number(),
-    reintegrado: z.number(),
-    pendienteDesde: textoNulo,
-    pendientes: z.array(z.object({
-      id: z.number(),
+    detalle: z.array(ValoresPagadoSchema.extend({
       gastoId: z.number(),
       codigo: z.string(),
-      concepto: z.string(),
+      concepto: textoNulo,
+      fechaPago: textoNulo,
+      bolsa: textoNulo,
+      tipoGasto: textoNulo,
+      estadoGasto: z.string(),
       tramiteId: z.number().nullable(),
+      tipoTramite: textoNulo,
       referencia: textoNulo,
-      pagado: z.number(),
-      valor: z.number(),
-      desde: z.string()
+      estadoTramite: textoNulo,
+      factura: textoNulo
     }))
-  }))
+  })),
+  estadosTramite: z.array(z.string())
 })
 
 export type Tablero = z.infer<typeof TableroSchema>
 export type BolsaTablero = Tablero["bolsas"][number]
 export type EstadoTramiteTablero = Tablero["porEstadoTramite"][number]
 export type ResumenReintegros = Tablero["reintegros"]
-export type ReintegrosTramitador = z.infer<typeof ReintegrosTramitadorSchema>["tramitadores"][number]
+export type PagadoTramitador = z.infer<typeof PagadoTramitadorSchema>["tramitadores"][number]
 
 export type ItemCatalogo = z.infer<typeof ItemCatalogoSchema>
 export type Catalogos = z.infer<typeof CatalogosSchema>

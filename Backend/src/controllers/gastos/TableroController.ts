@@ -1,10 +1,19 @@
 import type { Request, Response } from 'express'
 import { excelPagadoPorEstadoTramite, obtenerTablero } from '../../services/gastos/tablero'
 import { generarReporteGastos } from '../../services/gastos/reportes'
-import { obtenerReintegrosPorTramitador } from '../../services/gastos/reintegrosTramitador'
+import { excelPagadoPorTramitador, obtenerPagadoPorTramitador, type FiltrosPagadoTramitador } from '../../services/gastos/pagadoTramitador'
 import { responderError } from './utilidades'
 
 const textoOpcional = (valor: unknown) => (typeof valor === 'string' && valor.trim()) || null
+
+const filtrosPagadoTramitador = (req: Request): FiltrosPagadoTramitador => ({
+  bolsaId: req.query.bolsaId ? Number(req.query.bolsaId) : null,
+  desde: textoOpcional(req.query.desde),
+  hasta: textoOpcional(req.query.hasta),
+  busqueda: textoOpcional(req.query.busqueda),
+  estadoTramite: textoOpcional(req.query.estadoTramite),
+  mostrar: (textoOpcional(req.query.mostrar) ?? 'todos') as FiltrosPagadoTramitador['mostrar']
+})
 
 export class TableroController {
 
@@ -38,17 +47,23 @@ export class TableroController {
     }
   }
 
-  // GET /reintegros-tramitador?bolsaId=&desde=&hasta=&busqueda=&estado=pendientes|todos&diasMinimos=
-  static getReintegrosPorTramitador = async (req: Request, res: Response) => {
+  // GET /pagado-tramitador?bolsaId=&desde=&hasta=&busqueda=&estadoTramite=&mostrar=
+  static getPagadoPorTramitador = async (req: Request, res: Response) => {
     try {
-      res.json(await obtenerReintegrosPorTramitador({
-        bolsaId: req.query.bolsaId ? Number(req.query.bolsaId) : null,
-        desde: textoOpcional(req.query.desde),
-        hasta: textoOpcional(req.query.hasta),
-        busqueda: textoOpcional(req.query.busqueda),
-        soloPendientes: req.query.estado !== 'todos',
-        diasMinimos: req.query.diasMinimos ? Number(req.query.diasMinimos) : null
-      }))
+      res.json(await obtenerPagadoPorTramitador(filtrosPagadoTramitador(req)))
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // GET /pagado-tramitador/exportar (mismos filtros) → .xlsx
+  static exportarPagadoPorTramitador = async (req: Request, res: Response) => {
+    try {
+      const buffer = await excelPagadoPorTramitador(filtrosPagadoTramitador(req))
+      const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', `attachment; filename="pagado-por-tramitador-${fecha}.xlsx"`)
+      res.send(Buffer.from(buffer as ArrayBuffer))
     } catch (error) {
       responderError(res, error)
     }

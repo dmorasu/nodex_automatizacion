@@ -259,11 +259,11 @@ export const validarFiltrosTablero = [
   fechaQuery('hasta')
 ]
 
-export const validarFiltrosReintegrosTramitador = [
+export const validarFiltrosPagadoTramitador = [
   ...validarFiltrosTablero,
   query('busqueda').optional().isString().isLength({ max: 100 }).withMessage('Búsqueda no válida'),
-  query('estado').optional({ values: 'falsy' }).isIn(['pendientes', 'todos']).withMessage('Estado no válido'),
-  query('diasMinimos').optional({ values: 'falsy' }).isInt({ min: 1, max: 3650 }).withMessage('Antigüedad no válida')
+  query('estadoTramite').optional().isString().isLength({ max: 100 }).withMessage('Estado del trámite no válido'),
+  query('mostrar').optional({ values: 'falsy' }).isIn(['todos', 'porJustificar', 'reintegroPendiente']).withMessage('Opción no válida')
 ]
 
 export const validarFiltrosReporte = [

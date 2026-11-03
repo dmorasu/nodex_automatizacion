@@ -282,6 +282,9 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Pagado por tramitador en lugar de Reintegros por tramitador (2026-11-03)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos` (va con el pagado por estado del trámite de Indicadores).
+- **Sin variables ni cambios de base.** La ruta `GET /api/gastos/reintegros-tramitador` desaparece (la reemplaza `/pagado-tramitador`); las direcciones de las pantallas no cambian. Pruebas: con Tesorería y con un Analista de Tesorería, Tesorería → Pagado por tramitador; abrir un tramitador; filtrar por estado del trámite y "Con saldo por justificar"; Descargar Excel (hojas Por tramitador y Detalle); igual en Legalización y Contabilidad.
+
 **Indicadores: pagado por estado del trámite (2026-11-03)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
 - **Sin variables ni cambios de base.** Pruebas: Indicadores muestra la sección con barras y tabla; con los filtros de bolsa y fecha cambian los valores; lo pagado con trámite más lo pagado sin trámite da el "Pagado" de arriba; Descargar Excel baja las hojas Resumen y Gastos con los mismos filtros.
 

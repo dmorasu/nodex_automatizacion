@@ -19,7 +19,7 @@ export default async function ContabilidadLayout({ children }: { children: React
           { href: "/contabilidad/por-contabilizar", nombre: "Cuentas por contabilizar" },
           { href: "/contabilidad/no-reembolsables", nombre: "No reembolsables" },
           { href: "/contabilidad/cuentas", nombre: "Cuentas de cobro" },
-          { href: "/contabilidad/reintegros-tramitador", nombre: "Reintegros por tramitador" }
+          { href: "/contabilidad/reintegros-tramitador", nombre: "Pagado por tramitador" }
         ]}
       />
 

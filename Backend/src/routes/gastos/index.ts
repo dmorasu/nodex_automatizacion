@@ -35,7 +35,7 @@ import {
   validarContabilizacionGastos,
   validarFiltrosReporte,
   validarFiltrosTablero,
-  validarFiltrosReintegrosTramitador,
+  validarFiltrosPagadoTramitador,
   validarEgreso,
   validarCuentaCobro,
   validarLegalizar,
@@ -46,7 +46,7 @@ import {
   validarPagoDirecto,
   validarAprobacionLote,
   validarSalidaLote,
-  validarSinFondos,
+  validarNovedadPago,
   validarConfirmacionPago,
   validarConfirmacionPagos,
   validarRecarga,
@@ -231,8 +231,8 @@ router.post('/lotes', tesoreriaOCertificados, validarProgramacion, handleInputEr
 // Compras de certificados: pago directo, sin aprobación de Dirección
 // multipart: datos (JSON) + soporte_<gastoId> por cada gasto (obligatorio) + archivos del banco (opcional)
 router.post('/pagos', tesoreriaOCertificados, recibirSoportesPago, leerDatosJson, validarPagoDirecto, handleInputErrors, PagosController.pagarCertificados)
-// Sin fondos en la bolsa, pendiente de anticipo: solo deja la nota en el historial
-router.post('/solicitudes/sin-fondos', tesoreriaOCertificados, validarSinFondos, handleInputErrors, PagosController.sinFondos)
+// Novedad de pago (sin fondos, sin tramitador u otro motivo): solo deja la nota en el historial
+router.post('/solicitudes/novedad-pago', tesoreriaOCertificados, validarNovedadPago, handleInputErrors, PagosController.novedadPago)
 router.post('/lotes/:id/aprobar', soloDireccion, validarAprobacionLote, handleInputErrors, PagosController.aprobar)
 router.post('/lotes/:id/rechazar', soloDireccion, validarSalidaLote, handleInputErrors, PagosController.rechazar)
 router.post('/lotes/:id/quitar', tesoreriaOCertificados, validarSalidaLote, handleInputErrors, PagosController.quitar)
@@ -315,7 +315,11 @@ router.post('/contabilidad/contabilizar-gastos', soloContabilidad, validarContab
 const verTablero = requiereRol(ROLES.TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD)
 
 router.get('/tablero', verTablero, validarFiltrosTablero, handleInputErrors, TableroController.getTablero)
-router.get('/reintegros-tramitador', verTablero, validarFiltrosReintegrosTramitador, handleInputErrors, TableroController.getReintegrosPorTramitador)
+router.get('/tablero/estado-tramite/exportar', verTablero, validarFiltrosTablero, handleInputErrors, TableroController.exportarPorEstadoTramite)
+// Pagado por tramitador (reemplaza Reintegros por tramitador): también el Analista de Tesorería
+const verPagadoTramitador = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.LEGALIZACION, ROLES.CONTABILIDAD)
+router.get('/pagado-tramitador', verPagadoTramitador, validarFiltrosPagadoTramitador, handleInputErrors, TableroController.getPagadoPorTramitador)
+router.get('/pagado-tramitador/exportar', verPagadoTramitador, validarFiltrosPagadoTramitador, handleInputErrors, TableroController.exportarPagadoPorTramitador)
 router.get('/reportes/gastos', verTablero, validarFiltrosReporte, handleInputErrors, TableroController.exportarGastos)
 
 

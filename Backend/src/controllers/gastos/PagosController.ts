@@ -11,7 +11,7 @@ import Usuarios from '../../models/usuarios'
 import EstadosGasto from '../../models/gastos/estadosGasto'
 import Anticipos from '../../models/gastos/anticipos'
 import { atributosSaldoAnticipo } from './SolicitudesGastoController'
-import { aprobarGastos, confirmarPago, confirmarPagos, corregirValorPagado, marcarSinFondos, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
+import { aprobarGastos, confirmarPago, confirmarPagos, corregirValorPagado, pagarDirecto, registrarNovedadPago, programarPago, sacarDelLote } from '../../services/gastos/pagos'
 import { notificarGastosPagados, notificarLoteProgramado, notificarRevisionLote } from '../../services/gastos/notificacionesGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
@@ -145,11 +145,11 @@ export class PagosController {
     }
   }
 
-  // POST /solicitudes/sin-fondos  { gastoIds, observacion? }  (Tesorería: no se programa por falta de fondos)
-  static sinFondos = async (req: Request, res: Response) => {
+  // POST /solicitudes/novedad-pago  { gastoIds, motivo, observacion? }  (Tesorería: no se programa el pago y por qué)
+  static novedadPago = async (req: Request, res: Response) => {
     try {
       await verificarQuienPaga(req, req.body.gastoIds)
-      const marcados = await marcarSinFondos(req.body.gastoIds, req.body.observacion?.trim() || null, req.usuario.id)
+      const marcados = await registrarNovedadPago(req.body.gastoIds, req.body.motivo, req.body.observacion?.trim() || null, req.usuario.id)
       res.json({ marcados })
     } catch (error) {
       responderError(res, error)

@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs'
 import { QueryTypes } from 'sequelize'
 import { db } from '../../config/db'
 import { obtenerResumenReintegros } from './reintegrosTramitador'
@@ -25,6 +26,28 @@ const FILTRO_FECHA = `
   AND (CAST(:hasta AS DATE) IS NULL OR g.fecha_pago <= CAST(:hasta AS DATE))
 `
 
+// Gasto pagado (lo que salió de la bolsa), igual que "Pagado" del tablero
+const PAGADO = `e.codigo NOT IN ('SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO', 'ANULADO') AND ${FILTRO_FECHA}`
+const FILTRO_BOLSA = '(CAST(:bolsaId AS INTEGER) IS NULL OR g.bolsa_id = CAST(:bolsaId AS INTEGER))'
+// Sin estado registrado el trámite aún no ha iniciado (como en el resto de Nodex)
+const ESTADO_TRAMITE = `COALESCE(es."nombreEstado", 'Sin iniciar')`
+
+// Pagado en gastos con trámite, por el estado actual del trámite (pedido del usuario, 2026-11-03):
+// muestra, por ejemplo, cuánto se pagó en trámites desistidos o todavía en curso
+const pagadoPorEstadoTramite = (replacements: Record<string, unknown>) =>
+  db.query<Record<string, unknown>>(`
+    SELECT ${ESTADO_TRAMITE} AS estado,
+      COUNT(DISTINCT t.id) AS tramites, COUNT(g.id) AS gastos,
+      COALESCE(SUM(g.valor_realmente_pagado), 0) AS pagado
+    FROM gastos_solicitudes g
+    JOIN gastos_estados_gasto e ON e.id = g.estado_id
+    JOIN "SolicitudTramites" t ON t.id = g.solicitud_tramite_id
+    LEFT JOIN "Estados" es ON es.id = t."estadoActualTramite"
+    WHERE ${PAGADO} AND ${FILTRO_BOLSA}
+    GROUP BY 1
+    ORDER BY pagado DESC
+  `, { replacements, type: QueryTypes.SELECT })
+
 // =====================================
 // TABLERO POR BOLSA
 // · porPagar: valor solicitado de gastos aún no pagados
@@ -42,7 +65,7 @@ export const obtenerTablero = async (filtros: FiltrosTablero) => {
     hasta: filtros.hasta || null
   }
 
-  const [bolsas, reintegros, cuentas, resumenReintegros] = await Promise.all([
+  const [bolsas, reintegros, cuentas, resumenReintegros, porEstadoTramite] = await Promise.all([
     db.query<Record<string, unknown>>(`
       SELECT
         b.id, b.nombre, b.linea_negocio AS "lineaNegocio", b.activo, b.saldo_actual AS saldo,
@@ -95,7 +118,8 @@ export const obtenerTablero = async (filtros: FiltrosTablero) => {
       ORDER BY c.numero_cuenta_cobro
     `, { replacements, type: QueryTypes.SELECT }),
 
-    obtenerResumenReintegros(filtros)
+    obtenerResumenReintegros(filtros),
+    pagadoPorEstadoTramite(replacements)
   ])
 
   const filas = bolsas.map(b => {
@@ -149,6 +173,85 @@ export const obtenerTablero = async (filtros: FiltrosTablero) => {
       gastos: numero(c.gastos),
       valorLegalizado: numero(c.valorLegalizado)
     })),
-    reintegros: resumenReintegros
+    reintegros: resumenReintegros,
+    porEstadoTramite: porEstadoTramite.map(f => ({
+      estado: String(f.estado),
+      tramites: numero(f.tramites),
+      gastos: numero(f.gastos),
+      pagado: numero(f.pagado)
+    }))
   }
+}
+
+// Excel del pagado por estado del trámite: hoja Resumen (lo mismo de la pantalla) y hoja Gastos
+// (un gasto pagado con trámite por fila, con los mismos filtros)
+export const excelPagadoPorEstadoTramite = async (filtros: FiltrosTablero) => {
+  const replacements = { bolsaId: filtros.bolsaId ?? null, desde: filtros.desde || null, hasta: filtros.hasta || null }
+  const [resumen, gastos] = await Promise.all([
+    pagadoPorEstadoTramite(replacements),
+    db.query<Record<string, unknown>>(`
+      SELECT ${ESTADO_TRAMITE} AS "estadoTramite", t.id AS tramite, tr."nombreTramite" AS "tipoTramite",
+        COALESCE(t.placa, t."matriculaInmobiliaria") AS identificacion, c."nombreCliente" AS cliente,
+        ta."nombreTramitador" AS tramitador,
+        g.codigo, g.fecha_pago AS "fechaPago", b.nombre AS bolsa, tg.nombre AS "tipoGasto",
+        e.nombre AS "estadoGasto", g.valor_realmente_pagado AS pagado
+      FROM gastos_solicitudes g
+      JOIN gastos_estados_gasto e ON e.id = g.estado_id
+      JOIN "SolicitudTramites" t ON t.id = g.solicitud_tramite_id
+      LEFT JOIN "Estados" es ON es.id = t."estadoActualTramite"
+      LEFT JOIN "Tramites" tr ON tr.id = t."tramiteId"
+      LEFT JOIN "Clientes" c ON c.id = t."clienteId"
+      LEFT JOIN "Tramitador" ta ON ta.id = COALESCE(g.tramitador_id, t."tramitadorId")
+      LEFT JOIN gastos_bolsas b ON b.id = g.bolsa_id
+      LEFT JOIN gastos_tipos_gasto tg ON tg.id = g.tipo_gasto_id
+      WHERE ${PAGADO} AND ${FILTRO_BOLSA}
+      ORDER BY 1, t.id, g.id
+    `, { replacements, type: QueryTypes.SELECT })
+  ])
+
+  const libro = new ExcelJS.Workbook()
+  libro.creator = 'Nodex Gastos'
+  const MONEDA = '"$"#,##0.00'
+  const encabezado = (hoja: ExcelJS.Worksheet) => {
+    hoja.getRow(1).font = { bold: true }
+    hoja.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: hoja.columns.length } }
+  }
+
+  const hojaResumen = libro.addWorksheet('Resumen', { views: [{ state: 'frozen', ySplit: 1 }] })
+  hojaResumen.columns = [
+    { header: 'Estado del trámite', key: 'estado', width: 28 },
+    { header: 'Trámites', key: 'tramites', width: 12 },
+    { header: 'Gastos', key: 'gastos', width: 12 },
+    { header: 'Valor pagado', key: 'pagado', width: 20, style: { numFmt: MONEDA } }
+  ]
+  resumen.forEach(f => hojaResumen.addRow({ estado: f.estado, tramites: numero(f.tramites), gastos: numero(f.gastos), pagado: numero(f.pagado) }))
+  const total = hojaResumen.addRow({ estado: 'Total', gastos: resumen.reduce((s, f) => s + numero(f.gastos), 0), pagado: resumen.reduce((s, f) => s + numero(f.pagado), 0) })
+  total.font = { bold: true }
+  encabezado(hojaResumen)
+
+  const hojaGastos = libro.addWorksheet('Gastos', { views: [{ state: 'frozen', ySplit: 1 }] })
+  hojaGastos.columns = [
+    { header: 'Estado del trámite', key: 'estadoTramite', width: 24 },
+    { header: 'Trámite', key: 'tramite', width: 10 },
+    { header: 'Tipo de trámite', key: 'tipoTramite', width: 32 },
+    { header: 'Placa / matrícula', key: 'identificacion', width: 18 },
+    { header: 'Cliente', key: 'cliente', width: 30 },
+    { header: 'Tramitador', key: 'tramitador', width: 28 },
+    { header: 'Gasto', key: 'codigo', width: 18 },
+    { header: 'Fecha de pago', key: 'fechaPago', width: 14, style: { numFmt: 'dd/mm/yyyy' } },
+    { header: 'Bolsa', key: 'bolsa', width: 22 },
+    { header: 'Tipo de gasto', key: 'tipoGasto', width: 22 },
+    { header: 'Estado del gasto', key: 'estadoGasto', width: 20 },
+    { header: 'Valor pagado', key: 'pagado', width: 18, style: { numFmt: MONEDA } }
+  ]
+  gastos.forEach(f => hojaGastos.addRow({
+    ...f,
+    tramite: numero(f.tramite),
+    // DATEONLY llega como texto: se arma la fecha sin hora para que Excel no la corra de día
+    fechaPago: f.fechaPago ? new Date(`${String(f.fechaPago).slice(0, 10)}T00:00:00Z`) : null,
+    pagado: numero(f.pagado)
+  }))
+  encabezado(hojaGastos)
+
+  return { buffer: await libro.xlsx.writeBuffer(), filas: gastos.length }
 }

@@ -1,5 +1,5 @@
 import { body, param, query } from 'express-validator'
-import { ESTADOS_GASTO } from '../../services/gastos/constantes'
+import { ESTADOS_GASTO, MOTIVOS_NOVEDAD_PAGO } from '../../services/gastos/constantes'
 
 // Validan forma y tipos. Las reglas de negocio (tipo de gasto, beneficiario,
 // relaciones) se validan en services/gastos/solicitudesGasto.ts
@@ -170,9 +170,10 @@ export const validarSalidaLote = [
   body('motivo').isString().trim().isLength({ min: 3, max: 500 }).withMessage('Indique el motivo (mínimo 3 caracteres)')
 ]
 
-export const validarSinFondos = [
+export const validarNovedadPago = [
   body('gastoIds').isArray({ min: 1, max: 200 }).withMessage('Seleccione los gastos'),
   body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido').toInt(),
+  body('motivo').isIn(Object.keys(MOTIVOS_NOVEDAD_PAGO)).withMessage('Elija el motivo'),
   body('observacion').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }).withMessage('La observación puede tener máximo 500 caracteres')
 ]
 
@@ -259,11 +260,11 @@ export const validarFiltrosTablero = [
   fechaQuery('hasta')
 ]
 
-export const validarFiltrosReintegrosTramitador = [
+export const validarFiltrosPagadoTramitador = [
   ...validarFiltrosTablero,
   query('busqueda').optional().isString().isLength({ max: 100 }).withMessage('Búsqueda no válida'),
-  query('estado').optional({ values: 'falsy' }).isIn(['pendientes', 'todos']).withMessage('Estado no válido'),
-  query('diasMinimos').optional({ values: 'falsy' }).isInt({ min: 1, max: 3650 }).withMessage('Antigüedad no válida')
+  query('estadoTramite').optional().isString().isLength({ max: 100 }).withMessage('Estado del trámite no válido'),
+  query('mostrar').optional({ values: 'falsy' }).isIn(['todos', 'porJustificar', 'reintegroPendiente']).withMessage('Opción no válida')
 ]
 
 export const validarFiltrosReporte = [

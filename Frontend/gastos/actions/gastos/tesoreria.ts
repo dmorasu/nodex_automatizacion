@@ -133,10 +133,12 @@ export async function moverSaldoBolsa(
   return { ok: true, datos: await req.json() }
 }
 
-// No se programa el pago porque la bolsa no tiene fondos (pendiente de anticipo): queda la nota en
-// el historial de cada gasto, que sigue en Solicitado
-export async function marcarSinFondos(gastoIds: number[], observacion: string): Promise<Resultado<{ marcados: number }>> {
-  const req = await fetchApi("/gastos/solicitudes/sin-fondos", { method: "POST", body: JSON.stringify({ gastoIds, observacion }) })
+// Novedad de pago: no se programa el pago y por qué (sin fondos, sin tramitador u otro). Queda la
+// nota en el historial de cada gasto, que sigue en Solicitado
+export type MotivoNovedadPago = "SIN_FONDOS" | "SIN_TRAMITADOR" | "OTRO"
+
+export async function registrarNovedadPago(gastoIds: number[], motivo: MotivoNovedadPago, observacion: string): Promise<Resultado<{ marcados: number }>> {
+  const req = await fetchApi("/gastos/solicitudes/novedad-pago", { method: "POST", body: JSON.stringify({ gastoIds, motivo, observacion }) })
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }
 
   const { marcados } = await req.json()

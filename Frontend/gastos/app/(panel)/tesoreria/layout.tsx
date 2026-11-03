@@ -8,7 +8,7 @@ import Pestanas from "@/components/ui/Pestanas"
 export default async function TesoreriaLayout({ children }: { children: React.ReactNode }) {
   const sesion = await requiereAcceso([...TESORERIA_OPERATIVA, ROLES.TESORERIA_CERTIFICADOS, ROLES.AUXILIAR_TESORERIA_CAJA])
   const general = tieneAcceso(sesion.roles, TESORERIA_OPERATIVA)
-  // Bolsas y Reintegros por tramitador: solo Tesorería (el Analista de Tesorería no)
+  // Bolsas: solo Tesorería (el Analista de Tesorería no); Pagado por tramitador: los dos
   const administraBolsas = tieneAcceso(sesion.roles, [ROLES.TESORERIA])
   const certificados = tieneAcceso(sesion.roles, [ROLES.TESORERIA_CERTIFICADOS, ROLES.ANALISTA_TESORERIA])
   const caja = general || sesion.roles.includes(ROLES.AUXILIAR_TESORERIA_CAJA)
@@ -24,7 +24,7 @@ export default async function TesoreriaLayout({ children }: { children: React.Re
     ...(pagos ? [{ href: "/tesoreria/lotes", nombre: "Pagos realizados" }] : []),
     ...(general ? [{ href: "/tesoreria/cuentas", nombre: "Cuentas de cobro" }] : []),
     ...(general ? [{ href: "/tesoreria/cuentas-tramitadores", nombre: "Cuentas de tramitadores" }] : []),
-    ...(administraBolsas ? [{ href: "/tesoreria/reintegros-tramitador", nombre: "Reintegros por tramitador" }] : [])
+    ...(general ? [{ href: "/tesoreria/reintegros-tramitador", nombre: "Pagado por tramitador" }] : [])
   ]
 
   return (

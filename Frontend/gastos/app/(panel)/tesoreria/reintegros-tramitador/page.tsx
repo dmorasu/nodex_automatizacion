@@ -1,11 +1,11 @@
-import { ROLES } from "@/src/auth/permisos"
+import { TESORERIA_OPERATIVA } from "@/src/auth/permisos"
 import { requiereAcceso } from "@/src/auth/dal"
-import PaginaReintegrosTramitador, { type FiltrosReintegrosTramitador } from "@/components/tablero/PaginaReintegrosTramitador"
+import PaginaPagadoTramitador, { type FiltrosPagadoTramitador } from "@/components/tablero/PaginaPagadoTramitador"
 
-export default async function ReintegrosTramitadorPage(props: { searchParams: Promise<FiltrosReintegrosTramitador> }) {
+export default async function PagadoTramitadorPage(props: { searchParams: Promise<FiltrosPagadoTramitador> }) {
   const searchParams = await props.searchParams
-  // Solo Tesorería general (Tesorería - Certificados solo ve su bandeja y sus pagos)
-  await requiereAcceso([ROLES.TESORERIA])
+  // Tesorería y Analista de Tesorería (Tesorería - Certificados solo ve su bandeja y sus pagos)
+  await requiereAcceso(TESORERIA_OPERATIVA)
 
-  return <PaginaReintegrosTramitador ruta="/tesoreria/reintegros-tramitador" filtros={searchParams} />
+  return <PaginaPagadoTramitador ruta="/tesoreria/reintegros-tramitador" filtros={searchParams} />
 }

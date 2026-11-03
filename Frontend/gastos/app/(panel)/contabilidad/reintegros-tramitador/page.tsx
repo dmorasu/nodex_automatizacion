@@ -1,6 +1,6 @@
-import PaginaReintegrosTramitador, { type FiltrosReintegrosTramitador } from "@/components/tablero/PaginaReintegrosTramitador"
+import PaginaPagadoTramitador, { type FiltrosPagadoTramitador } from "@/components/tablero/PaginaPagadoTramitador"
 
-export default async function ReintegrosTramitadorPage(props: { searchParams: Promise<FiltrosReintegrosTramitador> }) {
+export default async function PagadoTramitadorPage(props: { searchParams: Promise<FiltrosPagadoTramitador> }) {
   const searchParams = await props.searchParams
-  return <PaginaReintegrosTramitador ruta="/contabilidad/reintegros-tramitador" filtros={searchParams} />
+  return <PaginaPagadoTramitador ruta="/contabilidad/reintegros-tramitador" filtros={searchParams} />
 }

@@ -19,7 +19,7 @@ export default async function LegalizacionLayout({ children }: { children: React
           { href: "/legalizacion/cuentas", nombre: "Cuentas de cobro" },
           { href: "/legalizacion/soportes", nombre: "Soportes de tramitadores" },
           { href: "/legalizacion/reintegros", nombre: "Reintegros" },
-          { href: "/legalizacion/reintegros-tramitador", nombre: "Reintegros por tramitador" },
+          { href: "/legalizacion/reintegros-tramitador", nombre: "Pagado por tramitador" },
           { href: "/legalizacion/descargas", nombre: "Descargar documentos" }
         ]}
       />

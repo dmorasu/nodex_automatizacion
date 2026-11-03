@@ -10,7 +10,7 @@ import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { registrarMovimientos, validarBolsaDelGasto, validarQueNoSeaDeCaja } from './bolsas'
 import { cambiarEstadoGasto, codigoEstadoGasto, idEstadoGasto, registrarTrazabilidad } from './estadosGasto'
-import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
+import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA, type MotivoNovedadPago } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
 
@@ -572,11 +572,12 @@ export const corregirValorPagado = (gastoId: number, datos: DatosCorreccionValor
     return gasto
   })
 
-// Tesorería no programa el pago porque la bolsa no tiene fondos y espera un anticipo: queda la nota
-// en el historial sin cambiar el estado (decisión del usuario, 2026-11-03; un estado nuevo tocaría
-// bandejas, filtros y reportes). El gasto sigue en Solicitado y se programa cuando llegue el dinero
-export const marcarSinFondos = (gastoIds: number[], observacion: string | null, usuarioId: number) =>
+// Novedad de pago: Tesorería no programa el pago por un motivo (bolsa sin fondos, trámite sin
+// tramitador u otro) y queda la nota en el historial sin cambiar el estado (decisión del usuario,
+// 2026-11-03; un estado nuevo tocaría bandejas, filtros y reportes). El gasto sigue en Solicitado
+export const registrarNovedadPago = (gastoIds: number[], motivo: MotivoNovedadPago, observacion: string | null, usuarioId: number) =>
   db.transaction(async transaction => {
+    if (motivo === 'OTRO' && !observacion) throw new ErrorGastos('Cuente cuál es el motivo')
     const solicitado = await idEstadoGasto(ESTADOS_GASTO.SOLICITADO)
     const gastos = await SolicitudesGasto.findAll({
       where: { id: gastoIds },
@@ -586,16 +587,19 @@ export const marcarSinFondos = (gastoIds: number[], observacion: string | null, 
     if (gastos.length !== new Set(gastoIds).size) throw new ErrorGastos('Algún gasto seleccionado no existe', 404)
 
     const otros = gastos.filter(g => g.estadoId !== solicitado)
-    if (otros.length) throw new ErrorGastos(`Solo se marcan gastos en Solicitado (${otros.map(g => g.codigo).join(', ')} ${otros.length === 1 ? 'no lo está' : 'no lo están'})`)
+    if (otros.length) throw new ErrorGastos(`Solo se registra en gastos en Solicitado (${otros.map(g => g.codigo).join(', ')} ${otros.length === 1 ? 'no lo está' : 'no lo están'})`)
 
     for (const gasto of gastos) {
-      const bolsa = gasto.bolsa ? `la bolsa ${gasto.bolsa.nombre}` : 'la bolsa'
+      // Sin fondos dice cuál bolsa; "Otro" se lee por la observación
+      const razon = motivo === 'SIN_FONDOS' ? `${gasto.bolsa ? `bolsa ${gasto.bolsa.nombre}` : 'bolsa'} sin fondos, pendiente de anticipo`
+        : motivo === 'SIN_TRAMITADOR' ? 'el trámite no tiene tramitador' : null
+      const texto = [razon, observacion].filter(Boolean).join('. ')
       await registrarTrazabilidad({
         solicitudGastoId: gasto.id,
         estadoAnteriorId: gasto.estadoId,
         estadoNuevoId: gasto.estadoId,
         usuarioId,
-        observacion: `Pago no programado: ${bolsa} está sin fondos, pendiente de anticipo${observacion ? `. ${observacion}` : ''}`
+        observacion: `Pago no programado: ${texto}`
       }, transaction)
     }
     return gastos.length

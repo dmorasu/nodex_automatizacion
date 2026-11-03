@@ -67,7 +67,7 @@ export class CargueMasivoGastosController {
       // Un solo correo a Tesorería con todos los gastos cargados
       void notificarGastosCreados(resultado.ids)
 
-      res.status(201).json({ total: resultado.total, codigos: resultado.codigos })
+      res.status(201).json({ total: resultado.total, codigos: resultado.codigos, gastos: resultado.gastos, tipoLiquidacionId: resultado.tipoLiquidacionId })
     } catch (error) {
       responderError(res, error)
     }

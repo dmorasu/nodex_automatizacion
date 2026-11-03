@@ -132,3 +132,14 @@ export async function moverSaldoBolsa(
   revalidatePath(`/tesoreria/bolsas/${bolsaId}`)
   return { ok: true, datos: await req.json() }
 }
+
+// No se programa el pago porque la bolsa no tiene fondos (pendiente de anticipo): queda la nota en
+// el historial de cada gasto, que sigue en Solicitado
+export async function marcarSinFondos(gastoIds: number[], observacion: string): Promise<Resultado<{ marcados: number }>> {
+  const req = await fetchApi("/gastos/solicitudes/sin-fondos", { method: "POST", body: JSON.stringify({ gastoIds, observacion }) })
+  if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+
+  const { marcados } = await req.json()
+  gastoIds.forEach(id => revalidatePath(`/solicitudes/${id}`))
+  return { ok: true, datos: { marcados } }
+}

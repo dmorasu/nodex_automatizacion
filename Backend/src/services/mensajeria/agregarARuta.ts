@@ -79,7 +79,7 @@ export const revisarTramitesParaRuta = async (fecha: string, tramitadorId: numbe
 
 // Asigna el mensajero y la fecha de diligencia a cada trámite que se pueda; los demás se
 // devuelven con su motivo. Cada trámite va en su propia transacción: uno que falle no frena a los otros.
-export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, ids: unknown) => {
+export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, ids: unknown, usuarioId: number) => {
   const revision = await revisarTramitesParaRuta(fecha, tramitadorId, ids)
   const agregados: number[] = []
   const rechazados = revision.filter(t => t.problema).map(t => ({ id: t.id, motivo: t.problema! }))
@@ -95,6 +95,7 @@ export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, 
 
         // El aviso push al mensajero sale solo (hook del modelo) si cambia el tramitador
         const cambiaMensajero = Number(solicitud.tramitadorId) !== tramitadorId
+        solicitud.usuarioQueModifica = usuarioId
         if (cambiaMensajero) await solicitud.update({ tramitadorId }, { transaction })
 
         // Misma regla de ProgramacionController: "asignado" si la fecha es nueva o posterior;

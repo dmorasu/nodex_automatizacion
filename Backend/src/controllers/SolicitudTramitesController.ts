@@ -241,6 +241,7 @@ static asignarTramitador = async (req: Request, res: Response) => {
         await db.transaction(async transaction => {
           await verificarCitaDelTramite(solicitud.id, { tramitadorId: Number(tramitadorId) }, transaction)
           solicitud.tramitadorId = tramitadorId
+          solicitud.usuarioQueModifica = req.usuario.id
           await solicitud.save({ transaction })
         })
       } catch (error) {
@@ -468,6 +469,7 @@ static getAll = async (req: Request, res: Response) => {
         try {
           await db.transaction(async transaction => {
             if (cambiaTramitador) await verificarCitaDelTramite(req.solicitudTramites.id, { tramitadorId: datos.tramitadorId ? Number(datos.tramitadorId) : null }, transaction)
+            req.solicitudTramites.usuarioQueModifica = req.usuario.id
             await req.solicitudTramites.update(datos, { transaction })
           })
         } catch (error) {

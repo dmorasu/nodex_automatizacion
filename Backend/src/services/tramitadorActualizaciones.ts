@@ -2,7 +2,7 @@ import { db } from '../config/db'
 import SolicitudTramites from '../models/solicitudTramites'
 import { verificarCitaDelTramite } from './mensajeria/agenda'
 
-export const procesarTramitador = async (data: any[]) => {
+export const procesarTramitador = async (data: any[], usuarioId: number) => {
 
   const t = await db.transaction()
   const errores: any[] = []
@@ -27,6 +27,7 @@ export const procesarTramitador = async (data: any[]) => {
         // Si tiene cita, el horario debe estar libre en la agenda del nuevo mensajero
         await verificarCitaDelTramite(solicitud.id, { tramitadorId: Number(row.tramitadorId) }, t)
 
+        solicitud.usuarioQueModifica = usuarioId
         await solicitud.update({
           tramitadorId: row.tramitadorId
         }, { transaction: t })

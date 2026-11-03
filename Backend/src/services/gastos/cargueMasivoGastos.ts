@@ -11,7 +11,8 @@ import Tramite from '../../models/tramite'
 import { nombresTiposTramite } from '../catalogosTramites'
 import { crearGastoEnTransaccion, validarGasto, type DatosGasto } from './solicitudesGasto'
 import { ErrorGastos } from './errores'
-import { TIPOS_GASTO } from './constantes'
+import { TIPOS_DOCUMENTO, TIPOS_GASTO } from './constantes'
+import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
 
 // =====================================
 // CARGUE MASIVO DE GASTOS (Excel)
@@ -356,6 +357,8 @@ export const validarCargue = async (buffer: Buffer, soloPropiosDe: number[] | nu
   return { total, errores }
 }
 
+type GastoCargado = { id: number, codigo: string, fila: number, solicitudTramiteId: number | null, placa: string | null, matriculaInmobiliaria: string | null }
+
 // Carga todos los gastos en una sola transacción, solo si ninguna fila tiene error
 export const cargarGastos = async (buffer: Buffer, usuarioId: number, soloPropiosDe: number[] | null) => {
   const { total, errores, gastos } = await validarArchivo(buffer, soloPropiosDe)
@@ -363,11 +366,14 @@ export const cargarGastos = async (buffer: Buffer, usuarioId: number, soloPropio
   if (errores.length) return { ok: false as const, total, errores }
 
   const creados = await db.transaction(async transaction => {
-    const creados: { id: number, codigo: string }[] = []
+    const creados: GastoCargado[] = []
     for (const { fila, datos } of gastos) {
       try {
         const gasto = await crearGastoEnTransaccion(datos, usuarioId, transaction)
-        creados.push({ id: gasto.id, codigo: gasto.codigo })
+        creados.push({
+          id: gasto.id, codigo: gasto.codigo, fila, solicitudTramiteId: gasto.solicitudTramiteId ?? null,
+          placa: gasto.placa ?? null, matriculaInmobiliaria: gasto.matriculaInmobiliaria ?? null
+        })
       } catch (error) {
         // No se crea ninguno; se dice en qué fila falló en lugar de "Hubo un error"
         if (!(error instanceof ErrorGastos)) console.error(`Cargue masivo de gastos, fila ${fila}:`, error)
@@ -377,5 +383,8 @@ export const cargarGastos = async (buffer: Buffer, usuarioId: number, soloPropio
     return creados
   })
 
-  return { ok: true as const, total, ids: creados.map(g => g.id), codigos: creados.map(g => g.codigo) }
+  // Para subir las liquidaciones al terminar: la pantalla reconoce cada archivo por placa,
+  // matrícula, trámite o código del gasto
+  const liquidacion = await TiposDocumentoGasto.findOne({ where: { codigo: TIPOS_DOCUMENTO.LIQUIDACION_PAGO, paraPago: true }, attributes: ['id'] })
+  return { ok: true as const, total, ids: creados.map(g => g.id), codigos: creados.map(g => g.codigo), gastos: creados, tipoLiquidacionId: liquidacion?.id ?? null }
 }

@@ -197,6 +197,19 @@ export const ajustarEsquemaGastos = async () => {
   await usosDeTiposDocumento()
   await bolsasSinSaldo()
   await parametrosConValoresGrandes()
+  await tramitadorDesdeElTramite()
+}
+
+// 2026-11-03 · Gastos creados cuando su trámite aún no tenía tramitador: se llenan con el que tiene
+// hoy el trámite (desde ahora lo hace el hook del trámite). Solo los vacíos y sin los anulados;
+// el que ya tiene tramitador no se toca. Idempotente: una vez lleno no vuelve a cambiar
+const tramitadorDesdeElTramite = async () => {
+  await db.query(`
+    UPDATE gastos_solicitudes g SET tramitador_id = t."tramitadorId"
+    FROM "SolicitudTramites" t
+    WHERE t.id = g.solicitud_tramite_id AND g.tramitador_id IS NULL AND t."tramitadorId" IS NOT NULL
+      AND g.estado_id NOT IN (SELECT id FROM gastos_estados_gasto WHERE codigo = 'ANULADO')
+  `)
 }
 
 // 2026-10-27 · La UVT (52.374) no cabía en DECIMAL(10,6) (hasta 9.999,999999): se amplía a

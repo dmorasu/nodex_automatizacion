@@ -11,7 +11,7 @@ import Usuarios from '../../models/usuarios'
 import EstadosGasto from '../../models/gastos/estadosGasto'
 import Anticipos from '../../models/gastos/anticipos'
 import { atributosSaldoAnticipo } from './SolicitudesGastoController'
-import { aprobarGastos, confirmarPago, confirmarPagos, corregirValorPagado, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
+import { aprobarGastos, confirmarPago, confirmarPagos, corregirValorPagado, marcarSinFondos, pagarDirecto, programarPago, sacarDelLote } from '../../services/gastos/pagos'
 import { notificarGastosPagados, notificarLoteProgramado, notificarRevisionLote } from '../../services/gastos/notificacionesGastos'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
@@ -140,6 +140,17 @@ export class PagosController {
       await verificarQuienPaga(req, await idsDelLote(loteId))
       const lote = await sacarDelLote(loteId, req.body.gastoIds, req.body.motivo, req.usuario.id, 'TESORERIA')
       res.json({ estado: lote.estado, total: lote.total })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /solicitudes/sin-fondos  { gastoIds, observacion? }  (Tesorería: no se programa por falta de fondos)
+  static sinFondos = async (req: Request, res: Response) => {
+    try {
+      await verificarQuienPaga(req, req.body.gastoIds)
+      const marcados = await marcarSinFondos(req.body.gastoIds, req.body.observacion?.trim() || null, req.usuario.id)
+      res.json({ marcados })
     } catch (error) {
       responderError(res, error)
     }

@@ -9,7 +9,7 @@ import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
 import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { registrarMovimientos, validarBolsaDelGasto, validarQueNoSeaDeCaja } from './bolsas'
-import { cambiarEstadoGasto, codigoEstadoGasto, registrarTrazabilidad } from './estadosGasto'
+import { cambiarEstadoGasto, codigoEstadoGasto, idEstadoGasto, registrarTrazabilidad } from './estadosGasto'
 import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
@@ -570,4 +570,33 @@ export const corregirValorPagado = (gastoId: number, datos: DatosCorreccionValor
     }, transaction)
 
     return gasto
+  })
+
+// Tesorería no programa el pago porque la bolsa no tiene fondos y espera un anticipo: queda la nota
+// en el historial sin cambiar el estado (decisión del usuario, 2026-11-03; un estado nuevo tocaría
+// bandejas, filtros y reportes). El gasto sigue en Solicitado y se programa cuando llegue el dinero
+export const marcarSinFondos = (gastoIds: number[], observacion: string | null, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const solicitado = await idEstadoGasto(ESTADOS_GASTO.SOLICITADO)
+    const gastos = await SolicitudesGasto.findAll({
+      where: { id: gastoIds },
+      include: [{ model: Bolsas, attributes: ['nombre'] }],
+      transaction
+    })
+    if (gastos.length !== new Set(gastoIds).size) throw new ErrorGastos('Algún gasto seleccionado no existe', 404)
+
+    const otros = gastos.filter(g => g.estadoId !== solicitado)
+    if (otros.length) throw new ErrorGastos(`Solo se marcan gastos en Solicitado (${otros.map(g => g.codigo).join(', ')} ${otros.length === 1 ? 'no lo está' : 'no lo están'})`)
+
+    for (const gasto of gastos) {
+      const bolsa = gasto.bolsa ? `la bolsa ${gasto.bolsa.nombre}` : 'la bolsa'
+      await registrarTrazabilidad({
+        solicitudGastoId: gasto.id,
+        estadoAnteriorId: gasto.estadoId,
+        estadoNuevoId: gasto.estadoId,
+        usuarioId,
+        observacion: `Pago no programado: ${bolsa} está sin fondos, pendiente de anticipo${observacion ? `. ${observacion}` : ''}`
+      }, transaction)
+    }
+    return gastos.length
   })

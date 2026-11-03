@@ -120,6 +120,21 @@ class SolicitudTramites extends Model {
     else avisar()
   }
 
+  // Quien cambia el tramitador (no es columna): lo pone quien guarda para la nota en el historial del gasto
+  declare usuarioQueModifica?: number | null;
+
+  // El gasto se crea con el tramitador que tenga el trámite en ese momento; si se lo asignan
+  // después, se pasa a sus gastos (sin pagar siempre; ya pagados solo si estaban vacíos)
+  @AfterSave
+  static async pasarTramitadorAGastos(solicitud: SolicitudTramites, opciones: { transaction?: Transaction | null }) {
+    if (!solicitud.changed('tramitadorId') || !solicitud.tramitadorId) return
+    if (Number(solicitud.previous('tramitadorId')) === Number(solicitud.tramitadorId)) return
+
+    // require diferido: el servicio usa los modelos de gastos y arriba se cargaría en círculo
+    const { pasarTramitadorAGastos } = require('../services/gastos/tramitadorDelTramite') as typeof import('../services/gastos/tramitadorDelTramite')
+    await pasarTramitadorAGastos(solicitud.id, Number(solicitud.tramitadorId), solicitud.usuarioQueModifica ?? null, opciones.transaction ?? null)
+  }
+
   // ===== Relaciones Base =====
 
   @ForeignKey(() => Usuarios)

@@ -57,7 +57,7 @@ export const procesarTramitadorController = async (req: Request, res: Response) 
     return res.status(400).json({ errores })
   }
 
-  const result = await procesarTramitador(data)
+  const result = await procesarTramitador(data, req.usuario.id)
 
   // =========================
   // 🔔 NOTIFICACIONES MASIVAS

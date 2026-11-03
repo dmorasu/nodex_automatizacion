@@ -282,6 +282,12 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Tramitador del gasto desde el trámite, "Sin fondos" en Tesorería y liquidaciones en el cargue masivo (2026-11-03)** — cambian el backend, Nodex Gastos y Nodex Trámites: compilar los tres y reiniciar `nodex-api`, `nodex-gastos` y `nodex-tramites`.
+- **Sin variables nuevas ni columnas.** `ajustarEsquemaGastos()` (después de sync, idempotente) llena `gastos_solicitudes.tramitador_id` de los gastos que no lo tienen con el tramitador actual de su trámite (sin los anulados). Antes de desplegar, ver cuántos va a llenar:
+  `sudo -u postgres psql -d nodex -c "SELECT COUNT(*) FROM gastos_solicitudes g JOIN \"SolicitudTramites\" t ON t.id = g.solicitud_tramite_id WHERE g.tramitador_id IS NULL AND t.\"tramitadorId\" IS NOT NULL"` (después del arranque debe dar 0, salvo anulados).
+- Pruebas: asignar el tramitador a un trámite con un gasto Solicitado sin tramitador (el gasto lo toma y su historial dice "Tramitador … asignado desde el trámite"); cambiarlo (el gasto sin pagar cambia; uno pagado con tramitador no); en Tesorería → Por pagar, marcar gastos con **Sin fondos** (nota en el historial, siguen en Solicitado); cargue masivo de gastos y subir las liquidaciones por nombre de archivo.
+- Para volver: el commit anterior no usa nada nuevo (los tramitadores llenados se quedan, son los del trámite).
+
 **IVA en las solicitudes de factura (2026-10-31)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
 - **Sin variables nuevas.** `ajustarEsquemaGastos()` (después de sync, idempotente) agrega `gastos_anticipos.iva_porcentaje DECIMAL(10, 6)` e `iva_valor DECIMAL(15, 2)` (nulas) y `seedGastos()` crea el parámetro `IVA` = 0.19 si no existe. Comprobar:
   `sudo -u postgres psql -d nodex -c "SELECT clave, valor FROM gastos_parametros WHERE clave = 'IVA'" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'gastos_anticipos' AND column_name LIKE 'iva%'"`

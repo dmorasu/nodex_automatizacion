@@ -2,7 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, CircleCheckBig, FileText, Image as ImageIcon, Phone, Undo2 } from "lucide-react"
 import { obtenerDatos } from "@/src/lib/api"
-import { formatoFecha, formatoFechaHora } from "@/src/lib/formato"
+import { formatoFecha, formatoFechaHora, formatoHoraCita } from "@/src/lib/formato"
 import { DetalleTramiteSchema } from "@/src/schemas"
 import Comentarios from "@/components/tramites/Comentarios"
 import ReportarRealizado from "@/components/tramites/ReportarRealizado"
@@ -149,7 +149,7 @@ export default async function DetalleTramitePage(props: { params: Promise<{ id: 
           <dl className="divide-y divide-slate-100">
             <Dato etiqueta="Diligencia">{programacion?.fechaRealizacionDiligencia && formatoFecha(programacion.fechaRealizacionDiligencia)}</Dato>
             <Dato etiqueta="Cita">
-              {programacion?.requiereCita && (programacion.fechaCita ? `${formatoFecha(programacion.fechaCita)}${programacion.horaCita ? ` · ${programacion.horaCita}` : ""}` : "Requiere cita (sin fecha)")}
+              {programacion?.requiereCita && (programacion.fechaCita ? `${formatoFecha(programacion.fechaCita)}${programacion.horaCita ? ` · ${formatoHoraCita(programacion.horaCita, programacion.horaFinCita)}` : ""}` : "Requiere cita (sin fecha)")}
             </Dato>
             <Dato etiqueta="Entrega probable">{programacion?.fechaProbableEntrega && formatoFecha(programacion.fechaProbableEntrega)}</Dato>
             <Dato etiqueta="Entrega del resultado">{tramite.fechaEntregaResultado && formatoFecha(tramite.fechaEntregaResultado)}</Dato>

@@ -84,6 +84,7 @@ import {
   validarPagoCaja
 } from '../../middleware/gastos/validacionesCajaMenor'
 import { RevisionSoportesController } from '../../controllers/tramitadores/SoportesTramitadorController'
+import { CuentasCobroTesoreriaController, recibirSoportePago } from '../../controllers/CuentasCobroTramitadoresController'
 import { body, param, query } from 'express-validator'
 
 // =====================================
@@ -397,5 +398,31 @@ router.post('/caja-menor/reembolsos/:id/aprobar', soloDireccion, validarId, hand
 router.post('/caja-menor/reembolsos/:id/rechazar', soloDireccion, validarId, validarMotivo, handleInputErrors, CajaMenorController.rechazar)
 router.post('/caja-menor/reembolsos/:id/legalizar', tesoreriaCaja, recibirDocumentos, leerDatosJson, validarLegalizacionReembolso, handleInputErrors, CajaMenorController.legalizar)
 
+
+// ── Cuentas de cobro de tramitadores (llegan con el visto bueno de Torre de control) ──
+const tesoreriaTramitadores = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA)
+router.get('/cuentas-tramitadores', tesoreriaTramitadores, CuentasCobroTesoreriaController.listar)
+router.get('/cuentas-tramitadores/:id', tesoreriaTramitadores, validarId, handleInputErrors, CuentasCobroTesoreriaController.detalle)
+router.get('/cuentas-tramitadores/:id/pdf', tesoreriaTramitadores, validarId, handleInputErrors, CuentasCobroTesoreriaController.pdf)
+router.get('/cuentas-tramitadores/:id/soporte-pago', tesoreriaTramitadores, validarId, handleInputErrors, CuentasCobroTesoreriaController.soportePago)
+router.post('/cuentas-tramitadores/:id/pagar',
+  tesoreriaTramitadores,
+  recibirSoportePago,
+  validarId,
+  body('fechaPago').isISO8601({ strict: true }).withMessage('Indique la fecha de pago'),
+  body('observacion').optional({ values: 'falsy' }).isString().isLength({ max: 1000 }),
+  body('bolsaId').isInt({ min: 1 }).withMessage('Elija la bolsa con que se paga'),
+  handleInputErrors,
+  CuentasCobroTesoreriaController.pagar
+)
+// Ajuste de la retención que calculó Nodex (con motivo)
+router.put('/cuentas-tramitadores/:id/retencion',
+  tesoreriaTramitadores,
+  validarId,
+  body('valor').isFloat({ min: 0 }).withMessage('La retención debe ser un valor de cero o más'),
+  body('motivo').isString().trim().notEmpty().withMessage('Indique el motivo del ajuste').isLength({ max: 1000 }),
+  handleInputErrors,
+  CuentasCobroTesoreriaController.ajustarRetencion
+)
 
 export default router

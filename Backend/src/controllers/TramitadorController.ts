@@ -53,7 +53,12 @@ export class TramitadorController{
         region: body.region,
         ...(body.activo !== undefined && { activo: body.activo }),
         ...(body.esMensajero !== undefined && { esMensajero: body.esMensajero }),
-        ...(body.sedeId !== undefined && { sedeId: body.sedeId || null })
+        ...(body.sedeId !== undefined && { sedeId: body.sedeId || null }),
+        // Datos de la cuenta de cobro (vacío = sin dato)
+        ...Object.fromEntries(['direccion', 'ciudad', 'banco', 'tipoCuenta', 'numeroCuenta']
+            .filter(campo => body[campo] !== undefined)
+            .map(campo => [campo, String(body[campo] ?? '').trim() || null])),
+        ...(body.declaracionArt383 !== undefined && { declaracionArt383: body.declaracionArt383 })
     })
 
     static create =async(req:Request,  res: Response)=>{

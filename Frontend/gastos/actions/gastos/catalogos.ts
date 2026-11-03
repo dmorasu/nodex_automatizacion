@@ -28,6 +28,16 @@ export async function guardarHoraCorte(hora: string): Promise<Resultado> {
   return { ok: true }
 }
 
+// UVT y tarifa de la retención de los tramitadores (la tarifa llega en porcentaje: 10 → 0.10)
+export async function guardarParametrosRetencion(uvt: number, tarifaPorcentaje: number): Promise<Resultado> {
+  for (const [clave, valor] of [["UVT", uvt], ["RETENCION_TRAMITADORES", tarifaPorcentaje / 100]] as const) {
+    const req = await fetchApi(`/gastos/admin/parametros/${clave}`, { method: "PUT", body: JSON.stringify({ valor }) })
+    if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+  }
+  revalidatePath("/catalogos/retencion")
+  return { ok: true }
+}
+
 // Tarifa del IVA de las solicitudes de factura (llega en porcentaje: 19 → 0.19)
 export async function guardarTarifaIva(porcentaje: number): Promise<Resultado> {
   const req = await fetchApi("/gastos/admin/parametros/IVA", { method: "PUT", body: JSON.stringify({ valor: porcentaje / 100 }) })

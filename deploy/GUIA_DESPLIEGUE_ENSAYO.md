@@ -313,6 +313,40 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 - Pruebas: gasto de Inmueble con liquidación 1.000.000, base 800.000 y 11 % → valor solicitado 912.000; cambiarlo a mano y guardar; el detalle muestra "Valor liquidación". Lo mismo desde un trámite en Nodex Trámites.
 - Para volver: el commit anterior ignora la columna (no hay que borrarla).
 
+**Agenda de mensajeros y Excel de cuentas de cobro (2026-10-25)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-tramitadores`).
+- **Sin variables nuevas.** El arranque agrega `"Programacion"."horaFinCita"` (antes de sync, idempotente) y `sync()` crea `mensajeria_reservas`. Comprobar:
+  `sudo -u postgres psql -d nodex -c "\dt mensajeria_reservas" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'Programacion' AND column_name = 'horaFinCita'"`
+- Pruebas: en un trámite de un mensajero, Programación con cita, hora y hora final; Seguimiento → **Agenda de mensajeros** muestra la cita; con un usuario de Gestión de activos, abrir la agenda, reservar un espacio libre (y otro que se cruce: debe rechazarlo) y cancelarlo; programar en Torre de control una cita sobre una reserva ajena (debe rechazarla) y sobre la reserva de su propio trámite (la reserva se cierra). Cuentas de cobro → Descargar Excel.
+- Para volver: el commit anterior ignora la tabla y la columna nuevas (no hay que borrarlas). Ojo: con el commit anterior nada impide los cruces de horario.
+
+**Agenda: No disponible, carga, copiar ruta y trámites sin mensajero (2026-10-26)** — cambian el backend y Nodex Trámites (compilar los dos y reiniciar `nodex-api` y `nodex-tramites`). Se lleva junto con la Agenda del 2026-10-25 o después de ella.
+- **Sin variables nuevas.** Si `mensajeria_reservas` no existe todavía, `sync()` la crea ya con `tipo` y `dia_completo`; si ya existía, `ajustarEsquemaMensajeria()` (después de sync, idempotente) agrega `tipo VARCHAR(20) NOT NULL DEFAULT 'RESERVA'` y `dia_completo BOOLEAN NOT NULL DEFAULT false`. Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'mensajeria_reservas' AND column_name IN ('tipo', 'dia_completo')"`
+- Pruebas (Torre de control): marcar a un mensajero No disponible por horas y todo el día (con citas ese día debe rechazarlo); reservar o programar una cita sobre lo no disponible (debe rechazarlo); Sin mensajero → Asignar un trámite en un horario libre (queda con el mensajero y la cita); Copiar ruta y pegarla; buscar. Con Gestión de activos: no ve "No disponible", "Sin mensajero" ni "Copiar ruta".
+- Para volver: el commit anterior ignora las dos columnas; los "No disponible" que se hayan creado quedarían como reservas comunes.
+
+**Cuentas de cobro de tramitadores, fase 1 (2026-10-25)** — cambian el backend y las **tres** apps (compilar las cuatro y reiniciar `nodex-api`, `nodex-worker`, `nodex-tramites`, `nodex-gastos` y `nodex-tramitadores`).
+- **Variable nueva (opcional) en el backend:** `URL_NODEX_TRAMITADORES=https://tramitadores.nodexgpa.com` (botón "Abrir la app" en los correos al tramitador). Usa además `URL_NODEX_TRAMITES`, `URL_NODEX_GASTOS`, `CORREO_TESORERIA` y `CORREO_TORRE_CONTROL`, que ya existen.
+- El arranque agrega a `"Tramitador"` las columnas `direccion`, `ciudad`, `banco`, `tipoCuenta`, `numeroCuenta`, `declaracionArt383`, `firmaRuta` y `firmaNombre` (antes de sync) y `sync()` crea `tramitadores_cuentas_cobro`, `tramitadores_cuentas_cobro_lineas` y `tramitadores_cuentas_cobro_historial`. Comprobar:
+  `sudo -u postgres psql -d nodex -c "\dt tramitadores_cuentas_cobro*" -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'Tramitador' AND column_name IN ('direccion','ciudad','banco','tipoCuenta','numeroCuenta','declaracionArt383','firmaRuta')"`
+- Después: completar en Catálogos → Tramitadores la dirección, ciudad, banco y número de cuenta de cada tramitador (sin esos datos la cuenta no se envía) y que tengan acceso a la app.
+- Pruebas: Cuentas de cobro → Por generar → Generar precuenta → corregir un valor y agregar una visita fallida → Enviar; en la app, Cuentas → Aprobar (firmar) y otra con Pedir corrección; Por visto bueno → Dar visto bueno a la semana; en Gastos, Tesorería → Cuentas de tramitadores → PDF y Marcar pagada. Ver que el trámite quede con su número CCT en la pestaña de cuenta de cobro.
+- Para volver: el commit anterior ignora las tablas y columnas nuevas (no hay que borrarlas).
+
+**Cuentas de cobro de tramitadores, fases 2 y 3: retención y pago con bolsa (2026-10-27)** — cambian el backend y Nodex Gastos (compilar los dos y reiniciar `nodex-api` y `nodex-gastos`). Se lleva junto con la fase 1 o después de ella.
+- **Sin variables nuevas.** El arranque agrega a `tramitadores_cuentas_cobro` las columnas `retencion`, `calculo_retencion`, `retencion_ajustada` y `bolsa_id` (antes de sync, idempotente; si la tabla no existe la crea `sync()`), **amplía `gastos_parametros.valor` de `DECIMAL(10,6)` a `DECIMAL(16,6)`** (para que quepa la UVT; no cambia los valores guardados) y `seedGastos` crea los parámetros `UVT` (52374) y `RETENCION_TRAMITADORES` (0.10). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'tramitadores_cuentas_cobro' AND column_name IN ('retencion','calculo_retencion','retencion_ajustada','bolsa_id')" -c "SELECT clave, valor FROM gastos_parametros WHERE clave IN ('UVT','RETENCION_TRAMITADORES')"`
+- **Antes de pagar la primera:** crear en Tesorería → Bolsas una bolsa de **No reembolsables** (si no existe) y confirmar la UVT en Gastos → Catálogos → **Retención tramitadores**.
+- Pruebas: dar el visto bueno a una cuenta; en Gastos → Tesorería → Cuentas de tramitadores ver total, retención y neto; ajustar la retención con un motivo; Marcar pagada eligiendo la bolsa y ver el movimiento por el neto en la bolsa.
+- Para volver: el commit anterior ignora las columnas y los parámetros nuevos (no hay que borrarlos); la columna ampliada no afecta a la versión anterior.
+
+**Desplazamiento de la diligencia: moto o transporte intermunicipal (2026-10-25)** — cambian el backend, Nodex Trámites y Nodex Tramitadores (compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-tramitadores`).
+- **Sin variables nuevas.** El arranque agrega `mensajeria_paradas.transporte` (después de `sync()`, idempotente). Comprobar:
+  `sudo -u postgres psql -d nodex -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'mensajeria_paradas' AND column_name = 'transporte'"`
+- Pruebas: en la app, Finalizar diligencia → Realizado muestra **En moto** marcado y **Transporte intermunicipal**; en Rutas de mensajeros la tarjeta lo dice y el Excel de tiempos y km trae la columna "Desplazamiento".
+- Un celular con la app anterior abierta sigue funcionando: si no lo envía, la realizada queda en moto.
+- Para volver: el commit anterior ignora la columna (no hay que borrarla).
+
 **Next 16 y mejoras de Trámites y Rutas (2026-10-24, commit `841a87b5`)** — cambian el backend y las **tres** apps (compilar las cuatro y reiniciar los cinco procesos).
 - **Sin variables nuevas y sin cambios de base.** Next 16 pide Node 20.9 o más (el servidor tiene 20.20.0). `npm ci` instala Next 16 y React 19; el build usa Turbopack.
 - Compilar **una por una** (memoria). Si un build falla, no seguir y volver al commit anterior.

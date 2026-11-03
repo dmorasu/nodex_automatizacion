@@ -2,7 +2,7 @@ import { Op, QueryTypes } from 'sequelize'
 import { db } from '../../config/db'
 import Tramitador from '../../models/tramitador'
 import SedeMensajeria from '../../models/mensajeria/sedeMensajeria'
-import ParadaMensajeria, { ESTADOS_PARADA } from '../../models/mensajeria/paradaMensajeria'
+import ParadaMensajeria, { ESTADOS_PARADA, TRANSPORTES_PARADA } from '../../models/mensajeria/paradaMensajeria'
 import { subirArchivo } from '../azureFileStorage'
 import { ErrorUbicacion, googleDisponible } from './ubicacion'
 import { jornadaAbierta, resumenJornadas } from './jornadas'
@@ -92,6 +92,7 @@ type FilaParada = {
   estado: string
   tramitadorId: number
   observacion: string | null
+  transporte: string | null
   fechaConfirmacion: string | null
   latitudConfirmacion: number | null
   longitudConfirmacion: number | null
@@ -117,7 +118,7 @@ const consultarParadas = async (fecha: string, tramitadorIds: number[]) => {
   if (tramitadorIds.length === 0) return []
   const filas = await db.query<FilaParada>(`
     SELECT
-      pa.id, pa.orden, pa.estado, pa.tramitador_id AS "tramitadorId", pa.observacion,
+      pa.id, pa.orden, pa.estado, pa.tramitador_id AS "tramitadorId", pa.observacion, pa.transporte,
       pa.fecha_confirmacion AS "fechaConfirmacion",
       pa.latitud_confirmacion AS "latitudConfirmacion", pa.longitud_confirmacion AS "longitudConfirmacion",
       pa.precision_metros AS "precisionMetros", (pa.foto_nombre IS NOT NULL) AS "tieneFoto",
@@ -340,7 +341,7 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png']
 export const confirmarParada = async (
   tramitadorId: number,
   paradaId: number,
-  datos: { estado: string, observacion?: string | null, latitud?: number | null, longitud?: number | null, precision?: number | null },
+  datos: { estado: string, observacion?: string | null, transporte?: string | null, latitud?: number | null, longitud?: number | null, precision?: number | null },
   foto?: Express.Multer.File
 ) => {
   const parada = await ParadaMensajeria.findByPk(paradaId)
@@ -350,6 +351,9 @@ export const confirmarParada = async (
   if (![ESTADOS_PARADA.ENTREGADO, ESTADOS_PARADA.NO_SE_PUDO].includes(datos.estado as any)) throw new ErrorUbicacion('Estado no válido')
   const observacion = datos.observacion?.trim() || null
   if (datos.estado === ESTADOS_PARADA.NO_SE_PUDO && !observacion) throw new ErrorUbicacion('Cuente por qué no se realizó la diligencia')
+  // Moto si no viene (la app instalada con una versión anterior no lo envía)
+  if (datos.transporte && !Object.values(TRANSPORTES_PARADA).includes(datos.transporte as any)) throw new ErrorUbicacion('Desplazamiento no válido')
+  const transporte = datos.estado === ESTADOS_PARADA.ENTREGADO ? (datos.transporte || TRANSPORTES_PARADA.MOTO) : null
   // Hoy, la confirmación es el fin de la diligencia: debe estar iniciada (para medir su tiempo).
   // Las de días anteriores se pueden confirmar como antes.
   if (parada.fecha === hoyBogota() && parada.estado === ESTADOS_PARADA.PENDIENTE && !parada.inicioDiligencia) {
@@ -370,6 +374,7 @@ export const confirmarParada = async (
   await parada.update({
     estado: datos.estado,
     observacion,
+    transporte,
     fechaConfirmacion: new Date(),
     latitudConfirmacion: numero(datos.latitud),
     longitudConfirmacion: numero(datos.longitud),

@@ -16,6 +16,7 @@ export default async function CatalogosLayout({ children }: { children: React.Re
       <Pestanas pestanas={[
         ...CATALOGOS.map(c => ({ href: c.ruta ? `/catalogos/${c.ruta}` : "/catalogos", nombre: c.nombre })),
         { href: "/catalogos/programacion", nombre: "Programación de pagos" },
+        { href: "/catalogos/retencion", nombre: "Retención tramitadores" },
         { href: "/catalogos/iva", nombre: "IVA facturas" }
       ]} />
 

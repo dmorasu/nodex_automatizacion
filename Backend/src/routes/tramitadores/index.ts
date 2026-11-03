@@ -10,6 +10,7 @@ import { recibirDocumentos } from '../../middleware/gastos/uploadDocumentosGasto
 import { TIPOS_DOCUMENTO_TRAMITE } from '../../services/tramitadores/nombresDocumento'
 import { RutaMensajeroController, recibirFoto } from '../../controllers/tramitadores/RutaMensajeroController'
 import { NotificacionesTramitadorController } from '../../controllers/tramitadores/NotificacionesTramitadorController'
+import { CuentasCobroAppController, recibirSoportePago as recibirSoporteAdicional } from '../../controllers/CuentasCobroTramitadoresController'
 
 // API de la app Nodex Tramitadores (/api/app-tramitadores).
 // Usa su propio token: los tokens de usuarios internos no sirven aquí ni al revés.
@@ -128,6 +129,7 @@ router.post('/ruta/paradas/:id/confirmar',
   param('id').isInt({ min: 1 }).withMessage('Parada no válida'),
   body('estado').isIn(['ENTREGADO', 'NO_SE_PUDO']).withMessage('Indique si la diligencia se realizó o no'),
   body('observacion').optional({ values: 'falsy' }).isString().isLength({ max: 1000 }).withMessage('La observación no puede superar 1000 caracteres'),
+  body('transporte').optional({ values: 'falsy' }).isIn(['MOTO', 'INTERMUNICIPAL']).withMessage('Desplazamiento no válido'),
   body(['latitud', 'longitud', 'precision']).optional({ values: 'falsy' }).isFloat().withMessage('Ubicación no válida'),
   handleInputErrors,
   RutaMensajeroController.confirmar
@@ -158,6 +160,40 @@ router.get('/ruta/paradas/:id/foto',
   param('id').isInt({ min: 1 }),
   handleInputErrors,
   RutaMensajeroController.foto
+)
+
+// ── Cuentas de cobro ──────────────
+const idCuenta = param('id').isInt({ min: 1 }).withMessage('Cuenta no válida')
+router.get('/cuentas-cobro', ...sesion, CuentasCobroAppController.listar)
+router.get('/cuentas-cobro/:id', ...sesion, idCuenta, handleInputErrors, CuentasCobroAppController.detalle)
+router.get('/cuentas-cobro/:id/pdf', ...sesion, idCuenta, handleInputErrors, CuentasCobroAppController.pdf)
+router.post('/cuentas-cobro/:id/aprobar', ...sesion, idCuenta, handleInputErrors, CuentasCobroAppController.aprobar)
+router.post('/cuentas-cobro/:id/corregir',
+  ...sesion,
+  idCuenta,
+  body('comentario').isString().trim().notEmpty().withMessage('Cuéntenos qué hay que corregir').isLength({ max: 1000 }).withMessage('Máximo 1000 caracteres'),
+  handleInputErrors,
+  CuentasCobroAppController.corregir
+)
+// Adicional del tramitador (papelería, sobres…) con su soporte: la cuenta vuelve a revisión
+router.post('/cuentas-cobro/:id/adicionales',
+  ...sesion,
+  recibirSoporteAdicional,
+  idCuenta,
+  body('solicitudTramiteId').isInt({ min: 1 }).withMessage('Elija el trámite'),
+  body('concepto').isString().trim().notEmpty().withMessage('Indique el concepto').isLength({ max: 200 }),
+  body('fecha').isISO8601({ strict: true }).withMessage('Indique la fecha'),
+  body('valor').isFloat({ gt: 0, max: 100_000_000 }).withMessage('Indique el valor'),
+  handleInputErrors,
+  CuentasCobroAppController.agregarAdicional
+)
+// Firma dibujada en el celular (PNG en base64)
+router.get('/firma', ...sesion, CuentasCobroAppController.firma)
+router.put('/firma',
+  ...sesion,
+  body('imagen').isString().isLength({ min: 100, max: 800_000 }).withMessage('La firma no es válida'),
+  handleInputErrors,
+  CuentasCobroAppController.guardarFirma
 )
 
 export default router

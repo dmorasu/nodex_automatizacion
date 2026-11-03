@@ -14,6 +14,8 @@ export type Parada = {
   orden: number
   estado: "PENDIENTE" | "ENTREGADO" | "NO_SE_PUDO"
   observacion: string | null
+  // Desplazamiento de la realizada; null en las no realizadas y en las de antes del 2026-10-25
+  transporte: "MOTO" | "INTERMUNICIPAL" | null
   fechaConfirmacion: string | null
   // Hora en que el mensajero inició la diligencia (la confirmación es su fin)
   inicioDiligencia: string | null
@@ -64,6 +66,11 @@ export const NOMBRE_ESTADO_PARADA: Record<Parada["estado"], string> = {
   PENDIENTE: "Pendiente",
   ENTREGADO: "Realizado",
   NO_SE_PUDO: "No realizado"
+}
+
+export const NOMBRE_TRANSPORTE: Record<NonNullable<Parada["transporte"]>, string> = {
+  MOTO: "En moto",
+  INTERMUNICIPAL: "Transporte intermunicipal"
 }
 
 // Colores de estado de la parada (siempre con número y nombre al lado: nunca solo color)

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardList, House, Route, Undo2 } from "lucide-react"
+import { ClipboardList, HandCoins, House, Route, Undo2 } from "lucide-react"
 
 const SECCIONES = [
   { href: "/inicio", nombre: "Inicio", Icono: House },
@@ -10,12 +10,13 @@ const SECCIONES = [
   { href: "/gastos", nombre: "Reintegros", Icono: Undo2 }
 ]
 
-// Barra fija abajo, al alcance del pulgar. Los mensajeros ven además "Mi ruta".
+// Barra fija abajo, al alcance del pulgar. Los mensajeros ven además "Mi ruta"; los demás,
+// sus cuentas de cobro (los mensajeros no hacen cuenta de cobro).
 export default function NavegacionInferior({ esMensajero = false }: { esMensajero?: boolean }) {
   const ruta = usePathname()
   const secciones = esMensajero
     ? [SECCIONES[0], { href: "/ruta", nombre: "Mi ruta", Icono: Route }, ...SECCIONES.slice(1)]
-    : SECCIONES
+    : [...SECCIONES, { href: "/cuentas-cobro", nombre: "Cuentas", Icono: HandCoins }]
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">

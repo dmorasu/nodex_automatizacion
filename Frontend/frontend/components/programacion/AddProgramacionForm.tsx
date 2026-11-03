@@ -591,6 +591,56 @@ export default function AddProgramacionForm({
 
             </div>
 
+
+
+            {/* ============================================= */}
+            {/* HORA FINAL DE LA CITA (opcional)              */}
+            {/* ============================================= */}
+
+            <div>
+
+              <label
+                htmlFor="horaFinCita"
+                className="
+                  block
+                  mb-1.5
+                  text-xs
+                  font-medium
+                  text-slate-600
+                "
+              >
+                Hora final de la Cita
+              </label>
+
+
+              <input
+                id="horaFinCita"
+                type="time"
+                name="horaFinCita"
+                className="
+                  w-full
+                  h-10
+                  px-3
+                  rounded-md
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  text-xs
+                  text-slate-700
+                  outline-none
+                  transition
+                  focus:bg-white
+                  focus:border-sky-400
+                  focus:ring-2
+                  focus:ring-sky-100
+                "
+                defaultValue={
+                  programacion?.horaFinCita?.slice(0, 5) ?? ""
+                }
+              />
+
+            </div>
+
           </div>
 
         )}

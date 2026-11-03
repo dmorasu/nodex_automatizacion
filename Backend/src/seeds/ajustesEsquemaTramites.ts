@@ -98,6 +98,15 @@ export const ajustarEsquemaTramites = async () => {
   await areasDeUsuarios()
   await descargaPagoUnificada()
   await regionalDeMunicipios()
+  await horaFinDeLaCita()
+}
+
+// 2026-10-25 · Agenda de mensajeros: hora en que termina la cita del trámite
+const horaFinDeLaCita = async () => {
+  const programacion = await columnasDe('Programacion')
+  if (programacion && !programacion.horaFinCita) {
+    await db.query(`ALTER TABLE "Programacion" ADD COLUMN "horaFinCita" TIME`)
+  }
 }
 
 // Regional de cada departamento, tomada del listado de municipios entregado el 2026-10-21
@@ -253,10 +262,20 @@ export const ajustarEsquemaMensajeria = async () => {
       ['inicio_diligencia', 'TIMESTAMP WITH TIME ZONE'],
       ['latitud_inicio', 'DOUBLE PRECISION'],
       ['longitud_inicio', 'DOUBLE PRECISION'],
-      ['jornada_id', 'INTEGER REFERENCES mensajeria_jornadas (id) ON UPDATE CASCADE ON DELETE SET NULL']
+      ['jornada_id', 'INTEGER REFERENCES mensajeria_jornadas (id) ON UPDATE CASCADE ON DELETE SET NULL'],
+      // 2026-10-25 · Desplazamiento de la diligencia realizada: moto o transporte intermunicipal
+      ['transporte', 'VARCHAR(20)']
     ]
     for (const [columna, tipo] of nuevas) {
       if (!paradas[columna]) await db.query(`ALTER TABLE mensajeria_paradas ADD COLUMN ${columna} ${tipo}`)
     }
+  }
+
+  // 2026-10-26 · Agenda: "No disponible" del mensajero (por franja o día completo). Donde la tabla
+  // ya existía (la crea sync() sin estas columnas solo la primera vez)
+  const reservas = await columnasDe('mensajeria_reservas')
+  if (reservas) {
+    if (!reservas.tipo) await db.query(`ALTER TABLE mensajeria_reservas ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT 'RESERVA'`)
+    if (!reservas.dia_completo) await db.query(`ALTER TABLE mensajeria_reservas ADD COLUMN dia_completo BOOLEAN NOT NULL DEFAULT false`)
   }
 }

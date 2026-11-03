@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 import Programacion from "../models/programacion";
 import { notificarProgramacion } from "../services/notificacionesProgramacion";
+import { db } from "../config/db";
+import { cerrarReservasDelTramite, validarHorasCita, verificarCitaDelTramite } from "../services/mensajeria/agenda";
+import { ErrorGastos } from "../services/gastos/errores";
 
 
 declare global {
@@ -21,18 +24,40 @@ export class ProgramacionController {
 
     const solicitudId = req.solicitudTramites.id
 
+    // Sin cita no quedan horas guardadas; la hora final es opcional
+    if (!req.body.requiereCita) {
+      req.body.fechaCita = null
+      req.body.horaCita = null
+      req.body.horaFinCita = null
+    }
+    validarHorasCita(req.body)
+
+    let fechaAnterior: Date | null = null
+    const nuevaFecha = req.body.fechaProbableEntrega || null
+    let enviarNotificacionAsignado = false
+
+    // En una transacción: la agenda del mensajero queda bloqueada desde que se revisa el cruce
+    // hasta que se guarda (dos citas guardadas a la vez no se cruzan)
+    await db.transaction(async transaction => {
+
     let programacion = await Programacion.findOne({
-      where: { solicitudTramiteId: solicitudId }
+      where: { solicitudTramiteId: solicitudId },
+      transaction
     })
 
     // ==========================================
     // FECHAS ANTES DE MODIFICAR LA PROGRAMACIÓN
     // ==========================================
 
-    const fechaAnterior = programacion?.fechaProbableEntrega || null
-    const nuevaFecha = req.body.fechaProbableEntrega || null
+    fechaAnterior = programacion?.fechaProbableEntrega || null
 
-    let enviarNotificacionAsignado = false
+    // Un horario ocupado del mensajero no se vuelve a ocupar (decisión del usuario)
+    await verificarCitaDelTramite(solicitudId, {
+      fecha: nuevaFecha,
+      requiereCita: Boolean(req.body.requiereCita),
+      horaCita: req.body.horaCita || null,
+      horaFinCita: req.body.horaFinCita || null
+    }, transaction)
 
 
     // ==========================================
@@ -52,8 +77,9 @@ export class ProgramacionController {
 
         requiereCita: req.body.requiereCita || false,
         fechaCita: req.body.fechaCita || null,
-        horaCita: req.body.horaCita || null
-      })
+        horaCita: req.body.horaCita || null,
+        horaFinCita: req.body.horaFinCita || null
+      }, { transaction })
 
       // No existía fecha anteriormente
       // y ahora estamos guardando una
@@ -81,8 +107,15 @@ export class ProgramacionController {
       // Actualizar demás campos
       Object.assign(programacion, req.body)
 
-      await programacion.save()
+      await programacion.save({ transaction })
     }
+
+    // Con la cita programada, el espacio que se le había reservado ya cumplió
+    if (req.body.requiereCita && req.body.horaCita) {
+      await cerrarReservasDelTramite(solicitudId, transaction)
+    }
+
+    })
 
 
     console.log('Fecha anterior:', fechaAnterior)
@@ -101,6 +134,10 @@ export class ProgramacionController {
       .json("Programación guardada correctamente")
 
   } catch (error) {
+
+    if (error instanceof ErrorGastos) {
+      return res.status(error.status).json({ error: error.message })
+    }
 
     console.error("ERROR PROGRAMACION:", error)
 

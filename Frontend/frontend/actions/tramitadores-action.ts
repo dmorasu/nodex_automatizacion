@@ -15,6 +15,13 @@ export type DatosTramitador = {
   // Mensajero: tiene ruta diaria; sale de la sede indicada
   esMensajero?: boolean
   sedeId?: number | null
+  // Datos de la cuenta de cobro (salen en el PDF; se exigen al enviarla)
+  direccion?: string | null
+  ciudad?: string | null
+  banco?: string | null
+  tipoCuenta?: string | null
+  numeroCuenta?: string | null
+  declaracionArt383?: boolean
 }
 
 // Crea (sin id) o actualiza (con id) un tramitador. Solo Torre de control.

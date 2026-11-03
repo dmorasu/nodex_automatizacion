@@ -162,7 +162,9 @@ export const Programacion = z.object({
 
         fechaCita: z.string().nullable().optional(),
 
-        horaCita: z.string().nullable().optional()
+        horaCita: z.string().nullable().optional(),
+
+        horaFinCita: z.string().nullable().optional()
 })
 
 export const logistica = z.object({

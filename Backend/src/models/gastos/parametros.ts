@@ -12,9 +12,9 @@ class Parametros extends Model {
   @Column({ type: DataType.STRING(50) })
   declare clave: string
 
-  // Ej: 0.110000 = 11 %  |  0.004000 = 4x1000
+  // Ej: 0.110000 = 11 %  |  0.004000 = 4x1000  |  52374 = UVT (ampliada a 16 dígitos el 2026-10-27)
   @AllowNull(false)
-  @Column({ type: DataType.DECIMAL(10, 6) })
+  @Column({ type: DataType.DECIMAL(16, 6) })
   declare valor: string
 
   @Column({ type: DataType.STRING(200) })

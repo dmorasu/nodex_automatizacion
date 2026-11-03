@@ -40,6 +40,7 @@ type FilaDiligencia = {
   inicio: string | null
   fin: string | null
   observacion: string | null
+  transporte: string | null
   latitudConfirmacion: number | null
   longitudConfirmacion: number | null
   tramiteId: number
@@ -72,7 +73,7 @@ export const generarReporteRutas = async (desde: string, hasta: string, sedeId?:
     db.query<FilaDiligencia>(`
       SELECT
         to_char(pa.fecha, 'YYYY-MM-DD') AS fecha, pa.tramitador_id AS "tramitadorId", pa.jornada_id AS "jornadaId",
-        pa.orden, pa.estado, pa.inicio_diligencia AS inicio, pa.fecha_confirmacion AS fin, pa.observacion,
+        pa.orden, pa.estado, pa.inicio_diligencia AS inicio, pa.fecha_confirmacion AS fin, pa.observacion, pa.transporte,
         pa.latitud_confirmacion AS "latitudConfirmacion", pa.longitud_confirmacion AS "longitudConfirmacion",
         s.id AS "tramiteId", tr."nombreTramite" AS tipo, c."nombreCliente" AS cliente,
         COALESCE(s.placa, s."matriculaInmobiliaria") AS placa, s."direccionTramite" AS direccion,
@@ -98,6 +99,7 @@ export const generarReporteRutas = async (desde: string, hasta: string, sedeId?:
 
   const minutosDiligencia = (d: FilaDiligencia) => (d.inicio && d.fin ? Math.max(0, Math.round((Date.parse(d.fin) - Date.parse(d.inicio)) / 60_000)) : null)
   const nombreEstado = (estado: string) => ({ ENTREGADO: 'Realizado', NO_SE_PUDO: 'No realizado', PENDIENTE: 'Pendiente' }[estado] ?? estado)
+  const nombreTransporte = (transporte: string | null) => ({ MOTO: 'Moto', INTERMUNICIPAL: 'Transporte intermunicipal' }[transporte ?? ''] ?? '')
 
   // ── Por día ──
   const dias_ = new Map<string, { fecha: string, tramitadorId: number }>()
@@ -159,6 +161,7 @@ export const generarReporteRutas = async (desde: string, hasta: string, sedeId?:
       'Fin': hora(d.fin),
       'Duración (min)': minutosDiligencia(d) ?? '',
       'Estado': nombreEstado(d.estado),
+      'Desplazamiento': nombreTransporte(d.transporte),
       'Observación': d.observacion ?? '',
       'Distancia del GPS a la dirección (m)': confirmada && ubicada
         ? metrosEntre([Number(d.latitudConfirmacion), Number(d.longitudConfirmacion)], [Number(d.latitud), Number(d.longitud)])

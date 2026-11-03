@@ -52,7 +52,10 @@ export default async function CrearProgramacion(
       formData.get("fechaCita")?.toString() || null,
 
     horaCita:
-      formData.get("horaCita")?.toString() || null
+      formData.get("horaCita")?.toString() || null,
+
+    horaFinCita:
+      formData.get("horaFinCita")?.toString() || null
   };
 
   console.log("PROGRAMACION DATA:", programacionData);

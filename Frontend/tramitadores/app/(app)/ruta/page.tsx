@@ -26,6 +26,11 @@ const ESTADOS: Record<Parada["estado"], { nombre: string, clase: string }> = {
   NO_SE_PUDO: { nombre: "No realizado", clase: "bg-red-50 text-red-700 border-red-200" }
 }
 
+const TRANSPORTES: Record<NonNullable<Parada["transporte"]>, string> = {
+  MOTO: "En moto",
+  INTERMUNICIPAL: "Transporte intermunicipal"
+}
+
 // Ruta del día del mensajero: paradas en el orden que definió Torre de control,
 // con navegación a Google Maps o Waze y la confirmación de cada visita
 export default async function MiRutaPage(props: { searchParams: Promise<{ fecha?: string }> }) {
@@ -102,6 +107,7 @@ export default async function MiRutaPage(props: { searchParams: Promise<{ fecha?
                       Trámite #{p.tramiteId}
                     </Link>
                     <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${ESTADOS[p.estado].clase}`}>{ESTADOS[p.estado].nombre}</span>
+                    {p.transporte && <span className="text-[11px] font-medium text-slate-500">{TRANSPORTES[p.transporte]}</span>}
                   </div>
                   <p className="text-sm text-slate-600">{p.tipo ?? "—"}</p>
                   <p className="text-sm text-slate-500">{p.cliente ?? "Sin cliente"}{p.placa ? ` · ${p.placa}` : ""}</p>

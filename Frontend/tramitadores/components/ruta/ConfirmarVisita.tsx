@@ -3,13 +3,14 @@
 import { useRef, useState, useTransition } from "react"
 import { toast } from "react-toastify"
 import clsx from "clsx"
-import { Camera, CheckCircle2, Loader2, LocateFixed, LocateOff, X, XCircle } from "lucide-react"
+import { BusFront, Camera, CheckCircle2, Loader2, LocateFixed, LocateOff, Motorbike, X, XCircle } from "lucide-react"
 import { confirmarVisita } from "@/actions/ruta"
 import { comprimirImagen } from "@/src/lib/comprimirImagen"
 import HojaInferior from "../ui/HojaInferior"
 import { claseBotonPrimario, claseBotonSecundario, claseTextarea } from "../ui/estilos"
 
 type Estado = "ENTREGADO" | "NO_SE_PUDO"
+type Transporte = "MOTO" | "INTERMUNICIPAL"
 type Gps = { estado: "buscando" } | { estado: "listo", latitud: number, longitud: number, precision: number } | { estado: "sin", motivo: string }
 
 // Confirmar la visita: Realizado o No realizado, con foto y la ubicación del celular.
@@ -19,6 +20,8 @@ export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, tex
   const [abierto, setAbierto] = useState(false)
   const [estado, setEstado] = useState<Estado | null>(null)
   const [observacion, setObservacion] = useState("")
+  // Casi siempre van en moto: queda marcado y solo se cambia si fue en transporte intermunicipal
+  const [transporte, setTransporte] = useState<Transporte>("MOTO")
   const [foto, setFoto] = useState<{ archivo: File, vista: string } | null>(null)
   const [gps, setGps] = useState<Gps>({ estado: "buscando" })
   const [enviando, startEnviar] = useTransition()
@@ -52,6 +55,7 @@ export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, tex
     setAbierto(false)
     setEstado(null)
     setObservacion("")
+    setTransporte("MOTO")
     quitarFoto()
   }
 
@@ -74,6 +78,7 @@ export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, tex
 
     const datos = new FormData()
     datos.append("estado", estado)
+    if (estado === "ENTREGADO") datos.append("transporte", transporte)
     if (observacion.trim()) datos.append("observacion", observacion.trim())
     if (gps.estado === "listo") {
       datos.append("latitud", String(gps.latitud))
@@ -131,6 +136,31 @@ export default function ConfirmarVisita({ paradaId, tramiteId, estadoActual, tex
             </button>
           ))}
         </div>
+
+        {/* Desplazamiento (solo si se realizó) */}
+        {estado === "ENTREGADO" && (
+          <div className="mt-4">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Desplazamiento</span>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { valor: "MOTO", nombre: "En moto", Icono: Motorbike },
+                { valor: "INTERMUNICIPAL", nombre: "Transporte intermunicipal", Icono: BusFront }
+              ] as const).map(({ valor, nombre, Icono }) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => setTransporte(valor)}
+                  aria-pressed={transporte === valor}
+                  className={clsx("flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 px-2 text-center text-sm font-semibold transition",
+                    transporte === valor ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600")}
+                >
+                  <Icono size={20} className="shrink-0" />
+                  {nombre}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <label className="mt-4 block">
           <span className="mb-1.5 block text-xs font-semibold text-slate-600">

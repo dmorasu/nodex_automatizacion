@@ -8,6 +8,7 @@ import { Popover, PopoverButton, PopoverPanel, Transition } from "@headlessui/re
 import {
   BellRing,
   BookOpen,
+  CalendarClock,
   CircleCheckBig,
   FilePlus2,
   FileSpreadsheet,
@@ -18,10 +19,12 @@ import {
   Receipt,
   Route,
   Settings2,
+  Star,
   ShieldCheck,
   Tags,
   Upload,
   FileUp,
+  HandCoins,
   UserCog,
   UserRoundPlus,
   Users,
@@ -57,6 +60,7 @@ export default function CenterMenu({
   const ruta = usePathname()
 
   // Gestión de activos no ve el tablero, los reportados como realizados, las rutas, la gestión masiva ni los catálogos
+  // (sí la agenda de mensajeros, donde aparta espacios)
   const esTorreControl = perfil === "TORRE_CONTROL"
 
   const secciones: Seccion[] = [
@@ -66,7 +70,10 @@ export default function CenterMenu({
         { href: "/center/dashboard", nombre: "Dashboard", icono: LayoutDashboard, visible: true },
         { href: "/center/torreControl", nombre: "Tablero de gestión", icono: Radar, visible: esTorreControl },
         { href: "/center/reportesRealizado", nombre: "Reportados como realizados", icono: CircleCheckBig, visible: esTorreControl },
-        { href: "/center/rutas", nombre: "Rutas de mensajeros", icono: Route, visible: esTorreControl }
+        { href: "/center/rutas", nombre: "Rutas de mensajeros", icono: Route, visible: esTorreControl },
+        { href: "/center/agenda", nombre: "Agenda de mensajeros", icono: CalendarClock, visible: true },
+        { href: "/center/cuentasCobro", nombre: "Cuentas de cobro", icono: HandCoins, visible: esTorreControl },
+        { href: "/center/calificaciones", nombre: "Calificaciones", icono: Star, visible: esTorreControl }
       ]
     },
     {

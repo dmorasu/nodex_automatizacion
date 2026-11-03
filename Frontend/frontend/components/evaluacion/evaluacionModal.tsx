@@ -20,6 +20,8 @@ import { crearEvaluacion } from "@/actions/crear-Evaluacion-action"
 type Props = {
   closeModal: () => void
   solicitudId: number
+  // Desde Calificaciones: al terminar se actualiza la lista en lugar de recargar el detalle
+  onTerminar?: () => void
 }
 
 
@@ -31,7 +33,8 @@ type Pregunta = {
 
 export default function EvaluacionModal({
   closeModal,
-  solicitudId
+  solicitudId,
+  onTerminar
 }: Props) {
 
 
@@ -184,10 +187,16 @@ export default function EvaluacionModal({
 
     try {
 
-      await crearEvaluacion(
+      const resultado = await crearEvaluacion(
         solicitudId,
         data
       )
+
+      // La acción devuelve { error } cuando el backend la rechaza (ej: ya estaba evaluado)
+      if (resultado?.error) {
+        setError(resultado.error)
+        return
+      }
 
 
       setSuccess(true)
@@ -196,6 +205,8 @@ export default function EvaluacionModal({
       setTimeout(() => {
 
         closeModal()
+
+        if (onTerminar) return onTerminar()
 
         window.history.replaceState(
           {},

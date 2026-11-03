@@ -97,7 +97,7 @@ export const listarTramitesDelTramitador = async (
       { model: Clientes, attributes: ['nombreCliente'] },
       { model: Tramite, attributes: ['nombreTramite'] },
       { model: Municipios, attributes: ['nombreMunicipio', 'departamento'] },
-      { model: Programacion, attributes: ['fechaRealizacionDiligencia', 'fechaProbableEntrega', 'requiereCita', 'fechaCita', 'horaCita'] }
+      { model: Programacion, attributes: ['fechaRealizacionDiligencia', 'fechaProbableEntrega', 'requiereCita', 'fechaCita', 'horaCita', 'horaFinCita'] }
     ],
     // Primero lo que tiene diligencia más cercana; los demás, del más reciente al más antiguo
     order: [[{ model: Programacion, as: 'programacion' }, 'fechaRealizacionDiligencia', 'ASC NULLS LAST'], ['id', 'DESC']],
@@ -182,7 +182,7 @@ export const obtenerTramiteDelTramitador = async (tramitadorId: number, solicitu
         { model: Operaciones, attributes: ['nombreOperacion'] },
         {
           model: Programacion,
-          attributes: ['fechaRealizacionDiligencia', 'fechaProbableEntrega', 'fechaFinalizacionServicio', 'requiereCita', 'fechaCita', 'horaCita']
+          attributes: ['fechaRealizacionDiligencia', 'fechaProbableEntrega', 'fechaFinalizacionServicio', 'requiereCita', 'fechaCita', 'horaCita', 'horaFinCita']
         },
         {
           model: Logistica,

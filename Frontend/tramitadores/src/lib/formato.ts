@@ -20,5 +20,9 @@ export const formatoFecha = (fecha: string | null | undefined) => {
   return `${dia}/${mes}/${anio}`
 }
 
+// Hora de la cita: "10:00:00" y "11:00:00" → "10:00 – 11:00" (la hora final es opcional)
+export const formatoHoraCita = (inicio: string | null | undefined, fin: string | null | undefined) =>
+  inicio ? `${inicio.slice(0, 5)}${fin ? ` – ${fin.slice(0, 5)}` : ""}` : ""
+
 export const formatoTamano = (bytes: number) =>
   bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`

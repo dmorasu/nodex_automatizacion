@@ -282,6 +282,9 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Diligencias de la ruta en Reportados como realizados (2026-11-03)** — cambia solo el backend: compilarlo y reiniciar `nodex-api`.
+- **Sin variables ni cambios de base.** Pruebas: un mensajero finaliza una diligencia como Realizado (aparece en Reportados como realizados → Pendientes, con el correo de realizado) y otra como No realizado (comentario con el motivo en la pestaña Tramitador del trámite).
+
 **Tramitador del gasto desde el trámite, "Sin fondos" en Tesorería y liquidaciones en el cargue masivo (2026-11-03)** — cambian el backend, Nodex Gastos y Nodex Trámites: compilar los tres y reiniciar `nodex-api`, `nodex-gastos` y `nodex-tramites`.
 - **Sin variables nuevas ni columnas.** `ajustarEsquemaGastos()` (después de sync, idempotente) llena `gastos_solicitudes.tramitador_id` de los gastos que no lo tienen con el tramitador actual de su trámite (sin los anulados). Antes de desplegar, ver cuántos va a llenar:
   `sudo -u postgres psql -d nodex -c "SELECT COUNT(*) FROM gastos_solicitudes g JOIN \"SolicitudTramites\" t ON t.id = g.solicitud_tramite_id WHERE g.tramitador_id IS NULL AND t.\"tramitadorId\" IS NOT NULL"` (después del arranque debe dar 0, salvo anulados).

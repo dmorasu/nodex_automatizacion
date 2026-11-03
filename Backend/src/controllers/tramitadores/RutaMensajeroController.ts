@@ -1,10 +1,12 @@
 import type { Request, Response } from 'express'
 import multer from 'multer'
 import type { NextFunction } from 'express'
-import ParadaMensajeria from '../../models/mensajeria/paradaMensajeria'
+import ParadaMensajeria, { ESTADOS_PARADA } from '../../models/mensajeria/paradaMensajeria'
 import { obtenerArchivo } from '../../services/azureFileStorage'
 import { ErrorUbicacion } from '../../services/mensajeria/ubicacion'
 import { confirmarParada, hoyBogota, rutaDelMensajero } from '../../services/mensajeria/rutas'
+import { reflejarDiligenciaEnTramite } from '../../services/tramitadores/tramitesTramitador'
+import { notificarOperacionTramitador } from '../../services/tramitadores/correosTramitador'
 import { registrarUbicacion } from '../../services/mensajeria/ubicacionEnVivo'
 import { finalizarJornada, iniciarAlmuerzo, iniciarDiligencia, iniciarJornada, terminarAlmuerzo } from '../../services/mensajeria/jornadas'
 
@@ -24,6 +26,20 @@ export const recibirFoto = (req: Request, res: Response, next: NextFunction) =>
   })
 
 // App Nodex Tramitadores: ruta del día del mensajero en sesión
+// Lleva al trámite la diligencia confirmada (reporte de realizado con su correo, o comentario si no se
+// realizó). Nunca lanza: la confirmación de la visita ya se respondió
+const llevarAlTramite = async (tramitadorId: number, parada: ParadaMensajeria) => {
+  try {
+    const realizada = parada.estado === ESTADOS_PARADA.ENTREGADO
+    const { reporte } = await reflejarDiligenciaEnTramite(tramitadorId, {
+      solicitudTramiteId: parada.solicitudTramiteId, fecha: parada.fecha, realizada, observacion: parada.observacion
+    })
+    if (reporte) await notificarOperacionTramitador(parada.solicitudTramiteId, tramitadorId, { tipo: 'REALIZADO', observacion: reporte.observacion })
+  } catch (error) {
+    console.error(`No se pudo llevar al trámite la parada ${parada.id}:`, error)
+  }
+}
+
 export class RutaMensajeroController {
 
   // GET /ruta?fecha=YYYY-MM-DD (por defecto hoy)
@@ -39,8 +55,11 @@ export class RutaMensajeroController {
   // POST /ruta/paradas/:id/confirmar (multipart: estado, observacion, latitud, longitud, precision, foto)
   static confirmar = async (req: Request, res: Response) => {
     try {
-      await confirmarParada(req.sesionTramitador!.tramitadorId, Number(req.params.id), req.body, req.file)
+      const tramitadorId = req.sesionTramitador!.tramitadorId
+      const parada = await confirmarParada(tramitadorId, Number(req.params.id), req.body, req.file)
       res.json({ mensaje: 'Visita confirmada' })
+      // Después de responder: si falla, la visita ya quedó confirmada
+      void llevarAlTramite(tramitadorId, parada)
     } catch (error) {
       responder(res, error)
     }

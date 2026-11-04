@@ -15,6 +15,7 @@ import Tramitador from '../models/tramitador'
 import Municipios from '../models/municipios'
 import Usuarios from '../models/usuarios'
 import { crearNotificacion } from '../services/notificacionesServices'
+import { cambioLaFecha } from '../services/notificacionesProgramacion'
 import { formatearFecha} from "../utils/fechaColombia";
 
 // 🔥 tipo del Excel (ajústalo si tienes más columnas)
@@ -63,6 +64,14 @@ export const procesarProgramacionController = async (req: Request, res: Response
     return res.status(400).json({ errores })
   }
 
+  // Fechas de diligencia antes del cargue: el correo solo sale a los trámites cuya fecha cambió
+  const idsCargue = [...new Set(data.map(row => Number(row.solicitudTramiteId)).filter(Boolean))]
+  const anteriores = await Programacion.findAll({
+    where: { solicitudTramiteId: idsCargue },
+    attributes: ['solicitudTramiteId', 'fechaProbableEntrega']
+  })
+  const fechaAnterior = new Map(anteriores.map(p => [Number(p.solicitudTramiteId), p.fechaProbableEntrega]))
+
   const result = await procesarProgramacion(data)
 
   // =========================
@@ -109,6 +118,11 @@ if (!programacion) {
   console.log(
     `⚠️ Solicitud ${row.solicitudTramiteId} sin programación`
   )
+  return
+}
+
+// Sin cambio de fecha (solo valores o conceptos) no hay correo
+if (!cambioLaFecha(fechaAnterior.get(Number(row.solicitudTramiteId)), programacion.fechaProbableEntrega)) {
   return
 }
 

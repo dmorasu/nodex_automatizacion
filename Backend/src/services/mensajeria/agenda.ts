@@ -404,5 +404,6 @@ export const asignarDesdeAgenda = async (datos: { tramiteId: number, tramitadorI
     await cerrarReservasDelTramite(tramite.id, transaction)
   })
 
-  await notificarProgramacion(datos.tramiteId, { avisarAsignado })
+  // Si ya tenía fecha era la misma de la agenda: solo cambia cuando no tenía
+  await notificarProgramacion(datos.tramiteId, { avisarAsignado, avisarProgramacion: avisarAsignado })
 }

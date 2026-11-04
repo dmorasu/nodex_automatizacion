@@ -92,6 +92,8 @@ export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, 
   for (const tramite of revision.filter(t => !t.problema)) {
     try {
       let avisarAsignado = false
+      // Correo de programación solo si la fecha cambia (aquí solo se pone si no tenía)
+      let avisarProgramacion = false
       await db.transaction(async transaction => {
         const solicitud = await SolicitudTramites.findByPk(tramite.id, { transaction, lock: transaction.LOCK.UPDATE })
         if (!solicitud) throw new ErrorUbicacion('No existe', 404)
@@ -114,11 +116,12 @@ export const agregarTramitesARuta = async (fecha: string, tramitadorId: number, 
           await programacion.update({ fechaProbableEntrega: nuevaFecha }, { transaction })
         }
         avisarAsignado = cambiaMensajero || !fechaAnterior
+        avisarProgramacion = !fechaAnterior
       })
 
       agregados.push(tramite.id)
       // Los avisos nunca frenan el cambio ya guardado
-      await notificarProgramacion(tramite.id, { avisarAsignado }).catch(error =>
+      await notificarProgramacion(tramite.id, { avisarAsignado, avisarProgramacion }).catch(error =>
         console.error(`❌ Avisos de programación del trámite ${tramite.id}:`, error))
     } catch (error) {
       const conocido = error instanceof ErrorUbicacion || error instanceof ErrorGastos

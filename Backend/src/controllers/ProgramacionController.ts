@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import Programacion from "../models/programacion";
-import { notificarProgramacion } from "../services/notificacionesProgramacion";
+import { cambioLaFecha, notificarProgramacion } from "../services/notificacionesProgramacion";
 import { db } from "../config/db";
 import { cerrarReservasDelTramite, validarHorasCita, verificarCitaDelTramite } from "../services/mensajeria/agenda";
 import { ErrorGastos } from "../services/gastos/errores";
@@ -126,7 +126,10 @@ export class ProgramacionController {
     )
 
 
-    await notificarProgramacion(solicitudId, { avisarAsignado: enviarNotificacionAsignado })
+    await notificarProgramacion(solicitudId, {
+      avisarAsignado: enviarNotificacionAsignado,
+      avisarProgramacion: cambioLaFecha(fechaAnterior, nuevaFecha)
+    })
 
 
     return res

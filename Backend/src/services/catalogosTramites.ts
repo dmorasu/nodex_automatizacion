@@ -5,12 +5,13 @@ import Operaciones from '../models/operaciones'
 import SubEstados from '../models/subEstados'
 import TiposRechazo from '../models/tiposRechazos'
 import Areas from '../models/areas'
+import Entidad from '../models/entidad'
 
 // =====================================
 // CATÁLOGOS DE TRÁMITES (Nodex Trámites → Catálogos)
-// Tipos de trámite (con sus subestados), operaciones, tipos de rechazo y áreas de los usuarios.
-// Solo se borra lo que nada usa: la relación Operaciones → SolicitudTramites tiene
-// onDelete CASCADE en el modelo, así que borrar una operación en uso podría arrastrar trámites.
+// Tipos de trámite (con sus subestados), operaciones, entidades, tipos de rechazo y áreas de los
+// usuarios. Solo se borra lo que nada usa: Operaciones → SolicitudTramites y Entidades →
+// SolicitudTramites tienen onDelete CASCADE, así que borrar una en uso podría arrastrar trámites.
 // =====================================
 
 export class ErrorCatalogo extends Error {
@@ -19,7 +20,7 @@ export class ErrorCatalogo extends Error {
   }
 }
 
-export type TipoCatalogo = 'tramites' | 'operaciones' | 'subestados' | 'rechazos' | 'areas'
+export type TipoCatalogo = 'tramites' | 'operaciones' | 'subestados' | 'rechazos' | 'areas' | 'entidades'
 
 // Texto obligatorio, sin espacios de más y con largo máximo de la columna
 const texto = (valor: unknown, etiqueta: string, maximo: number, obligatorio = true) => {
@@ -40,7 +41,7 @@ const revisarDuplicado = async (tabla: string, columna: string, valor: string, i
 
 // ── Listado con el uso de cada registro ──
 export const listarCatalogos = async () => {
-  const [tramites, subestados, operaciones, rechazos, areas] = await Promise.all([
+  const [tramites, subestados, operaciones, rechazos, areas, entidades] = await Promise.all([
     db.query(`
       SELECT t.id, t."nombreTramite" AS nombre, t.responsable,
         (SELECT COUNT(*) FROM "SolicitudTramites" s WHERE s."tramiteId" = t.id)::int AS uso
@@ -62,9 +63,14 @@ export const listarCatalogos = async () => {
         (SELECT COUNT(*) FROM "EstadosTramites" e WHERE e."tipoRechazoId" = r.id)::int AS uso
       FROM "TiposRechazo" r ORDER BY r.nombre
     `, { type: QueryTypes.SELECT }),
-    listarAreas()
+    listarAreas(),
+    db.query(`
+      SELECT e.id, e."nombreEntidad" AS nombre,
+        (SELECT COUNT(*) FROM "SolicitudTramites" s WHERE s."entidadId" = e.id)::int AS uso
+      FROM "Entidades" e ORDER BY e."nombreEntidad"
+    `, { type: QueryTypes.SELECT })
   ])
-  return { tramites, subestados, operaciones, rechazos, areas }
+  return { tramites, subestados, operaciones, rechazos, areas, entidades }
 }
 
 // Áreas con cuántos usuarios tiene cada una (también para el formulario de usuarios)
@@ -123,6 +129,13 @@ export const guardarCatalogo = async (tipo: TipoCatalogo, datos: Record<string, 
         return area
       })
     }
+    case 'entidades': {
+      const nombreEntidad = texto(datos.nombre, 'El nombre', 100)!
+      await revisarDuplicado('Entidades', 'nombreEntidad', nombreEntidad, id)
+      return id
+        ? (await existente(porId.entidades, id)).update({ nombreEntidad })
+        : Entidad.create({ nombreEntidad })
+    }
   }
 }
 
@@ -174,6 +187,10 @@ const usoDe = async (tipo: TipoCatalogo, id: number) => {
       const n = await contar(`SELECT COUNT(*)::int n FROM "Usuarios" WHERE "areaId" = :id`)
       return n ? `la tienen ${plural(n, 'usuario', 'usuarios')} (cámbieles el área primero)` : ''
     }
+    case 'entidades': {
+      const n = await contar(`SELECT COUNT(*)::int n FROM "SolicitudTramites" WHERE "entidadId" = :id`)
+      return n ? `la usan ${plural(n, 'trámite', 'trámites')}` : ''
+    }
   }
 }
 
@@ -189,7 +206,8 @@ const porId = {
   operaciones: (id: number) => Operaciones.findByPk(id),
   subestados: (id: number) => SubEstados.findByPk(id),
   rechazos: (id: number) => TiposRechazo.findByPk(id),
-  areas: (id: number) => Areas.findByPk(id)
+  areas: (id: number) => Areas.findByPk(id),
+  entidades: (id: number) => Entidad.findByPk(id)
 }
 
 // Nombres de los tipos de trámite, sin repetidos: sugerencias del concepto de los gastos de

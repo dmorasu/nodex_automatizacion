@@ -74,8 +74,39 @@ const retencionYPagoCuentaCobro = async () => {
   }
 }
 
+// 2026-11-04 · Directorio de tramitadores (antes en el Excel de Torre de control): datos del
+// tramitador y de las oficinas GPA. La cobertura (tramitadores_cobertura) la crea sync()
+const datosDirectorio = async () => {
+  const agregar = async (tabla: string, nuevas: [string, string][]) => {
+    let columnas
+    try {
+      columnas = await db.getQueryInterface().describeTable(tabla)
+    } catch {
+      return
+    }
+    for (const [columna, tipo] of nuevas) {
+      if (!columnas[columna]) await db.query(`ALTER TABLE "${tabla}" ADD COLUMN "${columna}" ${tipo}`)
+    }
+  }
+  await agregar('Tramitador', [
+    ['correoPersonal', 'VARCHAR(150)'],
+    ['municipioResidenciaId', 'INTEGER REFERENCES "Municipios" (id) ON UPDATE CASCADE ON DELETE SET NULL'],
+    ['cumpleDia', 'SMALLINT'],
+    ['cumpleMes', 'SMALLINT'],
+    ['tarjetaAmparada', 'BOOLEAN'],
+    ['tiempoPago', 'VARCHAR(200)'],
+    ['notaDirectorio', 'VARCHAR(500)']
+  ])
+  await agregar('mensajeria_sedes', [
+    ['ciudad', 'VARCHAR(100)'],
+    ['celular', 'VARCHAR(20)'],
+    ['horario', 'VARCHAR(300)']
+  ])
+}
+
 export const ajustarEsquemaTramitadores = async () => {
   await documentosDelTramitador()
   await datosCuentaCobro()
   await retencionYPagoCuentaCobro()
+  await datosDirectorio()
 }

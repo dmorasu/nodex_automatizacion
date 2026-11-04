@@ -26,6 +26,17 @@ class SedeMensajeria extends Model {
   @Default(true)
   @Column({ type: DataType.BOOLEAN })
   declare activo: boolean
+
+  // Oficina GPA en el rótulo de envío y en el Directorio (2026-11-04). Columnas agregadas en
+  // ajustarEsquemaTramitadores
+  @Column({ type: DataType.STRING(100) })
+  declare ciudad: string | null
+
+  @Column({ type: DataType.STRING(20) })
+  declare celular: string | null
+
+  @Column({ type: DataType.STRING(300) })
+  declare horario: string | null
 }
 
 export default SedeMensajeria

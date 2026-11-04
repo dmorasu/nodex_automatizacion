@@ -41,7 +41,14 @@ const rango = (desde: unknown, hasta: unknown) => ({
   ...(esFecha(hasta) ? { [Op.lte]: new Date(`${hasta}T23:59:59.999-05:00`) } : {})
 })
 
-const ATRIBUTOS = ['id', 'placa', 'matriculaInmobiliaria', 'estadoActualTramite', 'tramitadorId', ATRIBUTO_NOMBRE_ANALISTA] as const
+// Subestado actual = el último registrado (para que la acción "Subestado" arranque con él)
+const SUBESTADO_ACTUAL = [literal(`(
+  SELECT ss."subEstadoId" FROM "SubEstadosSolicitud" ss
+  WHERE ss."solicitudTramiteId" = "SolicitudTramites"."id"
+  ORDER BY ss."createdAt" DESC, ss.id DESC LIMIT 1
+)`), 'subEstadoActualId'] as const
+
+const ATRIBUTOS = ['id', 'placa', 'matriculaInmobiliaria', 'estadoActualTramite', 'tramitadorId', ATRIBUTO_NOMBRE_ANALISTA, SUBESTADO_ACTUAL] as const
 
 const incluir = (whereProgramacion?: WhereOptions): Includeable[] => [
   { model: Clientes, attributes: ['id', 'nombreCliente', 'identificacionCliente'] },

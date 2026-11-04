@@ -21,7 +21,8 @@ import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const API = "/api/backend" // proxy del frontend: agrega el token de sesión
 
-type Opcion = { id: number, nombre: string }
+// tramiteId: tipo de trámite de la opción (solo los subestados)
+type Opcion = { id: number, nombre: string, tramiteId?: number }
 type Resultado = { estado: "ok" | "error", mensaje: string }
 
 const claseCelda = "h-8 w-full min-w-[120px] rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-50"
@@ -31,14 +32,14 @@ const claseEtiqueta = "mb-1 block text-[11px] font-medium text-slate-500"
 
 // Catálogos para las listas desplegables (se cargan una vez)
 const useCatalogos = () => {
-  const [catalogos, setCatalogos] = useState<Record<Catalogo, Opcion[]>>({ estados: [], tiposRechazo: [], tramitadores: [], transportadoras: [] })
+  const [catalogos, setCatalogos] = useState<Record<Catalogo, Opcion[]>>({ estados: [], tiposRechazo: [], tramitadores: [], transportadoras: [], subEstados: [] })
 
   useEffect(() => {
     const leer = async (ruta: string, nombre: (x: Record<string, string | undefined>) => string | undefined): Promise<Opcion[]> => {
       try {
         const res = await fetch(`${API}${ruta}`)
         const datos = res.ok ? await res.json() : []
-        return Array.isArray(datos) ? datos.map(x => ({ id: x.id, nombre: nombre(x) ?? "" })) : []
+        return Array.isArray(datos) ? datos.map(x => ({ id: x.id, nombre: nombre(x) ?? "", ...(x.tramiteId ? { tramiteId: Number(x.tramiteId) } : {}) })) : []
       } catch {
         return []
       }
@@ -47,9 +48,10 @@ const useCatalogos = () => {
       leer("/estados", x => x.nombreEstado),
       leer("/tiposRechazo", x => x.nombre ?? x.nombreTipoRechazo ?? `Tipo ${x.id}`),
       leer("/tramitador/tramitadores", x => x.nombreTramitador?.trim()),
-      leer("/transportadora", x => x.nombreTransportadora)
-    ]).then(([estados, tiposRechazo, tramitadores, transportadoras]) =>
-      setCatalogos({ estados, tiposRechazo, tramitadores, transportadoras }))
+      leer("/transportadora", x => x.nombreTransportadora),
+      leer("/bulk/subestados/catalogo", x => x.nombre)
+    ]).then(([estados, tiposRechazo, tramitadores, transportadoras, subEstados]) =>
+      setCatalogos({ estados, tiposRechazo, tramitadores, transportadoras, subEstados }))
   }, [])
 
   return catalogos
@@ -135,7 +137,18 @@ export default function GestionEnPantalla({ idsIniciales = [], accionInicial }: 
     setParaTodos({})
   }, [tipos])
 
-  const opcionesDe = (campo: Campo) => (campo.catalogo ? catalogos[campo.catalogo] : [])
+  // Subestados: en cada fila, los del tipo de su trámite; en "mismo valor para todos", los de los
+  // tipos cargados (con el tipo entre paréntesis si hay varios). El backend rechaza el que no corresponda
+  const tiposCargados = useMemo(() => new Map(tramites.filter(t => t.tramite?.id).map(t => [t.tramite!.id!, t.tramite!.nombreTramite])), [tramites])
+  const opcionesDe = (campo: Campo, tramite?: TramiteMasivo): Opcion[] => {
+    if (!campo.catalogo) return []
+    if (campo.catalogo !== "subEstados") return catalogos[campo.catalogo]
+    if (tramite) return catalogos.subEstados.filter(o => o.tramiteId === tramite.tramite?.id)
+    const varios = tiposCargados.size > 1
+    return catalogos.subEstados
+      .filter(o => o.tramiteId !== undefined && tiposCargados.has(o.tramiteId))
+      .map(o => (varios ? { ...o, nombre: `${o.nombre} (${tiposCargados.get(o.tramiteId!)})` } : o))
+  }
 
   // ── Trámites ─────────────────────────────
 
@@ -655,10 +668,11 @@ export default function GestionEnPantalla({ idsIniciales = [], accionInicial }: 
                         <p><b className="text-slate-600">{t.estadoActual?.nombreEstado ?? "Sin estado"}</b></p>
                         <p>Tramitador: {t.tramitador?.nombreTramitador?.trim() ?? "—"}</p>
                         <p>Analista: {t.nombreAnalista ?? "—"}</p>
+                        {t.subEstadoActualId && <p>Subestado: {catalogos.subEstados.find(o => o.id === t.subEstadoActualId)?.nombre ?? "—"}</p>}
                       </td>
                       {acciones.flatMap(a => camposVisibles(a, tipos).map((campo, i) => (
                         <td key={campo.clave} className={clsx("px-3 py-2", i === 0 && "border-l border-slate-100")}>
-                          <Celda campo={campo} valor={valores[t.id]?.[campo.clave] ?? ""} opciones={opcionesDe(campo)}
+                          <Celda campo={campo} valor={valores[t.id]?.[campo.clave] ?? ""} opciones={opcionesDe(campo, t)}
                             onChange={v => cambiar(t.id, campo.clave, v)} disabled={guardando} />
                         </td>
                       )))}

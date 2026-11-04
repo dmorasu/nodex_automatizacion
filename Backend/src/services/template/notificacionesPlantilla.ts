@@ -250,6 +250,8 @@ Para cualquier inquietud, comunícate con la Central Torre de Control:
             ["Corresponsal", txt(data.tramitador)],
             ["Municipio", txt(data.municipio)],
             ["Programador", txt(data.programador)],
+            ["Transportadora", txt(data.transportadora)],
+            ["Número de guía", txt(data.guia)],
           ])}
           ${nota("neutro", txt(data.resultado) || "Sin resultado", "Resultado")}
           ${nota("exito", "Los soportes ya fueron cargados en la carpeta del trámite.")}

@@ -22,6 +22,16 @@ export type DatosTramitador = {
   tipoCuenta?: string | null
   numeroCuenta?: string | null
   declaracionArt383?: boolean
+  // Directorio de tramitadores
+  correoPersonal?: string | null
+  municipioResidenciaId?: number | null
+  cumpleDia?: number | null
+  cumpleMes?: number | null
+  tarjetaAmparada?: boolean | null
+  tiempoPago?: string | null
+  notaDirectorio?: string | null
+  // Ids de los municipios que cubre (reemplaza la lista al guardar)
+  municipiosCobertura?: number[]
 }
 
 // Crea (sin id) o actualiza (con id) un tramitador. Solo Torre de control.

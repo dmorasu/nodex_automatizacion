@@ -435,11 +435,12 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <div class="cuerpo">
           <ol class="pasos">
             <li><span><b>Elija los trámites:</b> pegue los números, o use <b>Buscar con filtros</b> (tramitador, operación, estado y fechas).</span></li>
-            <li><span><b>Marque lo que quiere hacer:</b> cambiar estado, trazabilidad, programación, logística o tramitador. Puede marcar varias.</span></li>
+            <li><span><b>Marque lo que quiere hacer:</b> cambiar estado, trazabilidad, programación, logística (guía, destinatario, valor, fecha probable de entrega, entrega a la transportadora y transportadora), <b>subestado</b> o tramitador. Puede marcar varias.</span></li>
             <li><span><b>Llene los valores</b> para todos a la vez o fila por fila. Si marca algunas filas, el valor se aplica solo a esas.</span></li>
             <li><span><b>Guarde</b> y confirme el resumen.</span></li>
           </ol>
           <div class="consejo"><span class="i">i</span><span>Si deja un campo vacío en una fila, a ese trámite no se le aplica esa acción. La columna <b>"Se aplicará"</b> le muestra qué pasará antes de guardar.</span></div>
+          <p><b>Subestado:</b> cada trámite arranca con su subestado actual y la lista solo trae los subestados de su tipo de trámite. Se registra si elige otro subestado o si escribe una observación (queda como el subestado actual, igual que el botón Subestado del detalle).</p>
         </div>
       </details>
 
@@ -535,6 +536,36 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
           </ol>
           <p>El PDF trae la cuenta de cobro, el Anexo 1 con el detalle de los trámites y el formato de distribución de centros de costos (sale del centro de costos de la operación de cada trámite). Mientras la cuenta está con el tramitador o aprobada se puede <b>Retirar para corregir</b> o <b>Anular</b> (sus trámites vuelven a "Por generar").</p>
           <p><b>Descargar Excel</b> (arriba a la derecha) baja las cuentas de la pestaña abierta, con su búsqueda; desde "Por generar" baja todas. Trae dos hojas: <b>Cuentas</b> (una fila por cuenta: tramitador, banco, valor de los trámites, visitas fallidas, adicionales, total y fechas) y <b>Detalle</b> (cada trámite, visita fallida o adicional con su placa, operación, centro de costos y valor).</p>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Directorio de tramitadores <span class="etq">Torre de control</span></span><span class="resumen">Quién atiende cada municipio y cómo contactarlo.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <p>Menú → <b>Ayudas → Directorio de tramitadores</b>. Muestra los tramitadores y mensajeros activos con los datos de Catálogos → Tramitadores (sección <b>Directorio</b>: municipio de residencia, municipios que cubre, cumpleaños, nota…).</p>
+          <ul>
+            <li><b>Por municipio:</b> escriba el municipio y vea quién lo cubre, con celular, WhatsApp, correo y dirección para copiar, y la distancia aproximada desde donde reside (<b>Ver ruta</b> abre Google Maps). Si lo cubren varios, consulte a Torre de control antes de generar poderes o autorizaciones. Si nadie lo cubre, escale a Torre de control: la pantalla muestra quién reside a menos de 1 h 30 min y quién cubre otros municipios del departamento.</li>
+            <li><b>Por tramitador:</b> busque por nombre, cédula, ciudad o municipio que cubre; filtre por tipo y regional.</li>
+            <li><b>Cobertura:</b> mapa de Google con un punto por municipio cubierto (azul tramitadores, verde mensajeros propios, azul con aro verde si hay ambos; más grande si lo atienden más personas). Filtre por tipo, regional o persona (sale su casa ⌂ y sus municipios). Toque un municipio, un departamento o una persona para ver el detalle a la derecha; al enfocar un departamento salen en gris sus municipios sin cobertura. Abajo: por regional, departamentos con más cobertura y quién cubre más.</li>
+            <li><b>Cumpleaños:</b> quién cumple hoy, los próximos 30 días, el mes (con las flechas ‹ ›) y el calendario del año (toque un mes para verlo).</li>
+          </ul>
+          <p>Los datos de cada persona se llenan en Catálogos → Tramitadores. El <b>municipio de residencia</b> es obligatorio y de él salen la región y la ciudad de la cuenta de cobro; la <b>dirección</b> es una sola para la correspondencia, los rótulos y la cuenta de cobro.</p>
+          <p>El enlace se puede compartir: guarda la vista y el municipio elegidos.</p>
+        </div>
+      </details>
+
+      <details class="tema">
+        <summary><span class="titulo">Rótulos de envío <span class="etq">Torre de control</span></span><span class="resumen">El rótulo del paquete, guardado en los documentos del trámite.</span><span class="flecha" aria-hidden="true">⌄</span></summary>
+        <div class="cuerpo">
+          <ol class="pasos">
+            <li><span>En el detalle del trámite presione <b>Rótulo de envío</b> (o en el modal de Logística, <b>Generar rótulo de envío</b>). También se hace desde Menú → <b>Ayudas → Rótulos de envío → Nuevo rótulo</b>. El rótulo trae el trámite, la placa o matrícula, la operación (línea de negocio y centro de costos), el cliente, el tramitador asignado y quien creó el trámite como solicitante.</span></li>
+            <li><span>Elija <b>quién envía</b> (oficina GPA o tramitador) y <b>quién recibe</b> (cliente, tramitador, oficina GPA o tercero). Si el envío lleva varios trámites, agréguelos con su número.</span></li>
+            <li><span>Complete el contenido, el remitente y el destinatario. Para el cliente, elija el municipio de la lista y escriba la dirección: igual que en el trámite, salen sugerencias de Google (o pegue un enlace de Google Maps) y al elegir una se propone el municipio. También puede usar <b>Usar la dirección del trámite</b>. Los datos del tramitador salen del directorio.</span></li>
+            <li><span>A la derecha está la <b>vista previa</b>: es el PDF tal como se imprimirá. Debajo aparece lo que falta. Presione <b>Generar rótulo</b>, revise el resumen y confirme.</span></li>
+            <li><span>El PDF queda en los <b>documentos de cada trámite</b> del envío y en Menú → Ayudas → Rótulos de envío. Presione <b>Abrir para imprimir</b>. Si dejó marcada la opción, la logística de cada trámite toma la transportadora y el destinatario (solo lo que estaba vacío); la guía se registra después en Logística.</span></li>
+          </ol>
+          <p><b>¿Quién paga el envío?</b> Entre oficinas y GPA → tercero: Gómez Pineda Abogados. Tramitador → oficina GPA: GPA como destinatario. GPA → cliente, GPA → tramitador y tramitador → cliente: si es <b>contraentrega</b> paga el destinatario (son obligatorios su identificación y su correo de facturación, que no puede ser de Gómez Pineda); si no, GPA. Postobón: siempre GPA.</p>
+          <p><b>Tamaño:</b> carta, o pequeño (15 cm, para recortar y pegar en el sobre) si el tipo es "Sobre pequeño (Tarjeta de propiedad)" o el contenido es "Tarjeta de Propiedad". Se puede cambiar con <b>Carta / Pequeño</b>.</p>
         </div>
       </details>
 

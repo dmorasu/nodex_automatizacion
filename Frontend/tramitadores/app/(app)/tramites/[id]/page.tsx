@@ -6,6 +6,8 @@ import { formatoFecha, formatoFechaHora, formatoHoraCita } from "@/src/lib/forma
 import { DetalleTramiteSchema } from "@/src/schemas"
 import Comentarios from "@/components/tramites/Comentarios"
 import ReportarRealizado from "@/components/tramites/ReportarRealizado"
+import CorregirDireccion from "@/components/tramites/CorregirDireccion"
+import { requiereSesion } from "@/src/auth/sesion"
 import SubirDocumentos from "@/components/tramites/SubirDocumentos"
 import GastosDelTramite from "@/components/tramites/GastosDelTramite"
 import { nombreTipoDocumento } from "@/src/tiposDocumento"
@@ -16,7 +18,10 @@ const ESTADOS_CERRADOS = ["Finalizado", "Desistido"]
 
 export default async function DetalleTramitePage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params
-  const datos = await obtenerDatos(`/tramites/${Number(params.id)}`, DetalleTramiteSchema)
+  const [sesion, datos] = await Promise.all([
+    requiereSesion(),
+    obtenerDatos(`/tramites/${Number(params.id)}`, DetalleTramiteSchema)
+  ])
   if (!datos) notFound()
 
   const { tramite, comentarios, reportes, gastos } = datos
@@ -137,7 +142,15 @@ export default async function DetalleTramitePage(props: { params: Promise<{ id: 
           <Dato etiqueta="Descripción">{tramite.descripcionTramite}</Dato>
           <Dato etiqueta="Entidad">{tramite.entidad?.nombreEntidad}</Dato>
           <Dato etiqueta="Ciudad">{tramite.municipios && `${tramite.municipios.nombreMunicipio}${tramite.municipios.departamento ? `, ${tramite.municipios.departamento}` : ""}`}</Dato>
-          <Dato etiqueta="Dirección">{tramite.direccionTramite}</Dato>
+          {sesion.esMensajero && !cerrado ? (
+            <div className="py-2 first:pt-0 last:pb-0">
+              <dt className="text-[11px] font-medium text-slate-400">Dirección</dt>
+              <dd className="mt-0.5 text-sm text-slate-700">{tramite.direccionTramite || "Sin dirección"}</dd>
+              <CorregirDireccion tramiteId={tramite.id} direccion={tramite.direccionTramite ?? null} municipio={tramite.municipios?.nombreMunicipio} />
+            </div>
+          ) : (
+            <Dato etiqueta="Dirección">{tramite.direccionTramite}</Dato>
+          )}
           <Dato etiqueta="Documentos aportados">{tramite.documentosAportados}</Dato>
           <Dato etiqueta="Operación">{tramite.operaciones?.nombreOperacion}</Dato>
         </dl>

@@ -1,12 +1,16 @@
 import type {Request,Response} from 'express'
 import Tramitador from '../models/tramitador'
 import SolicitudTramites from '../models/solicitudTramites'
-import { Op,Sequelize } from 'sequelize'
+import { Op,Sequelize, type Transaction } from 'sequelize'
+import Municipios from '../models/municipios'
+import CoberturaTramitador from '../models/tramitadores/coberturaTramitador'
 import { db } from '../config/db'
 import AccesoTramitador from '../models/tramitadores/accesoTramitador'
 import { crearORestablecerAcceso, revocarAcceso } from '../services/tramitadores/accesoTramitadores'
 import { responderError } from './gastos/utilidades'
 import { regionesDeMunicipios } from '../services/regionesMunicipios'
+import { residenciaDe } from '../services/residenciaTramitador'
+import { ErrorGastos } from '../services/gastos/errores'
 
 declare global{
     namespace Express{
@@ -32,8 +36,13 @@ export class TramitadorController{
                     order:[
                         ['nombreTramitador','ASC']
                     ],
-                    // Estado del acceso a la app (nunca la contraseña)
-                    include: [{ model: AccesoTramitador, attributes: ['debeCambiarContrasena', 'ultimoIngreso', 'bloqueadoHasta'] }]
+                    include: [
+                        // Estado del acceso a la app (nunca la contraseña)
+                        { model: AccesoTramitador, attributes: ['debeCambiarContrasena', 'ultimoIngreso', 'bloqueadoHasta'] },
+                        // Directorio: municipio de residencia y municipios que cubre
+                        { model: Municipios, as: 'municipioResidencia', attributes: ['id', 'nombreMunicipio', 'departamento', 'regional'] },
+                        { model: CoberturaTramitador, attributes: ['municipioId'], include: [{ model: Municipios, attributes: ['id', 'nombreMunicipio', 'departamento'] }] }
+                    ]
                 })
                 res.json(tramitador)
             
@@ -58,8 +67,39 @@ export class TramitadorController{
         ...Object.fromEntries(['direccion', 'ciudad', 'banco', 'tipoCuenta', 'numeroCuenta']
             .filter(campo => body[campo] !== undefined)
             .map(campo => [campo, String(body[campo] ?? '').trim() || null])),
-        ...(body.declaracionArt383 !== undefined && { declaracionArt383: body.declaracionArt383 })
+        ...(body.declaracionArt383 !== undefined && { declaracionArt383: body.declaracionArt383 }),
+        // Directorio de tramitadores
+        ...Object.fromEntries(['correoPersonal', 'tiempoPago', 'notaDirectorio']
+            .filter(campo => body[campo] !== undefined)
+            .map(campo => [campo, String(body[campo] ?? '').trim() || null])),
+        ...Object.fromEntries(['municipioResidenciaId', 'cumpleDia', 'cumpleMes']
+            .filter(campo => body[campo] !== undefined)
+            .map(campo => [campo, body[campo] || null])),
+        ...(body.tarjetaAmparada !== undefined && { tarjetaAmparada: body.tarjetaAmparada })
     })
+
+    // Con municipio de residencia, la región y la ciudad (cuenta de cobro) salen de él; sin él se
+    // usan la región y la ciudad que lleguen (tramitadores aún sin residencia). Sin región → 400
+    static datosConResidencia = async (body: any) => {
+        const datos: Record<string, unknown> = TramitadorController.datosTramitador(body)
+        const municipioId = Number(body.municipioResidenciaId) || null
+        const residencia = municipioId ? await residenciaDe(municipioId) : null
+        if (municipioId && !residencia) throw new ErrorGastos('El municipio de residencia no existe')
+        if (residencia) {
+            datos.ciudad = residencia.ciudad
+            if (residencia.regional) datos.region = residencia.regional
+        }
+        if (!String(datos.region ?? '').trim()) throw new ErrorGastos(residencia ? 'El municipio de residencia no tiene regional: elija la región' : 'Elija el municipio de residencia')
+        return datos
+    }
+
+    // Reemplaza los municipios de cobertura (sin el campo en el cuerpo, no se tocan)
+    static guardarCobertura = async (tramitadorId: number, municipios: unknown, transaction: Transaction) => {
+        if (!Array.isArray(municipios)) return
+        const ids = [...new Set(municipios.map(Number).filter(id => Number.isInteger(id) && id > 0))]
+        await CoberturaTramitador.destroy({ where: { tramitadorId }, transaction })
+        if (ids.length) await CoberturaTramitador.bulkCreate(ids.map(municipioId => ({ tramitadorId, municipioId })), { transaction })
+    }
 
     static create =async(req:Request,  res: Response)=>{
         try {
@@ -67,9 +107,15 @@ export class TramitadorController{
                 return res.status(409).json({ error: `Ya existe un tramitador con la identificación ${req.body.identificacion}` })
             }
 
-            const tramitador = await Tramitador.create(TramitadorController.datosTramitador(req.body))
+            const datos = await TramitadorController.datosConResidencia(req.body)
+            const tramitador = await db.transaction(async transaction => {
+                const nuevo = await Tramitador.create(datos, { transaction })
+                await TramitadorController.guardarCobertura(nuevo.id, req.body.municipiosCobertura, transaction)
+                return nuevo
+            })
             res.status(201).json({ id: tramitador.id })
         } catch (error) {
+            if (error instanceof ErrorGastos) return responderError(res, error)
             console.log(error);
             res.status(500).json({ error: 'No se pudo crear el tramitador' })
         }
@@ -123,9 +169,14 @@ export class TramitadorController{
                 return res.status(409).json({ error: `Ya existe otro tramitador con la identificación ${req.body.identificacion}` })
             }
 
-            await req.tramitador.update(TramitadorController.datosTramitador(req.body))
+            const datos = await TramitadorController.datosConResidencia(req.body)
+            await db.transaction(async transaction => {
+                await req.tramitador.update(datos, { transaction })
+                await TramitadorController.guardarCobertura(req.tramitador.id, req.body.municipiosCobertura, transaction)
+            })
             res.json('Tramitador actualizado')
         } catch (error) {
+            if (error instanceof ErrorGastos) return responderError(res, error)
             console.log(error);
             res.status(500).json({ error: 'No se pudo actualizar el tramitador' })
         }

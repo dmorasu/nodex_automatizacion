@@ -422,16 +422,17 @@ export default function CargueEnPantalla() {
                           : <span className="text-slate-400">{i + 1}</span>}
                     </td>
                     <td className="px-2 py-2">
-                      <div className="flex w-44 gap-1">
-                        <SelectBuscable
+                      <div className="flex w-56 gap-1">
+                        {/* Clases propias: con claseCampo chocaban w-full / px-2 y el texto quedaba cortado */}
+                        <select
                           value={f.tipoIdentificador}
                           onChange={e => cambiarFila(f.clave, { tipoIdentificador: e.target.value as Fila["tipoIdentificador"] })}
-                          className={clsx(claseCampo, "w-[4.5rem] shrink-0 px-1")}
+                          className="h-8 w-24 shrink-0 rounded-md border border-slate-200 bg-white pl-2 pr-6 text-xs text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                           aria-label="Placa o matrícula"
                         >
                           <option value="placa">Placa</option>
-                          <option value="matricula">Matr.</option>
-                        </SelectBuscable>
+                          <option value="matricula">Matrícula</option>
+                        </select>
                         <input
                           value={f.identificador}
                           onChange={e => {
@@ -440,6 +441,7 @@ export default function CargueEnPantalla() {
                             cambiarFila(f.clave, { identificador: f.tipoIdentificador === "placa" ? v.toUpperCase() : v, tipoIdentificador: parecePlaca(v) ? "placa" : f.tipoIdentificador })
                           }}
                           maxLength={50}
+                          placeholder={f.tipoIdentificador === "placa" ? "ABC123" : "Matrícula"}
                           className={claseCampo}
                         />
                       </div>

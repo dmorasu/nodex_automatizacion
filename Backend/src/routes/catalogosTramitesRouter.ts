@@ -4,10 +4,10 @@ import { borrarCatalogo, ErrorCatalogo, guardarCatalogo, listarAreas, listarCata
 import { generarExcelCatalogos } from '../services/exportarCatalogos'
 
 // Catálogos de Nodex Trámites (/api/catalogos-tramites): tipos de trámite, subestados,
-// operaciones, tipos de rechazo y áreas. Los administra el Administrador de Torre de control o Admin.
+// operaciones, entidades, tipos de rechazo y áreas. Los administra el Administrador de Torre de control o Admin.
 const router = Router()
 
-const TIPOS: TipoCatalogo[] = ['tramites', 'operaciones', 'subestados', 'rechazos', 'areas']
+const TIPOS: TipoCatalogo[] = ['tramites', 'operaciones', 'subestados', 'rechazos', 'areas', 'entidades']
 
 const responder = (res: Response, error: unknown) => {
   if (error instanceof ErrorCatalogo) return res.status(error.status).json({ error: error.message })

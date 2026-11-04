@@ -47,6 +47,10 @@ import mensajeriaRouter from "./routes/mensajeriaRouter"
 import agendaMensajerosRouter from "./routes/agendaMensajerosRouter"
 import cuentasCobroTramitadoresRouter from "./routes/cuentasCobroTramitadoresRouter"
 import calificacionesRouter from "./routes/calificacionesRouter"
+import directorioRouter from "./routes/directorioRouter"
+import rotulosRouter from "./routes/rotulosRouter"
+import subEstadosBulkRouter from "./routes/subEstadosBulkRouter"
+import { sincronizarResidencias } from "./services/residenciaTramitador"
 import direccionesRouter from "./routes/direccionesRouter"
 import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
 import { iniciarNotificacionesProgramadas } from "./services/notificacionesProgramadas"
@@ -66,6 +70,9 @@ async function connectDB() {
         await ajustarEsquemaTramitadores()
         await ajustarEsquemaTramites()
         await db.sync()
+        // Región y ciudad de los tramitadores = las de su municipio de residencia
+        const residencias = await sincronizarResidencias()
+        if (residencias) console.log(`🏠 Región y ciudad tomadas del municipio de residencia en ${residencias} tramitadores`)
         await ajustarEsquemaMensajeria()
         await ajustarEsquemaGastos()
         await seedGastos()
@@ -161,6 +168,7 @@ app.use('/api/notificaciones-programadas', autenticacion, notificacionesPrograma
 app.use('/api/bulk/logistica', ...soloTorreControl, logisticaBulkRouter)
 app.use('/api/bulk/programacion', ...soloTorreControl, programacionActualizacionesRouter)
 app.use('/api/bulk/trazabilidad', ...soloTorreControl, trazabilidadActualizacionesRouter)
+app.use('/api/bulk/subestados', ...soloTorreControl, subEstadosBulkRouter)
 app.use('/api/bulk/estados', ...soloTorreControl, estadosActualizacionesRouter)
 app.use('/api/bulk/tramitador', ...soloTorreControl, tramitadorActualizacionesRouter)
 app.use('/api/bulk/tramites', ...soloTorreControl, gestionMasivaRouter)
@@ -171,6 +179,9 @@ app.use('/api/agenda-mensajeros', ...accesoTramites, agendaMensajerosRouter)
 app.use('/api/cuentas-cobro-tramitadores', ...soloTorreControl, cuentasCobroTramitadoresRouter)
 // Calificaciones de la encuesta de finalizado, por trámite y por tramitador
 app.use('/api/calificaciones', ...soloTorreControl, calificacionesRouter)
+// Directorio de tramitadores (Ayudas Torre de Control)
+app.use('/api/directorio', ...soloTorreControl, directorioRouter)
+app.use('/api/rotulos', ...soloTorreControl, rotulosRouter)
 
 // 🔹 Gastos: cada ruta valida sesión y rol dentro de su router
 app.use('/api/gastos', gastosRouter)

@@ -9,11 +9,28 @@ import Clientes from "../models/clientes";
 import { crearNotificacion } from "./notificacionesServices";
 import { formatearFecha } from "../utils/fechaColombia";
 
+// Día (YYYY-MM-DD) de una fecha de diligencia, para saber si cambió. La columna guarda medianoche UTC
+export const diaDeLaFecha = (fecha: Date | string | null | undefined) => {
+  if (!fecha) return null
+  const valor = new Date(fecha)
+  return isNaN(valor.getTime()) ? null : valor.toISOString().slice(0, 10)
+}
+
+// La fecha de diligencia cambió y quedó con valor (borrarla no avisa)
+export const cambioLaFecha = (anterior: Date | string | null | undefined, nueva: Date | string | null | undefined) =>
+  diaDeLaFecha(nueva) !== null && diaDeLaFecha(nueva) !== diaDeLaFecha(anterior)
+
 // Avisos al guardar la programación de un trámite (antes vivían en ProgramacionController.create;
 // también los usa "Agregar a la ruta" de los mensajeros):
-// - PROGRAMACION: correo a quien creó el trámite, siempre.
+// - PROGRAMACION: correo a quien creó el trámite, solo si `avisarProgramacion` (cambió la fecha de
+//   diligencia; decisión del usuario, 2026-11-04: antes salía en cada guardado).
 // - ASIGNADO: al tramitador, solo si `avisarAsignado` (fecha nueva o posterior, o tramitador nuevo).
-export const notificarProgramacion = async (solicitudId: number, { avisarAsignado }: { avisarAsignado: boolean }) => {
+export const notificarProgramacion = async (
+  solicitudId: number,
+  { avisarAsignado, avisarProgramacion }: { avisarAsignado: boolean, avisarProgramacion: boolean }
+) => {
+  if (!avisarAsignado && !avisarProgramacion) return
+
   // ==========================================
   // CARGAR SOLICITUD ACTUALIZADA
   // ==========================================
@@ -42,7 +59,7 @@ export const notificarProgramacion = async (solicitudId: number, { avisarAsignad
   // NOTIFICACIÓN PROGRAMACIÓN
   // ==========================================
 
-  if (solicitud?.usuario?.correoUsuario) {
+  if (avisarProgramacion && solicitud?.usuario?.correoUsuario) {
 
     await crearNotificacion({
       solicitud,

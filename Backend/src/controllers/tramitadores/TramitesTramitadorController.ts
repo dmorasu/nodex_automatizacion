@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import {
   comentarComoTramitador,
   comentarComoUsuario,
+  corregirDireccion,
   documentoDelTramitador,
   subirDocumentosTramite,
   listarReportes,
@@ -98,6 +99,18 @@ export class TramitesTramitadorController {
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(documento.nombreOriginal)}"`)
       res.setHeader('Content-Length', contenido.length)
       res.send(contenido)
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /tramites/:id/direccion  { direccion } → solo mensajeros
+  static corregirDireccion = async (req: Request, res: Response) => {
+    try {
+      const { encontrada } = await corregirDireccion(req.sesionTramitador!.tramitadorId, Number(req.params.id), req.body.direccion)
+      res.json(encontrada === false
+        ? 'Dirección guardada. No se pudo ubicar en el mapa: Torre de control la revisará'
+        : 'Dirección guardada')
     } catch (error) {
       responderError(res, error)
     }

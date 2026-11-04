@@ -27,6 +27,13 @@ export async function subirDocumentosTramite(tramiteId: number, datos: FormData)
   return { ok: true, mensaje: await req.json() }
 }
 
+// El mensajero corrige la dirección del trámite (también cambia en su ruta)
+export async function corregirDireccion(tramiteId: number, direccion: string): Promise<Resultado> {
+  const resultado = await enviar(`/tramites/${tramiteId}/direccion`, { direccion }, tramiteId)
+  if (resultado.ok) revalidatePath("/ruta")
+  return resultado
+}
+
 // Reporta el trámite como realizado. No cambia el estado: el equipo lo revisa
 export const reportarRealizado = async (tramiteId: number, observacion: string) =>
   enviar(`/tramites/${tramiteId}/realizado`, { observacion }, tramiteId)

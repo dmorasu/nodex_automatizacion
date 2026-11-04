@@ -2,6 +2,8 @@ import { Table, Column, DataType, HasMany, HasOne, Model, ForeignKey, BelongsTo 
 import SolicitudTramites from './solicitudTramites'
 import AccesoTramitador from './tramitadores/accesoTramitador'
 import SedeMensajeria from './mensajeria/sedeMensajeria'
+import Municipios from './municipios'
+import CoberturaTramitador from './tramitadores/coberturaTramitador'
 
 @Table({
   tableName: 'Tramitador'
@@ -92,6 +94,42 @@ class Tramitador extends Model {
 
   @Column({ type: DataType.STRING(255) })
   declare firmaNombre: string | null
+
+  // ── Directorio de tramitadores (2026-11-04; antes en el Excel de Torre de control).
+  // Columnas agregadas en ajustarEsquemaTramitadores (antes de sync). ──
+
+  @Column({ type: DataType.STRING(150) })
+  declare correoPersonal: string | null
+
+  // Desde dónde se calcula la distancia al municipio del trámite
+  @ForeignKey(() => Municipios)
+  @Column({ type: DataType.INTEGER })
+  declare municipioResidenciaId: number | null
+
+  @BelongsTo(() => Municipios, { foreignKey: 'municipioResidenciaId', as: 'municipioResidencia' })
+  declare municipioResidencia: Municipios
+
+  // Cumpleaños: solo día y mes
+  @Column({ type: DataType.SMALLINT })
+  declare cumpleDia: number | null
+
+  @Column({ type: DataType.SMALLINT })
+  declare cumpleMes: number | null
+
+  // ¿Su cuenta tiene tarjeta amparada por GPA? (datos de pago del directorio)
+  @Column({ type: DataType.BOOLEAN })
+  declare tarjetaAmparada: boolean | null
+
+  // Cuánto tarda en llegarle una transferencia ("Inmediato", "Mismo día si se paga antes del mediodía"…)
+  @Column({ type: DataType.STRING(200) })
+  declare tiempoPago: string | null
+
+  // Nota para Torre de control: "Primera opción", "Solo en contingencia, con autorización de Milton"…
+  @Column({ type: DataType.STRING(500) })
+  declare notaDirectorio: string | null
+
+  @HasMany(() => CoberturaTramitador)
+  declare cobertura: CoberturaTramitador[]
 
   @HasMany(() => SolicitudTramites, {
     onUpdate: 'CASCADE',

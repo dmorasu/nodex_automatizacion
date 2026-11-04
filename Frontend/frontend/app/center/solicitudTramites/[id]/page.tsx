@@ -6,7 +6,7 @@ import AddTrazabilidadBoton from '@/components/trazabilidad/AddTrazabilitadBoton
 import AddTramitadorBoton from '@/components/tramitador/AddTramitadorBoton';
 import AddSubEstadoBoton from '@/components/subEstados/AddSubEstadosBoton';
 
-import { ArrowLeft, Pencil, Radar } from "lucide-react";
+import { ArrowLeft, Package, Pencil, Radar } from "lucide-react";
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -157,6 +157,10 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
                 <AddTramitadorBoton />
                 <AddProgramacionBoton />
                 <AddLogisticatoBoton />
+                <Link href={`/center/rotulos/nuevo?tramite=${solicitudTramite.id}`} className={claseBotonEnlace}>
+                  <Package size={16} className="text-amber-500" />
+                  Rótulo de envío
+                </Link>
                 <AddSubEstadoBoton />
                 <AddCuentaCobroBoton />
                 <AddTrazabilidadBoton />

@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Package,
   Radar,
   Receipt,
   Route,
@@ -92,7 +93,8 @@ export default function CenterMenu({
     {
       titulo: "Ayudas",
       opciones: [
-        { href: "/center/directorio", nombre: "Directorio de tramitadores", icono: Contact, visible: esTorreControl }
+        { href: "/center/directorio", nombre: "Directorio de tramitadores", icono: Contact, visible: esTorreControl },
+        { href: "/center/rotulos", nombre: "Rótulos de envío", icono: Package, visible: esTorreControl }
       ]
     },
     {

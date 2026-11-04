@@ -48,6 +48,7 @@ import agendaMensajerosRouter from "./routes/agendaMensajerosRouter"
 import cuentasCobroTramitadoresRouter from "./routes/cuentasCobroTramitadoresRouter"
 import calificacionesRouter from "./routes/calificacionesRouter"
 import directorioRouter from "./routes/directorioRouter"
+import rotulosRouter from "./routes/rotulosRouter"
 import direccionesRouter from "./routes/direccionesRouter"
 import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
 import { iniciarNotificacionesProgramadas } from "./services/notificacionesProgramadas"
@@ -174,6 +175,7 @@ app.use('/api/cuentas-cobro-tramitadores', ...soloTorreControl, cuentasCobroTram
 app.use('/api/calificaciones', ...soloTorreControl, calificacionesRouter)
 // Directorio de tramitadores (Ayudas Torre de Control)
 app.use('/api/directorio', ...soloTorreControl, directorioRouter)
+app.use('/api/rotulos', ...soloTorreControl, rotulosRouter)
 
 // 🔹 Gastos: cada ruta valida sesión y rol dentro de su router
 app.use('/api/gastos', gastosRouter)

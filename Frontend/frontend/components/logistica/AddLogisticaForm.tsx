@@ -6,7 +6,8 @@ import AvisarErrores from "../ui/AvisarErrores";
 import { useActionState, useEffect } from "react";
 import { toast } from "react-toastify";
 
-import { Truck } from "lucide-react";
+import Link from "next/link";
+import { Package, Truck } from "lucide-react";
 
 import CrearLogistica from "@/actions/crear-logistica-action";
 import { LogisticaType } from "@/src/type/solicitudes";
@@ -120,6 +121,15 @@ export default function AddLogisticaForm({
           ">
             Registre y gestione la información relacionada con el envío.
           </p>
+
+          {/* El rótulo (Ayudas Torre de Control) llena la transportadora y el destinatario */}
+          <Link
+            href={`/center/rotulos/nuevo?tramite=${id}`}
+            className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline"
+          >
+            <Package size={13} />
+            Generar rótulo de envío
+          </Link>
 
         </div>
 

@@ -10,6 +10,7 @@ import {
   BookOpen,
   CalendarClock,
   CircleCheckBig,
+  Contact,
   FilePlus2,
   FileSpreadsheet,
   LayoutDashboard,
@@ -86,6 +87,12 @@ export default function CenterMenu({
         { href: "/center/cargueMasivoClientes", nombre: "Cargue masivo de clientes", icono: FileSpreadsheet, visible: true },
         { href: "/center/cargueMasivoGastos", nombre: "Cargue masivo de gastos", icono: Receipt, visible: perfil === "GESTION_ACTIVOS" || esAdmin },
         { href: "/center/gestionMasiva", nombre: "Gestión masiva", icono: Settings2, visible: esTorreControl }
+      ]
+    },
+    {
+      titulo: "Ayudas",
+      opciones: [
+        { href: "/center/directorio", nombre: "Directorio de tramitadores", icono: Contact, visible: esTorreControl }
       ]
     },
     {

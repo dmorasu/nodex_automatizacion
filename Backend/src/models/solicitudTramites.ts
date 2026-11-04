@@ -92,6 +92,22 @@ class SolicitudTramites extends Model {
   @Column({ type: DataType.TEXT })
   declare ubicacionDireccion: string | null;
 
+  // ── Dependencia de un envío de documentos (2026-11-04) ──
+  // Si depende, no se programa (fecha de diligencia) hasta que el envío relacionado esté
+  // Finalizado y los gastos del trámite pagados; los indicadores cuentan desde ese momento.
+  // Reglas en services/dependenciaEnvio.ts
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  declare dependeEnvio: boolean;
+
+  // Trámite de envío (tipo "Envío de documentación" o "Envío de tarjeta") de la misma placa o
+  // matrícula. Sin @BelongsTo: una segunda asociación con SolicitudTramites pediría `as` en todo
+  @Column({ type: DataType.INTEGER })
+  declare envioTramiteId: number | null;
+
+  // Cuándo se cumplieron envío y pago: desde aquí se puede programar y corren los indicadores
+  @Column({ type: DataType.DATE })
+  declare condicionesEnvioCumplidasEn: Date | null;
+
   @BeforeCreate
   static async asignarAnalistaDelMunicipio(solicitud: SolicitudTramites) {
     if (solicitud.analistaAsignado || !solicitud.municipiosId) return

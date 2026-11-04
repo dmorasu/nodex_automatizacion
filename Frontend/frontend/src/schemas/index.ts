@@ -173,6 +173,8 @@ export const logistica = z.object({
   numeroGuia: z.string().nullable().optional(),
 
   valorEnvio: z.string().nullable().optional(),
+  // Pago contra entrega: sin valor del envío
+  pagoContraEntrega: z.boolean().optional(),
   destinatario: z.string().nullable().optional(),
 
   transportadoraId: z.number().nullable().optional(),
@@ -259,8 +261,18 @@ export const logisticaSchema =z.object({
          // Sin guía el formulario envía null: sin el mensaje propio zod lo explicaba en inglés
          numeroGuia:  z.string({ error: "Debe digitar el número de guía" })
                 .trim()
-                .min(1, "Debe digitar el número de guía")
+                .min(1, "Debe digitar el número de guía"),
+         // Obligatoria (2026-11-04)
+         fechaProgramacionLogistica: z.string({ error: "La fecha probable de entrega es obligatoria" })
+                .min(1, "La fecha probable de entrega es obligatoria"),
+         pagoContraEntrega: z.boolean(),
+         valorEnvio: z.number().nullable()
 })
+        // Sin pago contra entrega, el valor del envío es obligatorio
+        .refine(d => d.pagoContraEntrega || (d.valorEnvio !== null && d.valorEnvio > 0), {
+                message: "Registre el valor del envío (o marque Pago contra entrega)",
+                path: ["valorEnvio"]
+        })
 
 
 export const ProgramacionSchema = z.object({
@@ -312,6 +324,11 @@ tramiteId: z.number(),
   fechaEntregaResultado: z.string().nullable(),
   matriculaInmobiliaria: z.string().nullable(),
   placa: z.string().nullable(),
+
+  // Depende de un envío de documentos (no se programa hasta que el envío finalice y se pague)
+  dependeEnvio: z.boolean().optional(),
+  envioTramiteId: z.number().nullable().optional(),
+  condicionesEnvioCumplidasEn: z.string().nullable().optional(),
 
   createdAt: z.string(),
   updatedAt: z.string(),

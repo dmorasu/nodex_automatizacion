@@ -30,9 +30,12 @@ const claseBotonSecundario = "inline-flex h-10 items-center gap-2 rounded-md bor
 const claseFiltro = "h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
 const claseEtiqueta = "mb-1 block text-[11px] font-medium text-slate-500"
 
+// Lista fija Sí / No (pago contra entrega); el backend entiende 1 / 0
+const SI_NO: Opcion[] = [{ id: 1, nombre: "Sí" }, { id: 0, nombre: "No" }]
+
 // Catálogos para las listas desplegables (se cargan una vez)
 const useCatalogos = () => {
-  const [catalogos, setCatalogos] = useState<Record<Catalogo, Opcion[]>>({ estados: [], tiposRechazo: [], tramitadores: [], transportadoras: [], subEstados: [] })
+  const [catalogos, setCatalogos] = useState<Record<Catalogo, Opcion[]>>({ estados: [], tiposRechazo: [], tramitadores: [], transportadoras: [], subEstados: [], siNo: SI_NO })
 
   useEffect(() => {
     const leer = async (ruta: string, nombre: (x: Record<string, string | undefined>) => string | undefined): Promise<Opcion[]> => {
@@ -51,7 +54,7 @@ const useCatalogos = () => {
       leer("/transportadora", x => x.nombreTransportadora),
       leer("/bulk/subestados/catalogo", x => x.nombre)
     ]).then(([estados, tiposRechazo, tramitadores, transportadoras, subEstados]) =>
-      setCatalogos({ estados, tiposRechazo, tramitadores, transportadoras, subEstados }))
+      setCatalogos({ estados, tiposRechazo, tramitadores, transportadoras, subEstados, siNo: SI_NO }))
   }, [])
 
   return catalogos

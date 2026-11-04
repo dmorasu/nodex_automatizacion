@@ -4,6 +4,9 @@ import Tramitador from '../models/tramitador'
 import Transportadora from '../models/trasnportadora'
 import { ESTADO_NOVEDAD_SUBSANADA, validarFechaEntrega } from '../services/estadoTramite'
 import { excelDateToString } from './excelDate'
+import Programacion from '../models/programacion'
+import { estadoDependencia, mensajeBloqueo } from '../services/dependenciaEnvio'
+import { erroresLogistica } from '../services/reglasLogistica'
 
 // ============================
 // VALIDAR ESTADOS
@@ -127,6 +130,16 @@ export const validarLogistica = async (data: any[]) => {
         errores.push({ fila, columna: 'transportadoraId', error: 'No existe' })
       }
     }
+
+    // Valor del envío (salvo pago contra entrega) y fecha probable de entrega obligatorios
+    // (services/reglasLogistica.ts). La columna pagoContraEntrega es opcional: sin ella es "No"
+    for (const error of erroresLogistica({
+      pagoContraEntrega: row.pagoContraEntrega,
+      valorEnvio: row.valorEnvio,
+      fechaProgramacionLogistica: excelDateToString(row.fechaProgramacionLogistica)
+    })) {
+      errores.push({ fila, columna: error.startsWith('La fecha') ? 'fechaProgramacionLogistica' : 'valorEnvio', error })
+    }
   }
 
   return errores
@@ -172,6 +185,19 @@ if (!esValido) {
 
     if (!solicitud) {
       errores.push({ fila, error: 'Solicitud no existe' })
+      continue
+    }
+
+    // Depende de un envío de documentos sin finalizar o sin pagar: no se le pone fecha de diligencia
+    // (una fecha igual a la que ya tiene sí pasa: solo cambian valores o conceptos)
+    const nueva = excelDateToString(row.fechaProbableEntrega)
+    if (nueva && solicitud.dependeEnvio && !solicitud.condicionesEnvioCumplidasEn) {
+      const actual = await Programacion.findOne({ where: { solicitudTramiteId: solicitud.id }, attributes: ['fechaProbableEntrega'] })
+      const mismoDia = actual?.fechaProbableEntrega && new Date(actual.fechaProbableEntrega).toISOString().slice(0, 10) === String(nueva).slice(0, 10)
+      if (!mismoDia) {
+        const estado = await estadoDependencia(solicitud.id)
+        if (estado && !estado.puedeProgramar) errores.push({ fila, error: mensajeBloqueo(solicitud.id, estado.faltantes) })
+      }
     }
   }
 

@@ -23,6 +23,7 @@ import { obtenerHistorial } from '../services/historialTramites'
 import { subsanarNovedad } from '../services/novedadSubsanada'
 import { ErrorEstadoTramite } from '../services/estadoTramite'
 import { usuariosDeMiArea } from '../middleware/auth'
+import { enviosRelacionables, estadoDependencia } from '../services/dependenciaEnvio'
 
 // La sesión y el perfil (Gestión de activos o Torre de control) se exigen en server.ts.
 // Estas acciones son solo de Torre de control:
@@ -41,6 +42,21 @@ const upload = multer({ storage: multer.memoryStorage() })
 router.get('/buscar', SolicitudTramitesController.buscarSolicitudes)
 router.get('/filtrar', SolicitudTramitesController.filtrarSolicitudes)
 router.get('/solicitudes', SolicitudTramitesController.obtenerSolicitudes)
+
+// Envíos de documentos de una placa o matrícula, para relacionarlos al crear o editar un trámite
+// (GET /envios-relacionables?placa=&matricula=&excluir=)
+router.get('/envios-relacionables', async (req, res) => {
+  try {
+    res.json(await enviosRelacionables({
+      placa: req.query.placa,
+      matricula: req.query.matricula,
+      excluirId: Number(req.query.excluir) || null
+    }))
+  } catch (error) {
+    console.error('ERROR ENVÍOS RELACIONABLES:', error)
+    res.status(500).json({ error: 'No se pudieron consultar los envíos' })
+  }
+})
 
 //==================== TORRE CONTROL ============//
 // Tablero de gestión: Torre de control (el analista recibe solo sus trámites)
@@ -103,6 +119,15 @@ router.get('/:solicitudTramitesId/historial', async (req, res) => {
   } catch (error) {
     console.error('ERROR HISTORIAL DEL TRÁMITE:', error)
     res.status(500).json({ error: 'No se pudo cargar el historial' })
+  }
+})
+// Envío de documentos del que depende: envío, gastos y si ya se puede programar
+router.get('/:solicitudTramitesId/dependencia-envio', async (req, res) => {
+  try {
+    res.json(await estadoDependencia(req.solicitudTramites.id))
+  } catch (error) {
+    console.error('ERROR DEPENDENCIA DEL ENVÍO:', error)
+    res.status(500).json({ error: 'No se pudo consultar el envío de documentos' })
   }
 })
 router.put('/:solicitudTramitesId',

@@ -27,6 +27,7 @@ import Dato from '@/components/ui/Dato';
 import UbicacionTramite from '@/components/rutas/UbicacionTramite';
 import SubsanarNovedad from '@/components/estados/SubsanarNovedad';
 import ModalContainer from '@/components/ui/ModalContainerCliente';
+import EnvioDocumentosTramite, { obtenerDependenciaEnvio } from '@/components/solicitudTramites/EnvioDocumentosTramite';
 
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -69,11 +70,13 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
 
   // Gastos del trámite (Nodex Gastos) y, para Gestión de activos, opciones para crear uno
   // y lo que reporta el tramitador desde su app
-  const [gastos, opcionesGasto, seguimiento, historial] = await Promise.all([
+  const [gastos, opcionesGasto, seguimiento, historial, dependenciaEnvio] = await Promise.all([
     obtenerGastosDeTramite(solicitudTramite.id, token),
     esGestionActivos ? obtenerOpcionesGasto(token) : Promise.resolve(null),
     obtenerSeguimiento(solicitudTramite.id),
-    obtenerHistorial(solicitudTramite.id)
+    obtenerHistorial(solicitudTramite.id),
+    // Envío de documentos del que depende (no se programa hasta que finalice y se pague)
+    solicitudTramite.dependeEnvio ? obtenerDependenciaEnvio(solicitudTramite.id, token) : Promise.resolve(null)
   ]);
 
   const botonCrearGasto = opcionesGasto && (
@@ -256,6 +259,12 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
             </dl>
           </Seccion>
 
+          {dependenciaEnvio?.dependeEnvio && (
+            <Seccion titulo="Envío de documentos">
+              <EnvioDocumentosTramite estado={dependenciaEnvio} />
+            </Seccion>
+          )}
+
           <Seccion titulo="Programación">
             <dl className="space-y-4">
               <Dato etiqueta="Fecha de diligencia" valor={programacion?.fechaProbableEntrega ? formatoFechaSinZona(programacion.fechaProbableEntrega) : null} />
@@ -280,13 +289,24 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
             />
           </Seccion>
 
+          {/* Solo consulta (Gestión de activos la ve completa; Torre de control la edita con el botón Logística) */}
           {logistica && (
             <Seccion titulo="Logística">
               <dl className="space-y-4">
+                <Dato etiqueta="Transportadora" valor={logistica.transportadora?.nombreTransportadora?.trim()} />
                 <Dato etiqueta="Número de guía" valor={logistica.numeroGuia} />
                 <Dato etiqueta="Destinatario" valor={logistica.destinatario} />
-                <Dato etiqueta="Programación" valor={logistica.fechaProgramacionLogistica ? formatoFechaSinZona(logistica.fechaProgramacionLogistica) : null} />
-                <Dato etiqueta="Entrega a transportadora" valor={logistica.fechaEntregaTransportadora ? formatoFechaSinZona(logistica.fechaEntregaTransportadora) : null} />
+                <div className="grid grid-cols-2 gap-4">
+                  <Dato etiqueta="Pago contra entrega" valor={logistica.pagoContraEntrega ? "Sí" : "No"} />
+                  <Dato etiqueta="Valor del envío" valor={logistica.pagoContraEntrega ? <span className="text-slate-400">No aplica</span> : formatoMoneda(logistica.valorEnvio)} />
+                </div>
+                <Dato etiqueta="Fecha probable de entrega" valor={logistica.fechaProgramacionLogistica ? formatoFechaSinZona(logistica.fechaProgramacionLogistica) : null} />
+                <Dato
+                  etiqueta="Entrega por transportadora"
+                  valor={logistica.fechaEntregaTransportadora
+                    ? formatoFechaSinZona(logistica.fechaEntregaTransportadora)
+                    : <span className="text-amber-700">En seguimiento: sin confirmar</span>}
+                />
               </dl>
             </Seccion>
           )}

@@ -9,6 +9,7 @@ import Tramite from '../models/tramite'
 import {
   crearNotificacion
 } from '../services/notificacionesServices'
+import { erroresLogistica, esSi, registraEntrega, valorAGuardar } from '../services/reglasLogistica'
 
 declare global {
   namespace Express {
@@ -70,6 +71,24 @@ export class LogisticaController {
 
         })
 
+      // Reglas (services/reglasLogistica.ts) sobre cómo quedaría guardada: lo que llega y, si no
+      // llega, lo que ya tiene
+      const queda = (campo: 'pagoContraEntrega' | 'valorEnvio' | 'fechaProgramacionLogistica') =>
+        req.body[campo] !== undefined ? req.body[campo] : logistica?.[campo] ?? null
+      const pagoContraEntrega = esSi(queda('pagoContraEntrega'))
+      const errores = erroresLogistica({
+        pagoContraEntrega,
+        valorEnvio: queda('valorEnvio'),
+        fechaProgramacionLogistica: queda('fechaProgramacionLogistica')
+      })
+      if (errores.length) return res.status(400).json({ error: errores.join('. ') })
+      const valorEnvio = valorAGuardar(pagoContraEntrega, queda('valorEnvio'))
+
+      // Si este guardado registra la entrega de la transportadora, sale "Envío entregado" (hook del
+      // modelo) en lugar del correo de logística
+      const registraLaEntrega = registraEntrega(logistica?.fechaEntregaTransportadora ?? null,
+        req.body.fechaEntregaTransportadora !== undefined ? req.body.fechaEntregaTransportadora : logistica?.fechaEntregaTransportadora)
+
 
       // =====================================
       // CREAR LOGÍSTICA
@@ -86,8 +105,9 @@ export class LogisticaController {
             numeroGuia:
               req.body.numeroGuia || null,
 
-            valorEnvio:
-              req.body.valorEnvio || null,
+            pagoContraEntrega,
+
+            valorEnvio,
 
             destinatario:
               req.body.destinatario || null,
@@ -125,14 +145,8 @@ export class LogisticaController {
         }
 
 
-        if (
-          req.body.valorEnvio !== undefined
-        ) {
-
-          logistica.valorEnvio =
-            req.body.valorEnvio || null
-
-        }
+        logistica.pagoContraEntrega = pagoContraEntrega
+        logistica.valorEnvio = valorEnvio
 
 
         if (
@@ -260,7 +274,8 @@ export class LogisticaController {
       if (
         solicitud &&
         solicitud.usuario &&
-        logisticaData
+        logisticaData &&
+        !registraLaEntrega
       ) {
 
         await crearNotificacion({
@@ -287,8 +302,10 @@ export class LogisticaController {
               'N/A',
 
             valorEnvio:
-              logisticaData.valorEnvio ||
-              'N/A',
+              logisticaData.pagoContraEntrega
+                ? 'Contra entrega'
+                : logisticaData.valorEnvio ||
+                  'N/A',
 
             // 🚛 AHORA SE TOMA DEL OBJETO PLANO
             transportadora:

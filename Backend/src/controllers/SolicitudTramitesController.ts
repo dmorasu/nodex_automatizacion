@@ -27,6 +27,7 @@ import { generarExcelTablero } from '../services/exportarTablero'
 import { ubicarEnSegundoPlano, ubicarManual } from '../services/mensajeria/ubicacion'
 import { verificarCitaDelTramite } from '../services/mensajeria/agenda'
 import { ErrorGastos } from '../services/gastos/errores'
+import { anotarDependenciaAlCrear, datosDependencia } from '../services/dependenciaEnvio'
 
 
 
@@ -330,9 +331,15 @@ static getAll = async (req: Request, res: Response) => {
     // ==========================================
 
     // El analista lo toma del municipio (hook del modelo); solo quien reasigna puede elegirlo
-    const { analistaAsignado, ...datos } = req.body
+    const { analistaAsignado, dependeEnvio, envioTramiteId, condicionesEnvioCumplidasEn, ...datos } = req.body
+    // ¿Depende de un envío de documentos? (validado contra la placa o matrícula del trámite)
+    const dependencia = await datosDependencia({ dependeEnvio, envioTramiteId }, { placa: datos.placa, matriculaInmobiliaria: datos.matriculaInmobiliaria })
     const solicitudTramites =
-      await SolicitudTramites.create(puedeAsignarAnalistas(req) && analistaAsignado ? { ...datos, analistaAsignado } : datos);
+      await SolicitudTramites.create({
+        ...(puedeAsignarAnalistas(req) && analistaAsignado ? { ...datos, analistaAsignado } : datos),
+        ...(dependencia ?? {})
+      });
+    if (dependencia?.dependeEnvio) await anotarDependenciaAlCrear(solicitudTramites.id, dependencia.envioTramiteId)
 
     // Ubicación para las rutas de mensajeros: la del lugar elegido en el autocompletado,
     // o se busca la dirección con Google en segundo plano
@@ -351,6 +358,10 @@ static getAll = async (req: Request, res: Response) => {
 
 
   } catch (error) {
+
+    if (error instanceof ErrorGastos) {
+      return res.status(error.status).json({ error: error.message })
+    }
 
     console.error(
       "ERROR AL CREAR SOLICITUD:",
@@ -416,7 +427,9 @@ static getAll = async (req: Request, res: Response) => {
             model: Programacion
           },
           {
-            model: Logistica
+            // Con la transportadora: Gestión de activos consulta toda la logística en el detalle
+            model: Logistica,
+            include: [{ model: Transportadora, attributes: ['id', 'nombreTransportadora'] }]
           },
           {
             model: CuentaCobros
@@ -463,14 +476,16 @@ static getAll = async (req: Request, res: Response) => {
         // La placa, la matrícula inmobiliaria y el creador no se pueden modificar al editar
         // usuarioId es quien creó el trámite: no cambia al editar
         // El analista se cambia solo por PATCH /:id/analista (Administrador de Torre de control)
-        const { placa, matriculaInmobiliaria, usuarioId, analistaAsignado, ...datos } = req.body
+        const { placa, matriculaInmobiliaria, usuarioId, analistaAsignado, dependeEnvio, envioTramiteId, condicionesEnvioCumplidasEn, ...datos } = req.body
         // Si cambia el mensajero y el trámite tiene cita, el horario debe estar libre en su agenda
         const cambiaTramitador = datos.tramitadorId !== undefined && Number(datos.tramitadorId) !== Number(req.solicitudTramites.tramitadorId)
         try {
+          // ¿Depende de un envío de documentos? Solo si el formulario lo manda
+          const dependencia = await datosDependencia({ dependeEnvio, envioTramiteId }, req.solicitudTramites)
           await db.transaction(async transaction => {
             if (cambiaTramitador) await verificarCitaDelTramite(req.solicitudTramites.id, { tramitadorId: datos.tramitadorId ? Number(datos.tramitadorId) : null }, transaction)
             req.solicitudTramites.usuarioQueModifica = req.usuario.id
-            await req.solicitudTramites.update(datos, { transaction })
+            await req.solicitudTramites.update({ ...datos, ...(dependencia ?? {}) }, { transaction })
           })
         } catch (error) {
           if (error instanceof ErrorGastos) return res.status(error.status).json({ error: error.message })

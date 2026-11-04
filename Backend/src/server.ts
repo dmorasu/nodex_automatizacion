@@ -58,10 +58,16 @@ import { modoEnsayo } from "./utils/modoEnsayo"
 import { autenticacion } from "./middleware/auth"
 import { requiereRol } from "./middleware/gastos/requiereRol"
 import { activarHistorialTramites } from "./services/historialTramites"
+import { activarDependenciaEnvio } from "./services/dependenciaEnvio"
+import { activarReglasLogistica } from "./services/reglasLogistica"
 
 
 // Bitácora de cambios de los trámites (hooks de los modelos): antes de atender peticiones
 activarHistorialTramites()
+// Trámites que dependen de un envío de documentos: bloqueo de la programación e historial
+activarDependenciaEnvio()
+// Logística: correo "Envío entregado" al registrar la entrega de la transportadora
+activarReglasLogistica()
 
 async function connectDB() {
     try {

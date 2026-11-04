@@ -33,6 +33,15 @@ export default class Logistica extends Model {
   })
   declare valorEnvio: number;
 
+  // 2026-11-04 · Pago contra entrega: lo paga quien recibe, así que no se registra valor del envío.
+  // Sin contra entrega el valor es obligatorio (reglas en services/reglasLogistica.ts)
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  })
+  declare pagoContraEntrega: boolean;
+
 
   @Column({
     type: DataType.DATEONLY

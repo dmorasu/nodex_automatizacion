@@ -65,7 +65,12 @@ export async function EditarSolicitudTramite(solicitudTramiteId: SolicitudTramit
               fechaEntregaResultado:solicitudTramiteData.fechaEntregaResultado,
               entidadId:solicitudTramiteData.entidadId,
               tramiteId:solicitudTramiteData.tramiteId,
-             
+              // ¿Depende de envío de documentos? Solo si el formulario trae el campo
+              ...(formData.has('dependeEnvio') ? {
+                dependeEnvio: formData.get('dependeEnvio') === 'si',
+                envioTramiteId: Number(formData.get('envioTramiteId')) || null
+              } : {}),
+
               usuarioId:solicitudTramiteData.usuarioId
     })
    })

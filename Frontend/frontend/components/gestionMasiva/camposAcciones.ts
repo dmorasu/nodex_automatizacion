@@ -9,7 +9,8 @@
 export type TipoAccion = "estados" | "trazabilidad" | "programacion" | "logistica" | "tramitador" | "subestados"
 
 // subEstados: cada opción trae su tipo de trámite y cada fila solo ve los de su trámite
-export type Catalogo = "estados" | "tiposRechazo" | "tramitadores" | "transportadoras" | "subEstados"
+// siNo: lista fija (1 = Sí, 0 = No)
+export type Catalogo = "estados" | "tiposRechazo" | "tramitadores" | "transportadoras" | "subEstados" | "siNo"
 
 export type Campo = {
   clave: string
@@ -67,13 +68,15 @@ export const ACCIONES: Accion[] = [
   {
     tipo: "logistica",
     nombre: "Logística",
-    descripcion: "Guía, destinatario, valor y fechas del envío. Arranca con lo que ya tiene cada trámite (un campo vacío borra el dato); solo se guardan los trámites que cambien.",
+    descripcion: "Guía, destinatario, valor y fechas del envío. Arranca con lo que ya tiene cada trámite (un campo vacío borra el dato); solo se guardan los trámites que cambien. La fecha probable de entrega es obligatoria y el valor también, salvo con pago contra entrega.",
+    aviso: "Al registrar la fecha de entrega por transportadora sale el correo \"Envío entregado\" a quien creó el trámite.",
     campos: [
       { clave: "numeroGuia", etiqueta: "Número de guía", tipo: "texto" },
       { clave: "destinatario", etiqueta: "Destinatario", tipo: "texto" },
+      { clave: "pagoContraEntrega", etiqueta: "Pago contra entrega", tipo: "seleccion", catalogo: "siNo" },
       { clave: "valorEnvio", etiqueta: "Valor envío", tipo: "numero" },
       { clave: "fechaProgramacionLogistica", etiqueta: "Fecha probable de entrega", tipo: "fecha" },
-      { clave: "fechaEntregaTransportadora", etiqueta: "Fecha entrega a transportadora", tipo: "fecha" },
+      { clave: "fechaEntregaTransportadora", etiqueta: "Fecha entrega por transportadora", tipo: "fecha" },
       { clave: "transportadoraId", etiqueta: "Transportadora", tipo: "seleccion", catalogo: "transportadoras" }
     ]
   },
@@ -124,7 +127,7 @@ export type TramiteMasivo = {
   tramitador: { nombreTramitador: string } | null
   estadoActual: { id: number, nombreEstado: string } | null
   programacion: Record<string, string | number | null> | null
-  logistica: Record<string, string | number | null> | null
+  logistica: Record<string, string | number | boolean | null> | null
 }
 
 // "2026-09-10T00:00:00.000Z" → "2026-09-10"
@@ -143,7 +146,10 @@ export const valoresActuales = (tipo: TipoAccion, tramite: TramiteMasivo): Recor
 
   return Object.fromEntries(accion.campos.map(campo => [
     campo.clave,
-    campo.tipo === "fecha" ? aFecha(origen?.[campo.clave]) : aTexto(origen?.[campo.clave])
+    campo.tipo === "fecha" ? aFecha(origen?.[campo.clave])
+      // Sí / No: 1 / 0 (lista fija)
+      : campo.catalogo === "siNo" ? (origen?.[campo.clave] as unknown === true ? "1" : "0")
+        : aTexto(origen?.[campo.clave])
   ]))
 }
 

@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import {
+  Banknote,
   CalendarClock,
+  Link2,
+  PackageCheck,
+  Unlock,
   CircleCheck,
   FileUp,
   Flag,
@@ -34,12 +38,18 @@ const ESTILO_TIPO: Record<string, { Icono: LucideIcon, color: string }> = {
   SUBESTADO: { Icono: Layers, color: "bg-slate-100 text-slate-600" },
   DOCUMENTO: { Icono: FileUp, color: "bg-teal-100 text-teal-700" },
   REALIZADO: { Icono: CircleCheck, color: "bg-emerald-100 text-emerald-700" },
+  // Dependencia de un envío de documentos
+  DEPENDENCIA: { Icono: Link2, color: "bg-amber-100 text-amber-700" },
+  ENVIO: { Icono: PackageCheck, color: "bg-amber-100 text-amber-700" },
+  PAGO: { Icono: Banknote, color: "bg-emerald-100 text-emerald-700" },
+  CONDICIONES: { Icono: Unlock, color: "bg-emerald-100 text-emerald-700" },
 };
 
 const FILTROS: { clave: string, nombre: string, tipos: string[] | null }[] = [
   { clave: "todo", nombre: "Todo", tipos: null },
   { clave: "estados", nombre: "Estados", tipos: ["ESTADO", "SUBESTADO", "REALIZADO"] },
   { clave: "programacion", nombre: "Programación y logística", tipos: ["PROGRAMACION", "LOGISTICA", "CUENTA_COBRO"] },
+  { clave: "envio", nombre: "Envío y pago", tipos: ["DEPENDENCIA", "ENVIO", "PAGO", "CONDICIONES"] },
   { clave: "asignacion", nombre: "Asignaciones", tipos: ["TRAMITADOR", "ANALISTA"] },
   { clave: "trazabilidad", nombre: "Trazabilidad", tipos: ["TRAZABILIDAD"] },
   { clave: "documentos", nombre: "Documentos", tipos: ["DOCUMENTO"] },

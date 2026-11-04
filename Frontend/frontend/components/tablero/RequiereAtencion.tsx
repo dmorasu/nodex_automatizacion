@@ -81,6 +81,14 @@ const ALERTAS: Definicion[] = [
     masiva: AGREGAR_TRAZABILIDAD
   },
   {
+    clave: "seguimientoLogistico",
+    masiva: { accion: "logistica", texto: "Registrar entrega" },
+    nivel: "amarillo",
+    nombre: "Seguimiento logístico",
+    descripcion: () => "Envíos registrados sin fecha de entrega por la transportadora, aunque el trámite ya esté finalizado. Salen al registrar la entrega.",
+    dias: t => (t.diasSinEntrega ? `${t.diasSinEntrega} días de atraso` : t.fechaProbableEnvio ? `Entrega ${fechaCorta(t.fechaProbableEnvio)}` : "Sin fecha probable")
+  },
+  {
     clave: "sinAnalista",
     enlace: { href: "/center/analistas", texto: "Asignar en Analistas" },
     nivel: "amarillo",
@@ -165,7 +173,7 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-5 py-4">
         <h2 className="text-sm font-semibold text-slate-700">Requiere atención</h2>
-        <p className="mt-0.5 text-xs text-slate-400">Trámites abiertos que necesitan acción. Clic en un trámite para abrirlo.</p>
+        <p className="mt-0.5 text-xs text-slate-400">Trámites que necesitan acción. Clic en un trámite para abrirlo.</p>
       </div>
 
       {/* Pestañas agrupadas por nivel del semáforo, cada una con su cantidad */}
@@ -294,6 +302,11 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
                         {t.placa ?? "—"} · Analista: {t.analista ?? "—"} · Tramitador: {t.tramitador ?? "—"}
                         {t.fechaProgramada && ` · Programado ${fechaCorta(t.fechaProgramada)}`}
                       </span>
+                      {t.diasSinEntrega !== undefined && (
+                        <span className="block truncate text-[11px] text-slate-500">
+                          {t.transportadora ?? "Sin transportadora"} · Guía {t.guia ?? "—"}
+                        </span>
+                      )}
                     </span>
                     {t.ultimaGestion && (
                       <span className="w-36 shrink-0 text-[11px] leading-4">

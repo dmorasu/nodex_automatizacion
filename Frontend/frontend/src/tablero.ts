@@ -16,6 +16,11 @@ export type TramiteAlerta = {
   diasAtraso?: number
   diasEnNovedad?: number
   diasSinMovimiento?: number
+  // Seguimiento logístico: envío sin fecha de entrega de la transportadora
+  guia?: string | null
+  transportadora?: string | null
+  fechaProbableEnvio?: string | null
+  diasSinEntrega?: number
 }
 
 export type ListaAlerta = { total: number, items: TramiteAlerta[] }
@@ -29,6 +34,7 @@ export type ClaveAlerta =
   | "sinProgramacion"
   | "sinMovimiento"
   | "sinAnalista"
+  | "seguimientoLogistico"
 
 export type FilaAnalista = {
   analistaId: number | null

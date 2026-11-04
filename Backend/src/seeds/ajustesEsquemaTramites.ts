@@ -99,6 +99,35 @@ export const ajustarEsquemaTramites = async () => {
   await descargaPagoUnificada()
   await regionalDeMunicipios()
   await horaFinDeLaCita()
+  await dependenciaDeEnvio()
+  await pagoContraEntrega()
+}
+
+// 2026-11-04 · Logística: pago contra entrega (services/reglasLogistica.ts)
+const pagoContraEntrega = async () => {
+  const logistica = await columnasDe('Logistica')
+  if (logistica && !logistica.pagoContraEntrega) {
+    await db.query(`ALTER TABLE "Logistica" ADD COLUMN "pagoContraEntrega" BOOLEAN NOT NULL DEFAULT false`)
+  }
+}
+
+// 2026-11-04 · El trámite puede depender de un envío de documentos (services/dependenciaEnvio.ts)
+const dependenciaDeEnvio = async () => {
+  const solicitudes = await columnasDe('SolicitudTramites')
+  if (!solicitudes) return
+  if (!solicitudes.dependeEnvio) {
+    await db.query(`ALTER TABLE "SolicitudTramites" ADD COLUMN "dependeEnvio" BOOLEAN NOT NULL DEFAULT false`)
+  }
+  if (!solicitudes.envioTramiteId) {
+    await db.query(`
+      ALTER TABLE "SolicitudTramites"
+      ADD COLUMN "envioTramiteId" INTEGER REFERENCES "SolicitudTramites" (id) ON UPDATE CASCADE ON DELETE SET NULL
+    `)
+    await db.query(`CREATE INDEX IF NOT EXISTS "solicitud_tramites_envio_tramite" ON "SolicitudTramites" ("envioTramiteId")`)
+  }
+  if (!solicitudes.condicionesEnvioCumplidasEn) {
+    await db.query(`ALTER TABLE "SolicitudTramites" ADD COLUMN "condicionesEnvioCumplidasEn" TIMESTAMP WITH TIME ZONE`)
+  }
 }
 
 // 2026-10-25 · Agenda de mensajeros: hora en que termina la cita del trámite

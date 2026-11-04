@@ -8,6 +8,7 @@ export type TipoNotificacion =
   | "PROGRAMACION"
   | "EN_ESPERA_POR_NOVEDAD"
   | "LOGISTICA"
+  | "ENVIO_ENTREGADO"
   | "DILIGENCIA_HOY"
   | "DILIGENCIA_VENCIDA"
   | "DESISTIDO"
@@ -219,6 +220,36 @@ Para cualquier inquietud, comunícate con la Central Torre de Control:
             ["Entrega por la transportadora", txt(data.fechaEntregaTransportadora)],
           ])}
           ${nota("info", "El envío se encuentra en proceso de distribución.")}
+        `,
+      }),
+    };
+  }
+
+  // =====================================
+  // ENVÍO ENTREGADO (la transportadora confirmó la entrega: se registró su fecha)
+  // =====================================
+
+  if (tipo === "ENVIO_ENTREGADO") {
+    return {
+      subject:
+        `📬 Envío entregado - Trámite #${solicitud.id} ` +
+        `${solicitud.placa ?? ""} ` +
+        `${solicitud.matriculaInmobiliaria ?? ""}`,
+
+      text: "",
+
+      html: correoTramite({
+        estado: { texto: "Envío entregado", tono: "exito" },
+        titulo: "Envío entregado",
+        saludo: hola(data.nombre),
+        intro: `La transportadora entregó el envío del trámite <strong>#${solicitud.id}</strong>${data.tipo ? ` (${txt(data.tipo)})` : ""}.`,
+        cuerpo: `
+          ${fichaTramite(solicitud, [
+            ["Fecha de entrega", txt(data.fechaEntregaTransportadora)],
+            ["Transportadora", txt(data.transportadora)],
+            ["Número de guía", txt(data.numeroGuia)],
+            ["Destinatario", txt(data.destinatario)],
+          ])}
         `,
       }),
     };

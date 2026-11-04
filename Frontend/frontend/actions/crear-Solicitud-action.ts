@@ -13,6 +13,12 @@ const coordenadas = (formData: FormData) => {
         : {}
 }
 
+// "¿Depende de envío de documentos?" y el envío elegido (vacío: se relaciona después)
+const dependenciaEnvio = (formData: FormData) => ({
+    dependeEnvio: formData.get("dependeEnvio") === "si",
+    envioTramiteId: Number(formData.get("envioTramiteId")) || null
+})
+
 type ActionStateType = {
     errors: string[],
     success: string,
@@ -158,6 +164,9 @@ export async function crearSolicitud(
 
                         tramiteId:
                             solicitud.data.tramiteId,
+
+                        // ¿Depende de envío de documentos? (el backend valida el envío contra la placa)
+                        ...dependenciaEnvio(formData),
 
                         usuarioId:
                             solicitud.data.usuarioId

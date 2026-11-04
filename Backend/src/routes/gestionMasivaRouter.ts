@@ -63,7 +63,7 @@ const incluir = (whereProgramacion?: WhereOptions): Includeable[] => [
   },
   {
     model: Logistica,
-    attributes: ['id', 'numeroGuia', 'destinatario', 'valorEnvio', 'fechaProgramacionLogistica', 'fechaEntregaTransportadora', 'transportadoraId']
+    attributes: ['id', 'numeroGuia', 'destinatario', 'pagoContraEntrega', 'valorEnvio', 'fechaProgramacionLogistica', 'fechaEntregaTransportadora', 'transportadoraId']
   }
 ]
 

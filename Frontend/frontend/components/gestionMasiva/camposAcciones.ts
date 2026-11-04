@@ -6,9 +6,10 @@
 // acciones donde tiene algo que aplicar (ver `tieneCambios`).
 // =====================================
 
-export type TipoAccion = "estados" | "trazabilidad" | "programacion" | "logistica" | "tramitador"
+export type TipoAccion = "estados" | "trazabilidad" | "programacion" | "logistica" | "tramitador" | "subestados"
 
-export type Catalogo = "estados" | "tiposRechazo" | "tramitadores" | "transportadoras"
+// subEstados: cada opción trae su tipo de trámite y cada fila solo ve los de su trámite
+export type Catalogo = "estados" | "tiposRechazo" | "tramitadores" | "transportadoras" | "subEstados"
 
 export type Campo = {
   clave: string
@@ -71,9 +72,18 @@ export const ACCIONES: Accion[] = [
       { clave: "numeroGuia", etiqueta: "Número de guía", tipo: "texto" },
       { clave: "destinatario", etiqueta: "Destinatario", tipo: "texto" },
       { clave: "valorEnvio", etiqueta: "Valor envío", tipo: "numero" },
-      { clave: "fechaProgramacionLogistica", etiqueta: "Fecha programación", tipo: "fecha" },
+      { clave: "fechaProgramacionLogistica", etiqueta: "Fecha probable de entrega", tipo: "fecha" },
       { clave: "fechaEntregaTransportadora", etiqueta: "Fecha entrega a transportadora", tipo: "fecha" },
       { clave: "transportadoraId", etiqueta: "Transportadora", tipo: "seleccion", catalogo: "transportadoras" }
+    ]
+  },
+  {
+    tipo: "subestados",
+    nombre: "Subestado",
+    descripcion: "Registra el subestado de cada trámite (queda como el actual). Arranca con el subestado que ya tiene; cada fila solo muestra los del tipo de su trámite. Se guardan los trámites donde cambie el subestado o se escriba una observación.",
+    campos: [
+      { clave: "subEstadoId", etiqueta: "Subestado", tipo: "seleccion", catalogo: "subEstados" },
+      { clave: "observacionSubEstado", etiqueta: "Observación del subestado", tipo: "textoLargo" }
     ]
   },
   {
@@ -90,7 +100,7 @@ export const ACCIONES: Accion[] = [
 // Orden al guardar varias acciones juntas: primero lo que alimenta las notificaciones
 // (tramitador, programación, logística, observación) y al final el estado, para que el aviso
 // de Novedad/Finalizado salga con los datos y la trazabilidad ya guardados.
-export const ORDEN_GUARDADO: TipoAccion[] = ["tramitador", "programacion", "logistica", "trazabilidad", "estados"]
+export const ORDEN_GUARDADO: TipoAccion[] = ["tramitador", "programacion", "logistica", "trazabilidad", "subestados", "estados"]
 
 // Campos visibles de una acción. Si también se eligió "Agregar trazabilidad", el cambio de
 // estado no muestra su propia observación (se usa la de trazabilidad, que se guarda antes).
@@ -107,7 +117,9 @@ export type TramiteMasivo = {
   tramitadorId: number | null
   nombreAnalista: string | null
   clientes: { nombreCliente: string, identificacionCliente: string } | null
-  tramite: { nombreTramite: string } | null
+  tramite: { id?: number, nombreTramite: string } | null
+  // Último subestado registrado (null si no tiene)
+  subEstadoActualId?: number | null
   municipios: { nombreMunicipio: string } | null
   tramitador: { nombreTramitador: string } | null
   estadoActual: { id: number, nombreEstado: string } | null
@@ -126,7 +138,8 @@ export const valoresActuales = (tipo: TipoAccion, tramite: TramiteMasivo): Recor
     tipo === "programacion" ? tramite.programacion
       : tipo === "logistica" ? tramite.logistica
         : tipo === "tramitador" ? { tramitadorId: tramite.tramitadorId }
-          : null
+          : tipo === "subestados" ? { subEstadoId: tramite.subEstadoActualId ?? null }
+            : null
 
   return Object.fromEntries(accion.campos.map(campo => [
     campo.clave,
@@ -145,6 +158,8 @@ export const tieneCambios = (tipo: TipoAccion, fila: Record<string, string> | un
   if (tipo === "estados") return Boolean(v.estadoId)
   if (tipo === "trazabilidad") return Boolean(v.observacionTrazabilidad?.trim())
   if (tipo === "tramitador") return Boolean(v.tramitadorId) && v.tramitadorId !== String(tramite.tramitadorId ?? "")
+  // Subestado: uno distinto del actual, o el mismo con una observación nueva
+  if (tipo === "subestados") return Boolean(v.subEstadoId) && (v.subEstadoId !== String(tramite.subEstadoActualId ?? "") || Boolean(v.observacionSubEstado?.trim()))
   // Programación y logística: algún campo distinto de lo que ya tiene (evita reenviar correos)
   const actual = valoresActuales(tipo, tramite)
   return Object.keys(actual).some(clave => (v[clave] ?? "") !== actual[clave])

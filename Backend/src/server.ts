@@ -49,6 +49,7 @@ import cuentasCobroTramitadoresRouter from "./routes/cuentasCobroTramitadoresRou
 import calificacionesRouter from "./routes/calificacionesRouter"
 import directorioRouter from "./routes/directorioRouter"
 import rotulosRouter from "./routes/rotulosRouter"
+import subEstadosBulkRouter from "./routes/subEstadosBulkRouter"
 import { sincronizarResidencias } from "./services/residenciaTramitador"
 import direccionesRouter from "./routes/direccionesRouter"
 import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
@@ -167,6 +168,7 @@ app.use('/api/notificaciones-programadas', autenticacion, notificacionesPrograma
 app.use('/api/bulk/logistica', ...soloTorreControl, logisticaBulkRouter)
 app.use('/api/bulk/programacion', ...soloTorreControl, programacionActualizacionesRouter)
 app.use('/api/bulk/trazabilidad', ...soloTorreControl, trazabilidadActualizacionesRouter)
+app.use('/api/bulk/subestados', ...soloTorreControl, subEstadosBulkRouter)
 app.use('/api/bulk/estados', ...soloTorreControl, estadosActualizacionesRouter)
 app.use('/api/bulk/tramitador', ...soloTorreControl, tramitadorActualizacionesRouter)
 app.use('/api/bulk/tramites', ...soloTorreControl, gestionMasivaRouter)

@@ -8,6 +8,7 @@ import { enlaceGoogleMaps, enlaceWaze, enlacesRuta } from "@/src/rutas"
 import ConfirmarVisita from "@/components/ruta/ConfirmarVisita"
 import PanelRuta from "@/components/ruta/PanelRuta"
 import IniciarDiligencia from "@/components/ruta/IniciarDiligencia"
+import CorregirDireccion from "@/components/tramites/CorregirDireccion"
 import { claseBotonPrimario, claseBotonSecundario, claseTarjeta } from "@/components/ui/estilos"
 
 export const metadata = { title: "Mi ruta" }
@@ -115,6 +116,7 @@ export default async function MiRutaPage(props: { searchParams: Promise<{ fecha?
                     <MapPin size={15} className="mt-0.5 shrink-0 text-slate-400" />
                     <span>{p.direccion ?? "Sin dirección"}{p.municipio ? `, ${p.municipio}` : ""}</span>
                   </p>
+                  {p.estado !== "ENTREGADO" && <CorregirDireccion tramiteId={p.tramiteId} direccion={p.direccion} municipio={p.municipio} />}
                   {p.detalle && <p className="mt-1 line-clamp-3 text-xs text-slate-500">{p.detalle}</p>}
                   {p.observacion && <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">{p.observacion}</p>}
                   {p.tieneFoto && (

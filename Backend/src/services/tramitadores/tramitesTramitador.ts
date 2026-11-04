@@ -24,6 +24,7 @@ import { type TipoDocumentoTramite } from './nombresDocumento'
 import { registrarDocumentosTramite } from './documentosTramite'
 import { gastosDelTramite, subirSoporte } from './soportesTramitador'
 import { avisarComentarioEquipo, avisarTramiteDevuelto } from './avisosPush'
+import { googleDisponible, ubicarTramite } from '../mensajeria/ubicacion'
 
 // Estados en los que el trámite ya terminó: no se puede reportar como realizado
 export const ESTADOS_CERRADOS = ['Finalizado', 'Desistido']
@@ -318,6 +319,38 @@ export const reportarRealizado = async (tramitadorId: number, solicitudTramiteId
   if (pendiente) throw new ErrorNegocio('Ya reportó este trámite como realizado; está pendiente de revisión')
 
   return ReporteRealizado.create({ solicitudTramiteId, tramitadorId, observacion: observacion.trim() })
+}
+
+// El mensajero corrige la dirección del trámite desde la app (pedido del usuario, 2026-11-04): solo
+// sus trámites sin cerrar. Queda en el historial del trámite por el hook (con su nombre, desde la app)
+// y se vuelve a ubicar con Google para la ruta. Devuelve si Google la encontró (null: sin Google)
+export const corregirDireccion = async (tramitadorId: number, solicitudTramiteId: number, direccion: string) => {
+  const tramitador = await Tramitador.findByPk(tramitadorId, { attributes: ['id', 'esMensajero'] })
+  if (!tramitador?.esMensajero) throw new ErrorNegocio('Solo los mensajeros pueden corregir la dirección', 403)
+
+  const tramite = await tramiteDelTramitador(tramitadorId, solicitudTramiteId)
+  if (ESTADOS_CERRADOS.includes(tramite.estadoActual?.nombreEstado)) {
+    throw new ErrorNegocio(`El trámite ya está ${tramite.estadoActual.nombreEstado.toLowerCase()}`)
+  }
+
+  const limpia = direccion.trim()
+  if (!limpia) throw new ErrorNegocio('Escriba la dirección')
+  if (limpia.length > 100) throw new ErrorNegocio('La dirección no puede superar los 100 caracteres')
+  if (limpia === tramite.direccionTramite?.trim()) throw new ErrorNegocio('Es la misma dirección que ya tiene el trámite')
+
+  // El punto viejo se borra: Maps y Waze navegan al punto antes que a la dirección escrita, y si
+  // Google no ubica la nueva, el mensajero llegaría al lugar anterior
+  await tramite.update({ direccionTramite: limpia, latitud: null, longitud: null, ubicacionFuente: null, ubicacionPrecisa: null })
+
+  if (!googleDisponible()) return { encontrada: null }
+  try {
+    const { encontrada } = await ubicarTramite(solicitudTramiteId)
+    return { encontrada: encontrada ?? null }
+  } catch (error) {
+    // La dirección ya quedó guardada: Torre de control puede poner el punto a mano en Rutas
+    console.warn(`⚠️ No se pudo ubicar el trámite ${solicitudTramiteId}:`, (error as Error).message)
+    return { encontrada: false }
+  }
 }
 
 // La diligencia que el mensajero finaliza en su ruta llega al trámite (pedido del usuario, 2026-11-03):

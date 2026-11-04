@@ -68,6 +68,15 @@ router.get('/tramites/:id/documentos/:documentoId/ver',
   ...sesion, idTramite, param('documentoId').isInt({ min: 1 }), handleInputErrors,
   TramitesTramitadorController.verDocumento
 )
+// El mensajero corrige la dirección (queda en el historial y se vuelve a ubicar con Google)
+router.post('/tramites/:id/direccion',
+  ...sesion, idTramite,
+  body('direccion').isString().trim()
+    .notEmpty().withMessage('Escriba la dirección')
+    .isLength({ max: 100 }).withMessage('La dirección no puede superar los 100 caracteres'),
+  handleInputErrors,
+  TramitesTramitadorController.corregirDireccion
+)
 router.post('/tramites/:id/realizado',
   ...sesion, idTramite, textoObligatorio('observacion', 'la observación'), handleInputErrors,
   TramitesTramitadorController.reportarRealizado

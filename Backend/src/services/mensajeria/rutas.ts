@@ -4,6 +4,7 @@ import Tramitador from '../../models/tramitador'
 import SedeMensajeria from '../../models/mensajeria/sedeMensajeria'
 import ParadaMensajeria, { ESTADOS_PARADA, TRANSPORTES_PARADA } from '../../models/mensajeria/paradaMensajeria'
 import { subirArchivo } from '../azureFileStorage'
+import { registrarFotoVisita } from '../tramitadores/documentosTramite'
 import { ErrorUbicacion, googleDisponible } from './ubicacion'
 import { jornadaAbierta, resumenJornadas } from './jornadas'
 
@@ -381,5 +382,14 @@ export const confirmarParada = async (
     precisionMetros: numero(datos.precision) === null ? null : Math.round(numero(datos.precision)!),
     ...fotoDatos
   })
+
+  // Copia en los documentos del trámite. Si falla, la visita ya quedó confirmada con su foto
+  if (foto) {
+    try {
+      await registrarFotoVisita(parada.solicitudTramiteId, tramitadorId, parada.fecha, foto.buffer, foto.mimetype)
+    } catch (error) {
+      console.error(`No se pudo copiar la foto de la parada ${parada.id} a los documentos del trámite:`, error)
+    }
+  }
   return parada
 }

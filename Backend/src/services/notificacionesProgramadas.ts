@@ -4,6 +4,7 @@ import SolicitudTramites from "../models/solicitudTramites"
 import { obtenerDiligenciasDeHoy, obtenerDiligenciasVencidas } from "./notificacionesDiligenciasServices"
 import { crearNotificacion } from "./notificacionesServices"
 import { recordarReintegrosPendientes } from "./tramitadores/avisosPush"
+import { whatsappValido } from "../utils/numeroWhatsapp"
 
 // =====================================
 // NOTIFICACIONES AUTOMÁTICAS: WhatsApp (diligencias de hoy y vencidas) y push de la app de
@@ -47,8 +48,8 @@ const enviarWhatsappDiligencias = async (
   const cuenta: Resultado = { encontradas: diligencias.length, enviadas: 0, sinTelefono: 0, errores: 0 }
 
   for (const solicitud of diligencias) {
-    // crearNotificacion no envía nada si el tramitador no tiene número
-    if (!solicitud.tramitador?.numeroTramitador) {
+    // crearNotificacion no envía nada si el tramitador no tiene número o no es un celular válido
+    if (!whatsappValido(solicitud.tramitador?.numeroTramitador)) {
       cuenta.sinTelefono++
       continue
     }

@@ -4,6 +4,7 @@ import { generarPdfDocumentosSolicitud } from './generarDocumentosPDFSolicitudes
 import { textoDePlantilla } from './plantillasWhatsapp'
 import SolicitudTramites from '../models/solicitudTramites'
 import Usuarios from '../models/usuarios'
+import { normalizarWhatsapp, whatsappValido } from '../utils/numeroWhatsapp'
 import {
   construirMensaje,
   TipoNotificacion
@@ -229,10 +230,15 @@ const enviarWhatsapp = async (
   { solicitud, tipo, destinatario, data }: Required<NotificacionParams>,
   texto: string
 ) => {
-  const telefono = destinatario?.numeroTramitador
+  const telefono = normalizarWhatsapp(destinatario?.numeroTramitador)
 
   if (!telefono) {
     console.log(`❌ ${tipo}: sin número de tramitador (solicitud ${solicitud.id})`)
+    return
+  }
+  // Un número imposible (ej: 0000000000) no se manda a Twilio: lo rechazaría sin que nadie lo viera
+  if (!whatsappValido(telefono)) {
+    console.log(`❌ ${tipo}: WhatsApp no válido "${destinatario?.numeroTramitador}" de ${destinatario?.nombreTramitador ?? 'el tramitador'} (solicitud ${solicitud.id}): corríjalo en Catálogos → Tramitadores`)
     return
   }
 

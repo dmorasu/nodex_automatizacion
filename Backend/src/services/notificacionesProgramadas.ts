@@ -44,7 +44,8 @@ const enviarWhatsappDiligencias = async (
   buscar: () => Promise<SolicitudTramites[]>,
   datos: DatosWhatsapp
 ): Promise<Resultado> => {
-  const diligencias = await buscar()
+  // A los mensajeros no se les envía WhatsApp (decisión del usuario, 2026-11-04): no cuentan
+  const diligencias = (await buscar()).filter(s => !s.tramitador?.esMensajero)
   const cuenta: Resultado = { encontradas: diligencias.length, enviadas: 0, sinTelefono: 0, errores: 0 }
 
   for (const solicitud of diligencias) {

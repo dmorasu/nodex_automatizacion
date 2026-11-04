@@ -4,6 +4,7 @@ import { generarPdfDocumentosSolicitud } from './generarDocumentosPDFSolicitudes
 import { textoDePlantilla } from './plantillasWhatsapp'
 import SolicitudTramites from '../models/solicitudTramites'
 import Usuarios from '../models/usuarios'
+import Tramitador from '../models/tramitador'
 import { normalizarWhatsapp, whatsappValido } from '../utils/numeroWhatsapp'
 import {
   construirMensaje,
@@ -225,11 +226,25 @@ const CONSTRUCTORES_WHATSAPP: Partial<Record<TipoNotificacion, ConstructorWhatsa
 // ENVÍO POR CANAL
 // =====================================
 
+export const esMensajero = async (destinatario: { id?: number, esMensajero?: boolean } | null | undefined) => {
+  if (typeof destinatario?.esMensajero === 'boolean') return destinatario.esMensajero
+  if (!destinatario?.id) return false
+  const tramitador = await Tramitador.findByPk(destinatario.id, { attributes: ['id', 'esMensajero'] })
+  return Boolean(tramitador?.esMensajero)
+}
+
 const enviarWhatsapp = async (
   constructor: ConstructorWhatsapp,
   { solicitud, tipo, destinatario, data }: Required<NotificacionParams>,
   texto: string
 ) => {
+  // A los mensajeros no se les envía WhatsApp (decisión del usuario, 2026-11-04): ven sus trámites
+  // en la ruta de la app. Si quien llama no trae el dato, se consulta
+  if (await esMensajero(destinatario)) {
+    console.log(`ℹ️ ${tipo}: ${destinatario?.nombreTramitador ?? 'el tramitador'} es mensajero, no se le envía WhatsApp (solicitud ${solicitud.id})`)
+    return
+  }
+
   const telefono = normalizarWhatsapp(destinatario?.numeroTramitador)
 
   if (!telefono) {

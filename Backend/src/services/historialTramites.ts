@@ -76,7 +76,20 @@ const CAMPOS_DATOS: Record<string, Campo> = {
   fechaEntregaResultado: { etiqueta: 'Entrega del resultado', formato: 'fecha' }
 }
 
-const CAMPOS_TRAMITADOR: Record<string, Campo> = { tramitadorId: { etiqueta: 'Tramitador', referencia: REF.tramitador } }
+// Envío de documentos del que depende (services/dependenciaEnvio.ts). Cuándo quedó liberado lo
+// anota ese servicio aparte (sección CONDICIONES), con el envío y el pago
+const envioRelacionado: Referencia = {
+  buscar: async id => {
+    const envio = await SolicitudTramites.findByPk(id, { attributes: ['id'], include: [{ model: Tramite, attributes: ['nombreTramite'] }] })
+    return envio ? `#${envio.id}${envio.tramite?.nombreTramite ? ` · ${envio.tramite.nombreTramite}` : ''}` : null
+  }
+}
+const CAMPOS_DEPENDENCIA: Record<string, Campo> = {
+  dependeEnvio: { etiqueta: 'Depende de envío de documentos', formato: 'siNo' },
+  envioTramiteId: { etiqueta: 'Envío relacionado', referencia: envioRelacionado }
+}
+
+const CAMPOS_TRAMITADOR: Record<string, Campo> ={ tramitadorId: { etiqueta: 'Tramitador', referencia: REF.tramitador } }
 const CAMPOS_ANALISTA: Record<string, Campo> = { analistaAsignado: { etiqueta: 'Analista', referencia: REF.usuario } }
 
 const CAMPOS_PROGRAMACION: Record<string, Campo> = {
@@ -273,7 +286,7 @@ export const activarHistorialTramites = () => {
   // tramitador, analista y demás datos quedan como entradas separadas.
   const modificarTramite = (instancia: Model, o: Opciones) => {
     const solicitudTramiteId = Number(instancia.get('id'))
-    for (const [seccion, campos] of [['TRAMITADOR', CAMPOS_TRAMITADOR], ['ANALISTA', CAMPOS_ANALISTA], ['DATOS', CAMPOS_DATOS]] as const) {
+    for (const [seccion, campos] of [['TRAMITADOR', CAMPOS_TRAMITADOR], ['ANALISTA', CAMPOS_ANALISTA], ['DATOS', CAMPOS_DATOS], ['DEPENDENCIA', CAMPOS_DEPENDENCIA]] as const) {
       programar({ solicitudTramiteId, seccion, accion: 'MODIFICADO', registroId: null, cambios: cambiosDe(instancia, campos, 'MODIFICADO') }, o.transaction)
     }
   }
@@ -317,7 +330,12 @@ const TITULOS: Record<string, Record<string, string>> = {
   DATOS: { MODIFICADO: 'Editó el trámite' },
   ESTADO: { MODIFICADO: 'Corrigió un estado', ELIMINADO: 'Eliminó un estado' },
   SUBESTADO: { MODIFICADO: 'Corrigió un subestado', ELIMINADO: 'Eliminó un subestado' },
-  TRAZABILIDAD: { MODIFICADO: 'Editó una trazabilidad', ELIMINADO: 'Eliminó una trazabilidad' }
+  TRAZABILIDAD: { MODIFICADO: 'Editó una trazabilidad', ELIMINADO: 'Eliminó una trazabilidad' },
+  // Dependencia de un envío de documentos (services/dependenciaEnvio.ts)
+  DEPENDENCIA: { CREADO: 'Marcó que depende de un envío de documentos', MODIFICADO: 'Cambió el envío de documentos del que depende' },
+  ENVIO: { MODIFICADO: 'Movimiento del envío de documentos' },
+  PAGO: { MODIFICADO: 'Movimiento del pago' },
+  CONDICIONES: { MODIFICADO: 'Envío finalizado y pago completo: ya se puede programar' }
 }
 
 const tituloAsignacion = (quien: string, cambio?: CambioCampo) =>

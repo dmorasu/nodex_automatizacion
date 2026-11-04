@@ -18,7 +18,9 @@ export default async function CrearLogistica(
 
   // Normalización de datos
   const numeroGuia = (formData.get("numeroGuia") as string) || null
-  const valorEnvio = formData.get("valorEnvio") ? Number(formData.get("valorEnvio")) : null
+  // Contra entrega: no se registra valor del envío
+  const pagoContraEntrega = formData.get("pagoContraEntrega") === "si"
+  const valorEnvio = !pagoContraEntrega && formData.get("valorEnvio") ? Number(formData.get("valorEnvio")) : null
   const destinatario = (formData.get("destinatario") as string) || null
   const transportadoraId = formData.get("transportadoraId")
     ? Number(formData.get("transportadoraId"))
@@ -29,6 +31,7 @@ export default async function CrearLogistica(
   const logisticaData = {
     solicitudTramitesId,
     numeroGuia,
+    pagoContraEntrega,
     valorEnvio,
     destinatario,
     transportadoraId,

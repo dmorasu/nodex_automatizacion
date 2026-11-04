@@ -1,6 +1,7 @@
 import { db } from '../config/db'
 import Logistica from '../models/logistica'
 import { excelDateToString } from '../utils/excelDate'
+import { esSi, valorAGuardar } from './reglasLogistica'
 
 export const procesarLogistica = async (data: any[]) => {
 
@@ -27,12 +28,17 @@ console.log("Existe:", !!existe);
         const fechaProg = excelDateToString(row.fechaProgramacionLogistica)
 const fechaEntrega = excelDateToString(row.fechaEntregaTransportadora)
 
+        // Contra entrega: sin valor del envío (services/reglasLogistica.ts)
+        const pagoContraEntrega = esSi(row.pagoContraEntrega)
+        const valorEnvio = valorAGuardar(pagoContraEntrega, row.valorEnvio)
+
         if (existe) {
           console.log("ACTUALIZANDO", existe.id);
           await existe.update({
             numeroGuia: row.numeroGuia || null,
             destinatario: row.destinatario || null,
-            valorEnvio: row.valorEnvio || null,
+            pagoContraEntrega,
+            valorEnvio,
             transportadoraId: row.transportadoraId || null,
             fechaProgramacionLogistica: fechaProg,
             fechaEntregaTransportadora: fechaEntrega
@@ -47,7 +53,8 @@ const fechaEntrega = excelDateToString(row.fechaEntregaTransportadora)
             solicitudTramiteId: row.solicitudTramiteId,
             numeroGuia: row.numeroGuia || null,
             destinatario: row.destinatario || null,
-            valorEnvio: row.valorEnvio || null,
+            pagoContraEntrega,
+            valorEnvio,
             transportadoraId: row.transportadoraId || null,
             fechaProgramacionLogistica: fechaProg,
             fechaEntregaTransportadora: fechaEntrega

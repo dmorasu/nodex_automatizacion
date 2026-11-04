@@ -3,7 +3,8 @@
 import { DialogTitle } from "@headlessui/react";
 import { useParams } from "next/navigation";
 import AvisarErrores from "../ui/AvisarErrores";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
+import clsx from "clsx";
 import { toast } from "react-toastify";
 
 import Link from "next/link";
@@ -25,6 +26,9 @@ export default function AddLogisticaForm({
 }) {
 
   const { id } = useParams<{ id: string }>();
+
+  // Con pago contra entrega no se registra valor del envío
+  const [contraEntrega, setContraEntrega] = useState(logistica?.pagoContraEntrega ?? false);
 
 
   // =====================================================
@@ -212,9 +216,40 @@ export default function AddLogisticaForm({
 
 
         {/* =============================================== */}
-        {/* VALOR DEL ENVÍO                                 */}
+        {/* PAGO CONTRA ENTREGA                             */}
         {/* =============================================== */}
 
+        <div>
+          <span className="block mb-1.5 text-xs font-medium text-slate-600">Pago contra entrega</span>
+          <input type="hidden" name="pagoContraEntrega" value={contraEntrega ? "si" : "no"} />
+          <div role="radiogroup" aria-label="Pago contra entrega" className="grid grid-cols-2 gap-2">
+            {([[true, "Sí"], [false, "No"]] as const).map(([valor, texto]) => (
+              <button
+                key={texto}
+                type="button"
+                role="radio"
+                aria-checked={contraEntrega === valor}
+                onClick={() => setContraEntrega(valor)}
+                className={clsx(
+                  "h-10 px-3 text-xs font-medium border rounded-md transition focus:outline-none focus:ring-2 focus:ring-sky-100",
+                  contraEntrega === valor
+                    ? "bg-sky-50 text-sky-700 border-sky-400"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-sky-300"
+                )}
+              >
+                {texto}
+              </button>
+            ))}
+          </div>
+        </div>
+
+
+
+        {/* =============================================== */}
+        {/* VALOR DEL ENVÍO (solo sin pago contra entrega)  */}
+        {/* =============================================== */}
+
+        {!contraEntrega && (
         <div>
 
           <label
@@ -227,7 +262,7 @@ export default function AddLogisticaForm({
               text-slate-600
             "
           >
-            Valor del Envío
+            Valor del Envío <span className="text-red-400">*</span>
           </label>
 
 
@@ -254,12 +289,15 @@ export default function AddLogisticaForm({
               focus:ring-2
               focus:ring-sky-100
             "
+            required
+            min={1}
             defaultValue={
               logistica?.valorEnvio ?? ""
             }
           />
 
         </div>
+        )}
 
 
 
@@ -360,7 +398,7 @@ export default function AddLogisticaForm({
               text-slate-600
             "
           >
-            Fecha Probable de Entrega
+            Fecha Probable de Entrega <span className="text-red-400">*</span>
           </label>
 
 
@@ -368,6 +406,7 @@ export default function AddLogisticaForm({
             id="fechaProgramacionLogistica"
             type="date"
             name="fechaProgramacionLogistica"
+            required
             className="
               w-full
               h-10
@@ -410,7 +449,7 @@ export default function AddLogisticaForm({
               text-slate-600
             "
           >
-            Fecha de Entrega Transportadora
+            Fecha de Entrega por Transportadora
           </label>
 
 

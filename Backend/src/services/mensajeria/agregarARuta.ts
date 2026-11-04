@@ -7,6 +7,7 @@ import { notificarProgramacion } from '../notificacionesProgramacion'
 import { ErrorUbicacion } from './ubicacion'
 import { verificarCitaDelTramite } from './agenda'
 import { ErrorGastos } from '../gastos/errores'
+import { estadoDependencia } from '../dependenciaEnvio'
 
 // =====================================
 // AGREGAR TRÁMITES A LA RUTA DE UN MENSAJERO (desde Rutas)
@@ -69,17 +70,22 @@ export const revisarTramitesParaRuta = async (fecha: string, tramitadorId: numbe
   `, { type: QueryTypes.SELECT, replacements: { ids: lista } })
 
   const porId = new Map(filas.map(f => [Number(f.id), f]))
-  return lista.map(id => {
+  const revisados: TramiteParaRuta[] = []
+  for (const id of lista) {
     const f = porId.get(id)
-    if (!f) return { id, cliente: null, direccion: null, municipio: null, tramitador: null, fechaDiligencia: null, problema: 'No existe' }
+    if (!f) { revisados.push({ id, cliente: null, direccion: null, municipio: null, tramitador: null, fechaDiligencia: null, problema: 'No existe' }); continue }
+    // Sin fecha y dependiente de un envío de documentos aún sin finalizar o sin pagar: no se programa
+    const bloqueo = !f.fechaDiligencia ? await estadoDependencia(id) : null
     // La fecha la decide el analista en la ficha de programación: no se cambia desde la ruta
     // (decisión del usuario, 2026-11-03). Sin fecha todavía, la ruta se la pone
     const problema = f.estado && ESTADOS_CERRADOS.includes(f.estado) ? `Está ${f.estado.toLowerCase()}`
       : Number(f.tramitadorId) === tramitadorId && f.fechaDiligencia === fecha ? 'Ya está en esta ruta'
         : f.fechaDiligencia && f.fechaDiligencia !== fecha ? `Su programación es para el ${fechaCorta(f.fechaDiligencia)}: cámbiela en la ficha del trámite`
-          : null
-    return { id, cliente: f.cliente, direccion: f.direccion, municipio: f.municipio, tramitador: f.tramitador, fechaDiligencia: f.fechaDiligencia, problema }
-  })
+          : bloqueo && !bloqueo.puedeProgramar ? `Depende del envío de documentos: falta ${bloqueo.faltantes.join(' y ')}`
+            : null
+    revisados.push({ id, cliente: f.cliente, direccion: f.direccion, municipio: f.municipio, tramitador: f.tramitador, fechaDiligencia: f.fechaDiligencia, problema })
+  }
+  return revisados
 }
 
 // Asigna el mensajero y la fecha de diligencia a cada trámite que se pueda; los demás se

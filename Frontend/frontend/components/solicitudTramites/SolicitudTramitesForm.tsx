@@ -25,6 +25,7 @@ import { Paperclip, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { TIPOS_DOCUMENTO, validarDocumentos } from "@/src/lib/documentosTramite";
 import CampoDireccion, { type MunicipioSugerido } from "../direcciones/CampoDireccion";
+import DependenciaEnvio from "./DependenciaEnvio";
 
 
 
@@ -60,6 +61,9 @@ export default function SolicitudTramitesForm({
 
   const [municipioSugerido, setMunicipioSugerido] =
     useState<MunicipioSugerido | null>(null);
+
+  // Lo que se escribe en placa / matrícula: con él se buscan los envíos de documentos
+  const [identificador, setIdentificador] = useState("");
 
   return (
 
@@ -487,7 +491,7 @@ export default function SolicitudTramitesForm({
               type="button"
               role="radio"
               aria-checked={tipoDocumento === valor}
-              onClick={() => setTipoDocumento(valor)}
+              onClick={() => { setTipoDocumento(valor); setIdentificador(""); }}
               className={clsx(
                 "h-10 px-3 text-xs font-medium border rounded-md transition focus:outline-none focus:ring-2 focus:ring-sky-100",
                 tipoDocumento === valor
@@ -536,6 +540,7 @@ export default function SolicitudTramitesForm({
               defaultValue={
                 solicitud?.placa ?? ""
               }
+              onChange={e => setIdentificador(e.target.value)}
               className="
                 w-full
                 h-10
@@ -595,6 +600,7 @@ export default function SolicitudTramitesForm({
               defaultValue={
                 solicitud?.matriculaInmobiliaria ?? ""
               }
+              onChange={e => setIdentificador(e.target.value)}
               className="
                 w-full
                 h-10
@@ -621,6 +627,18 @@ export default function SolicitudTramitesForm({
         </>)}
 
       </div>
+
+      {/* ================================================= */}
+      {/* ¿DEPENDE DE ENVÍO DE DOCUMENTOS?                  */}
+      {/* ================================================= */}
+
+      <DependenciaEnvio
+        placa={solicitud?.id ? solicitud.placa : tipoDocumento === "placa" ? identificador : null}
+        matricula={solicitud?.id ? solicitud.matriculaInmobiliaria : tipoDocumento === "matricula" ? identificador : null}
+        excluirId={solicitud?.id}
+        dependeInicial={solicitud?.dependeEnvio ?? false}
+        envioInicial={solicitud?.envioTramiteId ?? null}
+      />
 
 {/* ================================================= */}
 {/* DOCUMENTOS (solo al crear; luego van en la pestaña Documentos) */}

@@ -91,7 +91,9 @@ type Fila = {
   gastoSinPagar: boolean           // algún gasto (no anulado) todavía sin pagar
   envioFinalizadoEl: string | null // YYYY-MM-DD (Bogotá): fin del envío de documentos de la placa/matrícula
   envioSinFinalizar: boolean       // hay un envío de documentos de la placa/matrícula abierto
-  ultimaGestion: string            // YYYY-MM-DD HH:MI (Bogotá)
+  dependeEnvio: boolean            // marcado "depende de envío de documentos" (services/dependenciaEnvio.ts)
+  condicionesCumplidasEl: string | null // YYYY-MM-DD (Bogotá): envío finalizado y gastos pagados
+  ultimaGestion: string           // YYYY-MM-DD HH:MI (Bogotá)
   ultimaGestionTipo: string        // Qué fue: Cambio de estado, Trazabilidad, Programación...
   reportadoRealizado: boolean
   reportadoEl: string | null       // YYYY-MM-DD (Bogotá): reporte "realizado" del tramitador (no devuelto)
@@ -125,6 +127,46 @@ const condicionesFiltro = (filtros: FiltrosTablero, replacements: Record<string,
   // Sin estado = Sin Iniciar (id 1), como lo muestra el tablero
   if (filtros.estadoId) { condiciones.push('COALESCE(s."estadoActualTramite", 1) = :estadoId'); replacements.estadoId = filtros.estadoId }
   return condiciones
+}
+
+// Seguimiento logístico (2026-11-04): envíos registrados (con guía o transportadora) sin la fecha de
+// entrega de la transportadora, también de trámites ya finalizados (la gestión se puede cerrar antes de
+// que la transportadora confirme). Salen al registrar la fecha de entrega. Sin desistidos.
+type FilaSeguimiento = {
+  id: number, cliente: string | null, tipo: string | null, placa: string | null, estado: string,
+  analista: string | null, tramitador: string | null, municipio: string | null,
+  fechaProgramada: string | null, fechaEntrega: string | null,
+  guia: string | null, transportadora: string | null, fechaProbableEnvio: string | null
+}
+const consultarSeguimientoLogistico = async (filtros: FiltrosTablero) => {
+  const replacements: Record<string, unknown> = {}
+  const condiciones = [
+    'l."fechaEntregaTransportadora" IS NULL',
+    `(NULLIF(TRIM(l."numeroGuia"), '') IS NOT NULL OR l."transportadoraId" IS NOT NULL)`,
+    `COALESCE(e."nombreEstado", '') <> 'Desistido'`,
+    ...condicionesFiltro(filtros, replacements)
+  ]
+  return db.query<FilaSeguimiento>(`
+    SELECT s.id, c."nombreCliente" AS cliente, tr."nombreTramite" AS tipo,
+      COALESCE(s.placa, s."matriculaInmobiliaria") AS placa, COALESCE(e."nombreEstado", 'Sin Iniciar') AS estado,
+      u."nombreUsuario" AS analista, TRIM(t."nombreTramitador") AS tramitador, m."nombreMunicipio" AS municipio,
+      to_char(p."fechaProbableEntrega" AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS "fechaProgramada",
+      to_char(s."fechaEntregaResultado" AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS "fechaEntrega",
+      NULLIF(TRIM(l."numeroGuia"), '') AS guia, TRIM(tp."nombreTransportadora") AS transportadora,
+      l."fechaProgramacionLogistica"::text AS "fechaProbableEnvio"
+    FROM "Logistica" l
+    JOIN "SolicitudTramites" s ON s.id = l."solicitudTramiteId"
+    LEFT JOIN "Estados" e ON e.id = s."estadoActualTramite"
+    LEFT JOIN "Transportadora" tp ON tp.id = l."transportadoraId"
+    LEFT JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
+    LEFT JOIN "Clientes" c ON c.id = s."clienteId"
+    LEFT JOIN "Tramites" tr ON tr.id = s."tramiteId"
+    LEFT JOIN "Usuarios" u ON u.id = s."analistaAsignado"
+    LEFT JOIN "Tramitador" t ON t.id = s."tramitadorId"
+    LEFT JOIN "Municipios" m ON m.id = s."municipiosId"
+    WHERE ${condiciones.join(' AND ')}
+    ORDER BY l."fechaProgramacionLogistica" ASC NULLS LAST, s.id
+  `, { type: QueryTypes.SELECT, replacements })
 }
 
 // Valor por operación (2026-10-21): acumulado de todos los trámites, sin el período del tablero,
@@ -206,7 +248,10 @@ const consultarFilas = async (filtros: FiltrosTablero, inicio: string) => {
         -- Para relacionarlo con los envíos de documentos de la misma placa o matrícula
         NULLIF(UPPER(TRIM(s.placa)), '') AS "placaClave",
         NULLIF(UPPER(TRIM(s."matriculaInmobiliaria")), '') AS "matriculaClave",
-        COALESCE(tr."nombreTramite" ~* :tiposEnvio, false) AS "esEnvio"
+        COALESCE(tr."nombreTramite" ~* :tiposEnvio, false) AS "esEnvio",
+        -- Depende de un envío relacionado: sus tiempos corren desde que se cumplieron envío y pago
+        s."dependeEnvio",
+        to_char(s."condicionesEnvioCumplidasEn" AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS "condicionesCumplidasEl"
       FROM "SolicitudTramites" s
       LEFT JOIN "Estados" e ON e.id = s."estadoActualTramite"
       LEFT JOIN "Programacion" p ON p."solicitudTramiteId" = s.id
@@ -370,7 +415,7 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   const inicioTendencia = sumarDias(lunesDe(hoy), -7 * (SEMANAS_TENDENCIA - 1))
   const inicio = filtros.desde < inicioTendencia ? filtros.desde : inicioTendencia
 
-  const [filas, causas, reintegros, valorPorOperacion] = await Promise.all([
+  const [filas, causas, reintegros, valorPorOperacion, seguimiento] = await Promise.all([
     consultarFilas(filtros, inicio),
     consultarCausasNovedad(filtros),
     // Reintegros pendientes de Nodex Gastos (por tramitador, sin importar el período)
@@ -378,7 +423,8 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
       console.error('Tablero: no se pudieron leer los reintegros de Gastos', error)
       return null
     }),
-    consultarValorPorOperacion(filtros)
+    consultarValorPorOperacion(filtros),
+    consultarSeguimientoLogistico(filtros)
   ])
 
   // Lista de alerta: total y los primeros (en la exportación a Excel, todos)
@@ -391,13 +437,18 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   // Los desistidos no cuentan como finalizados
   const finalizadoEnPeriodo = (f: Fila) => f.estado === 'Finalizado' && enPeriodo(f.finalizado)
 
+  // Trámites que dependen de un envío de documentos (2026-11-04): sus tiempos no corren hasta que el
+  // envío esté finalizado y los gastos pagados; desde ahí cuentan como si se hubieran creado ese día
+  const esperandoEnvio = (f: Fila) => f.dependeEnvio && !f.condicionesCumplidasEl
+  const inicioTiempos = (f: Fila) => (f.dependeEnvio ? f.condicionesCumplidasEl : f.creado)
+
   // Métricas de un grupo de trámites (todos, un analista, un tramitador, un cliente…)
   const desempeno = (grupo: Fila[]) => {
     const abiertosG = grupo.filter(f => !f.cerrado)
     const finalizadosG = grupo.filter(finalizadoEnPeriodo)
     const conFecha = finalizadosG.filter(f => f.fechaProgramada)
     const aTiempo = conFecha.filter(f => diasEntre(f.fechaProgramada!, f.finalizado!) <= DIAS_GRACIA)
-    const ciclos = finalizadosG.map(f => diasEntre(f.creado, f.finalizado!)).filter(d => d >= 0)
+    const ciclos = finalizadosG.flatMap(f => { const inicio = inicioTiempos(f); return inicio ? [diasEntre(inicio, f.finalizado!)] : [] }).filter(d => d >= 0)
     return {
       abiertos: abiertosG.length,
       vencidos: abiertosG.filter(esVencido).length,
@@ -437,12 +488,21 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
       .sort((a, b) => b.diasEnNovedad - a.diasEnNovedad)),
     realizadoSinFinalizar: alerta(abiertos.filter(f => f.reportadoRealizado).map(f => resumenTramite(f))),
     sinTramitador: alerta(abiertos.filter(f => !f.tramitadorId).map(f => resumenTramite(f))),
-    sinProgramacion: alerta(abiertos.filter(f => f.estado === SIN_INICIAR && !f.fechaProgramada).map(f => resumenTramite(f))),
+    // Los que esperan el envío de documentos o el pago no se pueden programar todavía: no son alerta
+    sinProgramacion: alerta(abiertos.filter(f => f.estado === SIN_INICIAR && !f.fechaProgramada && !esperandoEnvio(f)).map(f => resumenTramite(f))),
     sinMovimiento: alerta(abiertos
-      .filter(f => f.estado !== EN_NOVEDAD && sinMovimiento(f) > DIAS_GRACIA)
+      .filter(f => f.estado !== EN_NOVEDAD && !esperandoEnvio(f) && sinMovimiento(f) > DIAS_GRACIA)
       .map(f => resumenTramite(f, { diasSinMovimiento: sinMovimiento(f) }))
       .sort((a, b) => b.diasSinMovimiento - a.diasSinMovimiento)),
-    sinAnalista: alerta(abiertos.filter(f => !f.analistaId).map(f => resumenTramite(f)))
+    sinAnalista: alerta(abiertos.filter(f => !f.analistaId).map(f => resumenTramite(f))),
+    // Envíos sin la fecha de entrega de la transportadora (también de trámites finalizados)
+    seguimientoLogistico: alerta(seguimiento.map(s => ({
+      ...s,
+      ultimaGestion: null,
+      ultimaGestionTipo: null,
+      // Días de atraso frente a la fecha probable de entrega del envío (0 si aún no llega)
+      diasSinEntrega: s.fechaProbableEnvio ? Math.max(diasEntre(s.fechaProbableEnvio, hoy), 0) : 0
+    })))
   }
 
   // ── Por analista ──
@@ -451,9 +511,16 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
     let evaluados = 0, enPlazo = 0
     for (const f of grupo) {
       if (!enPeriodo(f.creado)) continue
-      // Gasto sin pagar o envío sin finalizar: el plazo todavía no empieza
-      if (f.gastoSinPagar || f.envioSinFinalizar) continue
-      const inicioPlazo = [f.creado, f.gastoPagadoEl, f.envioFinalizadoEl].filter((d): d is string => Boolean(d)).sort().at(-1)!
+      // Con envío relacionado manda ese: el plazo empieza cuando se cumplieron envío y pago
+      let inicioPlazo: string
+      if (f.dependeEnvio) {
+        if (!f.condicionesCumplidasEl) continue
+        inicioPlazo = [f.creado, f.condicionesCumplidasEl].sort().at(-1)!
+      } else {
+        // Gasto sin pagar o envío sin finalizar: el plazo todavía no empieza
+        if (f.gastoSinPagar || f.envioSinFinalizar) continue
+        inicioPlazo = [f.creado, f.gastoPagadoEl, f.envioFinalizadoEl].filter((d): d is string => Boolean(d)).sort().at(-1)!
+      }
       const plazo = sumarDiasHabiles(inicioPlazo, 1)
       if (f.programadoEl) {
         evaluados++
@@ -536,7 +603,8 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
     }
   })
 
-  // ── Antigüedad de los abiertos (días desde la creación) ──
+  // ── Antigüedad de los abiertos (días desde la creación; los que dependen de un envío, desde que se
+  // cumplieron envío y pago, y en 0 mientras esperan) ──
   const RANGOS = [
     { clave: '0-7', hasta: 7 },
     { clave: '8-15', hasta: 15 },
@@ -547,7 +615,8 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   const antiguedad = RANGOS.map((rango, i) => {
     const desdeRango = RANGOS[i - 1]?.hasta ?? -1
     const enRango = abiertos.filter(f => {
-      const edad = diasEntre(f.creado, hoy)
+      const inicio = inicioTiempos(f)
+      const edad = inicio ? diasEntre(inicio, hoy) : 0
       return edad > desdeRango && edad <= rango.hasta
     })
     return {

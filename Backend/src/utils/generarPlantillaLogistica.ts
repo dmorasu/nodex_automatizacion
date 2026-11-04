@@ -12,6 +12,8 @@ export const generarPlantillaLogistica = async () => {
     solicitudTramiteId: '',
     numeroGuia: '',
     destinatario: '',
+    // Sí / No. Con Sí el valor del envío va vacío; con No es obligatorio
+    pagoContraEntrega: 'No',
     valorEnvio: '',
     fechaProgramacionLogistica: '',
     fechaEntregaTransportadora: '',

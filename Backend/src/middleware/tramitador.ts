@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { param, validationResult, body } from "express-validator";
 import Tramitador from "../models/tramitador";
 import { regionesDeMunicipios } from "../services/regionesMunicipios";
+import { normalizarWhatsapp, whatsappValido } from "../utils/numeroWhatsapp";
 
 export const validateTramitadorExits = async (
   req: Request,
@@ -57,8 +58,8 @@ export const validateTramitadorInput = [
     .isEmail().withMessage("Correo no válido")
     .isLength({ max: 150 }),
   body("numeroTramitador")
-    .customSanitizer(valor => String(valor ?? "").replace(/[\s-]/g, ""))
-    .matches(/^\d{10,15}$/).withMessage("El WhatsApp debe tener solo números con el indicativo del país (ej: 573001234567)"),
+    .customSanitizer(normalizarWhatsapp)
+    .custom(whatsappValido).withMessage("El WhatsApp debe ser un celular: 57 y los 10 dígitos (ej: 573001234567)"),
   // Con municipio de residencia la región sale de él (TramitadorController.datosConResidencia)
   body("region")
     .if((_valor: unknown, { req }: { req: { body?: { municipioResidenciaId?: unknown } } }) => !req.body?.municipioResidenciaId)

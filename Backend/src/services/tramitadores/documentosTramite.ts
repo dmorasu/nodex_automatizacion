@@ -40,3 +40,28 @@ export const registrarDocumentosTramite = async (
     throw error
   }
 }
+
+// Nombre con que la foto de la visita queda en los documentos del trámite (con el prefijo
+// del tipo): "Soporte - Foto de la visita 04-11-2026.jpg". El script que pasa las fotos
+// anteriores lo usa para no copiarlas dos veces
+export const nombreFotoVisita = (fecha: string, tipoArchivo: string | null) => {
+  const [anio, mes, dia] = fecha.split('-')
+  const extension = tipoArchivo === 'image/png' ? 'png' : 'jpg'
+  return `Foto de la visita ${dia}-${mes}-${anio}.${extension}`
+}
+
+// La foto que el mensajero toma al confirmar la visita en su ruta también va a los documentos
+// del trámite (pedido del usuario, 2026-11-04: solo se veía en la tarjeta de la ruta de ese día).
+// Es una copia en la carpeta del trámite: si alguien borra el documento, la foto de la parada sigue
+export const registrarFotoVisita = (
+  solicitudTramiteId: number,
+  tramitadorId: number,
+  fecha: string,
+  contenido: Buffer,
+  tipoArchivo: string | null
+) => registrarDocumentosTramite(solicitudTramiteId, tramitadorId, 'SOPORTE', [{
+  originalname: nombreFotoVisita(fecha, tipoArchivo),
+  buffer: contenido,
+  mimetype: tipoArchivo ?? 'image/jpeg',
+  size: contenido.length
+} as Express.Multer.File])

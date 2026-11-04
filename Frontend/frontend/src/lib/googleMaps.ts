@@ -9,6 +9,18 @@ export const mapIdGoogle = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_M
 
 let carga: Promise<typeof google.maps> | null = null
 
+// Google llama a window.gm_authFailure si rechaza la clave (ej: RefererNotAllowedMapError cuando el
+// dominio no está autorizado en la clave). El script carga igual, así que se avisa con un evento
+export const EVENTO_CLAVE_RECHAZADA = "nodex-google-clave-rechazada"
+let claveRechazada = false
+export const googleRechazoLaClave = () => claveRechazada
+if (typeof window !== "undefined") {
+  ;(window as unknown as { gm_authFailure?: () => void }).gm_authFailure = () => {
+    claveRechazada = true
+    window.dispatchEvent(new Event(EVENTO_CLAVE_RECHAZADA))
+  }
+}
+
 export const cargarGoogleMaps = () => {
   if (typeof window === "undefined") return Promise.reject(new Error("Solo en el navegador"))
   if (window.google?.maps?.Map) return Promise.resolve(window.google.maps)

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
-import { cargarGoogleMaps, claveMapaGoogle, mapIdGoogle } from "@/src/lib/googleMaps"
+import { EVENTO_CLAVE_RECHAZADA, cargarGoogleMaps, claveMapaGoogle, googleRechazoLaClave, mapIdGoogle } from "@/src/lib/googleMaps"
 
 export type Categoria = "tram" | "mens" | "ambos" | "none"
 export type PuntoCobertura = { id: number, lat: number, lng: number, categoria: Categoria, personas: number, titulo: string }
@@ -45,6 +45,14 @@ export default function MapaCobertura({ puntos, encuadre, elegido, casa, onMunic
   const [error, setError] = useState<string | null>(claveMapaGoogle ? null : "Falta la clave de Google Maps (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).")
 
   useEffect(() => { alElegir.current = onMunicipio }, [onMunicipio])
+
+  // Google rechazó la clave (dominio no autorizado): se dice en vez de dejar el mapa en gris
+  const [rechazada, setRechazada] = useState(googleRechazoLaClave)
+  useEffect(() => {
+    const avisar = () => setRechazada(true)
+    window.addEventListener(EVENTO_CLAVE_RECHAZADA, avisar)
+    return () => window.removeEventListener(EVENTO_CLAVE_RECHAZADA, avisar)
+  }, [])
 
   useEffect(() => {
     if (!claveMapaGoogle) return
@@ -109,7 +117,14 @@ export default function MapaCobertura({ puntos, encuadre, elegido, casa, onMunic
   return (
     <div className="relative h-[520px] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
       <div ref={contenedor} className="h-full w-full" />
-      {!listo && (
+      {rechazada && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 p-6 text-center text-xs text-slate-600">
+          <p>Google Maps no acepta este sitio con la clave configurada.<br />
+            Hay que autorizar <b>{typeof window !== "undefined" ? window.location.origin : ""}</b> en la clave del navegador (Google Cloud → Credenciales).<br />
+            El resto de la cobertura (panel y rankings) funciona igual.</p>
+        </div>
+      )}
+      {!listo && !rechazada && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-xs text-slate-500">
           {error ?? <span className="inline-flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> Cargando el mapa…</span>}
         </div>

@@ -285,6 +285,11 @@ const enviarEmail = async (
     cc.push(correoNovedadesVehiculos())
   }
 
+  // Finalizado de un trámite con placa (vehículo, de cualquier operación): copia a novedades vehículos
+  if (tipo === 'FINALIZADO' && String(solicitud.placa ?? '').trim()) {
+    cc.push(correoNovedadesVehiculos())
+  }
+
   const notificacionId = await registrarNotificacion(
     solicitud.id,
     tipo,

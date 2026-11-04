@@ -12,6 +12,8 @@ import Operaciones from '../models/operaciones'
 import TiposRechazo from '../models/tiposRechazos'
 import Tramite from '../models/tramite'
 import Clientes from '../models/clientes'
+import Logistica from '../models/logistica'
+import Transportadora from '../models/trasnportadora'
 import { crearNotificacion } from './notificacionesServices'
 import { fechaColombia } from '../utils/fechaColombia'
 import { notificarFacturasParaLegalizacion } from './gastos/notificacionesGastos'
@@ -177,6 +179,12 @@ export const cambiarEstadoTramite = async (cambio: CambioEstado) => {
       }
 
       if (esFinalizado) {
+        // Guía del envío del resultado (Logística del trámite), si ya se registró
+        const logistica = await Logistica.findOne({
+          where: { solicitudTramiteId },
+          attributes: ['id', 'numeroGuia', 'transportadoraId'],
+          include: [{ model: Transportadora, attributes: ['nombreTransportadora'] }]
+        })
         await crearNotificacion({
           solicitud,
           tipo: 'FINALIZADO',
@@ -189,7 +197,9 @@ export const cambiarEstadoTramite = async (cambio: CambioEstado) => {
             operacion: solicitud.operaciones?.nombreOperacion || 'N/A',
             tipo: solicitud.tramite?.nombreTramite || 'N/A',
             programador: solicitud.municipios?.responsable || 'N/A',
-            resultado: ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observaciones'
+            resultado: ultimaTrazabilidad?.observacionTrazabilidad || 'Sin observaciones',
+            guia: logistica?.numeroGuia?.trim() || null,
+            transportadora: logistica?.transportadora?.nombreTransportadora?.trim() || null
           }
         })
       }

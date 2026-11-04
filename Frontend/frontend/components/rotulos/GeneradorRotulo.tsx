@@ -7,10 +7,10 @@ import { toast } from "react-toastify"
 import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions, Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { AlertTriangle, ArrowRight, CheckCircle2, FileDown, Info, Loader2, MapPin, Plus, Printer, RotateCcw, X } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
-import BuscadorMunicipioServidor, { type MunicipioElegido } from "@/components/tramitador/BuscadorMunicipioServidor"
+import CampoDireccion, { type MunicipioSugerido } from "@/components/direcciones/CampoDireccion"
 import {
   DESTINOS, ORIGENES, esCorreoGpa, flujoPermitido, formatoTelefono, normalizar, observacionesAutomaticas, reglaPago, tamanoAutomatico,
-  type Destino, type OpcionesRotulo, type Origen, type RotuloCreado, type TramiteParaRotulo, type TramitadorRotulo, type VistaPrevia
+  type Destino, type MunicipioRotulo, type OpcionesRotulo, type Origen, type RotuloCreado, type TramiteParaRotulo, type TramitadorRotulo, type VistaPrevia
 } from "@/src/rotulos"
 
 const claseInput = "w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-300 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-50 disabled:text-slate-500"
@@ -44,7 +44,7 @@ type Estado = {
   destTelefono: string
   destCorreo: string
   destDireccion: string
-  destMunicipio: MunicipioElegido | null
+  destMunicipio: MunicipioRotulo | null
   observaciones: string | null
   tamano: "carta" | "peq" | null
 }
@@ -140,6 +140,36 @@ function SiNo({ valor, onCambio, deshabilitado, etiquetas = ["No", "Sí"] }: { v
   )
 }
 
+// Municipio de la lista precargada (todos los municipios): se abre al entrar y filtra sin tildes
+function SelectorMunicipio({ municipios, valor, onElegir }: { municipios: MunicipioRotulo[], valor: MunicipioRotulo | null, onElegir: (m: MunicipioRotulo | null) => void }) {
+  const [texto, setTexto] = useState("")
+  const q = normalizar(texto)
+  const lista = useMemo(() => {
+    if (!q) return municipios.slice(0, 80)
+    const empieza: MunicipioRotulo[] = [], contiene: MunicipioRotulo[] = []
+    for (const m of municipios) {
+      const n = normalizar(m.nombre)
+      if (n.startsWith(q)) empieza.push(m)
+      else if (`${n} ${normalizar(m.departamento)}`.includes(q)) contiene.push(m)
+    }
+    return [...empieza, ...contiene].slice(0, 80)
+  }, [municipios, q])
+  return (
+    <Combobox immediate value={valor} onChange={(m: MunicipioRotulo | null) => { onElegir(m); setTexto("") }} onClose={() => setTexto("")} by="id">
+      <ComboboxInput className={claseInput} displayValue={(m: MunicipioRotulo | null) => (m ? `${m.nombre}, ${m.departamento}` : "")}
+        onChange={e => setTexto(e.target.value)} placeholder={`Elija entre ${municipios.length.toLocaleString("es-CO")} municipios`} />
+      <ComboboxOptions anchor="bottom start" className="z-[70] max-h-64 w-[var(--input-width)] overflow-y-auto rounded-md border border-slate-200 bg-white py-1 text-xs shadow-lg empty:invisible">
+        {lista.map(m => (
+          <ComboboxOption key={m.id} value={m} className="cursor-pointer px-3 py-1.5 data-[focus]:bg-sky-50">
+            <span className="font-medium text-slate-700">{m.nombre}</span><span className="text-slate-400"> · {m.departamento}</span>
+          </ComboboxOption>
+        ))}
+        {!lista.length && <div className="px-3 py-2 text-slate-400">No hay municipios con ese nombre.</div>}
+      </ComboboxOptions>
+    </Combobox>
+  )
+}
+
 // Tramitador del directorio, por nombre o municipio
 function SelectorTramitador({ tramitadores, valor, onElegir }: { tramitadores: TramitadorRotulo[], valor: number | null, onElegir: (t: TramitadorRotulo | null) => void }) {
   const [texto, setTexto] = useState("")
@@ -190,6 +220,16 @@ export default function GeneradorRotulo({ opciones, tramiteInicial, usuario }: {
   const [generando, setGenerando] = useState(false)
   const [creado, setCreado] = useState<RotuloCreado | null>(null)
   const urlAnterior = useRef<string | null>(null)
+  // Cambia cuando la dirección se llena desde afuera (botón del trámite o nuevo rótulo): el campo de Google se recrea
+  const [claveDireccion, setClaveDireccion] = useState(0)
+
+  // El municipio que propone Google o el trámite, tal como está en la lista (por id o por nombre y departamento)
+  const delCatalogo = (m: MunicipioSugerido): MunicipioRotulo => {
+    const n = normalizar(m.nombreMunicipio), d = normalizar(m.departamento)
+    return opciones.municipios.find(x => x.id === m.id)
+      ?? opciones.municipios.find(x => normalizar(x.nombre) === n && normalizar(x.departamento) === d)
+      ?? { id: m.id, nombre: m.nombreMunicipio, departamento: m.departamento }
+  }
 
   const operacion = opciones.operaciones.find(o => o.id === e.operacionId)
   const regla = reglaPago(e.origen, e.destino, operacion?.nombre ?? "", e.contraentrega)
@@ -245,13 +285,13 @@ export default function GeneradorRotulo({ opciones, tramiteInicial, usuario }: {
     toast.success("Rótulo generado y guardado en los documentos del trámite")
   }
 
-  const nuevo = () => { setCreado(null); setE(estadoInicial(opciones, null, usuario)) }
+  const nuevo = () => { setCreado(null); setE(estadoInicial(opciones, null, usuario)); setClaveDireccion(c => c + 1) }
 
   const resumen: [string, string][] = [
     ["Envío", `${ORIGENES.find(o => o.v === e.origen)?.nombre} → ${DESTINOS.find(d => d.v === e.destino)?.nombre}`],
     ["Trámites", e.tramites.map(t => `#${t.id}${t.placaEnvio ? ` (${t.placaEnvio})` : ""}`).join(", ")],
     ["Destinatario", e.destino === "tram" ? destTram?.nombre ?? "" : e.destino === "gpa" ? `${destSede?.nombre ?? ""} · ${e.destContacto}` : e.destNombre],
-    ["Ciudad", e.destino === "tram" ? destTram?.municipio ?? "" : e.destino === "gpa" ? destSede?.ciudad ?? "" : e.destMunicipio ? `${e.destMunicipio.nombreMunicipio}, ${e.destMunicipio.departamento}` : ""],
+    ["Ciudad", e.destino === "tram" ? destTram?.municipio ?? "" : e.destino === "gpa" ? destSede?.ciudad ?? "" : e.destMunicipio ? `${e.destMunicipio.nombre}, ${e.destMunicipio.departamento}` : ""],
     ["Contenido", [e.tipo, e.contenido].filter(Boolean).join(" · ")],
     ["Paga el envío", previa.datos?.paga === "DESTINATARIO" ? "El destinatario (contraentrega)" : "Gómez Pineda Abogados"],
     ["Tamaño", tamano === "peq" ? "Pequeño (sobre)" : "Carta"]
@@ -417,20 +457,25 @@ export default function GeneradorRotulo({ opciones, tramiteInicial, usuario }: {
                   <input value={e.destCorreo} onChange={ev => cambiar({ destCorreo: ev.target.value })} type="email" className={claseInput} />
                 </Campo>
               )}
-              <Campo etiqueta="Municipio" requerido className="sm:col-span-2">
-                <BuscadorMunicipioServidor valor={e.destMunicipio} onElegir={m => cambiar({ destMunicipio: m })} className={claseInput} placeholder="Escriba el municipio" />
+              <Campo etiqueta="Municipio" requerido className="sm:col-span-2" ayuda="Al elegir una dirección de Google se propone su municipio.">
+                <SelectorMunicipio municipios={opciones.municipios} valor={e.destMunicipio} onElegir={m => cambiar({ destMunicipio: m })} />
               </Campo>
-              <Campo etiqueta="Dirección" requerido className="sm:col-span-2">
-                <input value={e.destDireccion} onChange={ev => cambiar({ destDireccion: ev.target.value })} placeholder="Dirección o nombre del lugar" className={claseInput} />
-              </Campo>
+              <div className="sm:col-span-2">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Dirección<span className="text-red-500"> *</span></span>
+                {/* Igual que en el trámite: sugerencias de Google mientras escribe o un enlace de Google Maps */}
+                <CampoDireccion key={claveDireccion} name="rotuloDireccion" defaultValue={e.destDireccion}
+                  onTexto={texto => cambiar({ destDireccion: texto })}
+                  onMunicipio={m => cambiar({ destMunicipio: delCatalogo(m) })} />
+              </div>
               {e.tramites[0]?.direccion && (
                 <button type="button" className={clsx(claseBoton, "sm:col-span-2 justify-start")}
                   onClick={() => {
                     const t = e.tramites[0]
                     cambiar({
                       destDireccion: t.direccion.slice(0, 250),
-                      destMunicipio: e.destMunicipio ?? (t.municipio ? { id: t.municipio.id, nombreMunicipio: t.municipio.nombre, departamento: t.municipio.departamento } : null)
+                      destMunicipio: t.municipio ? delCatalogo({ id: t.municipio.id, nombreMunicipio: t.municipio.nombre, departamento: t.municipio.departamento }) : e.destMunicipio
                     })
+                    setClaveDireccion(c => c + 1)
                   }}>
                   <MapPin size={14} /> Usar la dirección del trámite #{e.tramites[0].id}
                 </button>

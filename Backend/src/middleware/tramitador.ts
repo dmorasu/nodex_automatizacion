@@ -59,7 +59,9 @@ export const validateTramitadorInput = [
   body("numeroTramitador")
     .customSanitizer(valor => String(valor ?? "").replace(/[\s-]/g, ""))
     .matches(/^\d{10,15}$/).withMessage("El WhatsApp debe tener solo números con el indicativo del país (ej: 573001234567)"),
+  // Con municipio de residencia la región sale de él (TramitadorController.datosConResidencia)
   body("region")
+    .if((_valor: unknown, { req }: { req: { body?: { municipioResidenciaId?: unknown } } }) => !req.body?.municipioResidenciaId)
     .isString().withMessage("Elija la región del tramitador").bail()
     .trim()
     .notEmpty().withMessage("Elija la región del tramitador").bail()

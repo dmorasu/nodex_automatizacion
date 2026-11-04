@@ -60,12 +60,19 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
   const cambiar = <K extends keyof DatosTramitador>(campo: K, valor: DatosTramitador[K]) =>
     setDatos(actuales => ({ ...actuales, [campo]: valor }))
 
+  // La región sale del municipio de residencia; solo si ese municipio no tiene regional se elige a mano
+  // (la copia del municipio guardada puede no traer la regional: entonces vale la región ya sincronizada)
+  const regionDelMunicipio = residencia?.regional?.trim()
+    || (residencia && residencia.id === tramitador?.municipioResidencia?.id && regiones.includes(tramitador.region) ? tramitador.region : null)
+
   const guardar = () => {
-    if (!regiones.includes(datos.region)) return toast.error("Elija la región del tramitador")
+    if (!residencia) return toast.error("Elija el municipio de residencia")
+    if (!regionDelMunicipio && !regiones.includes(datos.region)) return toast.error("El municipio no tiene regional: elija la región")
     if (datos.esMensajero && !datos.sedeId) return toast.error("Elija la sede de la que sale el mensajero")
     startGuardar(async () => {
       const resultado = await guardarTramitador({
         ...datos,
+        region: regionDelMunicipio ?? datos.region,
         municipioResidenciaId: residencia?.id ?? null,
         municipiosCobertura: cobertura.map(m => m.id)
       }, tramitador?.id)
@@ -102,15 +109,6 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
               <input value={datos.identificacion} onChange={e => cambiar("identificacion", e.target.value)} maxLength={50} className={claseInput} />
             </label>
             <label className="block">
-              <span className={claseLabel}>Región <span className="text-red-400">*</span></span>
-              <SelectBuscable value={datos.region ?? ""} onChange={e => cambiar("region", e.target.value)} className={claseInput}>
-                <option value="">Seleccione la región</option>
-                {/* Una región escrita antes a mano que no es de la lista: se ve, pero hay que cambiarla */}
-                {datos.region && !regiones.includes(datos.region) && <option value={datos.region} disabled>{datos.region} (ya no existe)</option>}
-                {regiones.map(r => <option key={r} value={r}>{r}</option>)}
-              </SelectBuscable>
-            </label>
-            <label className="block">
               <span className={claseLabel}>Correo <span className="text-red-400">*</span></span>
               <input type="email" value={datos.correoTramitador} onChange={e => cambiar("correoTramitador", e.target.value)} maxLength={150} className={claseInput} />
             </label>
@@ -129,6 +127,42 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
               <input type="checkbox" checked={datos.activo} onChange={e => cambiar("activo", e.target.checked)} className="h-4 w-4 accent-sky-500" />
               Activo (puede asignarse a trámites)
             </label>
+
+            {/* Residencia: un solo lugar. De aquí salen la región, la ciudad de la cuenta de cobro,
+                la distancia del Directorio y el remitente del rótulo */}
+            <div className="grid gap-4 rounded-md border border-slate-200 px-3 py-3 sm:col-span-2 sm:grid-cols-2">
+              <p className="text-xs font-semibold text-slate-700 sm:col-span-2">Residencia</p>
+              <div className="block sm:col-span-2">
+                <span className={claseLabel}>Municipio de residencia <span className="text-red-400">*</span></span>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <BuscadorMunicipioServidor valor={residencia} onElegir={setResidencia} className={claseInput} placeholder="Escriba el municipio donde vive" />
+                  </div>
+                  {residencia && (
+                    <button type="button" onClick={() => setResidencia(null)} className="text-slate-400 hover:text-slate-600" aria-label="Quitar municipio de residencia"><X size={15} /></button>
+                  )}
+                </div>
+                {residencia && regionDelMunicipio && (
+                  <span className="mt-1 block text-[11px] text-slate-400">Región <b className="font-semibold text-slate-600">{regionDelMunicipio}</b> · Ciudad de la cuenta de cobro <b className="font-semibold text-slate-600">{residencia.nombreMunicipio}</b> (salen del municipio)</span>
+                )}
+                {!residencia && tramitador && (datos.ciudad || datos.region) && (
+                  <span className="mt-1 block text-[11px] text-amber-700">Antes tenía ciudad &quot;{datos.ciudad || "—"}&quot; y región &quot;{datos.region || "—"}&quot;: elija el municipio para guardar.</span>
+                )}
+              </div>
+              {residencia && !regionDelMunicipio && (
+                <label className="block sm:col-span-2">
+                  <span className={claseLabel}>Región <span className="text-red-400">*</span> <span className="font-normal text-slate-400">(el municipio no tiene regional)</span></span>
+                  <SelectBuscable value={datos.region ?? ""} onChange={e => cambiar("region", e.target.value)} className={claseInput}>
+                    <option value="">Seleccione la región</option>
+                    {regiones.map(r => <option key={r} value={r}>{r}</option>)}
+                  </SelectBuscable>
+                </label>
+              )}
+              <label className="block sm:col-span-2">
+                <span className={claseLabel}>Dirección</span>
+                <input value={datos.direccion ?? ""} onChange={e => cambiar("direccion", e.target.value)} maxLength={200} placeholder="Para la correspondencia, los rótulos y la cuenta de cobro" className={claseInput} />
+              </label>
+            </div>
 
             {/* Mensajería: ruta diaria con mapa y "Mi ruta" en la app */}
             <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 sm:col-span-2">
@@ -155,17 +189,6 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
             {/* Directorio de tramitadores: dónde vive, qué municipios atiende y datos para Torre de control */}
             <div className="grid gap-4 rounded-md border border-slate-200 px-3 py-3 sm:col-span-2 sm:grid-cols-2">
               <p className="text-xs font-semibold text-slate-700 sm:col-span-2">Directorio</p>
-              <div className="block sm:col-span-2">
-                <span className={claseLabel}>Municipio de residencia</span>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <BuscadorMunicipioServidor valor={residencia} onElegir={setResidencia} className={claseInput} placeholder="Desde dónde se calcula la distancia" />
-                  </div>
-                  {residencia && (
-                    <button type="button" onClick={() => setResidencia(null)} className="text-slate-400 hover:text-slate-600" aria-label="Quitar municipio de residencia"><X size={15} /></button>
-                  )}
-                </div>
-              </div>
               <div className="block sm:col-span-2">
                 <span className={claseLabel}>Municipios que cubre ({cobertura.length})</span>
                 <BuscadorMunicipioServidor valor={null} onElegir={agregarCobertura} className={claseInput} placeholder="Escriba para agregar un municipio" limpiarAlElegir />
@@ -228,14 +251,7 @@ function ModalTramitador({ tramitador, sedes, regiones, onCerrar }: { tramitador
             {!datos.esMensajero && (
               <div className="grid gap-4 rounded-md border border-slate-200 px-3 py-3 sm:col-span-2 sm:grid-cols-2">
                 <p className="text-xs font-semibold text-slate-700 sm:col-span-2">Cuenta de cobro</p>
-                <label className="block sm:col-span-2">
-                  <span className={claseLabel}>Dirección</span>
-                  <input value={datos.direccion ?? ""} onChange={e => cambiar("direccion", e.target.value)} maxLength={200} className={claseInput} />
-                </label>
-                <label className="block">
-                  <span className={claseLabel}>Ciudad</span>
-                  <input value={datos.ciudad ?? ""} onChange={e => cambiar("ciudad", e.target.value)} maxLength={100} className={claseInput} />
-                </label>
+                <p className="text-[11px] text-slate-400 sm:col-span-2">La dirección y la ciudad son las de la residencia.</p>
                 <label className="block">
                   <span className={claseLabel}>Banco o billetera</span>
                   <input value={datos.banco ?? ""} onChange={e => cambiar("banco", e.target.value)} maxLength={100} placeholder="Bancolombia, Nequi…" className={claseInput} />

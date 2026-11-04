@@ -10,8 +10,11 @@ export type TramitadorRotulo = {
   id: number, nombre: string, cedula: string | null, celular: string | null, direccion: string | null,
   municipio: string | null, departamento: string | null, correo: string | null, esMensajero: boolean
 }
+export type MunicipioRotulo = { id: number, nombre: string, departamento: string }
 export type OpcionesRotulo = {
   gpa: { razon: string, nit: string, correo: string, obsHorario: string }
+  // Todos los municipios (una copia por nombre y departamento), para elegir sin esperar al servidor
+  municipios: MunicipioRotulo[]
   sedes: SedeRotulo[]
   operaciones: { id: number, nombre: string, centroDeCostos: string | null }[]
   transportadoras: string[]

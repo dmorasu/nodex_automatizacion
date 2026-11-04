@@ -22,6 +22,7 @@ import {
   type EntradaRotulo, type ContextoRotulo, type SedeRotulo, type TramitadorRotulo, type Rotulo, type Origen, type Destino
 } from './reglasRotulo'
 import { generarPdfRotulo, nombreArchivoRotulo } from './pdfRotulo'
+import { tituloMunicipio } from '../../utils/tituloMunicipio'
 
 // =====================================
 // RÓTULOS DE ENVÍO (Ayudas Torre de Control, fase 3, 2026-11-04)
@@ -32,11 +33,7 @@ import { generarPdfRotulo, nombreArchivoRotulo } from './pdfRotulo'
 
 export const MAXIMO_TRAMITES_ROTULO = 20
 
-// "SAN JOSÉ DE CÚCUTA" → "San José de Cúcuta"
-const MINUSCULAS = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'el', 'en'])
-export const titulo = (texto: string | null | undefined) =>
-  String(texto ?? '').toLowerCase().split(/(\s+)/)
-    .map((p, i) => (i > 0 && MINUSCULAS.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1))).join('').trim()
+const titulo = tituloMunicipio
 
 const texto = (valor: unknown, maximo = 300) => (typeof valor === 'string' || typeof valor === 'number' ? String(valor).trim().slice(0, maximo) : '')
 const numero = (valor: unknown) => (Number.isInteger(Number(valor)) && Number(valor) > 0 ? Number(valor) : null)
@@ -126,7 +123,7 @@ const armar = async (e: EntradaRotulo) => {
 
 // ── Opciones del formulario ──
 export const opcionesRotulo = async () => {
-  const [sedes, operaciones, transportadoras, tramitadores, solicitantes] = await Promise.all([
+  const [sedes, operaciones, transportadoras, tramitadores, solicitantes, municipios] = await Promise.all([
     sedesActivas(),
     Operaciones.findAll({ attributes: ['id', 'nombreOperacion', 'centroDeCostos'], order: [['nombreOperacion', 'ASC']] }),
     Transportadora.findAll({ attributes: ['id', 'nombreTransportadora'], order: [['nombreTransportadora', 'ASC']] }),
@@ -141,9 +138,17 @@ export const opcionesRotulo = async () => {
       FROM "SolicitudTramites" s JOIN "Usuarios" u ON u.id = s."usuarioId"
       WHERE s."createdAt" > NOW() - INTERVAL '365 days' AND TRIM(COALESCE(u."nombreUsuario", '')) <> ''
       ORDER BY 1
+    `, { type: QueryTypes.SELECT }),
+    // Todos los municipios para elegir el destino sin esperar al servidor (una copia por nombre y departamento)
+    db.query<{ id: number, nombre: string, departamento: string }>(`
+      SELECT DISTINCT ON (UPPER(TRIM(m."nombreMunicipio")), UPPER(TRIM(m.departamento)))
+        m.id, TRIM(m."nombreMunicipio") AS nombre, TRIM(m.departamento) AS departamento
+      FROM "Municipios" m
+      ORDER BY UPPER(TRIM(m."nombreMunicipio")), UPPER(TRIM(m.departamento)), m.id
     `, { type: QueryTypes.SELECT })
   ])
   return {
+    municipios: municipios.map(m => ({ id: m.id, nombre: titulo(m.nombre), departamento: titulo(m.departamento) })),
     gpa: GPA,
     sedes,
     operaciones: operaciones.map(o => ({ id: o.id, nombre: o.nombreOperacion, centroDeCostos: o.centroDeCostos })),

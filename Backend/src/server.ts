@@ -49,6 +49,7 @@ import cuentasCobroTramitadoresRouter from "./routes/cuentasCobroTramitadoresRou
 import calificacionesRouter from "./routes/calificacionesRouter"
 import directorioRouter from "./routes/directorioRouter"
 import rotulosRouter from "./routes/rotulosRouter"
+import { sincronizarResidencias } from "./services/residenciaTramitador"
 import direccionesRouter from "./routes/direccionesRouter"
 import notificacionesProgramadasRouter from "./routes/notificacionesProgramadasRouter"
 import { iniciarNotificacionesProgramadas } from "./services/notificacionesProgramadas"
@@ -68,6 +69,9 @@ async function connectDB() {
         await ajustarEsquemaTramitadores()
         await ajustarEsquemaTramites()
         await db.sync()
+        // Región y ciudad de los tramitadores = las de su municipio de residencia
+        const residencias = await sincronizarResidencias()
+        if (residencias) console.log(`🏠 Región y ciudad tomadas del municipio de residencia en ${residencias} tramitadores`)
         await ajustarEsquemaMensajeria()
         await ajustarEsquemaGastos()
         await seedGastos()

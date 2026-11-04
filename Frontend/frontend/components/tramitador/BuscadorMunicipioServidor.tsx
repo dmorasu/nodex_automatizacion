@@ -5,7 +5,7 @@ import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from "@headl
 import { Loader2 } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 
-export type MunicipioElegido = { id: number, nombreMunicipio: string, departamento: string }
+export type MunicipioElegido = { id: number, nombreMunicipio: string, departamento: string, regional?: string | null }
 
 const claseLista = "z-[70] max-h-60 w-[var(--input-width)] min-w-64 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 text-xs shadow-lg empty:invisible"
 const claseOpcion = "cursor-pointer px-3 py-1.5 text-slate-700 data-[focus]:bg-sky-50"

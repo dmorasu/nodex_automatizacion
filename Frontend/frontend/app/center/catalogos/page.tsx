@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Metadata } from "next"
 import clsx from "clsx"
-import { Ban, BriefcaseBusiness, Download, FileText, HardHat, Users } from "lucide-react"
+import { Ban, BriefcaseBusiness, Download, FileText, HardHat, Landmark, Users } from "lucide-react"
 import { requierePerfil } from "@/src/auth/dal"
 import { encabezadosSesion } from "@/src/lib/sesionApi"
 import AdministrarCatalogos, { type PestanaCatalogo } from "@/components/catalogos/AdministrarCatalogos"
@@ -17,6 +17,7 @@ const PESTANAS: { id: Pestana, nombre: string, icono: typeof HardHat, descripcio
   { id: "tramitadores", nombre: "Tramitadores", icono: HardHat, descripcion: "Cree, edite y active o desactive tramitadores. Los inactivos no se pueden asignar a trámites." },
   { id: "tramites", nombre: "Tipos de trámite", icono: FileText, descripcion: "Tipos de trámite y sus subestados.", soloAdministradores: true },
   { id: "operaciones", nombre: "Operaciones", icono: BriefcaseBusiness, descripcion: "Operaciones y su centro de costos (también las usa Nodex Gastos).", soloAdministradores: true },
+  { id: "entidades", nombre: "Entidades", icono: Landmark, descripcion: "Entidades donde se hacen los trámites (tránsitos, notarías, oficinas de registro...).", soloAdministradores: true },
   { id: "rechazos", nombre: "Tipos de rechazo", icono: Ban, descripcion: "Causas que se eligen al pasar un trámite a novedad.", soloAdministradores: true },
   { id: "areas", nombre: "Áreas", icono: Users, descripcion: "Áreas de los usuarios. Al buscar, cada usuario encuentra los trámites y gastos que crearon los de su área.", soloAdministradores: true }
 ]

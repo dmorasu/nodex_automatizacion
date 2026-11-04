@@ -1,10 +1,8 @@
 import {Router}  from 'express'
 
-import { handleInputErrors } from '../middleware/validation'
-
 import { EntidadController } from '../controllers/EntidadController'
 
-import { validateEntidadExits, validateEntidadInput } from '../middleware/entidad'
+import { validateEntidadExits } from '../middleware/entidad'
 
 
 
@@ -12,25 +10,13 @@ const router =Router()
 
 router.param('entidadId',validateEntidadExits)
 
-
+// Solo consulta. Las entidades se crean, renombran y eliminan en Catálogos
+// (/api/catalogos-tramites/entidades, solo administradores): Entidades → SolicitudTramites es
+// ON DELETE CASCADE, y el DELETE que había aquí, abierto a cualquiera con sesión, borraba los trámites
 router.get('/',EntidadController.getAll)
-
-router.post('/',
-    validateEntidadInput,
-    handleInputErrors,
-    EntidadController.create
-)
 
 router.get('/:entidadId',
     EntidadController.getById
-)
-
-router.put('/:entidadId', 
-    EntidadController.updateById
-)
-
-router.delete('/:entidadId', 
-    EntidadController.deleteById
 )
 
 

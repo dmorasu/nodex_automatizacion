@@ -52,7 +52,7 @@ export const generarExcelCatalogos = async (incluirAdministracion: boolean) => {
 
   if (!incluirAdministracion) return XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' }) as Buffer
 
-  const [tramites, subestados, operaciones, rechazos, areas] = await Promise.all([
+  const [tramites, subestados, operaciones, rechazos, areas, entidades] = await Promise.all([
     consultar(`
       SELECT t.id, t."nombreTramite", t.responsable,
         (SELECT COUNT(*) FROM "SubEstados" se WHERE se."tramiteId" = t.id)::int AS subestados,
@@ -79,6 +79,10 @@ export const generarExcelCatalogos = async (incluirAdministracion: boolean) => {
     consultar(`
       SELECT a.id, a.nombre, (SELECT COUNT(*) FROM "Usuarios" u WHERE u."areaId" = a.id)::int AS uso
       FROM "Areas" a ORDER BY a.nombre
+    `),
+    consultar(`
+      SELECT e.id, e."nombreEntidad", (SELECT COUNT(*) FROM "SolicitudTramites" s WHERE s."entidadId" = e.id)::int AS uso
+      FROM "Entidades" e ORDER BY e."nombreEntidad"
     `)
   ])
 
@@ -105,6 +109,12 @@ export const generarExcelCatalogos = async (incluirAdministracion: boolean) => {
     'Trámites': o.usoTramites,
     'Gastos': o.usoGastos
   }))), 'Operaciones')
+
+  XLSX.utils.book_append_sheet(libro, hoja(entidades.map(e => ({
+    'Id': e.id,
+    'Entidad': e.nombreEntidad,
+    'Trámites': e.uso
+  }))), 'Entidades')
 
   XLSX.utils.book_append_sheet(libro, hoja(rechazos.map(r => ({
     'Id': r.id,

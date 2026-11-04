@@ -28,8 +28,8 @@ import { asegurarRetencion } from './retencion'
 // =====================================
 
 // Solo entran los trámites finalizados desde esta fecha (decisión del usuario): los anteriores se
-// cobraron por fuera de Nodex
-export const FECHA_INICIO_CUENTAS = '2026-10-15'
+// cobraron por fuera de Nodex. Era el 2026-10-15; pasó al 2026-10-31 al desplegarse en producción
+export const FECHA_INICIO_CUENTAS = '2026-10-31'
 const ESTADO_FINALIZADO = 6
 
 const EDITABLES: EstadoCuentaTramitador[] = [ESTADOS.BORRADOR, ESTADOS.POR_CORREGIR]

@@ -14,7 +14,7 @@ import EstadosGasto from '../../models/gastos/estadosGasto'
 import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { registrarMovimientos } from './bolsas'
-import { cambiarEstadoGasto, codigoEstadoGasto } from './estadosGasto'
+import { cambiarEstadoGasto, codigoEstadoGasto, registrarTrazabilidad } from './estadosGasto'
 import {
   ESTADOS_GASTO, ESTADOS_REEMBOLSO_CAJA, FORMA_PAGO_CAJA_MENOR, TIPOS_BOLSA, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA,
   TOPE_ALERTA_CAJA
@@ -306,13 +306,27 @@ export type DatosLegalizacionCaja = {
   observacion?: string | null
 }
 
-// Tesorería legaliza un gasto pagado por caja con la factura y su soporte (obligatorio)
-export const legalizarGastoCaja = (gastoId: number, datos: DatosLegalizacionCaja, archivos: Express.Multer.File[], usuarioId: number) => {
-  if (!archivos.length) throw new ErrorGastos('Adjunte el soporte del gasto')
+// Documentos que sirven de soporte de un gasto de caja menor: el soporte de caja (cargado al
+// legalizar o en el cargue masivo) o la factura que haya subido quien creó el gasto
+const TIPOS_SOPORTE_CAJA = [TIPOS_DOCUMENTO.SOPORTE_CAJA_MENOR, 'FACTURA']
 
-  return conArchivos(async (transaction, subidos) => {
+export const contarSoportesCaja = (gastoId: number, transaction?: Transaction) =>
+  DocumentosGasto.count({
+    where: { solicitudGastoId: gastoId },
+    include: [{ model: TiposDocumentoGasto, attributes: [], where: { codigo: TIPOS_SOPORTE_CAJA } }],
+    transaction
+  })
+
+// Tesorería legaliza un gasto pagado por caja con la factura y su soporte. El soporte es obligatorio,
+// pero si el gasto ya lo tiene (cargue masivo de soportes o factura del gasto) no hay que volver a
+// subirlo (pedido del usuario, 2026-11-05)
+export const legalizarGastoCaja = (gastoId: number, datos: DatosLegalizacionCaja, archivos: Express.Multer.File[], usuarioId: number) =>
+  conArchivos(async (transaction, subidos) => {
     const [gasto] = await gastosBloqueados([gastoId], transaction)
     await exigirEstado(gasto, ESTADOS_GASTO.PAGADO_CAJA, 'solo se legalizan gastos pagados por caja menor y aún sin legalizar')
+    if (!archivos.length && !(await contarSoportesCaja(gasto.id, transaction))) {
+      throw new ErrorGastos(`Adjunte el soporte de ${gasto.codigo}: todavía no tiene ninguno cargado`)
+    }
     const caja = await cajaBloqueada(gasto.bolsaId, transaction)
 
     const valorSoporte = redondear(datos.valorSoporte)
@@ -348,7 +362,7 @@ export const legalizarGastoCaja = (gastoId: number, datos: DatosLegalizacionCaja
       registradoPor: usuarioId
     }, { transaction })
 
-    await guardarArchivos(archivos, `gastos/${gasto.codigo}`, TIPOS_DOCUMENTO.SOPORTE_CAJA_MENOR, { solicitudGastoId: gasto.id }, usuarioId, transaction, subidos)
+    if (archivos.length) await guardarArchivos(archivos, `gastos/${gasto.codigo}`, TIPOS_DOCUMENTO.SOPORTE_CAJA_MENOR, { solicitudGastoId: gasto.id }, usuarioId, transaction, subidos)
 
     await cambiarEstadoGasto(gasto, ESTADOS_GASTO.PENDIENTE_REEMBOLSO, usuarioId, transaction, {
       observacion: [
@@ -357,6 +371,24 @@ export const legalizarGastoCaja = (gastoId: number, datos: DatosLegalizacionCaja
       ].filter(Boolean).join(' · ')
     })
     return { bolsaId: caja.id }
+  })
+
+// Cargue masivo de soportes (Caja menor → Por legalizar): los soportes de un gasto entregado que
+// aún no se legaliza, para que al legalizarlo no haya que volver a subirlos. Una llamada por gasto
+export const subirSoportesCaja = (gastoId: number, archivos: Express.Multer.File[], usuarioId: number) => {
+  if (!archivos.length) throw new ErrorGastos('Adjunte al menos un soporte')
+  return conArchivos(async (transaction, subidos) => {
+    const [gasto] = await gastosBloqueados([gastoId], transaction)
+    await exigirEstado(gasto, ESTADOS_GASTO.PAGADO_CAJA, 'solo se le cargan soportes a un gasto entregado por caja menor y aún sin legalizar')
+    await guardarArchivos(archivos, `gastos/${gasto.codigo}`, TIPOS_DOCUMENTO.SOPORTE_CAJA_MENOR, { solicitudGastoId: gasto.id }, usuarioId, transaction, subidos)
+    await registrarTrazabilidad({
+      solicitudGastoId: gasto.id,
+      estadoAnteriorId: gasto.estadoId,
+      estadoNuevoId: gasto.estadoId,
+      usuarioId,
+      observacion: `Soporte de caja menor cargado: ${archivos.map(a => a.originalname).join(', ')}`
+    }, transaction)
+    return { codigo: gasto.codigo }
   })
 }
 

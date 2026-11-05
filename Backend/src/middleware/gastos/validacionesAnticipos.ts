@@ -33,6 +33,9 @@ export const validarAnticipo = [
   obligatorio('cliente.direccion', 'La dirección del cliente', 200),
   // Obligatoria solo en las solicitudes de factura (lo revisa el servicio, que conoce la clase al editar)
   body('cliente.ciudad').optional({ values: 'null' }).isString().trim().isLength({ max: 150 }).withMessage('La ciudad del cliente no puede superar 150 caracteres'),
+  // Obligatorio solo en las solicitudes de factura (lo revisa el servicio)
+  body('cliente.correo').optional({ values: 'falsy' }).isString().trim().isEmail().withMessage('El correo del cliente no es válido')
+    .isLength({ max: 100 }).withMessage('El correo del cliente no puede superar 100 caracteres'),
   body('clienteEmpresarialId').isInt({ min: 1 }).withMessage('Seleccione el cliente empresarial').toInt(),
   body('operacionId').isInt({ min: 1 }).withMessage('Seleccione la operación').toInt(),
   body('bolsaId').isInt({ min: 1 }).withMessage('Seleccione la bolsa').toInt(),
@@ -43,7 +46,12 @@ export const validarAnticipo = [
   body('fechaConsignacion').isISO8601({ strict: true }).withMessage('Indique la fecha de consignación'),
   // Obligatoria solo sin soporte de la consignación (lo revisa el servicio, que ve los archivos)
   body('referenciaPago').optional({ values: 'null' }).isString().trim().isLength({ max: 100 }).withMessage('La referencia del pago no puede superar 100 caracteres'),
-  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 2000 })
+  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 2000 }),
+  // Edición del administrador fuera de por confirmar / con novedad (el servicio exige el motivo)
+  body('motivo').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 }).withMessage('El motivo no puede superar 1000 caracteres'),
+  body('valorRecibido').optional({ values: 'null' }).isFloat({ gt: 0 }).withMessage('El valor recibido debe ser mayor a cero').toFloat(),
+  body('reciboCaja').optional({ values: 'null' }).isString().trim().isLength({ max: 50 }).withMessage('El recibo de caja no puede superar 50 caracteres'),
+  body('numeroFactura').optional({ values: 'null' }).isString().trim().isLength({ max: 50 }).withMessage('El número de factura no puede superar 50 caracteres')
 ]
 
 export const validarMotivo = body('motivo').isString().trim()

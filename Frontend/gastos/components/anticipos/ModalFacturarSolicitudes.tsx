@@ -6,13 +6,13 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import clsx from "clsx"
 import { FileCheck2, FileCode2, FileText, Loader2 } from "lucide-react"
 import { facturarSolicitudes } from "@/actions/gastos/anticipos"
-import { formatoMoneda } from "@/src/lib/formato"
+import { formatoMoneda, ivaIncluido } from "@/src/lib/formato"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "../ui/estilos"
 
 export type SolicitudAFacturar = {
   id: number
   codigo: string
-  cliente: { nombre: string, identificacion: string }
+  cliente: { nombre: string, identificacion: string, correo?: string | null, ciudad?: string | null }
   valorConsignado: string
   referenciaPago?: string | null
   ivaPorcentaje?: string | null
@@ -130,6 +130,9 @@ export default function ModalFacturarSolicitudes({
                   <div className="md:col-span-3">
                     <p className="text-xs font-semibold text-slate-700">{s.codigo}</p>
                     <p className="text-[11px] text-slate-400">{s.cliente.nombre} · {s.cliente.identificacion}</p>
+                    {(s.cliente.correo || s.cliente.ciudad) && (
+                      <p className="text-[11px] text-slate-400">{[s.cliente.correo, s.cliente.ciudad].filter(Boolean).join(" · ")}</p>
+                    )}
                     {s.referenciaPago && <p className="text-[11px] text-slate-400">Ref. {s.referenciaPago}</p>}
                     <p className="mt-1 text-[11px] text-slate-500">Consignó <b>{formatoMoneda(s.valorConsignado)}</b></p>
                   </div>
@@ -147,12 +150,12 @@ export default function ModalFacturarSolicitudes({
                         Diferencia {diferencia > 0 && "+"}{formatoMoneda(diferencia)}
                       </p>
                     )}
-                    {/* Lo recibido es la base de la factura; el IVA va encima */}
+                    {/* Lo recibido ya trae el IVA: es el total de la factura */}
                     {s.ivaPorcentaje && centavos(fila.valorRecibido) > 0 && (() => {
-                      const ivaC = Math.round(centavos(fila.valorRecibido) * Number(s.ivaPorcentaje))
+                      const { base, iva, total } = ivaIncluido(centavos(fila.valorRecibido), Number(s.ivaPorcentaje))
                       return (
                         <p className="mt-1 text-[11px] text-slate-500">
-                          IVA ({Math.round(Number(s.ivaPorcentaje) * 10000) / 100} %) {formatoMoneda(ivaC / 100)} · Total <b>{formatoMoneda((centavos(fila.valorRecibido) + ivaC) / 100)}</b>
+                          Base {formatoMoneda(base / 100)} · IVA ({Math.round(Number(s.ivaPorcentaje) * 10000) / 100} %) {formatoMoneda(iva / 100)} · Total <b>{formatoMoneda(total / 100)}</b>
                         </p>
                       )
                     })()}

@@ -242,7 +242,7 @@ export class DocumentosGastoController {
     }
   }
 
-  // POST /documentos/descargar  { gastoIds: number[], pdfPago?: { [gastoId]: SOPORTE|FACTURA|AMBOS } }
+  // POST /documentos/descargar  { gastoIds: number[], pdfPago?: { [gastoId]: códigos de tipo a unir (o SOPORTE|FACTURA|AMBOS) } }
   // → ZIP sin carpetas (ver generarZipDocumentos)
   static descargarVarios = async (req: Request, res: Response) => {
     try {

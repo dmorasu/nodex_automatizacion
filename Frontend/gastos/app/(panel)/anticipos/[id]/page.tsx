@@ -80,6 +80,7 @@ export default async function DetalleAnticipoPage(props: { params: Promise<{ id:
               <Dato etiqueta={anticipo.placa ? "Placa" : "Matrícula inmobiliaria"} valor={anticipo.placa ?? anticipo.matriculaInmobiliaria} />
               <Dato etiqueta="Número de solicitud" valor={anticipo.codigo} />
               <Dato etiqueta="Operación" valor={anticipo.operacion.nombreOperacion} />
+              <Dato etiqueta="Centro de costos" valor={anticipo.operacion.centroDeCostos} />
               <Dato etiqueta="Bolsa" valor={anticipo.bolsa.nombre} />
               <Dato etiqueta="Cliente empresarial" valor={anticipo.clienteEmpresarial.nombre} />
             </dl>
@@ -90,8 +91,9 @@ export default async function DetalleAnticipoPage(props: { params: Promise<{ id:
               <Dato etiqueta="Nombre" valor={anticipo.cliente.nombre} />
               <Dato etiqueta="Identificación" valor={`${anticipo.cliente.tipoIdentificacion === "CC" ? "Cédula" : "NIT"} ${anticipo.cliente.identificacion}`} />
               <Dato etiqueta="Teléfono" valor={anticipo.cliente.telefono} />
-              <Dato etiqueta="Ciudad" valor={anticipo.cliente.ciudad} />
+              <Dato etiqueta="Correo" valor={anticipo.cliente.correo} />
               <Dato etiqueta="Dirección" valor={anticipo.cliente.direccion} />
+              <Dato etiqueta="Ciudad de la dirección" valor={anticipo.cliente.ciudad} />
             </dl>
           </Seccion>
 
@@ -141,12 +143,12 @@ export default async function DetalleAnticipoPage(props: { params: Promise<{ id:
               <Dato etiqueta="Valor consignado (pagado)" valor={<span className="text-base font-semibold text-slate-800">{formatoMoneda(anticipo.valorConsignado)}</span>} />
               <Dato etiqueta="Fecha de consignación" valor={formatoFecha(anticipo.fechaConsignacion)} />
               {anticipo.referenciaPago && <Dato etiqueta="Referencia de pago" valor={anticipo.referenciaPago} />}
-              {/* Solicitud de factura: la base es lo recibido (o lo consignado, antes de facturar) y el IVA va encima */}
+              {/* Solicitud de factura: lo recibido (o lo consignado, antes de facturar) ya trae el IVA: es el total */}
               {anticipo.ivaValor && anticipo.ivaPorcentaje && (
                 <>
-                  <Dato etiqueta={anticipo.valorRecibido ? "Base (valor recibido)" : "Base (valor consignado)"} valor={formatoMoneda(anticipo.valorRecibido ?? anticipo.valorConsignado)} />
+                  <Dato etiqueta="Base" valor={formatoMoneda(Number(anticipo.valorRecibido ?? anticipo.valorConsignado) - Number(anticipo.ivaValor))} />
                   <Dato etiqueta={`IVA (${formatoPorcentaje(anticipo.ivaPorcentaje)})`} valor={formatoMoneda(anticipo.ivaValor)} />
-                  <Dato etiqueta="Total a facturar (base + IVA)" valor={<span className="text-base font-semibold text-slate-800">{formatoMoneda(Number(anticipo.valorRecibido ?? anticipo.valorConsignado) + Number(anticipo.ivaValor))}</span>} />
+                  <Dato etiqueta={anticipo.valorRecibido ? "Total (valor recibido)" : "Total (valor consignado)"} valor={<span className="text-base font-semibold text-slate-800">{formatoMoneda(anticipo.valorRecibido ?? anticipo.valorConsignado)}</span>} />
                 </>
               )}
             </dl>

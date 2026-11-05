@@ -7,6 +7,7 @@ import Operaciones from '../../models/operaciones'
 import Usuarios from '../../models/usuarios'
 import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, PARAMETROS } from './constantes'
 import { obtenerParametro } from './parametros'
+import { ivaIncluido } from './anticipos'
 
 // =====================================
 // REPORTE DE ANTICIPOS POR CENTRO DE COSTOS (2026-10-31)
@@ -30,11 +31,28 @@ type Grupo = keyof typeof GRUPOS_REPORTE
 type Valores = { cantidad: number, base: number, iva: number, total: number }
 const vacio = (): Valores => ({ cantidad: 0, base: 0, iva: 0, total: 0 })
 
+// Un registro del centro de costos, para la vista previa al pasar el mouse en la pantalla (en pesos)
+export type RegistroCentro = {
+  id: number
+  codigo: string
+  grupo: Grupo
+  estado: string
+  cliente: string | null
+  fechaConsignacion: string
+  identificacion: string | null
+  base: number
+  iva: number
+  total: number
+  factura: string | null
+}
+
 export type FilaCentroCostos = {
   centroCostos: string
   operaciones: string[]
   grupos: Record<Grupo, Valores>
   total: Valores
+  // Solo en los centros (no en la fila de totales): del más reciente al más antiguo
+  registros?: RegistroCentro[]
 }
 
 const SIN_CENTRO = 'Sin centro de costos'
@@ -54,7 +72,7 @@ const consultar = async (filtros: FiltrosReporteAnticipos) => {
       where: { [Op.and]: condiciones },
       include: [
         { model: Operaciones, attributes: ['nombreOperacion', 'centroDeCostos'] },
-        { model: Terceros, attributes: ['identificacion', 'nombre', 'ciudad'] },
+        { model: Terceros, attributes: ['identificacion', 'nombre', 'ciudad', 'correo'] },
         { model: ClientesEmpresariales, attributes: ['nombre'] },
         { model: Usuarios, as: 'creador', attributes: ['nombreUsuario'] }
       ],
@@ -63,14 +81,15 @@ const consultar = async (filtros: FiltrosReporteAnticipos) => {
     obtenerParametro(PARAMETROS.IVA)
   ])
 
-  // Valores en centavos de cada registro. Las solicitudes registradas antes del IVA (sin valor
-  // guardado) se calculan con su tarifa o, si no la tienen, con la del parámetro
+  // Valores en centavos de cada registro. El valor consignado (o recibido) ya trae el IVA: es el
+  // total, y la base es total − IVA. Las solicitudes registradas antes del IVA (sin valor guardado)
+  // se calculan con su tarifa o, si no la tienen, con la del parámetro
   return anticipos.map(a => {
-    const base = aCentavos(a.valorRecibido ?? a.valorConsignado)
+    const total = aCentavos(a.valorRecibido ?? a.valorConsignado)
     const esFactura = a.clase === CLASES_ANTICIPO.FACTURA
     const porcentaje = esFactura ? Number(a.ivaPorcentaje ?? tarifaIva) : 0
-    const iva = !esFactura ? 0 : a.ivaValor !== null && a.ivaValor !== undefined ? aCentavos(a.ivaValor) : Math.round(base * porcentaje)
-    return { anticipo: a, grupo: grupoDe(a), base, porcentaje, iva, total: base + iva }
+    const iva = !esFactura ? 0 : a.ivaValor !== null && a.ivaValor !== undefined ? aCentavos(a.ivaValor) : ivaIncluido(total, porcentaje).iva
+    return { anticipo: a, grupo: grupoDe(a), base: total - iva, porcentaje, iva, total }
   })
 }
 
@@ -90,9 +109,23 @@ export const reporteAnticipos = async (filtros: FiltrosReporteAnticipos) => {
   for (const fila of filas) {
     const centro = fila.anticipo.operacion?.centroDeCostos?.trim() || SIN_CENTRO
     if (!porCentro.has(centro)) {
-      porCentro.set(centro, { centroCostos: centro, operaciones: [], grupos: { FACTURADO: vacio(), POR_FACTURAR: vacio(), ANTICIPOS: vacio() }, total: vacio() })
+      porCentro.set(centro, { centroCostos: centro, operaciones: [], grupos: { FACTURADO: vacio(), POR_FACTURAR: vacio(), ANTICIPOS: vacio() }, total: vacio(), registros: [] })
     }
     const destino = porCentro.get(centro)!
+    const a = fila.anticipo
+    destino.registros!.push({
+      id: a.id,
+      codigo: a.codigo,
+      grupo: fila.grupo,
+      estado: NOMBRE_ESTADO[a.estado] ?? a.estado,
+      cliente: a.cliente?.nombre ?? null,
+      fechaConsignacion: String(a.fechaConsignacion).slice(0, 10),
+      identificacion: a.placa ?? a.matriculaInmobiliaria ?? null,
+      base: fila.base / 100,
+      iva: fila.iva / 100,
+      total: fila.total / 100,
+      factura: a.numeroFactura ?? null
+    })
     const operacion = fila.anticipo.operacion?.nombreOperacion
     if (operacion && !destino.operaciones.includes(operacion)) destino.operaciones.push(operacion)
     for (const valores of [destino.grupos[fila.grupo], destino.total, totales.grupos[fila.grupo], totales.total]) sumar(valores, fila)
@@ -108,7 +141,7 @@ export const reporteAnticipos = async (filtros: FiltrosReporteAnticipos) => {
   const centros = [...porCentro.values()]
     // "Sin centro de costos" al final
     .sort((a, b) => (a.centroCostos === SIN_CENTRO ? 1 : 0) - (b.centroCostos === SIN_CENTRO ? 1 : 0) || a.centroCostos.localeCompare(b.centroCostos, 'es', { numeric: true }))
-    .map(convertir)
+    .map(f => ({ ...convertir(f), registros: [...(f.registros ?? [])].reverse() }))
 
   return { centros, totales: convertir(totales), filas }
 }
@@ -170,6 +203,7 @@ export const excelReporteAnticipos = async (filtros: FiltrosReporteAnticipos) =>
     { header: 'Cliente', key: 'cliente', width: 30 },
     { header: 'Identificación cliente', key: 'idCliente', width: 18 },
     { header: 'Ciudad', key: 'ciudad', width: 24 },
+    { header: 'Correo del cliente', key: 'correo', width: 28 },
     { header: 'Cliente empresarial', key: 'empresarial', width: 20 },
     { header: 'Vehículo / inmueble', key: 'tipo', width: 12 },
     { header: 'Placa / matrícula', key: 'identificacion', width: 16 },
@@ -198,6 +232,7 @@ export const excelReporteAnticipos = async (filtros: FiltrosReporteAnticipos) =>
       cliente: a.cliente?.nombre,
       idCliente: a.cliente?.identificacion,
       ciudad: a.cliente?.ciudad,
+      correo: a.cliente?.correo,
       empresarial: a.clienteEmpresarial?.nombre,
       tipo: a.tipo === 'VEHICULO' ? 'Vehículo' : 'Inmueble',
       identificacion: a.placa ?? a.matriculaInmobiliaria,

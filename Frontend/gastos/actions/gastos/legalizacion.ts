@@ -110,22 +110,25 @@ export async function marcarReintegrado(reintegroId: number, fechaReintegro: str
     : { ...resultado, advertencia: `El reintegro quedó registrado, pero el soporte no se pudo subir: ${subida.errores[0]}` }
 }
 
-// ── PDF de pago unificado (operaciones como la 1301) ──
+// ── PDF unificado por gasto: qué tipos de documento lleva ──
 
-export type SegundoDocumento = "SOPORTE" | "FACTURA" | "AMBOS"
-export type DocumentoRevision = { id: number, nombre: string, tipo: string }
+// tipo = tipo de archivo (application/pdf, image/…); codigoTipo / nombreTipo = tipo de documento
+export type DocumentoRevision = { id: number, nombre: string, tipo: string, codigoTipo: string, nombreTipo: string }
 export type RevisionPdfPago = {
   id: number
   codigo: string
+  operacion: string | null
+  centroDeCostos: string | null
   archivo: string
-  liquidaciones: DocumentoRevision[]
-  soportes: DocumentoRevision[]
-  facturas: DocumentoRevision[]
-  sugerido: SegundoDocumento
+  // Operación con PDF de pago (ej. 1301): viene marcado lo sugerido (códigos de tipo)
+  pdfDePago: boolean
+  documentos: DocumentoRevision[]
+  sugerido: string[]
 }
+// Por gasto: ids de los documentos que se unen en su PDF (vacío = documentos sueltos)
+export type EleccionPdf = Record<number, number[]>
 
-// Antes de descargar: qué gastos bajan como un solo PDF de pago, qué documentos tiene cada uno
-// y qué se sugiere poner después de la liquidación (vacío si ninguno lo lleva)
+// Antes de descargar: los documentos de cada gasto con su tipo y lo que viene marcado
 export async function revisarPdfsDePago(gastoIds: number[]): Promise<Resultado<RevisionPdfPago[]>> {
   const req = await fetchApi("/gastos/documentos/descargar/revision", { method: "POST", body: JSON.stringify({ gastoIds }) })
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }

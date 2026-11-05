@@ -11,8 +11,8 @@ import {
 } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import {
-  COLUMNAS_PEGADO, filaDeDatos, filaVacia, leerPegado, parecePlaca, paraEnviar,
-  type Catalogos, type Comunes, type DatosCrudos, type Fila, type Gasto
+  COLUMNAS_PEGADO, dependeEnvioDe, filaDeDatos, filaVacia, leerPegado, parecePlaca, paraEnviar, textoEnvio,
+  type Catalogos, type Comunes, type DatosCrudos, type EnvioRelacionable, type Fila, type Gasto
 } from "@/src/lib/cargueTramites"
 import { BuscadorCliente, BuscadorMunicipio, claseCampo } from "./Buscadores"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "../ui/estilos"
@@ -20,19 +20,23 @@ import SelectBuscable from "@/components/ui/SelectBuscable"
 
 const COMUNES_VACIOS: Comunes = {
   clienteId: null, clienteNombre: "", tramiteId: null, operacionId: null, entidadId: null, municipioId: null,
-  fechaEntrega: "", documentosAportados: "No",
+  fechaEntrega: "", documentosAportados: "No", dependeEnvio: false,
   gasto: { conceptoPago: "", bolsaId: null, formaPagoId: null, beneficiarioIdentificacion: "", beneficiarioNombre: "", transito: "", reembolsable: true }
 }
 
 const BORRADOR = "nodex-cargue-tramites"
 
 type Validacion = {
-  filas: { fila: number, errores: string[], avisos: string[], cliente: { id: number, nombre: string, identificacion: string | null } | null }[]
+  filas: {
+    fila: number, errores: string[], avisos: string[], cliente: { id: number, nombre: string, identificacion: string | null } | null
+    envios: EnvioRelacionable[] | null, envioTramiteId: number | null
+  }[]
   conErrores: number
   conAvisos: number
   conGasto: number
+  conEnvio: number
 }
-type Creado = { fila: number, tramiteId: number, gastoId: number | null, gastoCodigo: string | null }
+type Creado = { fila: number, tramiteId: number, gastoId: number | null, gastoCodigo: string | null, dependeEnvio: boolean, envioTramiteId: number | null }
 
 // Lista desplegable compacta para la tabla: vacío = usa el valor común
 function Lista({ valor, opciones, comun, onCambiar, ancho = "w-36" }: {
@@ -90,7 +94,8 @@ export default function CargueEnPantalla() {
     try {
       const guardado = JSON.parse(localStorage.getItem(BORRADOR) ?? "null")
       if (guardado?.filas?.length) {
-        setFilas(guardado.filas.map((f: Fila) => ({ ...f, resultado: null })))
+        // Con los campos nuevos por si el borrador es de antes (ej: sin la dependencia del envío)
+        setFilas(guardado.filas.map((f: Fila) => ({ ...filaVacia(), ...f, resultado: null })))
         setComunes({ ...COMUNES_VACIOS, ...guardado.comunes, gasto: { ...COMUNES_VACIOS.gasto, ...guardado.comunes?.gasto } })
         toast.info("Se recuperó el cargue que tenía sin guardar")
       }
@@ -178,7 +183,9 @@ export default function CargueEnPantalla() {
       const r = v.filas[i]
       if (!r) return f
       const cliente = r.cliente && !f.clienteId && f.clienteTexto ? { clienteId: r.cliente.id, clienteNombre: r.cliente.nombre, clienteTexto: "" } : {}
-      return { ...f, ...cliente, resultado: { errores: r.errores, avisos: r.avisos } }
+      // Envíos de su placa; si no había elegido y hay uno solo, el servidor ya lo dejó relacionado
+      const envio = r.envios ? { envios: r.envios, envioTramiteId: f.envioTramiteId ?? r.envioTramiteId } : {}
+      return { ...f, ...cliente, ...envio, resultado: { errores: r.errores, avisos: r.avisos } }
     }))
     setValidacion(v)
   }
@@ -251,7 +258,7 @@ export default function CargueEnPantalla() {
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
-              <tr><th className="px-4 py-2.5">Fila</th><th className="px-4 py-2.5">Trámite</th><th className="px-4 py-2.5">Placa / matrícula</th><th className="px-4 py-2.5">Gasto</th></tr>
+              <tr><th className="px-4 py-2.5">Fila</th><th className="px-4 py-2.5">Trámite</th><th className="px-4 py-2.5">Placa / matrícula</th><th className="px-4 py-2.5">Gasto</th><th className="px-4 py-2.5">Depende de envío</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {creados.map(c => (
@@ -260,6 +267,11 @@ export default function CargueEnPantalla() {
                   <td className="px-4 py-2.5"><Link href={`/center/solicitudTramites/${c.tramiteId}`} className="font-semibold text-sky-700 hover:underline">#{c.tramiteId}</Link></td>
                   <td className="px-4 py-2.5 text-slate-600">{filas[c.fila - 1]?.identificador}</td>
                   <td className="px-4 py-2.5 text-slate-600">{c.gastoCodigo ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-slate-600">
+                    {!c.dependeEnvio ? "No"
+                      : c.envioTramiteId ? <Link href={`/center/solicitudTramites/${c.envioTramiteId}`} className="text-sky-700 hover:underline">Sí · envío #{c.envioTramiteId}</Link>
+                        : <span className="text-amber-700">Sí · envío por relacionar</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -310,6 +322,12 @@ export default function CargueEnPantalla() {
             <SelectBuscable value={comunes.documentosAportados} onChange={e => cambiarComunes({ documentosAportados: e.target.value })} className={claseCampo}>
               <option value="No">No</option>
               <option value="Si">Sí</option>
+            </SelectBuscable>
+          </Campo>
+          <Campo etiqueta="¿Depende de envío de documentos?">
+            <SelectBuscable value={comunes.dependeEnvio ? "si" : "no"} onChange={e => cambiarComunes({ dependeEnvio: e.target.value === "si" })} className={claseCampo}>
+              <option value="no">No</option>
+              <option value="si">Sí</option>
             </SelectBuscable>
           </Campo>
         </div>
@@ -392,7 +410,7 @@ export default function CargueEnPantalla() {
 
       {/* ── Filas ── */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[1400px] text-left text-xs">
+        <table className="w-full min-w-[1620px] text-left text-xs">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
               <th className="w-8 px-2 py-2.5 text-center">#</th>
@@ -405,6 +423,7 @@ export default function CargueEnPantalla() {
               <th className="px-2 py-2.5">Fecha entrega</th>
               <th className="px-2 py-2.5">Operación</th>
               <th className="px-2 py-2.5">Entidad</th>
+              <th className="px-2 py-2.5">Depende de envío</th>
               <th className="px-2 py-2.5 text-center">Gasto</th>
               <th className="w-8 px-2 py-2.5" />
             </tr>
@@ -426,7 +445,8 @@ export default function CargueEnPantalla() {
                         {/* Clases propias: con claseCampo chocaban w-full / px-2 y el texto quedaba cortado */}
                         <select
                           value={f.tipoIdentificador}
-                          onChange={e => cambiarFila(f.clave, { tipoIdentificador: e.target.value as Fila["tipoIdentificador"] })}
+                          // Otra placa o matrícula: los envíos que se conocían ya no sirven
+                          onChange={e => cambiarFila(f.clave, { tipoIdentificador: e.target.value as Fila["tipoIdentificador"], envios: null, envioTramiteId: null })}
                           className="h-8 w-24 shrink-0 rounded-md border border-slate-200 bg-white pl-2 pr-6 text-xs text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                           aria-label="Placa o matrícula"
                         >
@@ -438,7 +458,7 @@ export default function CargueEnPantalla() {
                           onChange={e => {
                             const v = e.target.value
                             // Si lo escrito tiene forma de placa (ABC123) se marca como placa
-                            cambiarFila(f.clave, { identificador: f.tipoIdentificador === "placa" ? v.toUpperCase() : v, tipoIdentificador: parecePlaca(v) ? "placa" : f.tipoIdentificador })
+                            cambiarFila(f.clave, { identificador: f.tipoIdentificador === "placa" ? v.toUpperCase() : v, tipoIdentificador: parecePlaca(v) ? "placa" : f.tipoIdentificador, envios: null, envioTramiteId: null })
                           }}
                           maxLength={50}
                           placeholder={f.tipoIdentificador === "placa" ? "ABC123" : "Matrícula"}
@@ -479,6 +499,31 @@ export default function CargueEnPantalla() {
                     </td>
                     <td className="px-2 py-2"><Lista valor={f.operacionId} opciones={catalogos.operaciones} comun={comunes.operacionId} onCambiar={id => cambiarFila(f.clave, { operacionId: id })} /></td>
                     <td className="px-2 py-2"><Lista valor={f.entidadId} opciones={catalogos.entidades} comun={comunes.entidadId} onCambiar={id => cambiarFila(f.clave, { entidadId: id })} /></td>
+                    <td className="px-2 py-2">
+                      <div className="w-56 space-y-1">
+                        <SelectBuscable
+                          value={f.dependeEnvio === null ? "" : f.dependeEnvio ? "si" : "no"}
+                          onChange={e => cambiarFila(f.clave, { dependeEnvio: e.target.value === "" ? null : e.target.value === "si" })}
+                          className={clsx(claseCampo, f.dependeEnvio === null && "text-slate-400")}
+                        >
+                          <option value="">Común: {comunes.dependeEnvio ? "Sí" : "No"}</option>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </SelectBuscable>
+                        {dependeEnvioDe(f, comunes) && (f.envios ? (
+                          <SelectBuscable
+                            value={f.envioTramiteId ?? ""}
+                            onChange={e => cambiarFila(f.clave, { envioTramiteId: Number(e.target.value) || null })}
+                            className={clsx(claseCampo, !f.envioTramiteId && "text-slate-400")}
+                          >
+                            <option value="">Envío por relacionar</option>
+                            {f.envios.map(e => <option key={e.id} value={e.id} className="text-slate-700">{textoEnvio(e)}</option>)}
+                          </SelectBuscable>
+                        ) : (
+                          <p className="text-[11px] text-slate-400">{f.envioTramiteId ? `Envío #${f.envioTramiteId} · ` : ""}Valide para ver los envíos</p>
+                        ))}
+                      </div>
+                    </td>
                     <td className="px-2 py-2 text-center">
                       <input
                         type="checkbox"
@@ -505,7 +550,7 @@ export default function CargueEnPantalla() {
                   {f.conGasto && g && (
                     <tr className="bg-sky-50/40">
                       <td />
-                      <td colSpan={11} className="px-2 pb-3 pt-1">
+                      <td colSpan={12} className="px-2 pb-3 pt-1">
                         <div className="flex flex-wrap items-end gap-2">
                           <span className="flex h-8 items-center gap-1 text-[11px] font-semibold text-sky-700"><Receipt size={13} /> Gasto</span>
                           <Campo etiqueta="Tipo de gasto">
@@ -559,7 +604,7 @@ export default function CargueEnPantalla() {
                   {(errores.length > 0 || avisos.length > 0) && (
                     <tr className={errores.length ? "bg-red-50/40" : "bg-amber-50/40"}>
                       <td />
-                      <td colSpan={11} className="px-2 pb-2.5 text-[11px]">
+                      <td colSpan={12} className="px-2 pb-2.5 text-[11px]">
                         {errores.map(e => <p key={e} className="flex items-center gap-1 text-red-600"><XCircle size={11} /> {e}</p>)}
                         {avisos.map(a => <p key={a} className="flex items-center gap-1 text-amber-700"><AlertTriangle size={11} /> {a}</p>)}
                       </td>

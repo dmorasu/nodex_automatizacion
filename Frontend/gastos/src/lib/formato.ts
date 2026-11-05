@@ -57,3 +57,10 @@ export const formatoTamano = (bytes: number) =>
   bytes < 1024 * 1024
     ? `${Math.ceil(bytes / 1024)} KB`
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`
+
+// IVA incluido en el valor que consigna el cliente (solicitudes de factura). Total = lo consignado
+// o recibido; IVA = total × t / (1 + t); base = total − IVA. En centavos, igual que el backend
+export const ivaIncluido = (totalCentavos: number, tarifa: number) => {
+  const iva = Math.round(totalCentavos * tarifa / (1 + tarifa))
+  return { base: totalCentavos - iva, iva, total: totalCentavos }
+}

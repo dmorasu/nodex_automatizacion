@@ -4,6 +4,7 @@ import SolicitudTramites from "../models/solicitudTramites";
 import { subirDocumentoATramite, tramitesParaDocumentos } from "../services/cargueMasivoDocumentos";
 import { TIPOS_DOCUMENTO_TRAMITE, type TipoDocumentoTramite } from "../services/tramitadores/nombresDocumento";
 import { responderError } from "../controllers/gastos/utilidades";
+import { gastosParaFactura } from "../services/facturaTramiteAGasto";
 
 import {
   DocumentoSolicitudController
@@ -81,6 +82,22 @@ router.get(
   autenticacion,
   verificarTramiteEnParametro("solicitudTramiteId"),
   DocumentoSolicitudController.listarDocumentos
+);
+
+
+// Gastos del trámite a los que puede ir una factura subida en sus documentos (Torre de control)
+router.get(
+  "/solicitud/:solicitudTramiteId/gastos-factura",
+  autenticacion,
+  verificarTramiteEnParametro("solicitudTramiteId"),
+  async (req: Request, res: Response) => {
+    try {
+      const esTorre = (req.roles ?? []).some(rol => rol === "TORRE_CONTROL" || rol === "ADMIN")
+      res.json(esTorre ? await gastosParaFactura(Number(req.params.solicitudTramiteId)) : [])
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
 );
 
 

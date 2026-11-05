@@ -92,6 +92,7 @@ export default function TablaAnticipos({
                     {a.clase === "FACTURA" && <span className="font-medium text-sky-700">Solicitud de factura · </span>}
                     {a.operacion.nombreOperacion}
                   </p>
+                  {a.operacion.centroDeCostos && <p className="text-[11px] text-slate-400">CC {a.operacion.centroDeCostos}</p>}
                 </td>
                 <td className="px-4 py-3">
                   <p className="font-medium text-slate-700">{a.cliente.nombre}</p>
@@ -109,8 +110,8 @@ export default function TablaAnticipos({
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <p className="font-semibold text-slate-800">{formatoMoneda(a.valorRecibido ?? a.valorConsignado)}</p>
-                  {/* Solicitud de factura: el valor es la base; el IVA va encima */}
-                  {a.ivaValor && <p className="text-[11px] text-slate-400">+ IVA {formatoMoneda(a.ivaValor)} = {formatoMoneda(Number(a.valorRecibido ?? a.valorConsignado) + Number(a.ivaValor))}</p>}
+                  {/* Solicitud de factura: el valor ya trae el IVA (es el total) */}
+                  {a.ivaValor && <p className="text-[11px] text-slate-400">Base {formatoMoneda(Number(a.valorRecibido ?? a.valorConsignado) - Number(a.ivaValor))} + IVA {formatoMoneda(a.ivaValor)}</p>}
                   {a.valorRecibido && Number(a.valorRecibido) !== Number(a.valorConsignado) && (
                     <p className="text-[11px] text-amber-700">consignó {formatoMoneda(a.valorConsignado)}</p>
                   )}

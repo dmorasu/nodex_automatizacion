@@ -14,6 +14,12 @@ import {
 } from "../services/azureFileStorage";
 
 import { db } from "../config/db";
+import { conPrefijo, TIPOS_DOCUMENTO_TRAMITE, type TipoDocumentoTramite } from "../services/tramitadores/nombresDocumento";
+import { copiarFacturaAlGasto, validarGastoParaFactura } from "../services/facturaTramiteAGasto";
+import { ErrorGastos } from "../services/gastos/errores";
+
+// Torre de control (también analistas y administradores) puede mandar la factura al gasto
+const esTorreControl = (req: Request) => (req.roles ?? []).some(rol => rol === "TORRE_CONTROL" || rol === "ADMIN");
 
 
 export class DocumentoSolicitudController {
@@ -373,6 +379,29 @@ export class DocumentoSolicitudController {
       }
 
 
+      // Tipo de documento (opcional) y, si es factura, el gasto del trámite al que también va
+      const tipoDocumento: TipoDocumentoTramite | null =
+        req.body.tipoDocumento && req.body.tipoDocumento in TIPOS_DOCUMENTO_TRAMITE
+          ? req.body.tipoDocumento as TipoDocumentoTramite
+          : null;
+      const solicitudGastoId = Number(req.body.solicitudGastoId) > 0 ? Number(req.body.solicitudGastoId) : null;
+      if (solicitudGastoId) {
+        if (tipoDocumento !== "FACTURA") {
+          return res.status(400).json({ error: "Solo una factura se puede cargar también al gasto" });
+        }
+        if (!esTorreControl(req)) {
+          return res.status(403).json({ error: "Solo Torre de control carga la factura al gasto" });
+        }
+        try {
+          // Antes de subir nada: el gasto es de este trámite y aún recibe documentos
+          await validarGastoParaFactura(Number(solicitudTramiteId), solicitudGastoId);
+        } catch (error) {
+          if (error instanceof ErrorGastos) return res.status(400).json({ error: error.message });
+          throw error;
+        }
+      }
+
+
       // ==========================================
       // 9. DIRECTORIO
       // ==========================================
@@ -525,8 +554,12 @@ export class DocumentoSolicitudController {
 
                 usuarioId,
 
-                nombreOriginal:
-                  documento.archivo.originalname,
+                tipoDocumento,
+
+                // Con tipo, el nombre lleva el prefijo (ej: "Factura - x.pdf"), como en la app
+                nombreOriginal: tipoDocumento
+                  ? conPrefijo(TIPOS_DOCUMENTO_TRAMITE[tipoDocumento], documento.archivo.originalname)
+                  : documento.archivo.originalname,
 
                 nombreArchivo:
                   documento.nombreArchivo,
@@ -557,14 +590,34 @@ export class DocumentoSolicitudController {
         await transaction.commit();
 
 
+        // La factura también al gasto. Si falla, los documentos del trámite ya quedaron: se avisa
+        let gasto: string | null = null;
+        let errorGasto: string | null = null;
+        if (solicitudGastoId) {
+          try {
+            gasto = (await copiarFacturaAlGasto(Number(solicitudTramiteId), solicitudGastoId, archivos, usuarioId)).codigo;
+          } catch (error) {
+            console.error("ERROR COPIANDO LA FACTURA AL GASTO:", error);
+            errorGasto = error instanceof ErrorGastos ? error.message : "No se pudo cargar la factura al gasto";
+          }
+        }
+
+
         // ========================================
         // 15. RESPUESTA
         // ========================================
 
         return res.status(201).json({
 
-          mensaje:
-            "Documentos cargados correctamente",
+          mensaje: gasto
+            ? `Documentos cargados al trámite y la factura al gasto ${gasto}`
+            : errorGasto
+              ? `Documentos cargados al trámite, pero no al gasto: ${errorGasto}. Súbala desde Nodex Gastos`
+              : "Documentos cargados correctamente",
+
+          gasto,
+
+          errorGasto,
 
           totalDocumentos:
             documentos.length,

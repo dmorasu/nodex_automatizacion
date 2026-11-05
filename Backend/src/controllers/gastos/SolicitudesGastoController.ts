@@ -300,7 +300,12 @@ export class SolicitudesGastoController {
             'valorSolicitadoPago', 'valorRealmentePagado',
             'fechaPago', 'createdAt', 'solicitudTramiteId', 'anticipoId',
             ...ATRIBUTOS_SEGUIMIENTO_TRAMITADOR,
-            ...atributosSaldoAnticipo()
+            ...atributosSaldoAnticipo(),
+            // Caja menor: cuántos soportes tiene (al legalizar no hay que volver a subirlos)
+            ...(req.query.cajaMenor === 'si' ? [[literal(`(
+              SELECT COUNT(*)::int FROM gastos_documentos d JOIN gastos_tipos_documento_gasto t ON t.id = d.tipo_documento_id
+              WHERE d.solicitud_gasto_id = "SolicitudesGasto"."id" AND t.codigo IN ('SOPORTE_CAJA_MENOR', 'FACTURA')
+            )`), 'soportesCaja'] as [ReturnType<typeof literal>, string]] : [])
           ],
           order: ORDENES[String(req.query.orden)] ?? ORDENES.recientes,
           limit: tamano,

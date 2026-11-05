@@ -47,6 +47,11 @@ export async function legalizarGastoCaja(gastoId: number, formData: FormData) {
   return resultado
 }
 
+// Cargue masivo de soportes: los de un gasto por legalizar (una llamada por gasto)
+export async function subirSoportesCaja(gastoId: number, formData: FormData) {
+  return enviar(`gastos/${gastoId}/soportes`, formData)
+}
+
 export async function deshacerLegalizacionCaja(gastoId: number) {
   const resultado = await enviar(`gastos/${gastoId}/deshacer`)
   revalidatePath(`/solicitudes/${gastoId}`)

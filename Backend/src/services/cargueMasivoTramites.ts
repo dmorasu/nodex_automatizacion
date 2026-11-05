@@ -15,6 +15,7 @@ import { crearGastoEnTransaccion, validarGasto, type DatosGasto } from './gastos
 import { ErrorGastos } from './gastos/errores'
 import { TIPOS_BOLSA } from './gastos/constantes'
 import { ubicarEnSegundoPlano } from './mensajeria/ubicacion'
+import { anotarDependenciaAlCrear, enviosRelacionables, type EnvioRelacionable } from './dependenciaEnvio'
 
 // =====================================
 // CARGUE MASIVO DE TRÁMITES EN PANTALLA
@@ -53,6 +54,9 @@ export type FilaCargue = {
   matricula?: string | null
   fechaEntregaResultado?: string | null
   documentosAportados?: string | null
+  // ¿Depende de un envío de documentos? (como en el formulario). El envío puede quedar por relacionar
+  dependeEnvio?: boolean | string | null
+  envioTramiteId?: number | string | null
   gasto?: GastoDeFila | null
 }
 
@@ -61,6 +65,10 @@ export type ResultadoFila = {
   errores: string[]
   avisos: string[]
   cliente: { id: number, nombre: string, identificacion: string | null } | null
+  // Solo en las filas que dependen de un envío: los envíos de su placa o matrícula y el que queda
+  // relacionado (el elegido o, si no eligió y hay uno solo, ese)
+  envios: EnvioRelacionable[] | null
+  envioTramiteId: number | null
 }
 
 const texto = (valor: unknown) => String(valor ?? '').trim()
@@ -143,6 +151,27 @@ const resolverClientes = async (filas: FilaCargue[]) => {
 
 const esPlaca = (fila: FilaCargue) => Boolean(texto(fila.placa))
 
+// Sí / Si / true / 1 (de la pantalla, lo pegado o el Excel)
+export const dependeDeEnvio = (fila: FilaCargue) => {
+  const v = fila.dependeEnvio
+  return v === true || /^(s[ií]|true|1)$/i.test(texto(v))
+}
+
+// Envíos de documentos de cada placa o matrícula de las filas que dependen de uno (una consulta por placa)
+const enviosDeLasFilas = async (filas: FilaCargue[]) => {
+  const claveEnvio = (f: FilaCargue) => (texto(f.placa) ? `P:${normalizar(f.placa)}` : texto(f.matricula) ? `M:${normalizar(f.matricula)}` : null)
+  const porClave = new Map<string, EnvioRelacionable[]>()
+  for (const fila of filas) {
+    const clave = claveEnvio(fila)
+    if (!dependeDeEnvio(fila) || !clave || porClave.has(clave)) continue
+    porClave.set(clave, await enviosRelacionables(clave.startsWith('P:') ? { placa: fila.placa } : { matricula: fila.matricula }))
+  }
+  return (fila: FilaCargue) => {
+    const clave = claveEnvio(fila)
+    return clave ? porClave.get(clave) ?? [] : []
+  }
+}
+
 // Datos del gasto de la fila en el formato del módulo de gastos
 const datosGasto = (fila: FilaCargue, operacionId: number, solicitudTramiteId: number | null): DatosGasto => {
   const g = fila.gasto!
@@ -174,7 +203,7 @@ export const validarCargue = async (filas: FilaCargue[]) => {
   if (!filas.length) throw new ErrorGastos('Agregue al menos una fila')
   if (filas.length > MAXIMO_FILAS) throw new ErrorGastos(`Máximo ${MAXIMO_FILAS} trámites por cargue`)
 
-  const [clientes, catalogos, abiertos] = await Promise.all([
+  const [clientes, catalogos, abiertos, envios] = await Promise.all([
     resolverClientes(filas),
     Promise.all([
       Operaciones.findAll({ attributes: ['id'] }), Entidad.findAll({ attributes: ['id'] }),
@@ -193,7 +222,8 @@ export const validarCargue = async (filas: FilaCargue[]) => {
         WHERE (UPPER(TRIM(t.placa)) IN (:placas) OR UPPER(TRIM(t."matriculaInmobiliaria")) IN (:matriculas))
           AND COALESCE(e."nombreEstado", '') NOT IN ('Finalizado', 'Desistido')
       `, { replacements: { placas: placas.length ? placas : [''], matriculas: matriculas.length ? matriculas : [''] }, type: QueryTypes.SELECT })
-    })()
+    })(),
+    enviosDeLasFilas(filas)
   ])
   const [operaciones, entidades, tramites, municipios] = catalogos
   const existe = (lista: { id?: number }[], id: unknown) => lista.some(x => Number(x.id) === Number(id))
@@ -238,12 +268,35 @@ export const validarCargue = async (filas: FilaCargue[]) => {
       }
     }
 
+    // Envío de documentos: mismas reglas del formulario (envío de esta placa o matrícula; puede
+    // quedar por relacionar y se relaciona después al editar el trámite)
+    let enviosFila: EnvioRelacionable[] | null = null
+    let envioTramiteId: number | null = null
+    if (dependeDeEnvio(fila)) {
+      enviosFila = envios(fila)
+      const elegido = Number(fila.envioTramiteId) > 0 ? Number(fila.envioTramiteId) : null
+      const identificador = esPlaca(fila) ? 'placa' : 'matrícula'
+      if (elegido) {
+        if (enviosFila.some(e => e.id === elegido)) envioTramiteId = elegido
+        else errores.push(`El trámite #${elegido} no es un envío de documentos de esta ${identificador}`)
+      } else if (enviosFila.length === 1) {
+        // Uno solo: se relaciona ese (la pantalla lo muestra elegido antes de guardar)
+        envioTramiteId = enviosFila[0].id
+      } else if (enviosFila.length > 1) {
+        avisos.push(`Hay ${enviosFila.length} envíos de documentos de esta ${identificador}: elija cuál o relaciónelo después al editar el trámite`)
+      } else if (texto(fila.placa) || texto(fila.matricula)) {
+        avisos.push(`No hay envíos de documentos de esta ${identificador}: el trámite queda sin poder programarse hasta relacionarlo al editarlo`)
+      }
+    }
+
     const cliente = encontrados.length === 1 ? encontrados[0] : null
     resultados.push({
       fila: i + 1,
       errores,
       avisos,
-      cliente: cliente ? { id: cliente.id, nombre: cliente.nombreCliente, identificacion: cliente.identificacionCliente ?? null } : null
+      cliente: cliente ? { id: cliente.id, nombre: cliente.nombreCliente, identificacion: cliente.identificacionCliente ?? null } : null,
+      envios: enviosFila,
+      envioTramiteId
     })
   }
 
@@ -251,7 +304,8 @@ export const validarCargue = async (filas: FilaCargue[]) => {
     filas: resultados,
     conErrores: resultados.filter(r => r.errores.length).length,
     conAvisos: resultados.filter(r => r.avisos.length).length,
-    conGasto: filas.filter(f => f.gasto).length
+    conGasto: filas.filter(f => f.gasto).length,
+    conEnvio: filas.filter(dependeDeEnvio).length
   }
 }
 
@@ -265,10 +319,14 @@ export const crearCargue = async (filas: FilaCargue[], usuarioId: number) => {
   }
 
   const creados = await db.transaction(async transaction => {
-    const lista: { fila: number, tramiteId: number, gastoId: number | null, gastoCodigo: string | null }[] = []
+    const lista: { fila: number, tramiteId: number, gastoId: number | null, gastoCodigo: string | null, dependeEnvio: boolean, envioTramiteId: number | null }[] = []
     for (const [i, fila] of filas.entries()) {
       const cliente = validacion.filas[i].cliente!
+      const dependeEnvio = dependeDeEnvio(fila)
+      const envioTramiteId = dependeEnvio ? validacion.filas[i].envioTramiteId : null
       const tramite = await SolicitudTramites.create({
+        dependeEnvio,
+        envioTramiteId,
         clienteId: cliente.id,
         municipiosId: Number(fila.municipioId),
         operacionesId: Number(fila.operacionId),
@@ -286,11 +344,16 @@ export const crearCargue = async (filas: FilaCargue[], usuarioId: number) => {
 
       let gasto = null
       if (fila.gasto) gasto = await crearGastoEnTransaccion(datosGasto(fila, tramite.operacionesId, tramite.id), usuarioId, transaction)
-      lista.push({ fila: i + 1, tramiteId: tramite.id, gastoId: gasto?.id ?? null, gastoCodigo: gasto?.codigo ?? null })
+      lista.push({ fila: i + 1, tramiteId: tramite.id, gastoId: gasto?.id ?? null, gastoCodigo: gasto?.codigo ?? null, dependeEnvio, envioTramiteId })
     }
     return lista
   })
 
+  // La dependencia marcada al crear queda en el historial, como en el formulario (ya confirmada la
+  // transacción: el historial nunca frena el cargue)
+  for (const c of creados) {
+    if (c.dependeEnvio) await anotarDependenciaAlCrear(c.tramiteId, c.envioTramiteId)
+  }
   // Después de guardar: ubicar las direcciones para las rutas de mensajeros (en segundo plano)
   creados.forEach(c => ubicarEnSegundoPlano(c.tramiteId))
   return { ok: true as const, creados }
@@ -313,7 +376,9 @@ const COLUMNAS_EXCEL = [
   { titulo: 'Gasto: concepto', ancho: 26, nota: 'Opcional: si la fila tiene gasto, el concepto del pago' },
   { titulo: 'Gasto: valor', ancho: 14, nota: 'Valor del gasto, sin puntos ni $' },
   { titulo: 'Gasto: beneficiario', ancho: 20, nota: 'Identificación del beneficiario del pago' },
-  { titulo: 'Gasto: tránsito', ancho: 20, nota: 'Solo vehículos: tránsito donde se paga' }
+  { titulo: 'Gasto: tránsito', ancho: 20, nota: 'Solo vehículos: tránsito donde se paga' },
+  { titulo: 'Depende de envío', ancho: 12, nota: 'Si o No: ¿el trámite depende de un envío de documentos? Mientras el envío no esté Finalizado y sus gastos pagados, no se programa' },
+  { titulo: 'N° del envío', ancho: 12, nota: 'Opcional: número del trámite de envío de documentos de la misma placa o matrícula. Vacío: si hay uno solo se relaciona ese; si no, se elige en la pantalla o después al editar' }
 ] as const
 
 // Plantilla con listas desplegables (por nombre, sin ids). Se importa en la pantalla, donde se
@@ -342,6 +407,7 @@ export const plantillaExcel = async () => {
     hoja.getCell(fila, 8).dataValidation = { type: 'list', allowBlank: true, formulae: [rangoOperaciones] }
     hoja.getCell(fila, 9).dataValidation = { type: 'list', allowBlank: true, formulae: [rangoEntidades] }
     hoja.getCell(fila, 11).dataValidation = { type: 'list', allowBlank: true, formulae: ['"Si,No"'] }
+    hoja.getCell(fila, 16).dataValidation = { type: 'list', allowBlank: true, formulae: ['"Si,No"'] }
     hoja.getCell(fila, 10).numFmt = 'dd/mm/yyyy'
   }
   return Buffer.from(await libro.xlsx.writeBuffer())
@@ -385,7 +451,9 @@ export const leerExcel = (buffer: Buffer) => {
       gastoConcepto: texto(valor(f, 'Gasto: concepto')),
       gastoValor: texto(valor(f, 'Gasto: valor')),
       gastoBeneficiario: texto(valor(f, 'Gasto: beneficiario')),
-      gastoTransito: texto(valor(f, 'Gasto: tránsito', 'Gasto: transito'))
+      gastoTransito: texto(valor(f, 'Gasto: tránsito', 'Gasto: transito')),
+      dependeEnvio: texto(valor(f, 'Depende de envío', 'dependeEnvio')),
+      envio: texto(valor(f, 'N° del envío', 'Envío', 'envioTramiteId')).replace(/^#/, '')
     }))
     // Se ignoran las filas totalmente vacías
     .filter(f => Object.values(f).some(Boolean))

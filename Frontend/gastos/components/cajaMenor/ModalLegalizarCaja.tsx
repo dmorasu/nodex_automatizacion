@@ -22,7 +22,8 @@ function Campo({ etiqueta, obligatorio = true, className, children }: { etiqueta
 const centavos = (valor: string | number | null) => Math.round(Number(valor || 0) * 100)
 
 // Tesorería legaliza un gasto pagado por caja: la factura que trajo quien recibió el efectivo,
-// con su soporte obligatorio. Queda pendiente por reembolso.
+// con su soporte. Si el gasto ya tiene soporte (cargue masivo o factura del gasto) no hay que volver
+// a subirlo. Queda pendiente por reembolso.
 export default function ModalLegalizarCaja({ gasto, onCerrar, onLegalizado }: {
   gasto: GastoListado
   onCerrar: () => void
@@ -46,6 +47,7 @@ export default function ModalLegalizarCaja({ gasto, onCerrar, onLegalizado }: {
   const cambiar = (campo: keyof typeof datos, valor: string) => setDatos(d => ({ ...d, [campo]: valor }))
   const entregado = Number(gasto.valorRealmentePagado ?? 0)
   const diferencia = (centavos(datos.valorSoporte) - centavos(entregado)) / 100
+  const yaTiene = gasto.soportesCaja ?? 0
 
   const legalizar = () => {
     const faltantes = [
@@ -55,7 +57,7 @@ export default function ModalLegalizarCaja({ gasto, onCerrar, onLegalizado }: {
       !datos.identificacion.trim() && "la identificación",
       !datos.quienLegaliza.trim() && "quién legaliza",
       !(Number(datos.valorSoporte) > 0) && "el valor del soporte",
-      archivos.length === 0 && "el soporte"
+      archivos.length === 0 && yaTiene === 0 && "el soporte"
     ].filter(Boolean)
     if (faltantes.length) return toast.error(`Falta ${faltantes.join(", ")}`)
 
@@ -131,7 +133,8 @@ export default function ModalLegalizarCaja({ gasto, onCerrar, onLegalizado }: {
             </div>
 
             <div className="mt-5">
-              <span className={claseLabel}>Soporte <span className="text-red-400">*</span></span>
+              <span className={claseLabel}>Soporte {yaTiene === 0 && <span className="text-red-400">*</span>}</span>
+              {yaTiene > 0 && <p className="mb-2 text-xs text-emerald-700">Ya tiene {yaTiene} soporte(s) cargado(s). Puede agregar otro si hace falta.</p>}
               <label className={`${claseBotonSecundario} cursor-pointer`}>
                 <Paperclip size={15} />
                 Seleccionar archivos

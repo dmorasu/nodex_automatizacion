@@ -1,11 +1,10 @@
 import Link from "next/link"
 import ExportarExcel from "@/components/gastos/ExportarExcel"
-import { celdaCuatroXMil } from "@/components/gastos/columnasGastos"
 import { Plus, Search, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
 import { tieneRolDeGastos } from "@/src/auth/permisos"
 import { fetchApi } from "@/src/lib/api"
-import { obtenerCatalogos, obtenerOperaciones } from "@/src/lib/datosGastos"
+import { obtenerCatalogos, obtenerOperaciones, obtenerTasas } from "@/src/lib/datosGastos"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import { ListadoGastosSchema } from "@/src/schemas/gastos"
 import EstadoGasto from "@/components/gastos/EstadoGasto"
@@ -46,11 +45,13 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
   // Al buscar o filtrar por operación salen también los gastos de los usuarios de su área
   const buscando = Boolean(searchParams.operacionId || searchParams.busqueda)
 
-  const [catalogos, operaciones, respuesta] = await Promise.all([
+  const [catalogos, operaciones, respuesta, tasas] = await Promise.all([
     obtenerCatalogos(),
     obtenerOperaciones(),
-    fetchApi(`/gastos/solicitudes?${consulta}`)
+    fetchApi(`/gastos/solicitudes?${consulta}`),
+    obtenerTasas()
   ])
+  const tasaGmf = tasas.gmf
 
   const { total, registros } = ListadoGastosSchema.parse(await respuesta.json())
   const totalPaginas = Math.max(1, Math.ceil(total / TAMANO_PAGINA))
@@ -153,8 +154,8 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
                 </td>
                 <td className="px-4 py-3 text-slate-600">{gasto.bolsa?.nombre ?? "—"}</td>
                 <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">{formatoMoneda(gasto.valorSolicitadoPago)}</td>
-                {/* El registrado con la factura; antes de legalizar sale "—" */}
-                <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{celdaCuatroXMil(gasto)}</td>
+                {/* Calculado sobre el valor solicitado con la tasa del GMF (pedido del usuario, 2026-11-05) */}
+                <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatoMoneda(Math.round(Number(gasto.valorSolicitadoPago) * tasaGmf * 100) / 100)}</td>
                 <td className="px-4 py-3"><EstadoGasto codigo={gasto.estado.codigo} nombre={gasto.estado.nombre} /></td>
               </tr>
             ))}

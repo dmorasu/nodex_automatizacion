@@ -179,7 +179,10 @@ const validarGastosDescarga = [
 router.post('/documentos/descargar/revision', validarGastosDescarga, handleInputErrors, DocumentosGastoController.revisionPdfsDePago)
 router.post('/documentos/descargar',
   validarGastosDescarga,
-  body('pdfPago.*').optional().isIn(['SOPORTE', 'FACTURA', 'AMBOS']).withMessage('Elección del PDF de pago no válida'),
+  // Por gasto: los ids de los documentos y/o los códigos de tipo que se unen en su PDF (o la elección de antes)
+  body('pdfPago.*').optional().custom(valor => Array.isArray(valor)
+    ? valor.length <= 200 && valor.every(v => (Number.isInteger(v) && v > 0) || (typeof v === 'string' && /^[A-Z0-9_]{1,50}$/.test(v)))
+    : ['SOPORTE', 'FACTURA', 'AMBOS'].includes(valor)).withMessage('Elección del PDF unificado no válida'),
   handleInputErrors,
   DocumentosGastoController.descargarVarios
 )
@@ -389,6 +392,7 @@ router.put('/caja-menor/usuarios/:usuarioId', soloTesoreria, validarAsignacion, 
 
 router.post('/caja-menor/pagar', tesoreriaCaja, validarPagoCaja, handleInputErrors, CajaMenorController.pagar)
 router.post('/caja-menor/gastos/:id/legalizar', tesoreriaCaja, recibirDocumentos, leerDatosJson, validarLegalizacionCaja, handleInputErrors, CajaMenorController.legalizarGasto)
+router.post('/caja-menor/gastos/:id/soportes', tesoreriaCaja, recibirDocumentos, validarId, handleInputErrors, CajaMenorController.subirSoportes)
 router.post('/caja-menor/gastos/:id/deshacer', tesoreriaCaja, validarId, handleInputErrors, CajaMenorController.deshacerLegalizacion)
 
 router.get('/caja-menor/reembolsos', cajaODireccion, validarListadoReembolsos, handleInputErrors, CajaMenorController.reembolsos)

@@ -14,6 +14,7 @@ import {
   X,
   Image as ImageIcon,
 } from "lucide-react";
+import { usePerfil } from "@/src/auth/PerfilContexto";
 
 
 interface Documento {
@@ -40,6 +41,18 @@ const NOMBRES_TIPO_DOCUMENTO: Record<string, string> = {
   INGRESO: "Ingreso",
   OTRO: "Otro",
 };
+
+
+// Gasto del trámite que puede recibir la factura (GET /documentos/solicitud/:id/gastos-factura)
+interface GastoParaFactura {
+  id: number;
+  codigo: string;
+  conceptoPago: string;
+  estado: string;
+  facturas: number;
+  facturaRegistrada: boolean;
+  puedeRecibir: boolean;
+}
 
 
 interface Props {
@@ -101,6 +114,29 @@ export default function DocumentosSolicitud({
 
   const inputRef =
     useRef<HTMLInputElement>(null);
+
+
+  // Tipo del documento que se sube y, si es factura, el gasto del trámite al que también va
+  const esTorreControl = usePerfil() === "TORRE_CONTROL";
+  const [tipoDocumento, setTipoDocumento] = useState("");
+  const [gastosFactura, setGastosFactura] = useState<GastoParaFactura[]>([]);
+  const [alGasto, setAlGasto] = useState(true);
+  const [gastoFacturaId, setGastoFacturaId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!esTorreControl) return;
+    void fetch(`${apiUrl}/documentos/solicitud/${solicitudTramiteId}/gastos-factura`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : []))
+      .then((lista: GastoParaFactura[]) => {
+        setGastosFactura(lista);
+        // Si hay un solo gasto que recibe documentos, queda elegido
+        const disponibles = lista.filter(g => g.puedeRecibir);
+        if (disponibles.length === 1) setGastoFacturaId(disponibles[0].id);
+      })
+      .catch(() => setGastosFactura([]));
+  }, [apiUrl, solicitudTramiteId, esTorreControl]);
+
+  const vaAlGasto = tipoDocumento === "FACTURA" && esTorreControl && alGasto && gastosFactura.length > 0;
 
 
   // =====================================================
@@ -399,6 +435,17 @@ export default function DocumentosSolicitud({
     }
 
 
+    if (vaAlGasto && !gastoFacturaId) {
+
+      setError(
+        "Seleccione el gasto al que va la factura (o desmarque «Cargar también al gasto del trámite»)."
+      );
+
+      return;
+
+    }
+
+
     try {
 
       setCargando(true);
@@ -418,6 +465,9 @@ export default function DocumentosSolicitud({
           solicitudTramiteId
         )
       );
+
+      if (tipoDocumento) formData.append("tipoDocumento", tipoDocumento);
+      if (vaAlGasto && gastoFacturaId) formData.append("solicitudGastoId", String(gastoFacturaId));
 
 
       archivos.forEach(
@@ -458,12 +508,25 @@ export default function DocumentosSolicitud({
       }
 
 
-      setMensaje(
-        `${data.totalDocumentos} documento(s) cargado(s) correctamente.`
-      );
+      if (data.errorGasto) {
+
+        // Quedaron en el trámite pero no en el gasto
+        setError(data.mensaje);
+
+      } else {
+
+        setMensaje(
+          data.gasto
+            ? `${data.totalDocumentos} documento(s) cargado(s) al trámite y la factura al gasto ${data.gasto}.`
+            : `${data.totalDocumentos} documento(s) cargado(s) correctamente.`
+        );
+
+      }
 
 
       setArchivos([]);
+
+      setTipoDocumento("");
 
 
       if (inputRef.current) {
@@ -1184,6 +1247,54 @@ export default function DocumentosSolicitud({
                 )
               )}
 
+            </div>
+
+
+            {/* Tipo de documento y, si es factura, también al gasto del trámite (Torre de control) */}
+            <div className="mt-4 flex flex-wrap items-end gap-4">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-600">Tipo de documento</span>
+                <select
+                  value={tipoDocumento}
+                  onChange={e => setTipoDocumento(e.target.value)}
+                  className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-sky-400 focus:outline-none"
+                >
+                  <option value="">Sin tipo</option>
+                  {Object.entries(NOMBRES_TIPO_DOCUMENTO).map(([codigo, nombre]) => (
+                    <option key={codigo} value={codigo}>{nombre}</option>
+                  ))}
+                </select>
+              </label>
+
+              {tipoDocumento === "FACTURA" && esTorreControl && gastosFactura.length > 0 && (
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={alGasto}
+                      onChange={e => setAlGasto(e.target.checked)}
+                      className="h-4 w-4 accent-sky-600"
+                    />
+                    Cargar también al gasto del trámite
+                  </label>
+                  {alGasto && (
+                    <select
+                      value={gastoFacturaId ?? ""}
+                      onChange={e => setGastoFacturaId(Number(e.target.value) || null)}
+                      className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-sky-400 focus:outline-none"
+                    >
+                      <option value="">Seleccione el gasto</option>
+                      {gastosFactura.map(g => (
+                        <option key={g.id} value={g.id} disabled={!g.puedeRecibir}>
+                          {g.codigo} · {g.conceptoPago} · {g.estado}
+                          {g.facturaRegistrada ? " · factura registrada" : g.facturas > 0 ? ` · ya tiene ${g.facturas} factura(s)` : ""}
+                          {!g.puedeRecibir ? " (no recibe documentos)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
 
           </div>

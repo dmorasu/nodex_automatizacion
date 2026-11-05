@@ -5,13 +5,14 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { Banknote, FileCheck2, Layers, Loader2, Undo2 } from "lucide-react"
+import { Banknote, FileCheck2, Layers, Loader2, Paperclip, Undo2 } from "lucide-react"
 import { crearReembolso, deshacerLegalizacionCaja } from "@/actions/gastos/cajaMenor"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import type { GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
 import ModalPagarCaja from "./ModalPagarCaja"
 import ModalLegalizarCaja from "./ModalLegalizarCaja"
+import ModalSoportesCaja from "./ModalSoportesCaja"
 
 export type VistaCaja = "por-pagar" | "por-legalizar" | "pendientes"
 
@@ -26,7 +27,8 @@ const valorDe = (g: GastoListado, vista: VistaCaja) =>
 
 // Gastos de una caja según la vista:
 //  · por pagar: se marcan varios y se entrega el efectivo;
-//  · por legalizar: cada uno se legaliza con su factura y soporte;
+//  · por legalizar: se cargan los soportes de varios a la vez y cada uno se legaliza con su factura
+//    (si ya tiene soporte no hay que volver a subirlo);
 //  · pendientes por reembolso: se marcan varios y se arma el reembolso (o se deshace una legalización).
 export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: {
   bolsaId: number
@@ -38,6 +40,7 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
   const [seleccion, setSeleccion] = useState<number[]>([])
   const [pagando, setPagando] = useState(false)
   const [legalizando, setLegalizando] = useState<GastoListado | null>(null)
+  const [cargandoSoportes, setCargandoSoportes] = useState(false)
   const [armando, setArmando] = useState(false)
   const [observacion, setObservacion] = useState("")
   const [procesando, startProcesar] = useTransition()
@@ -68,6 +71,17 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
 
   return (
     <div className="space-y-3">
+      {vista === "por-legalizar" && gastos.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">
+            {gastos.filter(g => (g.soportesCaja ?? 0) > 0).length} de {gastos.length} con soporte cargado
+          </p>
+          <button type="button" onClick={() => setCargandoSoportes(true)} className={claseBotonSecundario}>
+            <Paperclip size={15} /> Cargar soportes
+          </button>
+        </div>
+      )}
+
       {seleccionable && seleccion.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5">
           <p className="text-xs text-emerald-800">{seleccion.length} seleccionado(s) · {formatoMoneda(totalSeleccionado)}</p>
@@ -111,6 +125,11 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
                 <td className="px-4 py-3">
                   <Link href={`/solicitudes/${g.id}`} className="font-semibold text-emerald-700 hover:underline">{g.codigo}</Link>
                   <p className="text-[11px] text-slate-400">{g.conceptoPago}</p>
+                  {vista === "por-legalizar" && (
+                    (g.soportesCaja ?? 0) > 0
+                      ? <p className="text-[11px] font-medium text-emerald-700">Soporte cargado ({g.soportesCaja})</p>
+                      : <p className="text-[11px] text-amber-700">Sin soporte</p>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{g.creador?.nombreUsuario}</td>
                 <td className="px-4 py-3 text-slate-600">
@@ -150,6 +169,7 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
       </div>
 
       {pagando && <ModalPagarCaja bolsaId={bolsaId} gastos={seleccionados} disponible={disponible} onCerrar={() => setPagando(false)} onPagados={listo} />}
+      {cargandoSoportes && <ModalSoportesCaja gastos={gastos} onCerrar={() => setCargandoSoportes(false)} onTerminado={() => router.refresh()} />}
       {legalizando && <ModalLegalizarCaja gasto={legalizando} onCerrar={() => setLegalizando(null)} onLegalizado={() => router.refresh()} />}
 
       {armando && (

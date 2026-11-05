@@ -121,6 +121,8 @@ export const GastoListadoSchema = z.object({
   // Solo gastos de inmueble
   retencionValor: textoNulo.optional(),
   legalizacionCaja: z.lazy(() => LegalizacionCajaCortaSchema).nullish(),
+  // Caja menor: soportes que ya tiene (al legalizar no hay que volver a subirlos)
+  soportesCaja: z.coerce.number().optional(),
   // Seguimiento desde la app de tramitadores
   solicitudTramiteId: z.number().nullish(),
   soporteTramitador: z.enum(["PENDIENTE", "APROBADO", "RECHAZADO"]).nullish(),
@@ -693,10 +695,13 @@ export const AnticipoListadoSchema = z.object({
   creadoPor: z.number(),
   createdAt: z.string(),
   cantidadGastos: z.coerce.number().default(0),
-  cliente: z.object({ id: z.number(), tipoIdentificacion: z.string(), identificacion: z.string(), nombre: z.string() }),
+  cliente: z.object({
+    id: z.number(), tipoIdentificacion: z.string(), identificacion: z.string(), nombre: z.string(),
+    ciudad: textoNulo.optional(), correo: textoNulo.optional()
+  }),
   clienteEmpresarial: z.object({ id: z.number(), nombre: z.string() }),
   bolsa: z.object({ id: z.number(), nombre: z.string() }),
-  operacion: z.object({ id: z.number(), nombreOperacion: z.string() })
+  operacion: z.object({ id: z.number(), nombreOperacion: z.string(), centroDeCostos: textoNulo.optional() })
 })
 
 export const ListadoAnticiposSchema = z.object({
@@ -717,7 +722,7 @@ export const AnticipoDetalleSchema = AnticipoListadoSchema.omit({ cantidadGastos
   fechaConfirmacion: textoNulo,
   cliente: z.object({
     id: z.number(), tipoIdentificacion: z.string(), identificacion: z.string(), nombre: z.string(),
-    telefono: textoNulo, direccion: textoNulo, ciudad: textoNulo.optional()
+    telefono: textoNulo, direccion: textoNulo, ciudad: textoNulo.optional(), correo: textoNulo.optional()
   }),
   creador: UsuarioCortoSchema,
   confirmador: UsuarioCortoSchema,
@@ -741,7 +746,11 @@ export const AnticipoDetalleSchema = AnticipoListadoSchema.omit({ cantidadGastos
     estado: z.object({ codigo: z.string(), nombre: z.string() })
   })),
   saldoCliente: SaldoClienteSchema.nullable(),
-  permisos: z.object({ editar: z.boolean(), anular: z.boolean(), revisar: z.boolean(), crearGasto: z.boolean() })
+  permisos: z.object({
+    editar: z.boolean(), anular: z.boolean(), revisar: z.boolean(), crearGasto: z.boolean(),
+    // Corrección del administrador fuera de por confirmar / con novedad
+    edicionAdmin: z.boolean().default(false)
+  })
 })
 
 // Arqueo de una bolsa de anticipos: totales y conteos de todos los clientes + la página filtrada
@@ -782,8 +791,8 @@ export const esDocumentoFactura = (documento: { tipoDocumento: { codigo?: string
 export type DatosAnticipo = {
   clase: "ANTICIPO" | "FACTURA"
   tipo: "VEHICULO" | "INMUEBLE"
-  // ciudad: obligatoria solo en las solicitudes de factura
-  cliente: { tipoIdentificacion: "CC" | "NIT", identificacion: string, nombre: string, telefono: string, direccion: string, ciudad: string }
+  // ciudad y correo: obligatorios solo en las solicitudes de factura
+  cliente: { tipoIdentificacion: "CC" | "NIT", identificacion: string, nombre: string, telefono: string, direccion: string, ciudad: string, correo: string }
   clienteEmpresarialId: number | null
   operacionId: number | null
   bolsaId: number | null

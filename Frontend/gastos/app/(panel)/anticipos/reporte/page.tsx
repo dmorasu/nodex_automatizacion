@@ -5,13 +5,29 @@ import { requiereAcceso } from "@/src/auth/dal"
 import { fetchApi } from "@/src/lib/api"
 import { formatoMoneda } from "@/src/lib/formato"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "@/components/ui/estilos"
+import VistaPreviaCentro from "@/components/anticipos/VistaPreviaCentro"
 
 const ValoresSchema = z.object({ cantidad: z.number(), base: z.number(), iva: z.number(), total: z.number() })
+// Registros de cada centro, para la vista previa al pasar el mouse
+const RegistroSchema = z.object({
+  id: z.number(),
+  codigo: z.string(),
+  grupo: z.enum(["FACTURADO", "POR_FACTURAR", "ANTICIPOS"]),
+  estado: z.string(),
+  cliente: z.string().nullable(),
+  fechaConsignacion: z.string(),
+  identificacion: z.string().nullable(),
+  base: z.number(),
+  iva: z.number(),
+  total: z.number(),
+  factura: z.string().nullable()
+})
 const FilaSchema = z.object({
   centroCostos: z.string(),
   operaciones: z.array(z.string()),
   grupos: z.object({ FACTURADO: ValoresSchema, POR_FACTURAR: ValoresSchema, ANTICIPOS: ValoresSchema }),
-  total: ValoresSchema
+  total: ValoresSchema,
+  registros: z.array(RegistroSchema).optional()
 })
 const ReporteSchema = z.object({ centros: z.array(FilaSchema), totales: FilaSchema })
 
@@ -40,8 +56,17 @@ function FilaReporte({ fila, total = false }: { fila: Fila, total?: boolean }) {
   return (
     <tr className={total ? "bg-slate-50 font-semibold" : "align-top"}>
       <td className="px-4 py-3">
-        <p className="text-slate-800">{fila.centroCostos}</p>
-        {fila.operaciones.length > 0 && <p className="text-[11px] font-normal text-slate-400">{fila.operaciones.join(", ")}</p>}
+        {total || !fila.registros?.length ? (
+          <>
+            <p className="text-slate-800">{fila.centroCostos}</p>
+            {fila.operaciones.length > 0 && <p className="text-[11px] font-normal text-slate-400">{fila.operaciones.join(", ")}</p>}
+          </>
+        ) : (
+          <VistaPreviaCentro centro={fila.centroCostos} registros={fila.registros}>
+            <p className="text-slate-800 underline decoration-slate-300 decoration-dotted underline-offset-4">{fila.centroCostos}</p>
+            {fila.operaciones.length > 0 && <p className="text-[11px] font-normal text-slate-400">{fila.operaciones.join(", ")}</p>}
+          </VistaPreviaCentro>
+        )}
       </td>
       {GRUPOS.map(g => <Celda key={g.clave} valores={fila.grupos[g.clave]} />)}
       <Celda valores={fila.total} fuerte />

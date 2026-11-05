@@ -4,13 +4,13 @@ import { useState } from "react"
 import { toast } from "react-toastify"
 import { Download, Loader2 } from "lucide-react"
 import { claseBotonPrimario } from "../ui/estilos"
-import { revisarPdfsDePago, type RevisionPdfPago, type SegundoDocumento } from "@/actions/gastos/legalizacion"
+import { revisarPdfsDePago, type EleccionPdf, type RevisionPdfPago } from "@/actions/gastos/legalizacion"
 import ModalPdfsDePago from "./ModalPdfsDePago"
 
 export const MAXIMO_DESCARGA = 50
 
 // Descarga en un ZIP los documentos de los gastos indicados (todos en la raíz, sin carpetas).
-// Si hay gastos con PDF de pago unificado (ej: 1301), primero se revisa qué lleva cada PDF
+// Antes se revisa en una ventana qué tipos de documento se unen en un PDF por gasto (2026-11-05)
 export default function BotonDescargarDocumentos({
   gastoIds,
   texto = "Descargar documentos",
@@ -23,7 +23,7 @@ export default function BotonDescargarDocumentos({
   const [descargando, setDescargando] = useState(false)
   const [revision, setRevision] = useState<RevisionPdfPago[] | null>(null)
 
-  // Primero: ¿hay gastos con PDF de pago unificado? Si los hay, se revisan antes de descargar
+  // Primero: los documentos de cada gasto, para elegir qué se une en su PDF
   const revisar = async () => {
     if (gastoIds.length === 0) return toast.error("Seleccione al menos un gasto")
     if (gastoIds.length > MAXIMO_DESCARGA) return toast.error(`Puede descargar máximo ${MAXIMO_DESCARGA} gastos a la vez`)
@@ -34,15 +34,12 @@ export default function BotonDescargarDocumentos({
       setDescargando(false)
       return toast.error(resultado?.errores[0] ?? "No se pudieron revisar los documentos")
     }
-    if (resultado.datos.length) {
-      setDescargando(false)
-      setRevision(resultado.datos)
-      return
-    }
-    await descargar({})
+    setDescargando(false)
+    if (resultado.datos.length) setRevision(resultado.datos)
+    else await descargar({})
   }
 
-  const descargar = async (pdfPago: Record<number, SegundoDocumento>) => {
+  const descargar = async (pdfPago: EleccionPdf) => {
     setRevision(null)
     setDescargando(true)
     try {

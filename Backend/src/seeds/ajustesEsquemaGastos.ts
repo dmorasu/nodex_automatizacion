@@ -164,6 +164,18 @@ const solicitudesDeFactura = async () => {
     if (!columnas[columna]) await db.query(`ALTER TABLE gastos_anticipos ADD COLUMN ${columna} ${tipo}`)
   }
   await db.query(`CREATE INDEX IF NOT EXISTS gastos_anticipos_clase_estado ON gastos_anticipos (clase, estado)`)
+
+  // 2026-11-05 · El IVA viene incluido en lo consignado (antes se sumaba encima). Las solicitudes ya
+  // registradas se recalculan: IVA = total × t / (1 + t), con su tarifa. Se puede repetir: el
+  // resultado es siempre el mismo y solo toca las que no coinciden
+  const [, corregidas] = await db.query(`
+    UPDATE gastos_anticipos
+    SET iva_valor = ROUND(COALESCE(valor_recibido, valor_consignado) * iva_porcentaje / (1 + iva_porcentaje), 2)
+    WHERE clase = 'FACTURA' AND iva_porcentaje IS NOT NULL
+      AND iva_valor IS DISTINCT FROM ROUND(COALESCE(valor_recibido, valor_consignado) * iva_porcentaje / (1 + iva_porcentaje), 2)
+  `)
+  const cantidad = (corregidas as { rowCount?: number })?.rowCount
+  if (cantidad) console.log(`🧾 IVA incluido en el valor consignado: recalculadas ${cantidad} solicitudes de factura`)
 }
 
 // 2026-10-10 · Caja menor: fondo y tope de alerta en las bolsas de caja menor, y el comprobante

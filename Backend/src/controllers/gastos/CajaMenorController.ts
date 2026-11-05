@@ -12,7 +12,7 @@ import {
   actualizarCaja, agregarAlReembolso, anularReembolso, aprobarReembolso, asignarCaja, cajaDelUsuario, crearCaja,
   crearReembolso, deshacerLegalizacionCaja, enviarReembolso, legalizarGastoCaja, legalizarReembolso, pagarConCaja,
   quitarDelReembolso, rechazarReembolso, resumenCajas, revisarTopeCaja, usuariosDeCajas, historialCaja, cajaBloqueada,
-  type FiltrosHistorialCaja
+  type FiltrosHistorialCaja, subirSoportesCaja
 } from '../../services/gastos/cajaMenor'
 import { generarExcelHistorialCaja } from '../../services/gastos/excelCajaMenor'
 import { notificarReembolsoEnviado, notificarReembolsoRevisado, notificarTopeCaja } from '../../services/gastos/notificacionesGastos'
@@ -172,6 +172,17 @@ export class CajaMenorController {
       const { bolsaId } = await legalizarGastoCaja(Number(req.params.id), req.body, archivos(req), req.usuario.id)
       revisarTope(bolsaId)
       res.json('Gasto legalizado: queda pendiente por reembolso')
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /caja-menor/gastos/:id/soportes (multipart: archivos[]) — cargue masivo de soportes
+  static subirSoportes = async (req: Request, res: Response) => {
+    try {
+      await verificarGasto(req, Number(req.params.id))
+      const { codigo } = await subirSoportesCaja(Number(req.params.id), archivos(req), req.usuario.id)
+      res.status(201).json(`Soporte cargado a ${codigo}`)
     } catch (error) {
       responderError(res, error)
     }

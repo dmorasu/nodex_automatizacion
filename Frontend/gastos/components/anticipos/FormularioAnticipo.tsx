@@ -11,7 +11,7 @@ import type { AnticipoDetalle, BolsaApoyo, ClienteEmpresarial, DatosAnticipo, Op
 import Seccion from "../ui/Seccion"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
 import SelectBuscable from "@/components/ui/SelectBuscable"
-import { formatoMoneda } from "@/src/lib/formato"
+import { formatoMoneda, ivaIncluido } from "@/src/lib/formato"
 import BuscadorMunicipio from "@/components/ui/BuscadorMunicipio"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
@@ -33,7 +33,8 @@ const datosIniciales = (clase: Clase, bolsas: BolsaApoyo[], anticipo?: AnticipoD
     nombre: anticipo?.cliente.nombre ?? "",
     telefono: anticipo?.cliente.telefono ?? "",
     direccion: anticipo?.cliente.direccion ?? "",
-    ciudad: anticipo?.cliente.ciudad ?? ""
+    ciudad: anticipo?.cliente.ciudad ?? "",
+    correo: anticipo?.cliente.correo ?? ""
   },
   clienteEmpresarialId: anticipo?.clienteEmpresarialId ?? null,
   operacionId: anticipo?.operacionId ?? null,
@@ -75,7 +76,7 @@ export default function FormularioAnticipo({
   clientesEmpresariales: ClienteEmpresarial[]
   anticipo?: AnticipoDetalle
   claseInicial?: Clase
-  // Solicitud de factura: el valor consignado es la base y el IVA va encima (0.19)
+  // Solicitud de factura: tarifa del IVA, que ya viene incluido en el valor consignado (0.19)
   tasaIva?: number
 }) {
   const router = useRouter()
@@ -85,6 +86,17 @@ export default function FormularioAnticipo({
     return datosIniciales(clase, bolsasPorClase[clase], anticipo)
   })
   const [archivos, setArchivos] = useState<File[]>([])
+  // Corrección del administrador fuera de por confirmar / con novedad: motivo obligatorio y, si ya
+  // entró el dinero, el valor recibido, el recibo de caja (anticipo) o el número de factura
+  const edicionAdmin = Boolean(anticipo?.permisos.edicionAdmin)
+  const conDinero = anticipo?.estado === "CONFIRMADO" || anticipo?.estado === "FACTURADO"
+  const [correccion, setCorreccion] = useState({
+    motivo: "",
+    valorRecibido: anticipo?.valorRecibido ? String(Number(anticipo.valorRecibido)) : "",
+    reciboCaja: anticipo?.reciboCaja ?? "",
+    numeroFactura: anticipo?.numeroFactura ?? ""
+  })
+  const cambiarCorreccion = (campo: keyof typeof correccion, valor: string) => setCorreccion(c => ({ ...c, [campo]: valor }))
   // Nombre del cliente si ya está registrado: su nombre no se cambia desde aquí
   const [clienteExistente, setClienteExistente] = useState<string | null>(anticipo?.cliente.nombre ?? null)
 
@@ -122,7 +134,8 @@ export default function FormularioAnticipo({
         nombre: encontrado.nombre,
         telefono: actuales.cliente.telefono || (encontrado.telefono ?? ""),
         direccion: actuales.cliente.direccion || (encontrado.direccion ?? ""),
-        ciudad: actuales.cliente.ciudad || (encontrado.ciudad ?? "")
+        ciudad: actuales.cliente.ciudad || (encontrado.ciudad ?? ""),
+        correo: actuales.cliente.correo || (encontrado.correo ?? "")
       }
     }))
   }
@@ -135,7 +148,8 @@ export default function FormularioAnticipo({
       !datos.cliente.nombre.trim() && "el nombre del cliente",
       !datos.cliente.telefono.trim() && "el teléfono",
       !datos.cliente.direccion.trim() && "la dirección",
-      esFactura && !datos.cliente.ciudad.trim() && "la ciudad",
+      esFactura && !datos.cliente.ciudad.trim() && "la ciudad de la dirección",
+      esFactura && !datos.cliente.correo.trim() && "el correo del cliente",
       !datos.clienteEmpresarialId && "el cliente empresarial",
       !datos.operacionId && "la operación",
       !datos.bolsaId && "la bolsa",
@@ -145,7 +159,11 @@ export default function FormularioAnticipo({
       !(Number(datos.valorConsignado) > 0) && "el valor consignado",
       !datos.fechaConsignacion && "la fecha de consignación",
       // Sin soporte, la referencia del pago (al corregir, el backend cuenta los soportes que ya tiene)
-      !anticipo && archivos.length === 0 && !datos.referenciaPago.trim() && "el soporte de la consignación o la referencia del pago"
+      !anticipo && archivos.length === 0 && !datos.referenciaPago.trim() && "el soporte de la consignación o la referencia del pago",
+      edicionAdmin && !correccion.motivo.trim() && "el motivo de la corrección",
+      edicionAdmin && conDinero && !(Number(correccion.valorRecibido) > 0) && "el valor recibido",
+      edicionAdmin && anticipo?.estado === "CONFIRMADO" && !correccion.reciboCaja.trim() && "el recibo de caja",
+      edicionAdmin && anticipo?.estado === "FACTURADO" && !correccion.numeroFactura.trim() && "el número de factura"
     ].filter(Boolean)
     if (faltantes.length) return toast.error(`Falta ${faltantes.join(", ")}`)
 
@@ -154,7 +172,13 @@ export default function FormularioAnticipo({
       ...datos,
       placa: esVehiculo ? datos.placa : null,
       matriculaInmobiliaria: esVehiculo ? null : datos.matriculaInmobiliaria,
-      valorConsignado: Number(datos.valorConsignado)
+      valorConsignado: Number(datos.valorConsignado),
+      ...(edicionAdmin ? {
+        motivo: correccion.motivo,
+        ...(conDinero ? { valorRecibido: Number(correccion.valorRecibido) } : {}),
+        ...(anticipo?.estado === "CONFIRMADO" ? { reciboCaja: correccion.reciboCaja } : {}),
+        ...(anticipo?.estado === "FACTURADO" ? { numeroFactura: correccion.numeroFactura } : {})
+      } : {})
     }))
     archivos.forEach(archivo => formData.append("archivos", archivo))
 
@@ -252,11 +276,15 @@ export default function FormularioAnticipo({
           <Campo etiqueta="Teléfono">
             <input value={datos.cliente.telefono} onChange={e => cambiarCliente("telefono", e.target.value)} maxLength={30} className={claseInput} />
           </Campo>
-          <Campo etiqueta="Ciudad" opcional={!esFactura}>
-            <BuscadorMunicipio valor={datos.cliente.ciudad} onCambiar={valor => cambiarCliente("ciudad", valor)} />
+          {/* Contabilidad factura con el correo y la ciudad: obligatorios en las solicitudes de factura */}
+          <Campo etiqueta="Correo del cliente" opcional={!esFactura}>
+            <input type="email" value={datos.cliente.correo} onChange={e => cambiarCliente("correo", e.target.value.trim())} maxLength={100} className={claseInput} />
           </Campo>
           <Campo etiqueta="Dirección" className="sm:col-span-2">
             <input value={datos.cliente.direccion} onChange={e => cambiarCliente("direccion", e.target.value)} maxLength={200} className={claseInput} />
+          </Campo>
+          <Campo etiqueta="Ciudad de la dirección" opcional={!esFactura}>
+            <BuscadorMunicipio valor={datos.cliente.ciudad} onCambiar={valor => cambiarCliente("ciudad", valor)} />
           </Campo>
           <Campo etiqueta="Cliente empresarial">
             <SelectBuscable
@@ -271,7 +299,7 @@ export default function FormularioAnticipo({
         </div>
         {clienteExistente && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-emerald-700">
-            <UserCheck size={14} /> Cliente ya registrado: {clienteExistente}. Se actualizan su teléfono, ciudad y dirección.
+            <UserCheck size={14} /> Cliente ya registrado: {clienteExistente}. Se actualizan su teléfono, correo, dirección y ciudad.
           </p>
         )}
       </Seccion>
@@ -292,6 +320,8 @@ export default function FormularioAnticipo({
             <SelectBuscable
               value={datos.bolsaId ?? ""}
               onChange={e => cambiar("bolsaId", e.target.value ? Number(e.target.value) : null)}
+              // Con el dinero ya en la bolsa no se cambia (sus gastos se pagan desde ella)
+              disabled={conDinero}
               className={claseInput}
             >
               <option value="">{bolsas.length ? "Seleccione la bolsa" : esFactura ? "No hay bolsas de anticipos facturados activas" : "No hay bolsas de anticipos activas"}</option>
@@ -321,16 +351,17 @@ export default function FormularioAnticipo({
           </Campo>
         </div>
 
-        {/* Solicitud de factura: base + IVA = total a facturar (al corregir, con la tarifa con que se registró) */}
-        {esFactura && Number(datos.valorConsignado) > 0 && (() => {
+        {/* Solicitud de factura: el valor consignado ya trae el IVA → base + IVA = total (lo consignado).
+            Al corregir, con la tarifa con que se registró */}
+        {esFactura && Number(conDinero ? correccion.valorRecibido : datos.valorConsignado) > 0 && (() => {
           const tarifa = anticipo?.ivaPorcentaje ? Number(anticipo.ivaPorcentaje) : tasaIva
-          const baseC = Math.round(Number(datos.valorConsignado) * 100)
-          const ivaC = Math.round(baseC * tarifa)
+          // Ya facturada: el total es lo que entró
+          const { base, iva, total } = ivaIncluido(Math.round(Number(conDinero ? correccion.valorRecibido : datos.valorConsignado) * 100), tarifa)
           return (
             <div className="mt-4 max-w-md space-y-1.5 rounded-md bg-slate-50 px-4 py-3 text-xs">
-              <p className="flex justify-between gap-4"><span className="text-slate-500">Base (valor consignado)</span><b className="tabular-nums">{formatoMoneda(baseC / 100)}</b></p>
-              <p className="flex justify-between gap-4"><span className="text-slate-500">IVA ({Math.round(tarifa * 10000) / 100} %)</span><b className="tabular-nums">+ {formatoMoneda(ivaC / 100)}</b></p>
-              <p className="flex justify-between gap-4 border-t border-slate-200 pt-1.5 text-sm text-slate-800"><span className="text-slate-500">Total a facturar</span><b className="tabular-nums">{formatoMoneda((baseC + ivaC) / 100)}</b></p>
+              <p className="flex justify-between gap-4"><span className="text-slate-500">Base</span><b className="tabular-nums">{formatoMoneda(base / 100)}</b></p>
+              <p className="flex justify-between gap-4"><span className="text-slate-500">IVA ({Math.round(tarifa * 10000) / 100} %)</span><b className="tabular-nums">+ {formatoMoneda(iva / 100)}</b></p>
+              <p className="flex justify-between gap-4 border-t border-slate-200 pt-1.5 text-sm text-slate-800"><span className="text-slate-500">{conDinero ? "Total (valor recibido)" : "Total (valor consignado)"}</span><b className="tabular-nums">{formatoMoneda(total / 100)}</b></p>
             </div>
           )
         })()}
@@ -367,6 +398,36 @@ export default function FormularioAnticipo({
           className={claseTextarea}
         />
       </Seccion>
+
+      {edicionAdmin && (
+        <Seccion titulo="Corrección del administrador">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {conDinero && (
+              <Campo etiqueta="Valor recibido">
+                <input type="number" min={0} step="0.01" value={correccion.valorRecibido} onChange={e => cambiarCorreccion("valorRecibido", e.target.value)} className={claseInput} />
+              </Campo>
+            )}
+            {anticipo?.estado === "CONFIRMADO" && (
+              <Campo etiqueta="Recibo de caja">
+                <input value={correccion.reciboCaja} onChange={e => cambiarCorreccion("reciboCaja", e.target.value)} maxLength={50} className={claseInput} />
+              </Campo>
+            )}
+            {anticipo?.estado === "FACTURADO" && (
+              <Campo etiqueta="Número de factura">
+                <input value={correccion.numeroFactura} onChange={e => cambiarCorreccion("numeroFactura", e.target.value.toUpperCase())} maxLength={50} className={claseInput} />
+              </Campo>
+            )}
+            <Campo etiqueta="Motivo de la corrección" className="sm:col-span-3">
+              <textarea value={correccion.motivo} onChange={e => cambiarCorreccion("motivo", e.target.value)} rows={2} maxLength={1000} className={claseTextarea} />
+            </Campo>
+          </div>
+          {conDinero && anticipo && Number(correccion.valorRecibido) > 0 && Number(correccion.valorRecibido) !== Number(anticipo.valorRecibido ?? anticipo.valorConsignado) && (
+            <p className="mt-3 text-xs text-amber-700">
+              La bolsa se ajusta por la diferencia: {formatoMoneda(Number(correccion.valorRecibido) - Number(anticipo.valorRecibido ?? anticipo.valorConsignado))} a nombre del cliente.
+            </p>
+          )}
+        </Seccion>
+      )}
 
       <div className="flex justify-end gap-3">
         <button type="button" onClick={() => router.back()} className={claseBotonSecundario}>Cancelar</button>

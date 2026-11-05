@@ -12,8 +12,8 @@ import EstadosGasto from '../../models/gastos/estadosGasto'
 import Operaciones from '../../models/operaciones'
 import Usuarios from '../../models/usuarios'
 import {
-  actualizarAnticipo, anularAnticipo, confirmarAnticipos, contarAnticipos, crearAnticipo, facturarSolicitudes, listarAnticipos,
-  marcarNovedad, saldoDelCliente
+  actualizarAnticipo, anularAnticipo, confirmarAnticipos, contarAnticipos, crearAnticipo, editarAnticipoComoAdmin, facturarSolicitudes,
+  listarAnticipos, marcarNovedad, saldoDelCliente
 } from '../../services/gastos/anticipos'
 import { notificarAnticiposConfirmados, notificarNovedadAnticipo, notificarSolicitudesFacturadas } from '../../services/gastos/notificacionesAnticipos'
 import { archivosPorSolicitud } from '../../middleware/gastos/uploadDocumentosGasto'
@@ -36,6 +36,9 @@ export const obtenerAnticipoConAcceso = async (req: Request, id: number) => {
   }
   return anticipo
 }
+
+// El creador corrige mientras esté por confirmar o con novedad; el administrador, en cualquier estado
+const ESTADOS_CORREGIBLES: string[] = [ESTADOS_ANTICIPO.POR_CONFIRMAR, ESTADOS_ANTICIPO.NOVEDAD]
 
 const esCreadorOAdmin = (req: Request, anticipo: Anticipos) => anticipo.creadoPor === req.usuario.id || esAdmin(req)
 const esContabilidad = (req: Request) => esAdmin(req) || (req.roles ?? []).includes(ROLES.CONTABILIDAD)
@@ -116,7 +119,7 @@ export class AnticiposController {
       const { id } = await obtenerAnticipoConAcceso(req, Number(req.params.id))
       const anticipo = (await Anticipos.findByPk(id, {
         include: [
-          { model: Terceros, attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'telefono', 'direccion', 'ciudad'] },
+          { model: Terceros, attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'telefono', 'direccion', 'ciudad', 'correo'] },
           { model: ClientesEmpresariales, attributes: ['id', 'nombre'] },
           { model: Bolsas, attributes: ['id', 'nombre', 'tipo'] },
           { model: Operaciones, attributes: ['id', 'nombreOperacion', 'centroDeCostos'] },
@@ -150,7 +153,10 @@ export class AnticiposController {
         // Saldo del cliente en la bolsa (todos sus anticipos menos sus gastos)
         saldoCliente: confirmado ? await saldoDelCliente(anticipo.bolsaId, anticipo.clienteId) : null,
         permisos: {
-          editar: esCreadorOAdmin(req, anticipo) && editable,
+          editar: (esCreadorOAdmin(req, anticipo) && editable) || esAdmin(req),
+          // Fuera de por confirmar / con novedad la edición es del administrador: pide motivo y,
+          // si ya entró el dinero, deja corregir el valor recibido, el recibo de caja o la factura
+          edicionAdmin: esAdmin(req) && !editable,
           anular: esCreadorOAdmin(req, anticipo) && editable,
           revisar: esContabilidad(req) && anticipo.estado === ESTADOS_ANTICIPO.POR_CONFIRMAR,
           // Las solicitudes de factura no generan gastos
@@ -177,6 +183,12 @@ export class AnticiposController {
     try {
       const anticipo = await obtenerAnticipoConAcceso(req, Number(req.params.id))
       if (!esCreadorOAdmin(req, anticipo)) throw new ErrorGastos('Solo quien registró el anticipo puede corregirlo', 403)
+
+      // El administrador corrige en cualquier estado (con motivo; el estado no cambia)
+      if (esAdmin(req) && !ESTADOS_CORREGIBLES.includes(anticipo.estado)) {
+        await editarAnticipoComoAdmin(anticipo.id, req.body, archivos(req), req.usuario.id)
+        return res.json({ id: anticipo.id, reenviado: false })
+      }
 
       const { reenviado } = await actualizarAnticipo(anticipo.id, req.body, archivos(req), req.usuario.id)
       res.json({ id: anticipo.id, reenviado })

@@ -24,6 +24,17 @@ export type Gasto = {
   reembolsable: boolean | null
 }
 
+// Envío de documentos de la misma placa o matrícula (lo trae la validación)
+export type EnvioRelacionable = {
+  id: number
+  tipo: string
+  estado: string
+  finalizado: boolean
+  finalizadoEl: string | null
+  creadoEl: string
+  cliente: string | null
+}
+
 export type Fila = {
   clave: string
   identificador: string                 // placa o matrícula
@@ -40,6 +51,11 @@ export type Fila = {
   entidadId: number | null
   fechaEntrega: string
   documentosAportados: string
+  // ¿Depende de un envío de documentos? null = usa el valor común
+  dependeEnvio: boolean | null
+  envioTramiteId: number | null
+  // Envíos de su placa o matrícula, según la última validación (null = aún no se conocen)
+  envios: EnvioRelacionable[] | null
   conGasto: boolean
   gasto: Gasto
   // Resultado de la última validación (null = cambió o no se ha validado)
@@ -56,6 +72,7 @@ export type Comunes = {
   municipioId: number | null
   fechaEntrega: string
   documentosAportados: string
+  dependeEnvio: boolean
   gasto: Omit<Gasto, "tipoGastoId" | "valor">
 }
 
@@ -70,8 +87,21 @@ export const filaVacia = (): Fila => ({
   identificador: "", tipoIdentificador: "placa", detalle: "", direccion: "",
   municipioId: null, municipioTexto: "", clienteId: null, clienteNombre: "", clienteTexto: "",
   tramiteId: null, operacionId: null, entidadId: null, fechaEntrega: "", documentosAportados: "",
+  dependeEnvio: null, envioTramiteId: null, envios: null,
   conGasto: false, gasto: { ...GASTO_VACIO }, resultado: null
 })
+
+// La fila depende de un envío (propio o común)
+export const dependeEnvioDe = (f: Fila, c: Comunes) => f.dependeEnvio ?? c.dependeEnvio
+
+// "#3632 · Envío de documentación · En Curso · 12/10/2026"
+export const textoEnvio = (e: EnvioRelacionable) => {
+  const [a, m, d] = (e.finalizadoEl ?? e.creadoEl).split("-")
+  return `#${e.id} · ${e.tipo} · ${e.estado}${e.finalizado ? ` el ${d}/${m}/${a}` : ` · creado ${d}/${m}/${a}`}`
+}
+
+// Sí / Si / No → true / false; vacío o desconocido → null (usa el común)
+const siNo = (texto?: string) => /^s[ií]$/i.test(texto?.trim() ?? "") ? true : /^no$/i.test(texto?.trim() ?? "") ? false : null
 
 export const normalizar = (texto: string) =>
   texto.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toUpperCase()
@@ -115,13 +145,15 @@ export const fechaDeTexto = (texto: string) => {
 // Columnas que se pueden pegar desde Excel, en este orden
 export const COLUMNAS_PEGADO = [
   "Placa o matrícula", "Detalle", "Dirección", "Municipio", "Tipo de trámite", "Cliente (identificación o nombre)",
-  "Fecha de entrega", "Gasto: concepto", "Gasto: valor", "Gasto: beneficiario (identificación)", "Gasto: tránsito"
+  "Fecha de entrega", "Gasto: concepto", "Gasto: valor", "Gasto: beneficiario (identificación)", "Gasto: tránsito",
+  "Depende de envío (Sí/No)", "N° del envío"
 ] as const
 
 export type DatosCrudos = {
   placa?: string, matricula?: string, identificador?: string, detalle?: string, direccion?: string, municipio?: string,
   tramite?: string, cliente?: string, operacion?: string, entidad?: string, fechaEntregaResultado?: string,
-  documentosAportados?: string, gastoConcepto?: string, gastoValor?: string, gastoBeneficiario?: string, gastoTransito?: string
+  documentosAportados?: string, gastoConcepto?: string, gastoValor?: string, gastoBeneficiario?: string, gastoTransito?: string,
+  dependeEnvio?: string, envio?: string
 }
 
 // Texto pegado (columnas separadas por tabulador, como copia Excel) → datos crudos por fila.
@@ -133,7 +165,8 @@ export const leerPegado = (texto: string): DatosCrudos[] => {
     const c = linea.split("\t").map(x => x.trim())
     return {
       identificador: c[0], detalle: c[1], direccion: c[2], municipio: c[3], tramite: c[4], cliente: c[5],
-      fechaEntregaResultado: c[6], gastoConcepto: c[7], gastoValor: c[8], gastoBeneficiario: c[9], gastoTransito: c[10]
+      fechaEntregaResultado: c[6], gastoConcepto: c[7], gastoValor: c[8], gastoBeneficiario: c[9], gastoTransito: c[10],
+      dependeEnvio: c[11], envio: c[12]
     }
   })
 }
@@ -161,6 +194,9 @@ export const filaDeDatos = (d: DatosCrudos, catalogos: Catalogos): Fila => {
     entidadId: buscarEn(catalogos.entidades, d.entidad ?? "")?.id ?? null,
     fechaEntrega: fechaDeTexto(d.fechaEntregaResultado ?? ""),
     documentosAportados: /^s[ií]$/i.test(d.documentosAportados ?? "") ? "Si" : /^no$/i.test(d.documentosAportados ?? "") ? "No" : "",
+    // Con número de envío se entiende que depende, aunque no diga "Sí"
+    dependeEnvio: siNo(d.dependeEnvio) ?? (Number(d.envio?.replace(/^#/, "")) > 0 ? true : null),
+    envioTramiteId: Number(d.envio?.replace(/^#/, "")) > 0 ? Number(d.envio?.replace(/^#/, "")) : null,
     conGasto,
     gasto: {
       ...GASTO_VACIO,
@@ -189,6 +225,8 @@ export const paraEnviar = (f: Fila, c: Comunes) => {
     matricula: f.tipoIdentificador === "matricula" ? f.identificador : null,
     fechaEntregaResultado: valor(f.fechaEntrega, c.fechaEntrega),
     documentosAportados: valor(f.documentosAportados, c.documentosAportados) ?? "No",
+    dependeEnvio: dependeEnvioDe(f, c),
+    envioTramiteId: dependeEnvioDe(f, c) ? f.envioTramiteId : null,
     gasto: f.conGasto ? {
       tipoGastoId: f.gasto.tipoGastoId,
       conceptoPago: f.gasto.conceptoPago || c.gasto.conceptoPago,

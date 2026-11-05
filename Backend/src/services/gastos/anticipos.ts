@@ -41,8 +41,9 @@ export type DatosCliente = {
   nombre: string
   telefono: string
   direccion: string
-  // Obligatoria solo en las solicitudes de factura
+  // Obligatorios solo en las solicitudes de factura (Contabilidad factura con ellos)
   ciudad?: string | null
+  correo?: string | null
 }
 
 export type DatosAnticipo = {
@@ -94,14 +95,21 @@ const generarCodigo = (clase: ClaseAnticipo, id: number, fecha: Date) =>
 
 const esFactura = (anticipo: { clase: string }) => anticipo.clase === CLASES_ANTICIPO.FACTURA
 
-// IVA sobre la base (en centavos). Sin tarifa guardada toma la del parámetro
-const calcularIva = async (base: number, porcentajeGuardado?: string | null) => {
+// IVA incluido en el valor que consigna el cliente (corrección del usuario, 2026-11-05: antes se
+// sumaba encima). Total = lo consignado o recibido; IVA = total × t / (1 + t); base = total − IVA.
+// Sin tarifa guardada toma la del parámetro. En centavos
+export const ivaIncluido = (totalCentavos: number, porcentaje: number) => {
+  const iva = Math.round(totalCentavos * porcentaje / (1 + porcentaje))
+  return { base: totalCentavos - iva, iva, total: totalCentavos }
+}
+
+const calcularIva = async (total: number, porcentajeGuardado?: string | null) => {
   const porcentaje = porcentajeGuardado !== null && porcentajeGuardado !== undefined
     ? Number(porcentajeGuardado)
     : await obtenerParametro(PARAMETROS.IVA)
   return {
     ivaPorcentaje: String(porcentaje),
-    ivaValor: String(Math.round(aCentavos(base) * porcentaje) / 100)
+    ivaValor: String(ivaIncluido(aCentavos(total), porcentaje).iva / 100)
   }
 }
 
@@ -129,12 +137,13 @@ const anticipoBloqueado = async (id: number, transaction: Transaction) => {
 // ── Cliente (queda como tercero para llevar su saldo) ──
 
 // Lo busca por identificación; si no existe lo crea. Si existe, actualiza el teléfono, la
-// dirección y la ciudad (su nombre y datos bancarios no se tocan: puede ser también beneficiario
-// de pagos). Un anticipo sin ciudad no borra la que ya tenga el cliente
+// dirección, la ciudad y el correo (su nombre y datos bancarios no se tocan: puede ser también
+// beneficiario de pagos). Un anticipo sin ciudad o sin correo no borra los que ya tenga el cliente
 const resolverCliente = async (datos: DatosCliente, transaction: Transaction) => {
   const identificacion = texto(datos.identificacion)!
   const ciudad = texto(datos.ciudad)
-  const contacto = { telefono: texto(datos.telefono), direccion: texto(datos.direccion), ...(ciudad ? { ciudad } : {}) }
+  const correo = texto(datos.correo)?.toLowerCase() ?? null
+  const contacto = { telefono: texto(datos.telefono), direccion: texto(datos.direccion), ...(ciudad ? { ciudad } : {}), ...(correo ? { correo } : {}) }
 
   const existente = await Terceros.findOne({ where: { identificacion }, transaction })
   if (existente) {
@@ -177,11 +186,12 @@ const prepararDatos = async (datos: DatosAnticipo, clase: ClaseAnticipo, transac
 
   // Contabilidad la necesita para facturar
   if (clase === CLASES_ANTICIPO.FACTURA && !texto(datos.cliente.ciudad)) throw new ErrorGastos('La ciudad del cliente es obligatoria en las solicitudes de factura')
+  if (clase === CLASES_ANTICIPO.FACTURA && !texto(datos.cliente.correo)) throw new ErrorGastos('El correo del cliente es obligatorio en las solicitudes de factura')
 
   const valorConsignado = redondear(datos.valorConsignado)
   if (!(valorConsignado > 0)) throw new ErrorGastos('El valor consignado debe ser mayor a cero')
 
-  // Solicitud de factura: el consignado es la base y el IVA (parámetro, 19 %) va encima
+  // Solicitud de factura: el consignado ya trae el IVA (parámetro, 19 %)
   const iva = clase === CLASES_ANTICIPO.FACTURA ? await calcularIva(valorConsignado) : { ivaPorcentaje: null, ivaValor: null }
 
   return {
@@ -279,6 +289,147 @@ export const actualizarAnticipo = (id: number, datos: DatosAnticipo, archivos: E
     )
     return { anticipo, reenviado: estadoAnterior === ESTADOS_ANTICIPO.NOVEDAD }
   })
+
+// ── Edición del administrador en cualquier estado (pedido del usuario, 2026-11-05) ──
+// El estado no cambia. Si el anticipo ya está confirmado o facturado, el dinero está en la bolsa a
+// nombre del cliente: un valor recibido distinto entra como AJUSTE por la diferencia, y otro
+// cliente mueve el saldo (sale del anterior y entra al nuevo) siempre que el anticipo no tenga
+// gastos (sus pagos ya salieron a nombre del cliente anterior). La bolsa no se cambia: los gastos
+// del anticipo solo se pagan desde ella. Todo queda en la trazabilidad con el motivo.
+
+export type DatosEdicionAdmin = DatosAnticipo & {
+  motivo: string
+  // Solo confirmados o facturados
+  valorRecibido?: number | null
+  reciboCaja?: string | null
+  numeroFactura?: string | null
+}
+
+const CON_DINERO: string[] = [ESTADOS_ANTICIPO.CONFIRMADO, ESTADOS_ANTICIPO.FACTURADO]
+
+export const editarAnticipoComoAdmin = (id: number, datos: DatosEdicionAdmin, archivos: Express.Multer.File[], usuarioId: number) =>
+  db.transaction(async transaction => {
+    const motivo = texto(datos.motivo)
+    if (!motivo) throw new ErrorGastos('Indique el motivo de la corrección')
+    const anticipo = await anticipoBloqueado(id, transaction)
+    const clase = anticipo.clase as ClaseAnticipo
+    const conDinero = CON_DINERO.includes(anticipo.estado)
+
+    const campos = await prepararDatos(datos, clase, transaction)
+    const antes = anticipo.toJSON() as Record<string, unknown>
+    const extra: Record<string, unknown> = {}
+
+    if (conDinero) {
+      if (campos.bolsaId !== anticipo.bolsaId) {
+        throw new ErrorGastos(`${mayuscula(nombreAnticipo(anticipo))} ya está ${anticipo.estado === ESTADOS_ANTICIPO.FACTURADO ? 'facturada' : 'confirmado'}: la bolsa no se puede cambiar`)
+      }
+      const recibidoAntes = redondear(Number(anticipo.valorRecibido ?? anticipo.valorConsignado))
+      const recibido = datos.valorRecibido !== undefined && datos.valorRecibido !== null ? redondear(datos.valorRecibido) : recibidoAntes
+      if (!(recibido > 0)) throw new ErrorGastos('El valor recibido debe ser mayor a cero')
+      const otroCliente = campos.clienteId !== anticipo.clienteId
+
+      if (otroCliente) {
+        const gastos = await db.query<{ codigo: string }>(
+          `SELECT codigo FROM gastos_solicitudes WHERE anticipo_id = :id LIMIT 3`,
+          { type: QueryTypes.SELECT, replacements: { id: anticipo.id }, transaction }
+        )
+        if (gastos.length) {
+          throw new ErrorGastos(`No se puede cambiar el cliente: ${nombreAnticipo(anticipo)} ya tiene gastos (${gastos.map(g => g.codigo).join(', ')}) a nombre del cliente actual`)
+        }
+      }
+
+      const nota = `Corrección del administrador en ${anticipo.codigo}: ${motivo}`
+      const movimientos = otroCliente
+        // El saldo pasa del cliente anterior al nuevo (con el valor corregido)
+        ? [
+          { tipo: TIPOS_MOVIMIENTO_BOLSA.AJUSTE, valor: -recibidoAntes, anticipoId: anticipo.id, clienteId: anticipo.clienteId, observacion: `${nota} · sale del cliente anterior` },
+          { tipo: TIPOS_MOVIMIENTO_BOLSA.AJUSTE, valor: recibido, anticipoId: anticipo.id, clienteId: campos.clienteId, observacion: `${nota} · entra al cliente nuevo` }
+        ]
+        : aCentavos(recibido) !== aCentavos(recibidoAntes)
+          ? [{ tipo: TIPOS_MOVIMIENTO_BOLSA.AJUSTE, valor: (aCentavos(recibido) - aCentavos(recibidoAntes)) / 100, anticipoId: anticipo.id, clienteId: anticipo.clienteId, observacion: `${nota} · valor recibido ${formatoMoneda(recibidoAntes)} → ${formatoMoneda(recibido)}` }]
+          : []
+      if (movimientos.length) await registrarMovimientos(anticipo.bolsaId, movimientos, usuarioId, transaction)
+
+      extra.valorRecibido = String(recibido)
+      // El IVA de una solicitud ya facturada sale de lo que entró, con su tarifa
+      if (esFactura(anticipo)) Object.assign(extra, await calcularIva(recibido, anticipo.ivaPorcentaje))
+
+      if (anticipo.estado === ESTADOS_ANTICIPO.CONFIRMADO && datos.reciboCaja !== undefined) {
+        if (!texto(datos.reciboCaja)) throw new ErrorGastos('Indique el recibo de caja')
+        extra.reciboCaja = texto(datos.reciboCaja)
+      }
+      if (anticipo.estado === ESTADOS_ANTICIPO.FACTURADO && datos.numeroFactura !== undefined) {
+        const numero = texto(datos.numeroFactura)?.toUpperCase()
+        if (!numero) throw new ErrorGastos('Indique el número de factura')
+        const usada = await Anticipos.findOne({
+          where: { numeroFactura: numero, estado: ESTADOS_ANTICIPO.FACTURADO, id: { [Op.ne]: anticipo.id } },
+          attributes: ['codigo'], transaction
+        })
+        if (usada) throw new ErrorGastos(`La factura ${numero} ya está registrada en ${usada.codigo}`)
+        extra.numeroFactura = numero
+      }
+    } else if (esFactura(anticipo) && anticipo.ivaPorcentaje) {
+      // Por confirmar o con novedad: se conserva la tarifa con que se registró
+      Object.assign(extra, await calcularIva(Number(campos.valorConsignado), anticipo.ivaPorcentaje))
+    }
+
+    await guardarSoportes(anticipo, archivos, usuarioId, transaction)
+    if (!texto(datos.referenciaPago) && !(await DocumentosGasto.count({ where: { anticipoId: anticipo.id }, transaction }))) {
+      throw new ErrorGastos(SIN_SOPORTE_NI_REFERENCIA)
+    }
+
+    await anticipo.update({ ...campos, ...extra, actualizadoPor: usuarioId }, { transaction })
+    const cambios = await describirCambios(antes, anticipo.toJSON() as Record<string, unknown>, transaction)
+    if (!cambios.length && !archivos.length) throw new ErrorGastos('No hay cambios para guardar')
+
+    await registrarTrazabilidad(
+      anticipo.id, anticipo.estado, anticipo.estado, usuarioId,
+      `Edición del administrador: ${[...cambios, ...(archivos.length ? [`${archivos.length} soporte(s) nuevo(s)`] : [])].join(' · ')}. Motivo: ${motivo}`,
+      transaction
+    )
+    return anticipo
+  })
+
+// "Concepto: antes → después" de lo que cambió (con nombres, no ids)
+const describirCambios = async (antes: Record<string, unknown>, despues: Record<string, unknown>, transaction: Transaction) => {
+  const nombre = async (modelo: 'operacion' | 'bolsa' | 'empresarial' | 'cliente', id: unknown) => {
+    if (!id) return '—'
+    const fila = modelo === 'operacion' ? await Operaciones.findByPk(Number(id), { attributes: ['nombreOperacion'], transaction })
+      : modelo === 'bolsa' ? await Bolsas.findByPk(Number(id), { attributes: ['nombre'], transaction })
+        : modelo === 'empresarial' ? await ClientesEmpresariales.findByPk(Number(id), { attributes: ['nombre'], transaction })
+          : await Terceros.findByPk(Number(id), { attributes: ['nombre', 'identificacion'], transaction })
+    if (!fila) return `#${id}`
+    const f = fila.toJSON() as Record<string, string>
+    return f.nombreOperacion ?? (f.identificacion ? `${f.nombre} (${f.identificacion})` : f.nombre)
+  }
+  const dinero = (v: unknown) => (v === null || v === undefined ? '—' : formatoMoneda(Number(v)))
+  const plano = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v))
+  const campos: [string, string, (v: unknown) => string | Promise<string>][] = [
+    ['tipo', 'Tipo', v => (v === TIPOS_ANTICIPO.VEHICULO ? 'Vehículo' : 'Inmueble')],
+    ['clienteId', 'Cliente', v => nombre('cliente', v)],
+    ['clienteEmpresarialId', 'Cliente empresarial', v => nombre('empresarial', v)],
+    ['operacionId', 'Operación', v => nombre('operacion', v)],
+    ['bolsaId', 'Bolsa', v => nombre('bolsa', v)],
+    ['concepto', 'Concepto', plano],
+    ['placa', 'Placa', plano],
+    ['matriculaInmobiliaria', 'Matrícula', plano],
+    ['valorConsignado', 'Valor consignado', dinero],
+    ['fechaConsignacion', 'Fecha de consignación', v => plano(v ? String(v).slice(0, 10) : v)],
+    ['referenciaPago', 'Referencia de pago', plano],
+    ['observacion', 'Observación', plano],
+    ['valorRecibido', 'Valor recibido', dinero],
+    ['ivaValor', 'IVA', dinero],
+    ['reciboCaja', 'Recibo de caja', plano],
+    ['numeroFactura', 'Factura', plano]
+  ]
+  // Se compara ya en texto: "50000.00" y 50000 o dos formas de la misma fecha no cuentan como cambio
+  const lista: string[] = []
+  for (const [campo, etiqueta, formato] of campos) {
+    const [a, b] = [await formato(antes[campo]), await formato(despues[campo])]
+    if (a !== b) lista.push(`${etiqueta}: ${a} → ${b}`)
+  }
+  return lista
+}
 
 export const anularAnticipo = (id: number, motivo: string, usuarioId: number) =>
   db.transaction(async transaction => {
@@ -450,7 +601,7 @@ export const facturarSolicitudes = async (lista: DatosFacturacion[], archivos: M
         await solicitud.update({
           estado: ESTADOS_ANTICIPO.FACTURADO,
           valorRecibido: String(valorRecibido),
-          // La base final es lo que de verdad entró; la tarifa es la del registro
+          // El total final es lo que de verdad entró (trae el IVA); la tarifa es la del registro
           ...(await calcularIva(valorRecibido, solicitud.ivaPorcentaje)),
           numeroFactura,
           fechaFacturacion: ahora,
@@ -710,10 +861,10 @@ export type FiltrosAnticipos = {
 }
 
 const INCLUDES_LISTADO = [
-  { model: Terceros, attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre'] },
+  { model: Terceros, attributes: ['id', 'tipoIdentificacion', 'identificacion', 'nombre', 'ciudad', 'correo'] },
   { model: ClientesEmpresariales, attributes: ['id', 'nombre'] },
   { model: Bolsas, attributes: ['id', 'nombre'] },
-  { model: Operaciones, attributes: ['id', 'nombreOperacion'] }
+  { model: Operaciones, attributes: ['id', 'nombreOperacion', 'centroDeCostos'] }
 ]
 
 export const listarAnticipos = async (filtros: FiltrosAnticipos) => {

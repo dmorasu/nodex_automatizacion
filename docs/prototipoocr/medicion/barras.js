@@ -22,7 +22,7 @@ fs.writeFileSync(path.join(DIR, 'barras.html'), pagina)
 ;(async () => {
   const srv = require('./servidor')(DIR); await new Promise(r => srv.listen(0, '127.0.0.1', r))
   const base = `http://127.0.0.1:${srv.address().port}`
-  const browser = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, protocolTimeout: 600000 })
+  const browser = await puppeteer.launch({ executablePath: require('./servidor').rutaChrome(), headless: true, protocolTimeout: 600000 })
   const cola = [...man], salida = []
   const t0 = Date.now()
   await Promise.all(Array.from({ length: 4 }, async () => {

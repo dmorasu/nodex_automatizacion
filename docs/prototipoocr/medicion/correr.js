@@ -10,7 +10,7 @@ const DIR = __dirname
 const HTML = process.argv[2]
 const PAGINAS = Number(process.argv[3] || 4)
 const LIMITE = Number(process.argv[4] || 0)
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+const CHROME = require('./servidor').rutaChrome()
 
 const manifiesto = JSON.parse(fs.readFileSync(path.join(DIR, 'manifiesto.json'), 'utf8'))
 const salida = path.join(DIR, process.env.SALIDA || 'resultados.jsonl')

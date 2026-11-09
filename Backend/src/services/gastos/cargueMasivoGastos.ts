@@ -8,6 +8,7 @@ import TiposGasto from '../../models/gastos/tiposGasto'
 import FormasPago from '../../models/gastos/formasPago'
 import Terceros from '../../models/gastos/terceros'
 import Tramite from '../../models/tramite'
+import Clientes from '../../models/clientes'
 import { nombresTiposTramite } from '../catalogosTramites'
 import { crearGastoEnTransaccion, validarGasto, type DatosGasto } from './solicitudesGasto'
 import { ErrorGastos } from './errores'
@@ -35,6 +36,9 @@ const COLUMNAS: { clave: string, titulo: string, ancho: number, nota: string }[]
   { clave: 'matriculaInmobiliaria', titulo: 'matriculaInmobiliaria', ancho: 20, nota: 'Obligatoria si el tipo es Inmueble (opcional en CTL y Cámara de Comercio)' },
   { clave: 'contrato', titulo: 'contrato', ancho: 16, nota: 'Opcional. Máximo 50 caracteres' },
   { clave: 'codigoBpr', titulo: 'codigoBPR/FTF', ancho: 16, nota: 'Opcional. Máximo 50 caracteres' },
+  // 2026-11-09 · Cliente interno del banco, como en el formulario del gasto
+  { clave: 'nombreClienteBanco', titulo: 'nombreClienteBanco', ancho: 30, nota: 'Nombre del cliente interno del banco. Máximo 200 caracteres. Si el gasto es de un trámite y lo deja vacío, se toma el cliente del trámite' },
+  { clave: 'identificacionClienteBanco', titulo: 'identificacionClienteBanco', ancho: 22, nota: 'Identificación del cliente interno del banco. Máximo 30 caracteres. Si el gasto es de un trámite y la deja vacía, se toma la del cliente del trámite' },
   { clave: 'reembolsable', titulo: 'reembolsable', ancho: 12, nota: 'Si (se le cobra al cliente) o No (lo asume la bolsa). Vacío = Si' },
   { clave: 'beneficiarioIdentificacion', titulo: 'beneficiarioIdentificacion', ancho: 24, nota: 'Obligatorio (hoja Beneficiarios). Si ya existe, se usan sus datos registrados' },
   { clave: 'beneficiarioTipoIdentificacion', titulo: 'beneficiarioTipoIdentificacion', ancho: 16, nota: 'NIT, CC, CE o PAS (solo para beneficiarios nuevos; vacío = NIT)' },
@@ -48,9 +52,15 @@ const COLUMNAS: { clave: string, titulo: string, ancho: number, nota: string }[]
 // Columnas que el archivo puede no traer: las de datos opcionales (pueden borrarlas del Excel)
 // y las agregadas después (las plantillas descargadas antes no las tienen)
 const COLUMNAS_NO_EXIGIDAS = [
-  'contrato', 'codigoBpr', 'observacion', 'beneficiarioTipoIdentificacion', 'beneficiarioNombre',
-  'beneficiarioBanco', 'beneficiarioTipoCuenta', 'beneficiarioNumeroCuenta'
+  'contrato', 'codigoBpr', 'nombreClienteBanco', 'identificacionClienteBanco', 'observacion',
+  'beneficiarioTipoIdentificacion', 'beneficiarioNombre', 'beneficiarioBanco', 'beneficiarioTipoCuenta', 'beneficiarioNumeroCuenta'
 ]
+
+type ClienteBanco = { nombre: string, identificacion: string }
+const clienteDelTramite = (t: SolicitudTramites): ClienteBanco => ({
+  nombre: String(t.clientes?.nombreCliente ?? '').trim(),
+  identificacion: String(t.clientes?.identificacionCliente ?? '').trim()
+})
 
 export type ErrorFila = { fila: number, error: string }
 
@@ -80,8 +90,8 @@ export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: numb
           ...(soloPropiosDe && { usuarioId: soloPropiosDe })
         },
         attributes: ['id', 'operacionesId', 'placa', 'matriculaInmobiliaria'],
-        // Su tipo de trámite precarga el concepto de los gastos de vehículo
-        include: [{ model: Tramite, attributes: ['nombreTramite'] }],
+        // Su tipo de trámite precarga el concepto de los gastos de vehículo; su cliente, el del banco
+        include: [{ model: Tramite, attributes: ['nombreTramite'] }, { model: Clientes, attributes: ['nombreCliente', 'identificacionCliente'] }],
         order: [['id', 'ASC']]
       })
       : Promise.resolve([])
@@ -103,7 +113,9 @@ export const generarPlantilla = async (tramiteIds: number[], soloPropiosDe: numb
       tipoGastoId: t.placa ? idTipo(TIPOS_GASTO.VEHICULO) : t.matriculaInmobiliaria ? idTipo(TIPOS_GASTO.INMUEBLE) : '',
       placa: t.placa ?? '',
       matriculaInmobiliaria: t.matriculaInmobiliaria ?? '',
-      conceptoPago: t.placa ? t.tramite?.nombreTramite?.trim() ?? '' : ''
+      conceptoPago: t.placa ? t.tramite?.nombreTramite?.trim() ?? '' : '',
+      nombreClienteBanco: clienteDelTramite(t).nombre,
+      identificacionClienteBanco: clienteDelTramite(t).identificacion
     })
   }
 
@@ -225,7 +237,12 @@ const leerArchivo = async (buffer: Buffer): Promise<Fila[]> => {
 const entero = (valor: string) => (valor === '' ? null : /^\d+$/.test(valor) ? Number(valor) : NaN)
 
 // Convierte una fila en los datos del gasto; acumula los errores de formato
-const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null>, errores: string[]): DatosGasto | null => {
+const convertirFila = (
+  fila: Fila,
+  operacionDeTramite: Map<number, number | null>,
+  clienteDeTramite: Map<number, ClienteBanco>,
+  errores: string[]
+): DatosGasto | null => {
   const v = fila.valores
   const largo = (campo: string, maximo: number) => {
     if (v[campo] && v[campo].length > maximo) errores.push(`${campo} supera ${maximo} caracteres`)
@@ -262,6 +279,7 @@ const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null
   largo('conceptoPago', 200); largo('placa', 20); largo('transito', 100); largo('matriculaInmobiliaria', 50)
   largo('contrato', 50)
   if (v.codigoBpr.length > 50) errores.push('codigoBPR/FTF supera 50 caracteres')
+  largo('nombreClienteBanco', 200); largo('identificacionClienteBanco', 30)
   largo('beneficiarioIdentificacion', 30); largo('beneficiarioNombre', 200); largo('beneficiarioBanco', 100)
   largo('beneficiarioNumeroCuenta', 30); largo('observacion', 2000)
 
@@ -282,6 +300,9 @@ const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null
 
   if (errores.length) return null
 
+  // Cliente interno del banco: el de la fila o, si viene vacío, el del trámite (como el formulario)
+  const cliente = ids.tramiteId ? clienteDeTramite.get(ids.tramiteId) : undefined
+
   return {
     solicitudTramiteId: ids.tramiteId,
     operacionId: operacionId!,
@@ -295,6 +316,8 @@ const convertirFila = (fila: Fila, operacionDeTramite: Map<number, number | null
     matriculaInmobiliaria: v.matriculaInmobiliaria || null,
     contrato: v.contrato || null,
     codigoBpr: v.codigoBpr || null,
+    nombreClienteBanco: v.nombreClienteBanco || cliente?.nombre || null,
+    identificacionClienteBanco: v.identificacionClienteBanco || cliente?.identificacion || null,
     // Vacío = Sí (por defecto los gastos son reembolsables)
     reembolsable: reembolsable !== 'no',
     observacion: v.observacion || null,
@@ -322,17 +345,19 @@ const validarArchivo = async (buffer: Buffer, soloPropiosDe: number[] | null) =>
   const tramites = ids.length
     ? await SolicitudTramites.findAll({
       where: { id: { [Op.in]: ids }, ...(soloPropiosDe && { usuarioId: soloPropiosDe }) },
-      attributes: ['id', 'operacionesId']
+      attributes: ['id', 'operacionesId'],
+      include: [{ model: Clientes, attributes: ['nombreCliente', 'identificacionCliente'] }]
     })
     : []
   const operacionDeTramite = new Map(tramites.map(t => [t.id, t.operacionesId ?? null]))
+  const clienteDeTramite = new Map(tramites.map(t => [t.id, clienteDelTramite(t)]))
 
   const errores: ErrorFila[] = []
   const gastos: { fila: number, datos: DatosGasto }[] = []
 
   for (const fila of filas) {
     const erroresFila: string[] = []
-    const datos = convertirFila(fila, operacionDeTramite, erroresFila)
+    const datos = convertirFila(fila, operacionDeTramite, clienteDeTramite, erroresFila)
 
     if (datos) {
       // Mismas reglas que al crear un gasto uno a uno (tipo, bolsa, beneficiario, ...)

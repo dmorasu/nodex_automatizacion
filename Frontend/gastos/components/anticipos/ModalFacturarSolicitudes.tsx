@@ -6,7 +6,7 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import clsx from "clsx"
 import { FileCheck2, FileCode2, FileText, Loader2 } from "lucide-react"
 import { facturarSolicitudes } from "@/actions/gastos/anticipos"
-import { formatoMoneda, ivaIncluido } from "@/src/lib/formato"
+import { formatoMoneda, valoresFactura } from "@/src/lib/formato"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "../ui/estilos"
 
 export type SolicitudAFacturar = {
@@ -16,6 +16,10 @@ export type SolicitudAFacturar = {
   valorConsignado: string
   referenciaPago?: string | null
   ivaPorcentaje?: string | null
+  ivaValor?: string | null
+  baseValor?: string | null
+  retencionPorcentaje?: string | null
+  retencionValor?: string | null
 }
 
 type Fila = { valorRecibido: string, numeroFactura: string, observacion: string, pdf: File | null, xml: File | null }
@@ -135,6 +139,19 @@ export default function ModalFacturarSolicitudes({
                     )}
                     {s.referenciaPago && <p className="text-[11px] text-slate-400">Ref. {s.referenciaPago}</p>}
                     <p className="mt-1 text-[11px] text-slate-500">Consignó <b>{formatoMoneda(s.valorConsignado)}</b></p>
+                    {/* Lo que se factura sale del consignado (no de lo recibido) */}
+                    {(() => {
+                      const v = valoresFactura(s)
+                      if (!v) return null
+                      const pct = (t: number) => `${Math.round(t * 10000) / 100} %`
+                      return (
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                          Base {formatoMoneda(v.base)} · IVA ({pct(v.tarifaIva)}) {formatoMoneda(v.iva)}
+                          <br />Total factura <b>{formatoMoneda(v.totalFactura)}</b>
+                          {v.retencion > 0 && <> · Retención ({pct(v.tarifaRetencion)}) {formatoMoneda(v.retencion)}</>}
+                        </p>
+                      )
+                    })()}
                   </div>
                   <div className="md:col-span-2">
                     <input
@@ -150,15 +167,6 @@ export default function ModalFacturarSolicitudes({
                         Diferencia {diferencia > 0 && "+"}{formatoMoneda(diferencia)}
                       </p>
                     )}
-                    {/* Lo recibido ya trae el IVA: es el total de la factura */}
-                    {s.ivaPorcentaje && centavos(fila.valorRecibido) > 0 && (() => {
-                      const { base, iva, total } = ivaIncluido(centavos(fila.valorRecibido), Number(s.ivaPorcentaje))
-                      return (
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          Base {formatoMoneda(base / 100)} · IVA ({Math.round(Number(s.ivaPorcentaje) * 10000) / 100} %) {formatoMoneda(iva / 100)} · Total <b>{formatoMoneda(total / 100)}</b>
-                        </p>
-                      )
-                    })()}
                   </div>
                   <input
                     value={fila.numeroFactura}

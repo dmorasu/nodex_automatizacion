@@ -58,9 +58,38 @@ export const formatoTamano = (bytes: number) =>
     ? `${Math.ceil(bytes / 1024)} KB`
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
-// IVA incluido en el valor que consigna el cliente (solicitudes de factura). Total = lo consignado
-// o recibido; IVA = total × t / (1 + t); base = total − IVA. En centavos, igual que el backend
-export const ivaIncluido = (totalCentavos: number, tarifa: number) => {
-  const iva = Math.round(totalCentavos * tarifa / (1 + tarifa))
-  return { base: totalCentavos - iva, iva, total: totalCentavos }
+// Solicitudes de factura (fórmula de Contabilidad, 2026-11-09): todo sale del valor consignado.
+//   base = consignado ÷ (1 + IVA − retención); IVA y retención sobre la base
+//   total de la factura = base + IVA; valor a pagar = base + IVA − retención = consignado
+// En centavos, igual que el backend (liquidarFactura en services/gastos/anticipos.ts)
+export const liquidarFactura = (consignadoCentavos: number, tarifaIva: number, tarifaRetencion = 0) => {
+  const baseExacta = consignadoCentavos / (1 + tarifaIva - tarifaRetencion)
+  const base = Math.round(baseExacta)
+  const iva = Math.round(baseExacta * tarifaIva)
+  const retencion = Math.round(baseExacta * tarifaRetencion)
+  return { base, iva, retencion, totalFactura: base + iva, consignado: consignadoCentavos }
+}
+
+// Valores de una solicitud de factura ya registrada (en pesos): los guardados o, si es anterior y
+// no los tiene, calculados sobre el consignado con su tarifa
+export const valoresFactura = (s: {
+  valorConsignado: string
+  ivaPorcentaje?: string | null
+  ivaValor?: string | null
+  baseValor?: string | null
+  retencionPorcentaje?: string | null
+  retencionValor?: string | null
+}) => {
+  if (!s.ivaPorcentaje) return null
+  const calculado = liquidarFactura(Math.round(Number(s.valorConsignado) * 100), Number(s.ivaPorcentaje), Number(s.retencionPorcentaje ?? 0))
+  const base = s.baseValor ? Number(s.baseValor) : calculado.base / 100
+  const iva = s.ivaValor ? Number(s.ivaValor) : calculado.iva / 100
+  const retencion = s.retencionValor ? Number(s.retencionValor) : calculado.retencion / 100
+  return {
+    base, iva, retencion,
+    tarifaIva: Number(s.ivaPorcentaje),
+    tarifaRetencion: s.retencionPorcentaje ? Number(s.retencionPorcentaje) : 0,
+    totalFactura: Math.round((base + iva) * 100) / 100,
+    consignado: Number(s.valorConsignado)
+  }
 }

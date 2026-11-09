@@ -7,7 +7,7 @@ import { formatoMoneda } from "@/src/lib/formato"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "@/components/ui/estilos"
 import VistaPreviaCentro from "@/components/anticipos/VistaPreviaCentro"
 
-const ValoresSchema = z.object({ cantidad: z.number(), base: z.number(), iva: z.number(), total: z.number() })
+const ValoresSchema = z.object({ cantidad: z.number(), base: z.number(), iva: z.number(), retencion: z.number().default(0), total: z.number() })
 // Registros de cada centro, para la vista previa al pasar el mouse
 const RegistroSchema = z.object({
   id: z.number(),
@@ -19,6 +19,7 @@ const RegistroSchema = z.object({
   identificacion: z.string().nullable(),
   base: z.number(),
   iva: z.number(),
+  retencion: z.number().default(0),
   total: z.number(),
   factura: z.string().nullable()
 })
@@ -40,13 +41,14 @@ const GRUPOS = [
   { clave: "ANTICIPOS", titulo: "Anticipos (no se facturan)" }
 ] as const
 
-// Total del grupo y, debajo, base, IVA y cuántos registros
+// Total pagado del grupo y, debajo, base, IVA, retención (si hay) y cuántos registros
 function Celda({ valores, fuerte = false }: { valores: Valores, fuerte?: boolean }) {
   if (valores.cantidad === 0) return <td className="px-4 py-3 text-right text-slate-300">—</td>
   return (
     <td className="px-4 py-3 text-right whitespace-nowrap">
       <p className={fuerte ? "font-semibold text-slate-800" : "font-medium text-slate-700"}>{formatoMoneda(valores.total)}</p>
       <p className="text-[11px] text-slate-400">Base {formatoMoneda(valores.base)} · IVA {formatoMoneda(valores.iva)}</p>
+      {valores.retencion > 0 && <p className="text-[11px] text-slate-400">Retención {formatoMoneda(valores.retencion)}</p>}
       <p className="text-[11px] text-slate-400">{valores.cantidad} registro(s)</p>
     </td>
   )

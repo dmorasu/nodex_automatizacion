@@ -47,6 +47,8 @@ export const validarAnticipo = [
   // Obligatoria solo sin soporte de la consignación (lo revisa el servicio, que ve los archivos)
   body('referenciaPago').optional({ values: 'null' }).isString().trim().isLength({ max: 100 }).withMessage('La referencia del pago no puede superar 100 caracteres'),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 2000 }),
+  // Solicitudes de factura: retención en la fuente como fracción (0.11 = 11 %); vacía o 0 = no aplica
+  body('retencionPorcentaje').optional({ values: 'null' }).isFloat({ min: 0, max: 0.5 }).withMessage('La retención en la fuente debe estar entre 0 % y 50 %').toFloat(),
   // Edición del administrador fuera de por confirmar / con novedad (el servicio exige el motivo)
   body('motivo').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 }).withMessage('El motivo no puede superar 1000 caracteres'),
   body('valorRecibido').optional({ values: 'null' }).isFloat({ gt: 0 }).withMessage('El valor recibido debe ser mayor a cero').toFloat(),

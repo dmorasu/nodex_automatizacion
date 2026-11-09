@@ -158,24 +158,41 @@ const solicitudesDeFactura = async () => {
     ['referencia_pago', 'VARCHAR(100)'],
     // 2026-10-31 · IVA de las solicitudes de factura (tarifa y valor; la base es el valor consignado o recibido)
     ['iva_porcentaje', 'DECIMAL(10, 6)'],
-    ['iva_valor', 'DECIMAL(15, 2)']
+    ['iva_valor', 'DECIMAL(15, 2)'],
+    // 2026-11-09 · Base guardada y retención en la fuente (opcional) de las solicitudes de factura
+    ['base_valor', 'DECIMAL(15, 2)'],
+    ['retencion_porcentaje', 'DECIMAL(10, 6)'],
+    ['retencion_valor', 'DECIMAL(15, 2)']
   ]
   for (const [columna, tipo] of nuevas) {
     if (!columnas[columna]) await db.query(`ALTER TABLE gastos_anticipos ADD COLUMN ${columna} ${tipo}`)
   }
   await db.query(`CREATE INDEX IF NOT EXISTS gastos_anticipos_clase_estado ON gastos_anticipos (clase, estado)`)
 
-  // 2026-11-05 · El IVA viene incluido en lo consignado (antes se sumaba encima). Las solicitudes ya
-  // registradas se recalculan: IVA = total × t / (1 + t), con su tarifa. Se puede repetir: el
-  // resultado es siempre el mismo y solo toca las que no coinciden
+  // 2026-11-09 · Todo sale del valor consignado (antes, al facturar, del recibido) y con la retención
+  // en la fuente si la tiene: base = consignado ÷ (1 + IVA − retención); IVA y retención sobre la
+  // base. Las solicitudes con tarifa guardada se recalculan (también la base, que antes no se
+  // guardaba). Se puede repetir: el resultado es siempre el mismo y solo toca las que no coinciden
   const [, corregidas] = await db.query(`
-    UPDATE gastos_anticipos
-    SET iva_valor = ROUND(COALESCE(valor_recibido, valor_consignado) * iva_porcentaje / (1 + iva_porcentaje), 2)
-    WHERE clase = 'FACTURA' AND iva_porcentaje IS NOT NULL
-      AND iva_valor IS DISTINCT FROM ROUND(COALESCE(valor_recibido, valor_consignado) * iva_porcentaje / (1 + iva_porcentaje), 2)
+    UPDATE gastos_anticipos a
+    SET base_valor = c.base, iva_valor = c.iva, retencion_valor = c.retencion
+    FROM (
+      SELECT id,
+        ROUND(base_exacta, 2) AS base,
+        ROUND(base_exacta * iva_porcentaje, 2) AS iva,
+        CASE WHEN retencion_porcentaje IS NULL THEN NULL ELSE ROUND(base_exacta * retencion_porcentaje, 2) END AS retencion
+      FROM (
+        SELECT id, iva_porcentaje, retencion_porcentaje,
+          valor_consignado / (1 + iva_porcentaje - COALESCE(retencion_porcentaje, 0)) AS base_exacta
+        FROM gastos_anticipos
+        WHERE clase = 'FACTURA' AND iva_porcentaje IS NOT NULL
+      ) t
+    ) c
+    WHERE a.id = c.id
+      AND (a.base_valor IS DISTINCT FROM c.base OR a.iva_valor IS DISTINCT FROM c.iva OR a.retencion_valor IS DISTINCT FROM c.retencion)
   `)
   const cantidad = (corregidas as { rowCount?: number })?.rowCount
-  if (cantidad) console.log(`🧾 IVA incluido en el valor consignado: recalculadas ${cantidad} solicitudes de factura`)
+  if (cantidad) console.log(`🧾 Base, IVA y retención sobre el valor consignado: recalculadas ${cantidad} solicitudes de factura`)
 }
 
 // 2026-10-10 · Caja menor: fondo y tope de alerta en las bolsas de caja menor, y el comprobante

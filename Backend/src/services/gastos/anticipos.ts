@@ -62,6 +62,8 @@ export type DatosAnticipo = {
   // Obligatoria si no se adjunta el soporte de la consignación
   referenciaPago?: string | null
   observacion?: string | null
+  // Solicitudes de factura: retención en la fuente (fracción: 0.11). Vacía o 0 = no aplica
+  retencionPorcentaje?: number | null
 }
 
 export type DatosConfirmacionAnticipo = {
@@ -95,23 +97,45 @@ const generarCodigo = (clase: ClaseAnticipo, id: number, fecha: Date) =>
 
 const esFactura = (anticipo: { clase: string }) => anticipo.clase === CLASES_ANTICIPO.FACTURA
 
-// IVA incluido en el valor que consigna el cliente (corrección del usuario, 2026-11-05: antes se
-// sumaba encima). Total = lo consignado o recibido; IVA = total × t / (1 + t); base = total − IVA.
-// Sin tarifa guardada toma la del parámetro. En centavos
-export const ivaIncluido = (totalCentavos: number, porcentaje: number) => {
-  const iva = Math.round(totalCentavos * porcentaje / (1 + porcentaje))
-  return { base: totalCentavos - iva, iva, total: totalCentavos }
+// Solicitudes de factura (fórmula de Contabilidad, 2026-11-09). Todo sale del valor consignado, que
+// es lo que paga el cliente (ya descontó la retención si la hay); nunca del recibido:
+//   base = consignado ÷ (1 + IVA − retención)
+//   IVA = base × tarifa IVA · retención = base × tarifa retención (cada uno redondeado al centavo)
+//   total de la factura = base + IVA · valor a pagar = base + IVA − retención = consignado
+// Sin retención es el IVA incluido de antes. En centavos (igual en Nodex Gastos, src/lib/formato.ts)
+export const liquidarFactura = (consignadoCentavos: number, tarifaIva: number, tarifaRetencion = 0) => {
+  const baseExacta = consignadoCentavos / (1 + tarifaIva - tarifaRetencion)
+  const base = Math.round(baseExacta)
+  const iva = Math.round(baseExacta * tarifaIva)
+  const retencion = Math.round(baseExacta * tarifaRetencion)
+  return { base, iva, retencion, totalFactura: base + iva, consignado: consignadoCentavos }
 }
 
-const calcularIva = async (total: number, porcentajeGuardado?: string | null) => {
-  const porcentaje = porcentajeGuardado !== null && porcentajeGuardado !== undefined
-    ? Number(porcentajeGuardado)
-    : await obtenerParametro(PARAMETROS.IVA)
+// Retención en la fuente: entre 0 y 50 %; 0 o vacía = no aplica (se guarda en null)
+const MAX_RETENCION = 0.5
+const tarifaRetencion = (valor: unknown): number | null => {
+  if (valor === null || valor === undefined || valor === '') return null
+  const tarifa = Number(valor)
+  if (!Number.isFinite(tarifa) || tarifa < 0 || tarifa > MAX_RETENCION) throw new ErrorGastos('La retención en la fuente debe estar entre 0 % y 50 %')
+  return tarifa > 0 ? tarifa : null
+}
+
+// Valores que se guardan en la solicitud: con la tarifa de IVA con que se registró (si no tiene,
+// la del parámetro) y la retención que se indique
+const calcularValoresFactura = async (consignado: number, ivaGuardado: string | null | undefined, retencion: unknown) => {
+  const tarifaIva = ivaGuardado !== null && ivaGuardado !== undefined ? Number(ivaGuardado) : await obtenerParametro(PARAMETROS.IVA)
+  const tarifaRet = tarifaRetencion(retencion)
+  const v = liquidarFactura(aCentavos(consignado), tarifaIva, tarifaRet ?? 0)
   return {
-    ivaPorcentaje: String(porcentaje),
-    ivaValor: String(ivaIncluido(aCentavos(total), porcentaje).iva / 100)
+    ivaPorcentaje: String(tarifaIva),
+    ivaValor: String(v.iva / 100),
+    baseValor: String(v.base / 100),
+    retencionPorcentaje: tarifaRet === null ? null : String(tarifaRet),
+    retencionValor: tarifaRet === null ? null : String(v.retencion / 100)
   }
 }
+
+const SIN_VALORES_FACTURA = { ivaPorcentaje: null, ivaValor: null, baseValor: null, retencionPorcentaje: null, retencionValor: null }
 
 // "el anticipo ANT-…" / "la solicitud de factura FAC-…" para los mensajes
 export const nombreAnticipo = (anticipo: { clase: string, codigo: string }) =>
@@ -191,8 +215,8 @@ const prepararDatos = async (datos: DatosAnticipo, clase: ClaseAnticipo, transac
   const valorConsignado = redondear(datos.valorConsignado)
   if (!(valorConsignado > 0)) throw new ErrorGastos('El valor consignado debe ser mayor a cero')
 
-  // Solicitud de factura: el consignado ya trae el IVA (parámetro, 19 %)
-  const iva = clase === CLASES_ANTICIPO.FACTURA ? await calcularIva(valorConsignado) : { ivaPorcentaje: null, ivaValor: null }
+  // Solicitud de factura: base, IVA (parámetro, 19 %) y retención sobre el consignado
+  const iva = clase === CLASES_ANTICIPO.FACTURA ? await calcularValoresFactura(valorConsignado, null, datos.retencionPorcentaje) : SIN_VALORES_FACTURA
 
   return {
     tipo: datos.tipo,
@@ -351,8 +375,6 @@ export const editarAnticipoComoAdmin = (id: number, datos: DatosEdicionAdmin, ar
       if (movimientos.length) await registrarMovimientos(anticipo.bolsaId, movimientos, usuarioId, transaction)
 
       extra.valorRecibido = String(recibido)
-      // El IVA de una solicitud ya facturada sale de lo que entró, con su tarifa
-      if (esFactura(anticipo)) Object.assign(extra, await calcularIva(recibido, anticipo.ivaPorcentaje))
 
       if (anticipo.estado === ESTADOS_ANTICIPO.CONFIRMADO && datos.reciboCaja !== undefined) {
         if (!texto(datos.reciboCaja)) throw new ErrorGastos('Indique el recibo de caja')
@@ -368,9 +390,11 @@ export const editarAnticipoComoAdmin = (id: number, datos: DatosEdicionAdmin, ar
         if (usada) throw new ErrorGastos(`La factura ${numero} ya está registrada en ${usada.codigo}`)
         extra.numeroFactura = numero
       }
-    } else if (esFactura(anticipo) && anticipo.ivaPorcentaje) {
-      // Por confirmar o con novedad: se conserva la tarifa con que se registró
-      Object.assign(extra, await calcularIva(Number(campos.valorConsignado), anticipo.ivaPorcentaje))
+    }
+    // Solicitud de factura, en cualquier estado: sobre el consignado, con la tarifa de IVA con que se
+    // registró y la retención que deje el administrador
+    if (esFactura(anticipo)) {
+      Object.assign(extra, await calcularValoresFactura(Number(campos.valorConsignado), anticipo.ivaPorcentaje, datos.retencionPorcentaje))
     }
 
     await guardarSoportes(anticipo, archivos, usuarioId, transaction)
@@ -418,7 +442,10 @@ const describirCambios = async (antes: Record<string, unknown>, despues: Record<
     ['referenciaPago', 'Referencia de pago', plano],
     ['observacion', 'Observación', plano],
     ['valorRecibido', 'Valor recibido', dinero],
+    ['baseValor', 'Base', dinero],
     ['ivaValor', 'IVA', dinero],
+    ['retencionPorcentaje', 'Retención en la fuente', v => (v === null || v === undefined ? '—' : `${Number((Number(v) * 100).toFixed(4))} %`)],
+    ['retencionValor', 'Valor de la retención', dinero],
     ['reciboCaja', 'Recibo de caja', plano],
     ['numeroFactura', 'Factura', plano]
   ]
@@ -601,8 +628,9 @@ export const facturarSolicitudes = async (lista: DatosFacturacion[], archivos: M
         await solicitud.update({
           estado: ESTADOS_ANTICIPO.FACTURADO,
           valorRecibido: String(valorRecibido),
-          // El total final es lo que de verdad entró (trae el IVA); la tarifa es la del registro
-          ...(await calcularIva(valorRecibido, solicitud.ivaPorcentaje)),
+          // Base, IVA y retención siguen saliendo del consignado (no de lo recibido), con las
+          // tarifas del registro. Lo recibido es lo que suma a la bolsa
+          ...(await calcularValoresFactura(Number(solicitud.valorConsignado), solicitud.ivaPorcentaje, solicitud.retencionPorcentaje)),
           numeroFactura,
           fechaFacturacion: ahora,
           observacionContabilidad: texto(datos.observacion),

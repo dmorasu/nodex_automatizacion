@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, FileCheck2 } from "lucide-react"
-import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
+import { formatoFecha, formatoMoneda, valoresFactura } from "@/src/lib/formato"
 import { TIPOS_ANTICIPO, type AnticipoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario } from "../ui/estilos"
 import EstadoAnticipo from "./EstadoAnticipo"
@@ -110,8 +110,16 @@ export default function TablaAnticipos({
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <p className="font-semibold text-slate-800">{formatoMoneda(a.valorRecibido ?? a.valorConsignado)}</p>
-                  {/* Solicitud de factura: el valor ya trae el IVA (es el total) */}
-                  {a.ivaValor && <p className="text-[11px] text-slate-400">Base {formatoMoneda(Number(a.valorRecibido ?? a.valorConsignado) - Number(a.ivaValor))} + IVA {formatoMoneda(a.ivaValor)}</p>}
+                  {/* Solicitud de factura: base, IVA y retención sobre el consignado */}
+                  {(() => {
+                    const v = a.clase === "FACTURA" ? valoresFactura(a) : null
+                    if (!v) return null
+                    return (
+                      <p className="text-[11px] text-slate-400">
+                        Base {formatoMoneda(v.base)} + IVA {formatoMoneda(v.iva)}{v.retencion > 0 && <> − Ret. {formatoMoneda(v.retencion)}</>}
+                      </p>
+                    )
+                  })()}
                   {a.valorRecibido && Number(a.valorRecibido) !== Number(a.valorConsignado) && (
                     <p className="text-[11px] text-amber-700">consignó {formatoMoneda(a.valorConsignado)}</p>
                   )}

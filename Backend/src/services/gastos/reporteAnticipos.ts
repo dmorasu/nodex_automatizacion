@@ -7,7 +7,7 @@ import Operaciones from '../../models/operaciones'
 import Usuarios from '../../models/usuarios'
 import { CLASES_ANTICIPO, ESTADOS_ANTICIPO, PARAMETROS } from './constantes'
 import { obtenerParametro } from './parametros'
-import { ivaIncluido } from './anticipos'
+import { liquidarFactura } from './anticipos'
 
 // =====================================
 // REPORTE DE ANTICIPOS POR CENTRO DE COSTOS (2026-10-31)
@@ -15,8 +15,9 @@ import { ivaIncluido } from './anticipos'
 //  · Facturado: solicitudes de factura ya facturadas por Contabilidad
 //  · Por facturar: solicitudes de factura por confirmar o con novedad
 //  · Anticipos: los anticipos normales (no se facturan ni llevan IVA)
-// Base = valor recibido (si Contabilidad ya lo confirmó) o el consignado; total = base + IVA.
-// Las anuladas no cuentan.
+// Solicitudes de factura (2026-11-09): base, IVA y retención salen del valor consignado; el total
+// es lo que paga el cliente (= consignado = base + IVA − retención). Anticipos: el total es el
+// valor recibido (si Contabilidad ya lo confirmó) o el consignado. Las anuladas no cuentan.
 // =====================================
 
 export type FiltrosReporteAnticipos = { desde?: string | null, hasta?: string | null }
@@ -28,8 +29,8 @@ export const GRUPOS_REPORTE = {
 } as const
 type Grupo = keyof typeof GRUPOS_REPORTE
 
-type Valores = { cantidad: number, base: number, iva: number, total: number }
-const vacio = (): Valores => ({ cantidad: 0, base: 0, iva: 0, total: 0 })
+type Valores = { cantidad: number, base: number, iva: number, retencion: number, total: number }
+const vacio = (): Valores => ({ cantidad: 0, base: 0, iva: 0, retencion: 0, total: 0 })
 
 // Un registro del centro de costos, para la vista previa al pasar el mouse en la pantalla (en pesos)
 export type RegistroCentro = {
@@ -42,6 +43,7 @@ export type RegistroCentro = {
   identificacion: string | null
   base: number
   iva: number
+  retencion: number
   total: number
   factura: string | null
 }
@@ -81,15 +83,23 @@ const consultar = async (filtros: FiltrosReporteAnticipos) => {
     obtenerParametro(PARAMETROS.IVA)
   ])
 
-  // Valores en centavos de cada registro. El valor consignado (o recibido) ya trae el IVA: es el
-  // total, y la base es total − IVA. Las solicitudes registradas antes del IVA (sin valor guardado)
-  // se calculan con su tarifa o, si no la tienen, con la del parámetro
+  // Valores en centavos de cada registro. Solicitudes de factura: los guardados (sobre el consignado);
+  // las registradas antes del IVA (sin tarifa guardada) se calculan con la del parámetro, sin retención
   return anticipos.map(a => {
-    const total = aCentavos(a.valorRecibido ?? a.valorConsignado)
     const esFactura = a.clase === CLASES_ANTICIPO.FACTURA
-    const porcentaje = esFactura ? Number(a.ivaPorcentaje ?? tarifaIva) : 0
-    const iva = !esFactura ? 0 : a.ivaValor !== null && a.ivaValor !== undefined ? aCentavos(a.ivaValor) : ivaIncluido(total, porcentaje).iva
-    return { anticipo: a, grupo: grupoDe(a), base: total - iva, porcentaje, iva, total }
+    if (!esFactura) {
+      const total = aCentavos(a.valorRecibido ?? a.valorConsignado)
+      return { anticipo: a, grupo: grupoDe(a), base: total, porcentaje: 0, iva: 0, porcentajeRetencion: 0, retencion: 0, totalFactura: 0, total }
+    }
+    const total = aCentavos(a.valorConsignado)
+    const porcentaje = Number(a.ivaPorcentaje ?? tarifaIva)
+    const porcentajeRetencion = Number(a.retencionPorcentaje ?? 0)
+    const calculado = liquidarFactura(total, porcentaje, porcentajeRetencion)
+    const guardado = (valor: string | null, defecto: number) => (valor !== null && valor !== undefined ? aCentavos(valor) : defecto)
+    const base = guardado(a.baseValor, calculado.base)
+    const iva = guardado(a.ivaValor, calculado.iva)
+    const retencion = guardado(a.retencionValor, calculado.retencion)
+    return { anticipo: a, grupo: grupoDe(a), base, porcentaje, iva, porcentajeRetencion, retencion, totalFactura: base + iva, total }
   })
 }
 
@@ -99,10 +109,11 @@ export const reporteAnticipos = async (filtros: FiltrosReporteAnticipos) => {
   const porCentro = new Map<string, FilaCentroCostos>()
   const totales: FilaCentroCostos = { centroCostos: 'Total', operaciones: [], grupos: { FACTURADO: vacio(), POR_FACTURAR: vacio(), ANTICIPOS: vacio() }, total: vacio() }
 
-  const sumar = (destino: Valores, fila: { base: number, iva: number, total: number }) => {
+  const sumar = (destino: Valores, fila: { base: number, iva: number, retencion: number, total: number }) => {
     destino.cantidad++
     destino.base += fila.base
     destino.iva += fila.iva
+    destino.retencion += fila.retencion
     destino.total += fila.total
   }
 
@@ -123,6 +134,7 @@ export const reporteAnticipos = async (filtros: FiltrosReporteAnticipos) => {
       identificacion: a.placa ?? a.matriculaInmobiliaria ?? null,
       base: fila.base / 100,
       iva: fila.iva / 100,
+      retencion: fila.retencion / 100,
       total: fila.total / 100,
       factura: a.numeroFactura ?? null
     })
@@ -131,7 +143,7 @@ export const reporteAnticipos = async (filtros: FiltrosReporteAnticipos) => {
     for (const valores of [destino.grupos[fila.grupo], destino.total, totales.grupos[fila.grupo], totales.total]) sumar(valores, fila)
   }
 
-  const enPesos = (v: Valores): Valores => ({ cantidad: v.cantidad, base: v.base / 100, iva: v.iva / 100, total: v.total / 100 })
+  const enPesos = (v: Valores): Valores => ({ cantidad: v.cantidad, base: v.base / 100, iva: v.iva / 100, retencion: v.retencion / 100, total: v.total / 100 })
   const convertir = (f: FilaCentroCostos): FilaCentroCostos => ({
     ...f,
     grupos: { FACTURADO: enPesos(f.grupos.FACTURADO), POR_FACTURAR: enPesos(f.grupos.POR_FACTURAR), ANTICIPOS: enPesos(f.grupos.ANTICIPOS) },
@@ -156,19 +168,21 @@ export const excelReporteAnticipos = async (filtros: FiltrosReporteAnticipos) =>
   // ── Resumen ──
   const resumen = libro.addWorksheet('Resumen', { views: [{ state: 'frozen', ySplit: 2 }] })
   const grupos = Object.keys(GRUPOS_REPORTE) as Grupo[]
+  // Por grupo: cantidad, base, IVA, retención y total (lo pagado: base + IVA − retención)
+  const COLUMNAS_GRUPO = [{ titulo: 'Cantidad', ancho: 10 }, { titulo: 'Base', ancho: 16 }, { titulo: 'IVA', ancho: 14 }, { titulo: 'Retención', ancho: 14 }, { titulo: 'Total pagado', ancho: 16 }]
+  const N = COLUMNAS_GRUPO.length
   const columnas = [
     { titulo: 'Centro de costos', ancho: 18 },
     { titulo: 'Operaciones', ancho: 40 },
-    ...grupos.flatMap(() => [{ titulo: 'Cantidad', ancho: 10 }, { titulo: 'Base', ancho: 16 }, { titulo: 'IVA', ancho: 14 }, { titulo: 'Total', ancho: 16 }]),
-    { titulo: 'Cantidad', ancho: 10 }, { titulo: 'Base', ancho: 16 }, { titulo: 'IVA', ancho: 14 }, { titulo: 'Total', ancho: 16 }
+    ...[...grupos, 'TOTAL'].flatMap(() => COLUMNAS_GRUPO)
   ]
   columnas.forEach((c, i) => { resumen.getColumn(i + 1).width = c.ancho })
 
-  // Fila 1: nombre de cada grupo sobre sus cuatro columnas
+  // Fila 1: nombre de cada grupo sobre sus columnas
   const grupoFila = resumen.getRow(1)
   ;[...grupos.map(g => GRUPOS_REPORTE[g]), 'Total general'].forEach((nombre, i) => {
-    const desde = 3 + i * 4
-    resumen.mergeCells(1, desde, 1, desde + 3)
+    const desde = 3 + i * N
+    resumen.mergeCells(1, desde, 1, desde + N - 1)
     grupoFila.getCell(desde).value = nombre
     grupoFila.getCell(desde).alignment = { horizontal: 'center' }
   })
@@ -181,14 +195,14 @@ export const excelReporteAnticipos = async (filtros: FiltrosReporteAnticipos) =>
   const valoresDe = (f: FilaCentroCostos) => [
     f.centroCostos,
     f.operaciones.join(', '),
-    ...[...grupos.map(g => f.grupos[g]), f.total].flatMap(v => [v.cantidad, v.base, v.iva, v.total])
+    ...[...grupos.map(g => f.grupos[g]), f.total].flatMap(v => [v.cantidad, v.base, v.iva, v.retencion, v.total])
   ]
   for (const f of centros) resumen.addRow(valoresDe(f))
   const filaTotal = resumen.addRow(valoresDe(totales))
   filaTotal.font = { bold: true }
-  // Formato de moneda en base, IVA y total de cada grupo
+  // Formato de moneda en base, IVA, retención y total de cada grupo
   for (let i = 0; i < grupos.length + 1; i++) {
-    for (const desplazamiento of [1, 2, 3]) resumen.getColumn(3 + i * 4 + desplazamiento).numFmt = MONEDA
+    for (let desplazamiento = 1; desplazamiento < N; desplazamiento++) resumen.getColumn(3 + i * N + desplazamiento).numFmt = MONEDA
   }
 
   // ── Detalle ──
@@ -215,13 +229,16 @@ export const excelReporteAnticipos = async (filtros: FiltrosReporteAnticipos) =>
     { header: 'Base', key: 'base', width: 16, style: { numFmt: MONEDA } },
     { header: '% IVA', key: 'porcentaje', width: 8, style: { numFmt: '0.00%' } },
     { header: 'IVA', key: 'iva', width: 14, style: { numFmt: MONEDA } },
-    { header: 'Total', key: 'total', width: 16, style: { numFmt: MONEDA } },
+    { header: '% Retención', key: 'porcentajeRetencion', width: 11, style: { numFmt: '0.00%' } },
+    { header: 'Retención en la fuente', key: 'retencion', width: 16, style: { numFmt: MONEDA } },
+    { header: 'Total factura (base + IVA)', key: 'totalFactura', width: 18, style: { numFmt: MONEDA } },
+    { header: 'Total pagado (base + IVA − retención)', key: 'total', width: 20, style: { numFmt: MONEDA } },
     { header: 'Número de factura', key: 'factura', width: 16 },
     { header: 'Fecha de facturación', key: 'fechaFacturacion', width: 14, style: { numFmt: 'dd/mm/yyyy' } },
     { header: 'Recibo de caja', key: 'reciboCaja', width: 14 },
     { header: 'Registrado por', key: 'creador', width: 24 }
   ]
-  for (const { anticipo: a, grupo, base, porcentaje, iva, total } of filas) {
+  for (const { anticipo: a, grupo, base, porcentaje, iva, porcentajeRetencion, retencion, totalFactura, total } of filas) {
     detalle.addRow({
       codigo: a.codigo,
       clase: a.clase === CLASES_ANTICIPO.FACTURA ? 'Solicitud de factura' : 'Anticipo',
@@ -244,6 +261,9 @@ export const excelReporteAnticipos = async (filtros: FiltrosReporteAnticipos) =>
       base: base / 100,
       porcentaje: porcentaje || null,
       iva: iva / 100,
+      porcentajeRetencion: porcentajeRetencion || null,
+      retencion: retencion ? retencion / 100 : null,
+      totalFactura: totalFactura ? totalFactura / 100 : null,
       total: total / 100,
       factura: a.numeroFactura,
       fechaFacturacion: a.fechaFacturacion,

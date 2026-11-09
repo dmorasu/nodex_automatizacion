@@ -99,13 +99,24 @@ class Anticipos extends Model {
   @Column({ type: DataType.DATEONLY })
   declare fechaConsignacion: string
 
-  // Solo solicitudes de factura: el valor consignado (o el recibido, al facturar) es la base y el
-  // IVA se suma encima. La tarifa queda guardada (fracción: 0.19) por si el parámetro cambia después
+  // Solo solicitudes de factura (2026-11-09): todo sale del valor consignado, que es lo que paga el
+  // cliente: base = consignado ÷ (1 + IVA − retención); IVA y retención sobre la base; total de la
+  // factura = base + IVA; base + IVA − retención = consignado. Las tarifas quedan guardadas
+  // (fracción: 0.19) por si el parámetro cambia después. Sin retención, sus dos campos van en null
   @Column({ type: DataType.DECIMAL(10, 6) })
   declare ivaPorcentaje: string | null
 
   @Column({ type: DataType.DECIMAL(15, 2) })
   declare ivaValor: string | null
+
+  @Column({ type: DataType.DECIMAL(15, 2) })
+  declare baseValor: string | null
+
+  @Column({ type: DataType.DECIMAL(10, 6) })
+  declare retencionPorcentaje: string | null
+
+  @Column({ type: DataType.DECIMAL(15, 2) })
+  declare retencionValor: string | null
 
   // Referencia del pago en el banco. Obligatoria si no se adjunta el soporte de la consignación
   @Column({ type: DataType.STRING(100) })

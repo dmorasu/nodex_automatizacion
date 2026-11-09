@@ -11,7 +11,7 @@ import type { AnticipoDetalle, BolsaApoyo, ClienteEmpresarial, DatosAnticipo, Op
 import Seccion from "../ui/Seccion"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
 import SelectBuscable from "@/components/ui/SelectBuscable"
-import { formatoMoneda, ivaIncluido } from "@/src/lib/formato"
+import { formatoMoneda, liquidarFactura } from "@/src/lib/formato"
 import BuscadorMunicipio from "@/components/ui/BuscadorMunicipio"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
@@ -46,8 +46,16 @@ const datosIniciales = (clase: Clase, bolsas: BolsaApoyo[], anticipo?: AnticipoD
   // Por defecto hoy (se puede cambiar si consignó otro día)
   fechaConsignacion: anticipo?.fechaConsignacion ?? hoyEnBogota(),
   referenciaPago: anticipo?.referenciaPago ?? "",
-  observacion: anticipo?.observacion ?? ""
+  observacion: anticipo?.observacion ?? "",
+  // Se guarda como fracción (0.11); en pantalla va en porcentaje (11)
+  retencionPorcentaje: anticipo?.retencionPorcentaje ? String(Number((Number(anticipo.retencionPorcentaje) * 100).toFixed(4))) : ""
 })
+
+// "11" o "11,5" → 0.11 / 0.115; vacío o 0 → null (no aplica)
+const fraccionRetencion = (texto: string) => {
+  const valor = Number(texto.replace(",", "."))
+  return Number.isFinite(valor) && valor > 0 ? Math.round(valor * 10000) / 1000000 : null
+}
 
 function Campo({ etiqueta, children, className, opcional }: { etiqueta: string, children: React.ReactNode, className?: string, opcional?: boolean }) {
   return (
@@ -157,6 +165,7 @@ export default function FormularioAnticipo({
       esVehiculo && !datos.placa.trim() && "la placa",
       !esVehiculo && !datos.matriculaInmobiliaria.trim() && "la matrícula inmobiliaria",
       !(Number(datos.valorConsignado) > 0) && "el valor consignado",
+      esFactura && datos.retencionPorcentaje.trim() && !(Number(datos.retencionPorcentaje.replace(",", ".")) >= 0 && Number(datos.retencionPorcentaje.replace(",", ".")) <= 50) && "una retención en la fuente entre 0 % y 50 %",
       !datos.fechaConsignacion && "la fecha de consignación",
       // Sin soporte, la referencia del pago (al corregir, el backend cuenta los soportes que ya tiene)
       !anticipo && archivos.length === 0 && !datos.referenciaPago.trim() && "el soporte de la consignación o la referencia del pago",
@@ -173,6 +182,7 @@ export default function FormularioAnticipo({
       placa: esVehiculo ? datos.placa : null,
       matriculaInmobiliaria: esVehiculo ? null : datos.matriculaInmobiliaria,
       valorConsignado: Number(datos.valorConsignado),
+      retencionPorcentaje: esFactura ? fraccionRetencion(datos.retencionPorcentaje) : null,
       ...(edicionAdmin ? {
         motivo: correccion.motivo,
         ...(conDinero ? { valorRecibido: Number(correccion.valorRecibido) } : {}),
@@ -349,19 +359,36 @@ export default function FormularioAnticipo({
           <Campo etiqueta="Referencia de pago" opcional={archivos.length > 0 || (anticipo?.documentos.length ?? 0) > 0}>
             <input value={datos.referenciaPago} onChange={e => cambiar("referenciaPago", e.target.value)} maxLength={100} className={claseInput} />
           </Campo>
+          {esFactura && (
+            <Campo etiqueta="Retención en la fuente (%)" opcional>
+              <input
+                type="number" min={0} max={50} step="0.01"
+                value={datos.retencionPorcentaje}
+                onChange={e => cambiar("retencionPorcentaje", e.target.value)}
+                placeholder="0 si no aplica"
+                className={claseInput}
+              />
+            </Campo>
+          )}
         </div>
 
-        {/* Solicitud de factura: el valor consignado ya trae el IVA → base + IVA = total (lo consignado).
-            Al corregir, con la tarifa con que se registró */}
-        {esFactura && Number(conDinero ? correccion.valorRecibido : datos.valorConsignado) > 0 && (() => {
+        {/* Solicitud de factura: todo sale del valor consignado (también al corregir una ya facturada).
+            base = consignado ÷ (1 + IVA − retención); IVA y retención sobre la base. Al corregir, con la
+            tarifa de IVA con que se registró */}
+        {esFactura && Number(datos.valorConsignado) > 0 && (() => {
           const tarifa = anticipo?.ivaPorcentaje ? Number(anticipo.ivaPorcentaje) : tasaIva
-          // Ya facturada: el total es lo que entró
-          const { base, iva, total } = ivaIncluido(Math.round(Number(conDinero ? correccion.valorRecibido : datos.valorConsignado) * 100), tarifa)
+          const tarifaRetencion = fraccionRetencion(datos.retencionPorcentaje) ?? 0
+          const { base, iva, retencion, totalFactura, consignado } = liquidarFactura(Math.round(Number(datos.valorConsignado) * 100), tarifa, tarifaRetencion)
+          const porcentaje = (t: number) => `${Math.round(t * 10000) / 100} %`
           return (
             <div className="mt-4 max-w-md space-y-1.5 rounded-md bg-slate-50 px-4 py-3 text-xs">
               <p className="flex justify-between gap-4"><span className="text-slate-500">Base</span><b className="tabular-nums">{formatoMoneda(base / 100)}</b></p>
-              <p className="flex justify-between gap-4"><span className="text-slate-500">IVA ({Math.round(tarifa * 10000) / 100} %)</span><b className="tabular-nums">+ {formatoMoneda(iva / 100)}</b></p>
-              <p className="flex justify-between gap-4 border-t border-slate-200 pt-1.5 text-sm text-slate-800"><span className="text-slate-500">{conDinero ? "Total (valor recibido)" : "Total (valor consignado)"}</span><b className="tabular-nums">{formatoMoneda(total / 100)}</b></p>
+              <p className="flex justify-between gap-4"><span className="text-slate-500">IVA ({porcentaje(tarifa)})</span><b className="tabular-nums">+ {formatoMoneda(iva / 100)}</b></p>
+              <p className="flex justify-between gap-4"><span className="text-slate-500">Total de la factura</span><b className="tabular-nums">{formatoMoneda(totalFactura / 100)}</b></p>
+              {tarifaRetencion > 0 && (
+                <p className="flex justify-between gap-4"><span className="text-slate-500">Retención en la fuente ({porcentaje(tarifaRetencion)})</span><b className="tabular-nums">− {formatoMoneda(retencion / 100)}</b></p>
+              )}
+              <p className="flex justify-between gap-4 border-t border-slate-200 pt-1.5 text-sm text-slate-800"><span className="text-slate-500">Valor a pagar (valor consignado)</span><b className="tabular-nums">{formatoMoneda(consignado / 100)}</b></p>
             </div>
           )
         })()}

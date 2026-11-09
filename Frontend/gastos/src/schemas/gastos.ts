@@ -684,9 +684,12 @@ export const AnticipoListadoSchema = z.object({
   fechaConsignacion: z.string(),
   // Obligatoria cuando no hay soporte de la consignación
   referenciaPago: textoNulo.optional(),
-  // Solicitudes de factura: tarifa (fracción) y valor del IVA sobre la base (consignado o recibido)
+  // Solicitudes de factura: tarifas (fracción) y valores sobre el consignado (base, IVA y retención)
   ivaPorcentaje: textoNulo.optional(),
   ivaValor: textoNulo.optional(),
+  baseValor: textoNulo.optional(),
+  retencionPorcentaje: textoNulo.optional(),
+  retencionValor: textoNulo.optional(),
   valorRecibido: dinero,
   reciboCaja: textoNulo,
   numeroFactura: textoNulo,
@@ -804,6 +807,8 @@ export type DatosAnticipo = {
   // Obligatoria si no se adjunta el soporte de la consignación
   referenciaPago: string
   observacion: string
+  // Solicitudes de factura: retención en la fuente en porcentaje ("11" = 11 %); vacía o 0 = no aplica
+  retencionPorcentaje: string
 }
 
 // Estado de cuenta de un cliente en una bolsa de anticipos (panel del arqueo)

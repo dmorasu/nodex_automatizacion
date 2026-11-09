@@ -15,6 +15,7 @@ export type RegistroCentro = {
   identificacion: string | null
   base: number
   iva: number
+  retencion: number
   total: number
   factura: string | null
 }
@@ -82,7 +83,7 @@ export default function VistaPreviaCentro({ centro, registros, children }: {
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-medium text-slate-800 tabular-nums">{formatoMoneda(r.total)}</p>
-                  {r.iva > 0 && <p className="text-[10px] text-slate-400 tabular-nums">Base {formatoMoneda(r.base)} · IVA {formatoMoneda(r.iva)}</p>}
+                  {r.iva > 0 && <p className="text-[10px] text-slate-400 tabular-nums">Base {formatoMoneda(r.base)} · IVA {formatoMoneda(r.iva)}{r.retencion > 0 && ` · Ret. ${formatoMoneda(r.retencion)}`}</p>}
                 </div>
               </li>
             ))}

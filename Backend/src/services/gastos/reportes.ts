@@ -32,7 +32,7 @@ export const MAXIMO_FILAS_REPORTE = 20000
 const dinero = (valor: unknown) => (valor === null || valor === undefined ? null : Number(valor))
 
 // Seguimiento desde la app de tramitadores (mismos textos que el CSV de Legalización)
-const REPORTE_REALIZADO: Record<string, string> = { PENDIENTE: 'Por revisar', REVISADO: 'Revisado' }
+const REPORTE_REALIZADO: Record<string, string> = { PENDIENTE: 'Por revisar', REVISADO: 'Revisado', DEVUELTO: 'Devuelto' }
 const SOPORTE_TRAMITADOR: Record<string, string> = { PENDIENTE: 'Pendiente de revisión', APROBADO: 'Aprobada', RECHAZADO: 'Rechazada' }
 
 // Reporte de gastos con todo su recorrido: solicitud, pago, factura, reintegro,

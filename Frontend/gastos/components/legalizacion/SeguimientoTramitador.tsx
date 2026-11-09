@@ -38,7 +38,10 @@ export function EstadoTramiteNodex({
       <span className={`${clase} ${finalizado ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-sky-200 bg-sky-50 text-sky-700"}`}>
         {estado ?? "Sin Iniciar"}
       </span>
-      {reporteRealizado && !finalizado && (
+      {reporteRealizado === "DEVUELTO" && !finalizado && (
+        <span className={`${clase} border-red-200 bg-red-50 text-red-700`}>Reporte realizado devuelto</span>
+      )}
+      {reporteRealizado && reporteRealizado !== "DEVUELTO" && !finalizado && (
         <span className={`${clase} border-amber-200 bg-amber-50 text-amber-800`}>
           {reporteRealizado === "PENDIENTE" ? "Realizado (por revisar)" : "Realizado"}
         </span>

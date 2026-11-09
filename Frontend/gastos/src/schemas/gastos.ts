@@ -127,7 +127,7 @@ export const GastoListadoSchema = z.object({
   solicitudTramiteId: z.number().nullish(),
   soporteTramitador: z.enum(["PENDIENTE", "APROBADO", "RECHAZADO"]).nullish(),
   estadoTramite: z.string().nullish(),
-  reporteRealizado: z.enum(["PENDIENTE", "REVISADO"]).nullish(),
+  reporteRealizado: z.enum(["PENDIENTE", "REVISADO", "DEVUELTO"]).nullish(),
   // Gasto de un anticipo: saldo del cliente y lo que tiene por pagar (para avisar si no alcanza)
   anticipoId: z.number().nullish(),
   anticipo: z.object({ id: z.number(), codigo: z.string() }).nullish(),
@@ -629,7 +629,7 @@ export const SoporteRevisionSchema = z.object({
   tramite: z.object({
     id: z.number(),
     estado: z.string(),
-    reporteRealizado: z.enum(["PENDIENTE", "REVISADO"]).nullable()
+    reporteRealizado: z.enum(["PENDIENTE", "REVISADO", "DEVUELTO"]).nullable()
   }).nullable()
 })
 

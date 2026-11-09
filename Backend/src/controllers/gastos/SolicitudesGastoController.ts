@@ -271,7 +271,7 @@ const fechaCsv = (valor: unknown) =>
   !valor ? '' : valor instanceof Date ? valor.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : String(valor).slice(0, 10)
 
 const SOPORTE_TRAMITADOR: Record<string, string> = { PENDIENTE: 'Pendiente de revisión', APROBADO: 'Aprobada', RECHAZADO: 'Rechazada' }
-const REPORTE_REALIZADO: Record<string, string> = { PENDIENTE: 'Por revisar', REVISADO: 'Revisado' }
+const REPORTE_REALIZADO: Record<string, string> = { PENDIENTE: 'Por revisar', REVISADO: 'Revisado', DEVUELTO: 'Devuelto' }
 
 export const ORDENES: Record<string, Order> = {
   recientes: [['createdAt', 'DESC']],

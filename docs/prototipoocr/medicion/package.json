@@ -1,0 +1,9 @@
+{
+  "name": "medicion-ocr-guias",
+  "private": true,
+  "description": "Medición del lector de guías contra las guías adjuntas en producción",
+  "dependencies": {
+    "puppeteer-core": "23.11.1",
+    "zxing-wasm": "3.1.6"
+  }
+}

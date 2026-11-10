@@ -1,0 +1,12 @@
+# Datos de producción (guías con datos personales) y resultados: nunca al repositorio
+archivos/
+manifiesto.json
+resultados*.jsonl
+evaluacion*.json
+barras.json
+barras.html
+texto*.txt
+prueba*.jsonl
+*.log
+node_modules/
+package-lock.json

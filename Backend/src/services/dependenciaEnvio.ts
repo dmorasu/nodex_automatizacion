@@ -15,9 +15,11 @@ import { contextoActual, type ContextoPeticion } from '../utils/contextoPeticion
 // Mientras el envío no esté Finalizado y los gastos del trámite no estén pagados:
 //   · no se le puede poner la fecha de diligencia (venga de donde venga: guardia en Programacion);
 //   · los indicadores del tablero no le cuentan tiempo.
-// Decisiones del usuario: el pago son los gastos del propio trámite; sin gastos no se cumple
-// (debe existir al menos uno, y todos los no anulados pagados); asignar tramitador sí se permite;
-// el envío se puede relacionar después, al editar.
+// Decisiones del usuario: el pago son los gastos del propio trámite (todos los no anulados pagados);
+// asignar tramitador sí se permite; el envío se puede relacionar después, al editar.
+// Desde el 2026-11-10 (caso del #6284, decisión del usuario): si el trámite no tiene gastos, o todos
+// están anulados, basta con que el envío esté Finalizado. Antes se exigía al menos un gasto y los
+// trámites que no llevan pago (ej. Entrega Documentos) no se liberaban nunca.
 // Cuando se cumplen las dos condiciones queda la fecha en `condicionesEnvioCumplidasEn` y el trámite
 // queda liberado: un gasto nuevo después no lo vuelve a bloquear. Cambiar el envío o la marca lo
 // vuelve a revisar desde cero.
@@ -121,7 +123,8 @@ export const estadoDependencia = async (solicitudTramiteId: number, transaction?
   if (!tramite) return null
 
   const gastos = (await gastosDelTramite(tramite.id, transaction)).map(({ codigoEstado, ...g }) => g)
-  const pagoCompleto = gastos.length > 0 && gastos.every(g => g.pagado)
+  // Sin gastos no hay nada por pagar (every de una lista vacía es true)
+  const pagoCompleto = gastos.every(g => g.pagado)
   const pagadoEl = gastos.map(g => g.fechaPago).filter((f): f is string => Boolean(f)).sort().at(-1) ?? null
 
   let envio: EnvioRelacionable | null = null
@@ -149,11 +152,8 @@ export const estadoDependencia = async (solicitudTramiteId: number, transaction?
   if (tramite.dependeEnvio) {
     if (!envio) faltantes.push('relacionar el envío de documentos')
     else if (!envioFinalizado) faltantes.push(`que el envío #${envio.id} esté Finalizado (está ${envio.estado})`)
-    if (gastos.length === 0) faltantes.push('crear y pagar el gasto del trámite')
-    else {
-      const sinPagar = gastos.filter(g => !g.pagado)
-      if (sinPagar.length) faltantes.push(`pagar ${sinPagar.length === 1 ? `el gasto ${sinPagar[0].codigo}` : `${sinPagar.length} gastos (${sinPagar.map(g => g.codigo).join(', ')})`}`)
-    }
+    const sinPagar = gastos.filter(g => !g.pagado)
+    if (sinPagar.length) faltantes.push(`pagar ${sinPagar.length === 1 ? `el gasto ${sinPagar[0].codigo}` : `${sinPagar.length} gastos (${sinPagar.map(g => g.codigo).join(', ')})`}`)
   }
 
   const cumplidas = envioFinalizado && pagoCompleto
@@ -246,10 +246,25 @@ export const revisarCondiciones = async (solicitudTramiteId: number, contexto: C
   if ((filas as { rowCount?: number })?.rowCount) {
     await anotar(solicitudTramiteId, 'CONDICIONES', [
       { campo: `Envío #${estado.envio!.id}`, antes: null, despues: `Finalizado${estado.envio!.finalizadoEl ? ` el ${textoFecha(estado.envio!.finalizadoEl)}` : ''}` },
-      { campo: 'Pago de los gastos', antes: null, despues: `Pagado${estado.pagadoEl ? ` el ${textoFecha(estado.pagadoEl)}` : ''}` }
+      { campo: 'Pago de los gastos', antes: null, despues: estado.gastos.length ? `Pagado${estado.pagadoEl ? ` el ${textoFecha(estado.pagadoEl)}` : ''}` : 'Sin gastos' }
     ], contexto)
   }
   return estadoDependencia(solicitudTramiteId)
+}
+
+// Al arrancar: libera los que ya cumplen y no tienen fecha de liberación (ej. los que quedaron
+// esperando un gasto antes del cambio del 2026-11-10). Idempotente: los liberados no se vuelven a tocar.
+export const liberarDependientesCumplidos = async () => {
+  const pendientes = await SolicitudTramites.findAll({
+    where: { dependeEnvio: true, condicionesEnvioCumplidasEn: null },
+    attributes: ['id']
+  })
+  const liberados: number[] = []
+  for (const { id } of pendientes) {
+    const estado = await revisarCondiciones(id) // fuera de una petición queda como "Sistema"
+    if (estado?.cumplidasEn) liberados.push(id)
+  }
+  return liberados
 }
 
 // ── Guardia: no se pone la fecha de diligencia a un trámite bloqueado ──

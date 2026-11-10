@@ -1,0 +1,395 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lector de Guías | Nodex</title><style>
+@font-face{font-family:PromptLocal;src:local("Prompt")}@font-face{font-family:PoppinsLocal;src:local("Poppins")}
+:root{--gold:#E4D79C;--brown:#937A53;--gray:#575756;--ink:#303133;--line:#e7e4dc;--soft:#f8f8f6;--green:#55705b;--red:#9b4a4a;--amber:#8a6a1f}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font-family:PoppinsLocal,Arial,sans-serif;font-size:15px}
+.app{max-width:1360px;margin:auto;padding:28px 30px 60px}header{display:flex;justify-content:center;border-bottom:1px solid var(--line);padding-bottom:18px}.logo{width:230px;max-width:42vw;display:block}
+h1{font-family:PromptLocal,PoppinsLocal,Arial,sans-serif;font-size:38px;margin:30px 0 12px;text-align:center}.sub{max-width:1000px;margin:auto;color:#686866;line-height:1.65;font-size:16px;text-align:center}
+.drop{margin-top:25px;border:2px dashed var(--gold);border-radius:17px;padding:30px 26px;background:#fcfbf7}.drop.drag{background:#faf7e9}.drop h2{font-family:PromptLocal,PoppinsLocal,Arial;margin:0 0 7px}.drop p{margin:0;color:#777}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.btn{border:0;border-radius:9px;padding:12px 18px;font:600 14px PoppinsLocal,Arial;cursor:pointer}.btn:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--gray);color:#fff}.gold{background:var(--gold);color:#2f2f2f}.light{background:#efefec;color:var(--gray)}
+.status{font-size:14px;color:#777;margin:15px 0;min-height:22px}.engine{font-size:12px;color:#777;margin-top:11px}.engine span{display:inline-block;margin-right:12px}.ok{color:var(--green)}.danger{color:var(--red)}.warn{color:var(--amber)}
+.selected{margin-top:16px;display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.filecard{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:#fff}.filecard .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.filecard .size{color:#888;white-space:nowrap}
+.panel{margin-top:25px;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 7px 25px rgba(0,0,0,.04)}.head{padding:16px 18px;background:var(--soft);display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap}.head strong{font-family:PromptLocal,PoppinsLocal,Arial;font-size:18px}.meta{font-size:13px;color:#777;margin-top:5px}.pills{display:flex;gap:7px;flex-wrap:wrap}.pill{background:#fff;border:1px solid var(--line);border-radius:99px;padding:7px 10px;font-size:12px}
+.tablebox{overflow:auto}.table{border-collapse:collapse;width:100%;font-size:13.5px}.table th{background:var(--gray);color:#fff;padding:11px;text-align:left;white-space:nowrap}.table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}.table td[contenteditable]{outline:none;min-width:80px}.table td[contenteditable]:focus{background:#faf7e9;box-shadow:inset 0 0 0 2px var(--gold)}.empty{background:#fbf3f3}
+.thumbs{display:flex;gap:5px}.thumbs img{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}.badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}.badge.ok{background:#e7efe9}.badge.rev{background:#f6efd9;color:var(--amber)}.obs{font-size:12px;color:#777;margin-top:5px;min-width:210px;line-height:1.4}
+.note{padding:14px 18px;border-top:1px solid var(--line);font-size:13px;color:#777;line-height:1.55}.footer{text-align:center;color:#777;font-size:12px;margin-top:48px}.goldline{height:3px;width:145px;background:var(--gold);margin:0 auto 12px}.hidden{display:none!important}
+.spinner{display:inline-block;width:11px;height:11px;border:2px solid #ddd;border-top-color:var(--brown);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px}@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:800px){.app{padding:18px 16px 40px}h1{font-size:28px}}
+.tabs{display:flex;gap:8px;justify-content:center;margin-top:24px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#fff;color:var(--gray);border-radius:9px;padding:12px 22px;font:600 14px PoppinsLocal,Arial;cursor:pointer}.tab.active{background:var(--gray);color:#fff;border-color:var(--gray)}
+.pad{padding:0 18px 18px;margin-top:14px}.ficha{display:grid;grid-template-columns:minmax(180px,300px) 1fr;gap:20px;padding:18px}.prev img{width:100%;max-height:430px;object-fit:contain;border:1px solid var(--line);border-radius:10px;display:block}.campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start}.campo span{display:block;font-size:13px;font-weight:600;color:var(--gray);margin-bottom:5px}.campo input,.nodex{width:100%;min-height:42px;border:1px solid #d8d4cb;border-radius:8px;padding:0 12px;font:14px PoppinsLocal,Arial;color:var(--ink);background:#fff}.campo input:focus,.nodex:focus{outline:none;border-color:var(--brown);box-shadow:0 0 0 3px rgba(147,122,83,.12)}.campo input.vacio{background:#fbf3f3}.nodex.error{border-color:var(--red);background:#fbf3f3}
+.filas{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:10px}.filas td{vertical-align:middle}.mini{padding:8px 12px;font-size:13px;white-space:nowrap}.filas td .mini+.mini{margin-left:6px}.nomfila{margin-left:10px;font-size:13px;color:#666;word-break:break-word}.reparto{display:grid;gap:3px;min-width:150px}.reparto div{display:flex;justify-content:space-between;gap:12px}.reparto span{white-space:nowrap}.nota{margin-top:18px;border:1px solid var(--line);border-radius:10px}#engine{margin-top:18px}
+@media(max-width:800px){.ficha,.campos{grid-template-columns:1fr}}
+</style></head><body><div class="app"><header><img id="logo" class="logo" alt="Gómez Pineda Abogados"></header>
+<h1>Lector de Guías de Transporte</h1>
+<div class="sub">Lee guías en PDF o imagen de cualquier transportadora y transcribe <b>Número de Guía, Valor del Envío, Transportadora, Destinatario y Fecha Probable de Entrega</b>.</div>
+<div class="tabs" role="tablist"><button class="tab active" id="tabInd" role="tab" aria-selected="true">Guía individual</button><button class="tab" id="tabMas" role="tab" aria-selected="false">Carga masiva</button></div>
+
+<section id="panelInd">
+ <div id="dropInd" class="drop"><h2>Cargar una guía</h2><p>PDF, JPG, JPEG o PNG. La información se transcribe para que la verifiques.</p>
+  <div class="actions"><button class="btn primary" id="pickInd">Seleccionar guía</button><button class="btn gold" id="runInd" disabled>Leer guía</button><button class="btn light" id="clearInd">Limpiar</button></div>
+  <input id="fileInd" class="hidden" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><div id="selInd" class="selected"></div></div>
+ <div class="status" id="statusInd"></div>
+ <section id="resInd" class="panel hidden"><div class="head"><div><strong>Información de la guía</strong><div class="meta">Verifica y corrige si hace falta antes de descargar.</div></div><span class="badge" id="estInd"></span></div>
+  <div class="ficha"><a id="prevLink" target="_blank" rel="noopener" class="prev"><img id="prevImg" alt="Guía cargada"></a><div class="campos" id="camposInd"></div></div>
+  <div class="note" id="obsInd"></div><div class="actions pad"><button class="btn light" id="xlsxInd">Descargar Excel</button><button class="btn light" id="jsonInd">Descargar JSON</button></div></section>
+</section>
+
+<section id="panelMas" class="hidden">
+ <div id="dropMas" class="drop"><h2>Cargar guías con su código Nodex</h2><p>Cada fila lleva <b>un código Nodex y su guía</b>. Si varios Nodex comparten una guía, usa <b>Repetir guía</b> y escribe el siguiente código: el valor se divide entre ellos.</p>
+  <div class="tablebox filas"><table class="table"><thead><tr><th>Código Nodex</th><th>Guía</th><th></th></tr></thead><tbody id="filasMas"></tbody></table></div>
+  <div class="actions"><button class="btn light" id="addFila">Agregar fila</button><button class="btn primary" id="pickMas">Agregar guías</button><button class="btn gold" id="runMas" disabled>Leer guías</button><button class="btn light" id="clearMas">Limpiar</button></div>
+  <input id="fileMas" class="hidden" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><input id="fileFila" class="hidden" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></div>
+ <div class="status" id="statusMas"></div>
+ <section id="resMas" class="panel hidden"><div class="head"><div><strong>Resultado de la carga</strong><div class="meta">Las celdas se pueden corregir. Si cambias el valor total, el reparto se recalcula; si dos filas quedan con el mismo número de guía, se unen.</div></div><div class="pills"><span class="pill" id="cntGuias"></span><span class="pill" id="cntNodex"></span><span class="pill" id="cntRev"></span></div></div>
+  <div class="tablebox"><table class="table"><thead><tr><th>Soporte</th><th>Número de Guía</th><th>Valor total de la guía</th><th>Nodex y Valor del Envío</th><th>Transportadora</th><th>Destinatario</th><th>Fecha Probable de Entrega</th><th>Estado</th></tr></thead><tbody id="tbodyMas"></tbody></table></div>
+  <div class="actions pad"><button class="btn light" id="xlsxMas">Descargar Excel</button><button class="btn light" id="jsonMas">Descargar JSON</button></div></section>
+</section>
+<div class="engine" id="engine"></div>
+<div class="note nota">La fecha que traen las guías es la <b>estimada o programada</b> por la transportadora; la entrega real se obtiene del seguimiento. Los datos manuscritos no se leen. En guías contraentrega el valor lo asume el cliente y puede no aparecer: la celda queda vacía y se puede completar.</div>
+<div class="footer"><div class="goldline"></div><b>Nodex · Lectura automática de guías</b><br>Gómez Pineda Abogados</div></div>
+<script>document.getElementById('logo').src='data:image/png;base64,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';</script>
+<script>
+/* ==========================================================================
+   MOTOR (GuiaOCR) — independiente de la pantalla. API para integrar en Nodex:
+     Individual: const { registros } = await GuiaOCR.procesar([file], onProgreso);
+     Masivo:     const { registros } = await GuiaOCR.procesarLote([{ nodex: '5413', file }, { nodex: '5414', file }], onProgreso);
+   Las reglas GENERAL leen guÃ­as de cualquier transportadora. PERFILES solo refuerza formatos ya vistos: agregar uno es opcional.
+   ========================================================================== */
+const GuiaOCR=(()=>{
+const FECHA=String.raw`(\d{1,2}\s?[\/\-.]\s?\d{1,2}\s?[\/\-.]\s?\d{2,4}|\d{4}\s?[\/\-.]\s?\d{4})`;
+const DINERO=String.raw`(\d{1,3}(?:[.,]\s?\d{3})+|\d{5,7})`;
+const rx=(s,f='g')=>new RegExp(s,f);
+
+/* Cada regla: [expresión, peso]. A mayor peso, más fuerte la evidencia. */
+const PERFILES=[
+ {id:'envia',nombre:'Envía (Colvanes)',
+  detecta:/\bENVIA\b|COLVANES|800[. ]?185[. ]?306/,
+  formatoGuia:/^03\d{10}$/,
+  guia:[[/GUIA\s*[:.\-]?\s*([0-9OIL|SB]{12})\b/g,4],[/\b(03\d{10})\b/g,2]],
+  valor:[],valorTabla:true,
+  fecha:[[rx(String.raw`(?:APROX\w*\.?\s*(?:DE\s*)?ENTREGA|ENTREGA)[^\d\n]{0,14}`+FECHA),5]],
+  admision:[[rx(String.raw`ADMISI?ON[^\d\n]{0,10}`+FECHA),5]]},
+ {id:'inter',nombre:'Interrapidísimo',
+  detecta:/INTERRAP|IMTERRAP|INTERAPID|RAPIDISIM/,pista:/ESTIMADA DE ENTREGA|VALOR A COBRAR/,
+  formatoGuia:/^7\d{11}$/,
+  guia:[[/GUIA\s*[:.\-]?\s*([0-9OIL|SB]{12})\b/g,4],[/\b(70\d{10})\b/g,2]],
+  valor:[[rx(String.raw`VALOR\s*A\s*COBRAR[^\d\n]{0,8}`+DINERO),5],[rx(String.raw`\$\s*`+DINERO),2]],
+  fecha:[[rx(String.raw`(?:ESTIMADA|ENTREGA)[^\d\n]{0,18}`+FECHA),5]],
+  admision:[[rx(String.raw`ADMISI?ON[^\d\n]{0,10}`+FECHA),5]]},
+ {id:'servientrega',nombre:'Servientrega',
+  detecta:/SERVIENTREGA|860[. ]?512/,pista:/CARA DE IMPRESION|VR\.? ?A COBRAR|PROG\.? ?ENTREGA/,
+  formatoGuia:/^9\d{9}$/,
+  guia:[[/GUIA\s*[:.\-]?\s*([0-9OIL|SB]{10})\b/g,4],[/\b(9[0-9]{9})\b/g,2]],
+  valor:[[rx(String.raw`VR\.?\s*A\s*COBRAR[^\d\n]{0,8}`+DINERO),5],[rx(String.raw`TOTAL\s*SERVICIO[^\d\n]{0,8}`+DINERO),5],[rx(String.raw`RECAUDAR\s*EN\s*DESTINO[^\d\n]{0,8}`+DINERO),4]],
+  valorDolarRotulo:true,
+  fecha:[[rx(String.raw`PROG\.?\s*\.?\s*ENTREGA[^\d\n]{0,8}`+FECHA),6]],
+  fee:/\bF[E3]E\s*[:.]?\s*(\d{1,2})\s?[\/\-.]\s?\d{1,2}\s?[\/\-.]\s?\d{2,4}/g,
+  admision:[[rx(String.raw`ADMISI?ON[^\d]{0,14}`+FECHA),5],[/\bFECHA\s*[:.]\s*(\d{4}\/\d{1,2}\/\d{1,2})/g,5]]},
+ {id:'tcc',nombre:'TCC',rotuloSinValor:true,
+  detecta:/\bTCC\b/,pista:/DATOS ORIGEN|DATOS DESTINO|TIPO UNIDAD/,
+  formatoGuia:/^\d{9}$/,
+  guia:[[/REMESA\s*[:.\-]?\s*([0-9OIL|SB]{9})\b/g,5]],
+  fechaDoc:/\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g,
+  aviso:'Este formato no trae valor del envío ni fecha de entrega.'},
+ /* Reconocidas por nombre: usan las reglas generales, sin ajuste propio. */
+ {id:'coordinadora',nombre:'Coordinadora',rotuloSinValor:true,guiaEnCodigo:/(\d{11})\d{3}$/,
+  detecta:/COORDINADORA|CO+RDINAD/,pista:/ZONA HUB|EQUIPO REPARTO/,
+  formatoGuia:/^\d{11}$/,
+  guia:[[/GUIA\s*[:.\-]?\s*([0-9OIL|SB]{11})(?:\.\d+)?/g,5]]},
+ {id:'deprisa',nombre:'Deprisa',detecta:/DEPRISA/},
+ {id:'472',nombre:'4-72',detecta:/\b4-72\b|\b472\b|SERVICIOS POSTALES NACIONALES/},
+ {id:'saferbo',nombre:'Saferbo',detecta:/SAFERBO/},
+ {id:'redetrans',nombre:'Redetrans',detecta:/REDETRANS/},
+ {id:'domina',nombre:'Domina',detecta:/\bDOMINA\b/},
+ {id:'fedex',nombre:'FedEx',detecta:/FEDEX/},
+ {id:'dhl',nombre:'DHL',detecta:/\bDHL\b/},
+ {id:'ups',nombre:'UPS',detecta:/\bUPS\b/}
+];
+const porId=id=>PERFILES.find(p=>p.id===id);
+const REMITENTE_PROPIO=/GOMEZ PINEDA/;
+
+/* Reglas generales: se aplican a TODA guía, sea cual sea la transportadora. */
+const GENERAL={
+ guia:[[/(?:GUIA|REMESA|RASTREO|TRACKING|CONSIGNACION|ENVIO)\s*(?:N[O0°º]\.?|NO\.|NUMERO|NRO\.?|#|DE\s+TRANSPORTE)?[^\dA-Z\n]{0,6}\n?\s*([0-9OIL|SB]{8,16})\b/g,3]],
+ valor:[[rx(String.raw`(?:VALOR|VR\.?|VLR\.?)\s*(?:A\s*COBRAR|TOTAL|DEL\s*ENVIO|DEL\s*SERVICIO|FLETE|SERVICIO|A\s*PAGAR|A\s*RECAUDAR)[^\d\n]{0,10}`+DINERO),4],[rx(String.raw`TOTAL\s*(?:A\s*PAGAR|SERVICIO|FLETE|ENVIO)?[^\d\n]{0,8}`+DINERO),3],[rx(String.raw`(?:FLETE|COSTO(?:\s*DEL?\s*ENVIO)?)[^\d\n]{0,8}`+DINERO),2]],
+ fecha:[[rx(String.raw`(?:ESTIMADA|PROBABLE|PROGRAMADA|PROMESA|APROX\w*|PROG\.?)?\s*(?:DE\s*)?ENTREGA[^\d\n]{0,18}`+FECHA),4]],
+ admision:[[rx(String.raw`(?:ADMISION|FECHA\s*(?:DE\s*)?ENVIO|RECOGIDA|EMISION|ELABORACION|GENERACION)[^\d\n]{0,14}`+FECHA),4],[rx(String.raw`\bFECHA[^\d\n]{0,6}`+FECHA+String.raw`[^\n]*\n[^\n]*ADMISION`),5],[rx(String.raw`\bFECHA\s*[:.]\s*`+FECHA),1]]
+};
+/* Corrige errores típicos del OCR en las palabras-etiqueta (p. ej. DESTNATANO, SENVICIO). */
+const DICCIONARIO=['ENTREGA','ADMISION','DESTINATARIO','ESTIMADA','PROGRAMADA','COBRAR','SERVICIO','RECAUDAR','REMITENTE','DECLARADO','PROBABLE','CONSIGNATARIO'];
+function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
+const corrige=U=>U.replace(/[A-ZÑ]{5,14}/g,t=>{for(const w of DICCIONARIO){if(t===w)return t;const max=w.length>=10?3:w.length>=7?2:1;if(Math.abs(t.length-w.length)<=max&&lev(t,w)<=max)return w}return t});
+let opciones={};
+
+/* ---------- utilidades ---------- */
+const normal=s=>(s||'').replace(/[ñÑ]/g,'\u0001').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\u0001/g,'Ñ').replace(/[ \t]+/g,' ');
+const arreglaDigitos=s=>s.replace(/O/g,'0').replace(/[IL|]/g,'1').replace(/S/g,'5').replace(/B/g,'8');
+function dinero(s){const n=Number(String(s).replace(/[^\d]/g,''));return n>=3000&&n<=2000000?n:null}
+function fechaISO(s){ // devuelve {d,m,y} o null. Acepta D/M/A y A/M/D.
+ const txt=String(s).replace(/\s/g,'');let q=txt.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);let d,m,y;if(q){y=+q[1];m=+q[2];d=+q[3]}else{q=txt.match(/^(\d{1,2})[\/\-.]?(\d{1,2})[\/\-.](\d{2,4})$/);if(!q)return null;d=+q[1];m=+q[2];y=+q[3]}if(d>31&&d>=80)d=d%10;if(y<100)y+=2000;
+ if(!(d>=1&&d<=31&&m>=1&&m<=12&&y>=2000&&y<=2100))return null;return{d,m,y}}
+const fechaTxt=f=>f?String(f.d).padStart(2,'0')+'/'+String(f.m).padStart(2,'0')+'/'+f.y:'';
+const fechaNum=f=>Date.UTC(f.y,f.m-1,f.d);
+const leeTxt=t=>{const p=t.split('/').map(Number);return{d:p[0],m:p[1],y:p[2]}};
+function suma(lista,valor,peso,origen){if(valor!==null&&valor!==undefined&&valor!=='')lista.push({valor,peso,origen})}
+function mejor(lista){const m=new Map();for(const c of lista||[]){const x=m.get(c.valor)||{valor:c.valor,peso:0,origenes:new Set()};x.peso+=c.peso;x.origenes.add(c.origen);m.set(c.valor,x)}return[...m.values()].sort((a,b)=>b.peso-a.peso)}
+function aplicaValor(reglas,texto,lista,origen){for(const[re,peso]of reglas){re.lastIndex=0;let m;while((m=re.exec(texto)))suma(lista,dinero(m[1]),/[.,]/.test(m[1])?peso:peso*.4,origen)}}
+function aplica(reglas,texto,fn,lista,origen){for(const[re,peso]of reglas){re.lastIndex=0;let m;while((m=re.exec(texto)))suma(lista,fn(m[1]),peso,origen)}}
+
+/* ---------- lectura de un texto OCR ---------- */
+function vacio(){return{perfil:{},guia:[],valor:[],fecha:[],fee:[],admision:[],fechaDoc:[],destinatario:[],pago:[],etiquetaValor:[],etiquetaFecha:[]}}
+function detectaPerfil(U){if(opciones.soloGenerico)return null;let top=null,score=0;for(const p of PERFILES){const cuenta=re=>re?(U.match(new RegExp(re.source,'g'))||[]).length:0,n=cuenta(p.detecta)*100+cuenta(p.pista);if(n>score){score=n;top=p}}detectaPerfil.puntos=score;return top}
+function valorTabla(U,c,origen){ // encabezado con FLETE/TOTAL y montos en la fila siguiente: el último monto es el total
+ const ls=U.split('\n');for(let i=0;i<ls.length;i++){if(!/FLETE|\bTOTAL\b|TOFAL/.test(ls[i])||/\d[.,]\d{3}/.test(ls[i]))continue;
+  for(let j=i+1;j<=i+2&&j<ls.length;j++){if(/DECLARADO\s*:/.test(ls[j]))continue;const montos=(ls[j].match(/\d{1,3}[.,]\s?\d{3}\b/g)||[]).map(dinero).filter(Boolean);if(/DECL/.test(ls[i]))montos.shift();if(!montos.length)continue;
+   const total=montos[montos.length-1];suma(c.valor,total,montos.filter(x=>x===total).length>1?5:3,origen);break}}}
+function valorPesos(U,c,origen){const ls=U.split('\n');for(let n=0;n<ls.length;n++){const l=ls[n];if(/DECL|SOB|VR\.? ?FLT/.test(l)||/DECL/.test(ls[n-1]||''))continue;for(const m of l.matchAll(rx(String.raw`\$\s*`+DINERO)))suma(c.valor,dinero(m[1]),.5,origen)}}
+function guiasRepetidas(U,c,origen){ // números largos fuera de líneas de teléfono, NIT, postal, etc.: si se repiten en la guía suman evidencia
+ for(const l of U.split('\n')){if(/TEL|CEL|NIT|POSTAL|IDENTIFICACION|\bCC\b|NODEX|CUFE|RESOL|AUTORIZA|PREFIJO|\bDEL\b|C\.C/.test(l))continue;
+  for(const m of l.matchAll(/(?<![\d.,\/-])(\d{8,15})(?:\.\d{1,2}\b)?(?![\d.,\/-])/g)){const d=m[1];if(/^3\d{9}$/.test(d)||/^60\d{8}$/.test(d))continue;suma(c.guia,d,1,origen)}}}
+const sinRuido=s=>{let w=s.replace(/^\W*REMITENTE\b\W*/,'').replace(/\s*\S*\s*PINEDA\s+A[BH]OGADOS.*$/,'').replace(/\b(TEL|CEL|TELEFONO)\b.*$/,'').replace(/[^A-ZÑ .&]/g,' ').replace(/\s+/g,' ').trim().split(' ');while(w.length&&w[w.length-1].replace(/\./g,'').length<=2)w.pop();while(w.length&&w[0].replace(/\./g,'').length<=1)w.shift();return w.join(' ')};
+const esNombre=s=>s.length>=6&&s.length<=70&&s.split(' ').filter(x=>x.length>=3).length>=2&&!/DOCUMENTO|SERVICIO|PRESENTE|\bNODO\b|MANZANA|\bZONA\b|ENTREGA|CONTENIDO|\bPESO\b/.test(s)&&!/^(CRA|CR|KR|CL|CALLE|KRA|DIAG|AV|TV|DIR)\b/.test(s)&&!/\bOBS\b|MERCANCIA|POSTAL|DIRECCION|BOLSA|RANGO|FECHA|CIUDAD|\bDESTINO\b|\bORIGEN\b|COLOMBIA|VERIFICAR/.test(s)&&!REMITENTE_PROPIO.test(s);
+const esDireccion=l=>/^(.*?\b)?(CRA|CR|KR|KRA|CL|CALLE|DIAG|AV|TV|TRANSV)\b.*\d/.test(l);
+function destinatario(U,perfil,c,origen){
+ const ls=U.split('\n').map(x=>x.trim());
+ // General: etiqueta y nombre en la misma línea o en las siguientes.
+ ls.forEach((l,i)=>{const m=l.match(/(DESTINATARIO|CONSIGNATARIO|ENTREGAR\s*A|DATOS\s*DESTINO|^PARA\b)\s*:?\s*(.*)$/);if(!m)return;const s=sinRuido(m[2]);if(esNombre(s)){suma(c.destinatario,s,4,origen);return}
+  for(let j=i+1;j<=i+2&&j<ls.length;j++){if(esDireccion(ls[j]))continue;const t=sinRuido(ls[j].replace(/^\d{5,12}\s*[-–]\s*/,''));if(esNombre(t)){suma(c.destinatario,t,3,origen);break}}});
+ // Formato «documento - nombre» (remesas): se descarta al remitente propio.
+ for(const m of U.matchAll(/\b\d{5,12}\s*[-–]\s*([A-ZÑ][A-ZÑ .]{5,})/g)){const s=sinRuido(m[1]);if(esNombre(s))suma(c.destinatario,s,3,origen)}
+ const col=U.match(/GOMEZ PINEDA ABOGADOS\s+\d{5,12}\s*[-–]\s*([A-ZÑ .]{6,})/);if(col){const s=sinRuido(col[1]);if(esNombre(s))suma(c.destinatario,s,5,origen)}
+ ls.forEach((l,i)=>{if(!/COD\.? ?POSTAL/.test(l))return;for(let j=i+1;j<=i+3&&j<ls.length;j++){if(esDireccion(ls[j])||/POSTAL|POSI|\bNODO\b/.test(ls[j]))continue;const s=sinRuido(ls[j].replace(/^\W*PARA\s*:?\s*/,''));if(esNombre(s)){suma(c.destinatario,s,3,origen);break}}});
+ if(!perfil)return;
+ if(perfil.id==='envia'){ // la columna del destinatario suele quedar mezclada con la del remitente
+  const i=ls.findIndex(l=>/DESTINATARIO/.test(l));if(i<0)return;let partes=[];
+  for(let j=i+1;j<ls.length&&j<=i+4;j++){const l=ls[j].replace(/^REMITENTE\s*:?\s*/,'').replace(/^.*GOMEZ PINEDA ABOGADOS( SAS)?\s*/,'').replace(/^.*?(CRA 25A|CR 25A).*?POBLADO\s*/,'');if(!l)continue;if(esDireccion(l)||/^TEL|IDENTIFICACION|COLOMBIA/.test(l)){if(partes.length)break;continue}const s=sinRuido(l);if(s){partes.push(s);if(partes.length===2)break}}
+  const s=partes.join(' ').trim();if(esNombre(s))suma(c.destinatario,s,6,origen)}
+}
+function fechaSinAnio(U,c,origen){for(const m of U.matchAll(/(?:ENTREGA|MADA\b|REG\/)[^\d\n]{0,18}(\d{1,2})\s?\/\s?(\d{1,2})\s?\/\s?[^\s]{0,5}/g)){const d=+m[1],me=+m[2];if(d>=1&&d<=31&&me>=1&&me<=12)suma(c.fee,String(d).padStart(2,'0')+'/'+String(me).padStart(2,'0'),2,origen)}}
+function aplicaFecha(reglas,U,c,lista,origen,parcial){for(const[re,peso]of reglas||[]){re.lastIndex=0;let m;while((m=re.exec(U))){const f=fechaISO(m[1]);if(f)suma(lista,fechaTxt(f),peso,origen);else if(parcial){const d=parseInt(m[1],10);if(d>=1&&d<=31)suma(c.fee,d,2,origen)}}}}
+function parsear(texto,origen='OCR'){
+ const U=corrige(normal(texto)),c=vacio(),perfil=detectaPerfil(U);if(perfil)c.perfil={[perfil.id]:detectaPerfil.puntos};
+ const aGuia=x=>{const d=arreglaDigitos(x);return/^\d{8,16}$/.test(d)?d:null};
+ aplica(GENERAL.guia,U,aGuia,c.guia,origen);guiasRepetidas(U,c,origen);
+ {const ls=U.split('\n');ls.forEach((l,i)=>{if(!/\b(GUIA|REMESA)\b/.test(l)||/\d{8}/.test(l))return;for(let j=i+1;j<=i+2&&j<ls.length;j++){const m=ls[j].match(/(?<![\d.,\/-])(\d{8,16})(?:\.\d{1,2})?(?![\d\/-])/);if(m){suma(c.guia,m[1],4,origen);break}}})}
+ aplicaValor(GENERAL.valor,U,c.valor,origen);valorTabla(U,c,origen);valorPesos(U,c,origen);
+ aplicaFecha(GENERAL.fecha,U,c,c.fecha,origen,true);fechaSinAnio(U,c,origen);aplicaFecha(GENERAL.admision,U,c,c.admision,origen,false);
+ if(perfil){
+  aplica(perfil.guia||[],U,x=>{const d=arreglaDigitos(x);return!perfil.formatoGuia||perfil.formatoGuia.test(d)?d:null},c.guia,origen);
+  aplicaValor(perfil.valor||[],U,c.valor,origen);
+  aplicaFecha(perfil.fecha,U,c,c.fecha,origen,true);aplicaFecha(perfil.admision,U,c,c.admision,origen,false);
+  if(perfil.fee){perfil.fee.lastIndex=0;let m;while((m=perfil.fee.exec(U)))suma(c.fee,Number(m[1]),3,origen)}
+  if(perfil.fechaDoc){perfil.fechaDoc.lastIndex=0;let m;while((m=perfil.fechaDoc.exec(U))){const f=fechaISO(m[1]);if(f)suma(c.fechaDoc,fechaTxt(f),2,origen)}}
+ }else{const m=/\bF[E3]E\s*[:.]?\s*(\d{1,2})\s?[\/\-.]\s?\d{1,2}\s?[\/\-.]\s?\d{2,4}/g;let x;while((x=m.exec(U)))suma(c.fee,Number(x[1]),3,origen)}
+ destinatario(U,perfil,c,origen);
+ if(/VALOR\s*(?:A COBRAR|TOTAL|DEL ENVIO)|VR\.? ?A ?COBRAR|\bFLETE\b|\bTOTAL\b/.test(U))suma(c.etiquetaValor,1,1,origen);
+ if(/ESTIMADA|PROBABLE|PROG\.? ?ENTREGA|APROX\w*\s*ENTREGA|\bFEE\b/.test(U))suma(c.etiquetaFecha,1,1,origen);
+ return{c,perfil,U};
+}
+function completo(c,perfil){const g=mejor(c.guia)[0];if(!g||g.peso<4)return false;if(perfil&&perfil.rotuloSinValor)return mejor(c.destinatario).length>0;return mejor(c.valor).length>0&&(mejor(c.fecha).length>0||mejor(c.fee).length>0)&&mejor(c.admision).length>0&&mejor(c.destinatario).length>0}
+function combina(a,b){for(const k of['guia','valor','fecha','fee','admision','fechaDoc','destinatario','pago','etiquetaValor','etiquetaFecha'])a[k].push(...b[k]);for(const k in b.perfil)a.perfil[k]=(a.perfil[k]||0)+b.perfil[k];return a}
+const perfilVotado=c=>{const v=Object.entries(c.perfil).sort((a,b)=>b[1]-a[1])[0];return v?porId(v[0]):null};
+
+
+/* ---------- imagen ---------- */
+async function aLienzo(file){const bmp=await createImageBitmap(file);const c=document.createElement('canvas');c.width=bmp.width;c.height=bmp.height;c.getContext('2d').drawImage(bmp,0,0);bmp.close&&bmp.close();return c}
+function escala(src,obj){const k=obj/Math.max(src.width,src.height);const c=document.createElement('canvas');c.width=Math.round(src.width*k);c.height=Math.round(src.height*k);const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(src,0,0,c.width,c.height);return c}
+function gira(src,g){if(!g)return src;const c=document.createElement('canvas');const r=g%180!==0;c.width=r?src.height:src.width;c.height=r?src.width:src.height;const x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(g*Math.PI/180);x.drawImage(src,-src.width/2,-src.height/2);return c}
+function grises(src){const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const x=c.getContext('2d');x.drawImage(src,0,0);const im=x.getImageData(0,0,c.width,c.height),p=im.data,h=new Uint32Array(256);for(let i=0;i<p.length;i+=4){const v=(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0;p[i]=v;h[v]++}
+ const tot=c.width*c.height;let a=0,lo=0,hi=255;for(let i=0;i<256;i++){a+=h[i];if(a>tot*.01){lo=i;break}}a=0;for(let i=255;i>=0;i--){a+=h[i];if(a>tot*.01){hi=i;break}}const k=255/Math.max(1,hi-lo);
+ for(let i=0;i<p.length;i+=4){const v=Math.max(0,Math.min(255,(p[i]-lo)*k));p[i]=p[i+1]=p[i+2]=v}x.putImageData(im,0,0);return c}
+function binariza(src){ // umbral adaptativo (Bradley): tolera sombras y luz desigual de fotos de celular
+ const c=document.createElement('canvas');const w=c.width=src.width,h=c.height=src.height;const x=c.getContext('2d');x.drawImage(src,0,0);const im=x.getImageData(0,0,w,h),p=im.data;
+ const I=new Float64Array((w+1)*(h+1));for(let j=0;j<h;j++){let s=0;for(let i=0;i<w;i++){s+=p[(j*w+i)*4];I[(j+1)*(w+1)+i+1]=I[j*(w+1)+i+1]+s}}
+ const r=Math.floor(Math.max(w,h)/28),t=.82;for(let j=0;j<h;j++)for(let i=0;i<w;i++){const a=Math.max(0,i-r),b=Math.max(0,j-r),e=Math.min(w,i+r+1),f=Math.min(h,j+r+1),n=(e-a)*(f-b),s=I[f*(w+1)+e]-I[b*(w+1)+e]-I[f*(w+1)+a]+I[b*(w+1)+a],o=(j*w+i)*4,v=p[o]*n<s*t?0:255;p[o]=p[o+1]=p[o+2]=v}
+ x.putImageData(im,0,0);return c}
+
+/* ---------- código de barras: verificación independiente del OCR ---------- */
+function corteCodigo(src,x,y,w,h,k){const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingEnabled=false;g.drawImage(src,x,y,w,h,0,0,c.width,c.height);return c}
+function leeBarras(canvas){if(!window.ZXing)return{numeros:[],largos:[]};const Z=window.ZXing,lector=f=>{const h=new Map();h.set(Z.DecodeHintType.POSSIBLE_FORMATS,f);h.set(Z.DecodeHintType.TRY_HARDER,true);const r=new Z.MultiFormatReader();r.setHints(h);return r};
+ const barras=lector([Z.BarcodeFormat.CODE_128,Z.BarcodeFormat.CODE_39,Z.BarcodeFormat.ITF,Z.BarcodeFormat.CODE_93,Z.BarcodeFormat.EAN_13]),qr=lector([Z.BarcodeFormat.QR_CODE,Z.BarcodeFormat.DATA_MATRIX]),numeros=new Set(),largos=new Set(),W=canvas.width,H=canvas.height;
+ const lee=(r,c)=>{try{const v=r.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(c)))).getText();r.reset();const url=v.match(/[?&](?:id|guia|numero|remesa|tracking|n)=(\d{8,16})\b/i);if(url)numeros.add(url[1]);else if(/^\d{8,16}$/.test(v))numeros.add(v);else if(/^\d{17,}$/.test(v))largos.add(v)}catch(e){r.reset()}};
+ for(const g of[0,90]){const img=gira(canvas,g),w=img.width,h=img.height;for(let y=0;y<.85;y+=.15)lee(barras,corteCodigo(img,0,h*y,w,Math.min(h*.25,h-h*y),2))}
+ for(let i=0;i<2;i++)for(let j=0;j<2;j++)for(const k of[1,2])lee(qr,corteCodigo(canvas,W*i/2,H*j/2,W/2,H/2,k));
+ lee(qr,canvas);
+ return{numeros:[...numeros],largos:[...largos]}}
+
+/* ---------- OCR ---------- */
+function angulo(src){ // estima la inclinación de la foto por perfil de proyección
+ const s=escala(src,700),w=s.width,h=s.height,p=s.getContext('2d').getImageData(0,0,w,h).data;let suma0=0;for(let i=0;i<p.length;i+=4)suma0+=p[i];const um=suma0/(w*h)*.72,pts=[];
+ for(let y=0;y<h;y+=1)for(let x=0;x<w;x+=2){if(p[(y*w+x)*4]<um)pts.push(x-w/2,y-h/2)}
+ let top=0,sel=0;for(let a=-8;a<=8;a+=.5){const r=a*Math.PI/180,sn=Math.sin(r),cs=Math.cos(r),H=new Int32Array(h*2);for(let i=0;i<pts.length;i+=2){const y=Math.round(pts[i]*sn+pts[i+1]*cs+h);if(y>=0&&y<H.length)H[y]++}let v=0;for(let i=1;i<H.length;i++){const d=H[i]-H[i-1];v+=d*d}if(v>top){top=v;sel=a}}return sel}
+function endereza(src){const a=angulo(src);if(Math.abs(a)<.75)return src;const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.translate(c.width/2,c.height/2);x.rotate(a*Math.PI/180);x.imageSmoothingQuality='high';x.drawImage(src,-src.width/2,-src.height/2);return c}
+function franja(src,y0,y1){const sy=Math.round(src.height*y0),sh=Math.round(src.height*(y1-y0));const k=Math.min(3,2400/src.width);const c=document.createElement('canvas');c.width=Math.round(src.width*k);c.height=Math.round(sh*k);const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(src,0,sy,src.width,sh,0,0,c.width,c.height);return endereza(c)}
+function recortaPapel(src){ // quita el fondo de la foto: el papel es claro y poco saturado
+ try{const s=escala(src,500),w=s.width,h=s.height,p=s.getContext('2d').getImageData(0,0,w,h).data,H=new Uint32Array(256);for(let i=0;i<p.length;i+=4)H[(p[i]*.3+p[i+1]*.59+p[i+2]*.11)|0]++;
+  let tot=w*h,sum=0,sb=0,wb=0,um=128,mx=0;for(let i=0;i<256;i++)sum+=i*H[i];for(let i=0;i<256;i++){wb+=H[i];if(!wb)continue;const wf=tot-wb;if(!wf)break;sb+=i*H[i];const v=wb*wf*Math.pow(sb/wb-(sum-sb)/wf,2);if(v>mx){mx=v;um=i}}
+  const cols=new Uint32Array(w),rows=new Uint32Array(h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const o=(y*w+x)*4,r=p[o],g=p[o+1],b=p[o+2],mxc=Math.max(r,g,b),mnc=Math.min(r,g,b),l=r*.3+g*.59+b*.11;if(l>um&&mxc-mnc<45){cols[x]++;rows[y]++}}
+  let x0=0,x1=w-1,y0=0,y1=h-1;while(x0<w&&cols[x0]<h*.25)x0++;while(x1>0&&cols[x1]<h*.25)x1--;while(y0<h&&rows[y0]<w*.1)y0++;while(y1>0&&rows[y1]<w*.1)y1--;
+  if(x1<=x0||y1<=y0||(x1-x0)*(y1-y0)<w*h*.12)return src;const k=src.width/w,mw=(x1-x0)*.03,mh=(y1-y0)*.03;const sx=Math.max(0,(x0-mw)*k),sy=Math.max(0,(y0-mh)*k),sw=Math.min(src.width-sx,(x1-x0+2*mw)*k),sh=Math.min(src.height-sy,(y1-y0+2*mh)*k);
+  const c=document.createElement('canvas');c.width=Math.round(sw);c.height=Math.round(sh);c.getContext('2d').drawImage(src,sx,sy,sw,sh,0,0,c.width,c.height);return c}catch(e){return src}}
+let worker=null;let avisa=()=>{};
+async function dameWorker(){if(!worker){worker=await Tesseract.createWorker('spa',1,{logger:m=>{if(m.status==='recognizing text')avisa('Reconociendo texto',m.progress)}})}return worker}
+async function ocr(canvas,psm){const w=await dameWorker();await w.setParameters({tessedit_pageseg_mode:String(psm),user_defined_dpi:'300',preserve_interword_spaces:'1'});const r=await w.recognize(canvas);return{texto:r.data.text,conf:r.data.confidence}}
+const palabrasGuia=t=>new Set(corrige(normal(t)).match(/GUIA|FECHA|ENTREGA|DESTINATARIO|REMITENTE|VALOR|TOTAL|COBRAR|ENVIO|DIRECCION|ORIGEN|DESTINO|SERVICIO|ADMISION|REMESA/g)||[]).size;
+
+async function leeLienzo(lienzo,etiqueta,prog){
+ avisa=prog||(()=>{});
+ const papel=recortaPapel(lienzo),base=escala(papel,Math.max(2200,Math.min(2800,Math.max(papel.width,papel.height))));
+ const acum=vacio(),textos=[];let giro=0;
+ const codigos=leeBarras(lienzo),barras=codigos.numeros;
+ avisa('Leyendo '+etiqueta);
+ let g=grises(endereza(base)),r=await ocr(g,3),k=palabrasGuia(r.texto);
+ // Si casi no hay palabras reconocibles, la foto puede estar girada: se prueban las otras orientaciones.
+ if(k<3){for(const a of[90,270,180]){avisa('Probando orientación '+a+'° · '+etiqueta);const gg=grises(endereza(gira(base,a))),rr=await ocr(gg,3),kk=palabrasGuia(rr.texto);if(kk>k+1||(kk>k&&rr.conf>r.conf)){k=kk;r=rr;g=gg;giro=a}if(kk>=4)break}}
+ textos.push(r.texto);combina(acum,parsear(r.texto,'OCR').c);
+ // Pasadas adicionales solo si faltan datos o la evidencia es débil.
+ if(!completo(acum,perfilVotado(acum))){const pasadas=[0,.15,.3,.45,.6,.75].map(y=>()=>[franja(g,y,y+.22),6]);pasadas.push(()=>[binariza(g),6]);
+  for(const pasada of pasadas){avisa('Afinando lectura · '+etiqueta);const[img,psm]=pasada();const rr=await ocr(img,psm);textos.push(rr.texto);combina(acum,parsear(rr.texto,'OCR').c);if(completo(acum,perfilVotado(acum)))break}}
+ const perfil=perfilVotado(acum),todo=textos.join('\n----\n');
+ // Código de barras: lectura independiente que confirma el número de guía.
+ for(const d of barras){if(perfil&&perfil.formatoGuia&&!perfil.formatoGuia.test(d))continue;suma(acum.guia,d,todo.includes(d)?20:8,'Código de barras')}
+ for(const d of codigos.largos){if(perfil&&perfil.guiaEnCodigo){const m=d.match(perfil.guiaEnCodigo);if(m)suma(acum.guia,m[1],20,'Código de barras')}else{const g=mejor(acum.guia)[0];if(g&&d.includes(g.valor))suma(acum.guia,g.valor,20,'Código de barras')}}
+ return{c:acum,perfil,texto:todo,barras,giro};
+}
+
+async function archivoAPaginas(file){ // devuelve [{lienzo|texto, etiqueta}]
+ if(file.type==='application/pdf'||/\.pdf$/i.test(file.name)){const doc=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise,out=[];
+  for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),tc=await pg.getTextContent();const lineas=new Map();for(const it of tc.items){const y=Math.round(it.transform[5]);lineas.set(y,(lineas.get(y)||'')+' '+it.str)}const txt=[...lineas.entries()].sort((a,b)=>b[0]-a[0]).map(x=>x[1]).join('\n');
+   if(txt.replace(/\s/g,'').length>=80)out.push({texto:txt,etiqueta:file.name+' (p. '+i+')'});else{const v=pg.getViewport({scale:2.5}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await pg.render({canvasContext:c.getContext('2d'),viewport:v}).promise;out.push({lienzo:c,etiqueta:file.name+' (p. '+i+')'})}}return out}
+ return[{lienzo:await aLienzo(file),etiqueta:file.name}]}
+
+/* ---------- consolidación y validación ---------- */
+function plausible(txt,obs,nombre){ // ninguna guía puede tener fecha muy futura: suele ser un 6 leído como 8, etc.
+ if(!txt)return txt;const f=leeTxt(txt),hoy=new Date(),lim=Date.now()+120*864e5;if(fechaNum(f)<=lim&&f.y>=hoy.getFullYear()-3)return txt;
+ const alt={...f,y:hoy.getFullYear()};if(fechaNum(alt)<=lim){obs.push('Año de la '+nombre+' corregido: se leyó '+f.y+'.');return fechaTxt(alt)}return txt}
+function resuelve(grupo){
+ const c=grupo.c,perfil=grupo.perfil,obs=[];
+ const top=l=>{const m=mejor(l);return m.length?m[0]:null};
+ const guias=mejor(c.guia),guia=guias[0]||null;
+ if(guia&&guias[1]&&guias[1].valor.length===guia.valor.length&&lev(guias[1].valor,guia.valor)<=2&&guias[1].peso>=guia.peso*.34&&!guia.origenes.has('Código de barras'))obs.push('El número de guía se leyó también como '+guias[1].valor+'.');
+ if(guia&&perfil&&perfil.formatoGuia&&!perfil.formatoGuia.test(guia.valor))obs.push('El número de guía no tiene el formato habitual de '+perfil.nombre+'.');
+ const verif=guia?(guia.origenes.has('Código de barras')?(guia.origenes.has('OCR')?'Barras y texto coinciden':'Solo código de barras'):'Solo texto'):'';
+ if(guia&&verif==='Solo texto'&&guia.peso<4)obs.push('Número de guía con poca evidencia.');
+ const valores=mejor(c.valor);for(const v of[...valores]){if(v.valor%100===0)continue;const r=valores.find(x=>x.valor%100===0&&Math.abs(x.valor-v.valor)<100);if(r){r.peso+=v.peso;valores.splice(valores.indexOf(v),1)}}valores.sort((a,b)=>b.peso-a.peso);const valor=valores.length?valores[0].valor:null;if(valor!==null&&valor%100!==0)obs.push('Valor poco habitual: confirmar.');
+ if(valores.length>1&&valores[1].peso>=valores[0].peso*.6)obs.push('Hay dos valores posibles ('+valores.slice(0,2).map(x=>'$'+x.valor.toLocaleString('es-CO')).join(' y ')+').');
+ let adm=plausible(top(c.admision)?top(c.admision).valor:'',[],'');
+ const fechas=mejor(c.fecha),obsF=[];let fecha=plausible(fechas.length?fechas[0].valor:'',obsF,'fecha de entrega');
+ if(fecha&&adm){const coh=fechas.map(x=>plausible(x.valor,[],'')).find(v=>{const d=(fechaNum(leeTxt(v))-fechaNum(leeTxt(adm)))/864e5;return d>=0&&d<=45});if(coh&&coh!==fecha){fecha=coh;obsF.length=0}}
+ obs.push(...obsF);
+ if(fechas.length>1&&fechas[0].peso*.6<=fechas[1].peso&&!adm&&plausible(fechas[1].valor,[],'')!==fecha)obs.push('La fecha de entrega también se leyó como '+fechas[1].valor+'.');
+ if(fecha&&adm){const f=leeTxt(fecha),a=leeTxt(adm),dias=(fechaNum(f)-fechaNum(a))/864e5;if(dias<0||dias>45){const a2={...a,y:f.y},d2=(fechaNum(f)-fechaNum(a2))/864e5;if(d2>=0&&d2<=45){adm=fechaTxt(a2)}else{obs.push('La fecha de entrega no es coherente con la de admisión.');fecha=''}}}
+ const fee=top(c.fee);
+ if(!fecha&&fee){ // Algunos rótulos imprimen la fecha con mes 00 (Servientrega): se toma el día y el mes sale de la admisión.
+  if(typeof fee.valor==='string'){const[d,me]=fee.valor.split('/').map(Number);const y=adm?leeTxt(adm).y:new Date().getFullYear();fecha=fechaTxt({d,m:me,y});obs.push('El año de la fecha de entrega no es legible; se dedujo'+(adm?' de la fecha de admisión.':' del año en curso.'))}
+  else obs.push('La guía trae la fecha con el mes en 00 o ilegible: no se transcribe; complétala.')}
+ const dests=mejor(c.destinatario),grupos=[];for(const d of dests){const g=grupos.find(x=>lev(x.valor,d.valor)<=3);if(g)g.peso+=d.peso;else grupos.push({...d})}grupos.sort((a,b)=>b.peso-a.peso);const dest=grupos[0]||null,faltan=[];
+ 
+ if(!guia)faltan.push('número de guía');
+ if(!perfil)obs.push('Transportadora no identificada: selecciónala.');
+ if(perfil&&grupo.deducida)obs.push('Transportadora deducida por el formato; el documento no la nombra.');
+ const notas=[];if(valor===null){if(c.etiquetaValor.length)faltan.push('valor');else notas.push('La guía no muestra valor (puede ser contraentrega).')}if(!fecha&&!fee){if(c.etiquetaFecha.length)faltan.push('fecha probable de entrega');else notas.push('La guía no trae fecha probable de entrega.')}
+ if(!dest)faltan.push('destinatario');
+ if(faltan.length)obs.push('No se pudo leer: '+faltan.join(', ')+'.');
+ const fdoc=top(c.fechaDoc);
+ return{transportadora:perfil?perfil.nombre:'',numeroGuia:guia?guia.valor:'',valorEnvio:valor,destinatario:dest?dest.valor:'',fechaProbableEntrega:fecha,soportes:grupo.soportes,estado:obs.length?'Revisar':'OK',observaciones:[...obs,...notas]};
+}
+
+async function procesar(files,onProgreso,opts){opciones=opts||{};
+ const prog=onProgreso||(()=>{}),leidos=[],errores=[];
+ for(let i=0;i<files.length;i++){const f=files[i];
+  try{for(const pg of await archivoAPaginas(f)){const m=(t,p)=>prog({archivo:f.name,indice:i,total:files.length,etapa:t,avance:p});
+    if(pg.texto){const p=parsear(pg.texto,'Texto PDF');leidos.push({c:p.c,perfil:p.perfil,archivo:f.name,etiqueta:pg.etiqueta,texto:pg.texto})}
+    else{const r=await leeLienzo(pg.lienzo,pg.etiqueta,m);leidos.push({...r,archivo:f.name,etiqueta:pg.etiqueta})}}
+  }catch(e){console.error(e);errores.push({archivo:f.name,error:e.message})}}
+ // Un registro por número de guía; los soportes de la misma guía se unen.
+ const grupos=new Map();let sueltos=0;
+ for(const l of leidos){const g=mejor(l.c.guia)[0];const k=g?g.valor:'__'+(sueltos++);let x=grupos.get(k);if(!x){x={c:vacio(),perfil:l.perfil,soportes:[]};grupos.set(k,x)}combina(x.c,l.c);x.perfil=x.perfil||l.perfil;if(!x.soportes.includes(l.archivo))x.soportes.push(l.archivo)}
+ const registros=[...grupos.values()].map(x=>{const pv=perfilVotado(x.c);x.perfil=pv;x.deducida=false;if(pv&&(x.c.perfil[pv.id]||0)<100){const g=mejor(x.c.guia)[0];if(g&&pv.formatoGuia&&pv.formatoGuia.test(g.valor))x.deducida=true;else x.perfil=null}return resuelve(x)});
+ return{registros,errores,archivos:leidos.map(l=>({archivo:l.archivo,etiqueta:l.etiqueta,transportadora:l.perfil?l.perfil.nombre:'',giro:l.giro||0,barras:l.barras||[],texto:l.texto}))};
+}
+/* Divide en pesos enteros: la suma de las partes siempre es igual al total. */
+function dividirValor(total,n){if(total===null||total===undefined||!n)return Array(n||0).fill(null);const b=Math.floor(total/n),r=total-b*n;return Array.from({length:n},(_,i)=>b+(i<r?1:0))}
+function distribuye(reg){const v=dividirValor(reg.valorEnvio,reg.nodex.length);reg.distribucion=reg.nodex.map((c,i)=>({nodex:c,valorAsignado:v[i]}));return reg}
+/* filas: [{nodex:'5413',file},{nodex:'5414',file}]. Cada archivo se lee una sola vez y las filas se unen por número de guía leído. */
+async function procesarLote(filas,onProgreso,opts){
+ const claves=new Map(),nombres=new Set(),nodexPorArchivo=new Map();
+ for(const fila of filas){const k=fila.file.name+'|'+fila.file.size+'|'+fila.file.lastModified;let f=claves.get(k);
+  if(!f){f=fila.file;if(nombres.has(f.name)){let i=2,n;const pt=f.name.lastIndexOf('.');do{n=f.name.slice(0,pt)+' ('+i+++')'+f.name.slice(pt)}while(nombres.has(n));f=new File([f],n,{type:f.type,lastModified:f.lastModified})}nombres.add(f.name);claves.set(k,f)}
+  const l=nodexPorArchivo.get(f.name)||[];l.push(...[].concat(fila.nodex));nodexPorArchivo.set(f.name,l)}
+ const archivosUsados=[...claves.values()],r=await procesar(archivosUsados,onProgreso,opts);
+ const usados=new Set();
+ for(const reg of r.registros){reg.nodex=[...new Set(reg.soportes.flatMap(n=>nodexPorArchivo.get(n)||[]))];reg.soportes.forEach(n=>usados.add(n));distribuye(reg)}
+ // Dos números casi iguales pueden ser la misma guía mal leída: en ese caso el valor no se habría dividido.
+ r.registros.forEach((a,i)=>r.registros.slice(i+1).forEach(b=>{if(a.numeroGuia&&b.numeroGuia&&a.numeroGuia.length===b.numeroGuia.length&&lev(a.numeroGuia,b.numeroGuia)<=2&&a.destinatario&&b.destinatario&&lev(a.destinatario,b.destinatario)<=3){for(const[x,y]of[[a,b],[b,a]]){x.observaciones.push('Número muy parecido a '+y.numeroGuia+': si es la misma guía, corrígelo para unirlas y dividir el valor.');x.estado='Revisar'}}}));
+ return{...r,archivosUsados};
+}
+async function cierra(){if(worker){await worker.terminate();worker=null}}
+return{procesar,procesarLote,dividirValor,distribuye,parsear,resuelve,cierra,PERFILES};
+})();
+
+/* ==========================================================================
+   PANTALLA
+   ========================================================================== */
+const $=id=>document.getElementById(id);const libs={pdf:false,ocr:false,xlsx:false,barras:false};
+function setEngine(){const s=(n,k)=>'<span class="'+(k?'ok':'danger')+'">'+n+': '+(k?'✓ listo':'✕ no disponible')+'</span>';$('engine').innerHTML=s('PDF',libs.pdf)+s('OCR',libs.ocr)+s('Excel',libs.xlsx)+s('Códigos',libs.barras)}
+function loadScript(src,timeout=20000){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar '+src));document.head.appendChild(s);setTimeout(()=>rej(new Error('Tiempo agotado: '+src)),timeout)})}
+async function boot(){setEngine();$('statusInd').innerHTML=$('statusMas').innerHTML='<span class="spinner"></span>Preparando motores de lectura…';
+ const t=[['pdf','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'],['ocr','https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js'],['xlsx','https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'],['barras','https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js']];
+ await Promise.all(t.map(async([k,u])=>{try{await loadScript(u);libs[k]=true;if(k==='pdf')pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}catch(e){console.error(e)}setEngine()}));
+ const ok=libs.ocr&&libs.pdf;$('statusInd').textContent=ok?'Listo. Carga la guía y pulsa Leer guía.':'No se pudo cargar un motor necesario. Revisa la conexión a Internet y vuelve a abrir la página.';$('statusMas').textContent=ok?'Listo. Escribe los códigos Nodex y agrega las guías.':$('statusInd').textContent}
+boot();
+const pesos=v=>v===null||v===undefined||v===''?'':'$ '+Number(v).toLocaleString('es-CO');
+const soloDigitos=t=>{const d=String(t).replace(/[^\d]/g,'');return d?Number(d):null};
+function progreso(id){return p=>{const s=$(id);s.textContent='';const g=document.createElement('span');g.className='spinner';s.append(g,'Archivo '+(p.indice+1)+' de '+p.total+' · '+p.etapa+(p.avance!=null?' · '+Math.round(p.avance*100)+'%':''))}}
+function descarga(nombre,contenido,tipo){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([contenido],{type:tipo}));a.download=nombre;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function excel(filas,hoja,nombre,anchos){const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(filas);ws['!cols']=anchos.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,hoja);XLSX.writeFile(wb,nombre)}
+function cambiaModo(m){const ind=m==='ind';$('panelInd').classList.toggle('hidden',!ind);$('panelMas').classList.toggle('hidden',ind);$('tabInd').classList.toggle('active',ind);$('tabMas').classList.toggle('active',!ind);$('tabInd').setAttribute('aria-selected',ind);$('tabMas').setAttribute('aria-selected',!ind)}
+$('tabInd').onclick=()=>cambiaModo('ind');$('tabMas').onclick=()=>cambiaModo('mas');
+const tipoValido=f=>/\.(pdf|jpe?g|png)$/i.test(f.name);
+function arrastre(id,fn){const d=$(id);['dragenter','dragover'].forEach(e=>d.addEventListener(e,x=>{x.preventDefault();d.classList.add('drag')}));['dragleave','drop'].forEach(e=>d.addEventListener(e,x=>{x.preventDefault();d.classList.remove('drag')}));d.addEventListener('drop',e=>fn([...e.dataTransfer.files].filter(tipoValido)))}
+function tarjeta(f){const d=document.createElement('div');d.className='filecard';const n=document.createElement('span');n.className='name';n.textContent='✓ '+f.name;const s=document.createElement('span');s.className='size';s.textContent=(f.size/1048576).toFixed(2)+' MB';d.append(n,s);return d}
+const listo=()=>libs.ocr&&libs.pdf;
+
+/* ---------- Guía individual: solo transcribe ---------- */
+let archivoInd=null,regInd=null,urlInd=null;
+const CAMPOS_IND=[['numeroGuia','Número de Guía'],['valorEnvio','Valor del Envío'],['transportadora','Transportadora'],['destinatario','Destinatario'],['fechaProbableEntrega','Fecha Probable de Entrega']];
+function eligeInd(f){archivoInd=f||null;regInd=null;$('resInd').classList.add('hidden');$('selInd').innerHTML='';if(urlInd){URL.revokeObjectURL(urlInd);urlInd=null}if(f){$('selInd').appendChild(tarjeta(f));urlInd=URL.createObjectURL(f)}$('runInd').disabled=!f;$('statusInd').textContent=f?'Ahora pulsa Leer guía.':'Carga la guía y pulsa Leer guía.'}
+function pintaInd(){const r=regInd,c=$('camposInd');c.innerHTML='';CAMPOS_IND.forEach(([k,et])=>{const l=document.createElement('label');l.className='campo';const s=document.createElement('span');s.textContent=et;const i=document.createElement('input');i.value=k==='valorEnvio'?pesos(r[k]):(r[k]||'');i.dataset.campo=k;if(!i.value&&(k==='numeroGuia'||k==='destinatario'))i.classList.add('vacio');i.addEventListener('change',()=>{r[k]=k==='valorEnvio'?soloDigitos(i.value):i.value.trim();i.value=k==='valorEnvio'?pesos(r[k]):r[k];i.classList.toggle('vacio',!i.value&&(k==='numeroGuia'||k==='destinatario'))});l.append(s,i);c.appendChild(l)});
+ const b=$('estInd');b.className='badge '+(r.estado==='OK'?'ok':'rev');b.textContent=r.estado==='OK'?'✓ OK':'Revisar';$('obsInd').textContent=r.observaciones.join(' ');$('obsInd').classList.toggle('hidden',!r.observaciones.length);$('prevLink').href=urlInd;const pdf=/\.pdf$/i.test(archivoInd.name);$('prevImg').classList.toggle('hidden',pdf);if(!pdf)$('prevImg').src=urlInd;$('resInd').classList.remove('hidden')}
+async function correInd(){if(!listo()||!archivoInd)return;$('runInd').disabled=true;const t0=performance.now();try{const r=await GuiaOCR.procesar([archivoInd],progreso('statusInd'));if(r.errores.length)throw new Error(r.errores[0].error);if(!r.registros.length)throw new Error('No se encontró información en el archivo.');regInd=r.registros[0];pintaInd();const s=$('statusInd');s.innerHTML='<span class="ok">✓ Lectura terminada</span>';s.append(' en '+((performance.now()-t0)/1000).toFixed(0)+' s.'+(r.registros.length>1?' El archivo trae '+r.registros.length+' guías: usa la carga masiva.':''))}catch(e){console.error(e);const s=$('statusInd');s.textContent='';const d=document.createElement('span');d.className='danger';d.textContent='No se pudo leer: '+e.message;s.appendChild(d)}$('runInd').disabled=false}
+$('pickInd').onclick=()=>$('fileInd').click();$('fileInd').onchange=e=>eligeInd(e.target.files[0]);$('runInd').onclick=correInd;$('clearInd').onclick=()=>{$('fileInd').value='';eligeInd(null)};arrastre('dropInd',fs=>{if(fs[0])eligeInd(fs[0])});
+const filaInd=r=>({'Número de Guía':r.numeroGuia,'Valor del Envío':r.valorEnvio,'Transportadora':r.transportadora,'Destinatario':r.destinatario,'Fecha Probable de Entrega':r.fechaProbableEntrega,'Soporte':r.soportes.join(' | '),'Estado':r.estado,'Observaciones':r.observaciones.join(' ')});
+$('xlsxInd').onclick=()=>excel([filaInd(regInd)],'Guía','Guia_'+(regInd.numeroGuia||'sin_numero')+'.xlsx',[18,14,18,38,22,40,10,70]);
+$('jsonInd').onclick=()=>descarga('Guia_'+(regInd.numeroGuia||'sin_numero')+'.json',JSON.stringify(regInd,null,2),'application/json');
+
+/* ---------- Carga masiva: Nodex + guía ---------- */
+let filas=[],sigId=1,filaDestino=null,resMas=null;const urlsMas=new Map();
+const codigoNodex=t=>{const c=String(t).trim();return /^[\w-]+$/.test(c)?c:''};
+function repiteGuia(f){const n={id:sigId++,nodex:'',file:f.file};filas.splice(filas.indexOf(f)+1,0,n);pintaFilas();document.querySelectorAll('#filasMas input.nodex')[filas.indexOf(n)].focus()}
+function nuevaFila(file){const f={id:sigId++,nodex:'',file:file||null};filas.push(f);return f}
+function actualizaBoton(){$('runMas').disabled=!filas.some(f=>f.file&&codigoNodex(f.nodex))}
+function pintaFilas(){const tb=$('filasMas');tb.innerHTML='';filas.forEach(f=>{const tr=document.createElement('tr');const a=document.createElement('td');const i=document.createElement('input');i.className='nodex';i.placeholder='Ej.: 5413';i.setAttribute('aria-label','Código Nodex');i.value=f.nodex;i.addEventListener('input',()=>{f.nodex=i.value;const mal=!!i.value.trim()&&!codigoNodex(i.value);i.classList.toggle('error',mal);if(mal)$('statusMas').textContent='Escribe un solo código por fila, sin comas ni rangos.';else if(/^Escribe un solo/.test($('statusMas').textContent))$('statusMas').textContent='';actualizaBoton()});i.addEventListener('keydown',e=>{if(e.key==='Enter'&&f.file){e.preventDefault();repiteGuia(f)}});a.appendChild(i);
+  const b=document.createElement('td');const bt=document.createElement('button');bt.type='button';bt.className='btn light mini';bt.textContent=f.file?'Cambiar':'Elegir guía';bt.onclick=()=>{filaDestino=f;$('fileFila').click()};const n=document.createElement('span');n.className='nomfila';n.textContent=f.file?f.file.name:'Sin guía';b.append(bt,n);
+  const c=document.createElement('td');const x=document.createElement('button');x.type='button';x.className='btn light mini';x.textContent='Quitar';x.setAttribute('aria-label','Quitar fila');x.onclick=()=>{filas=filas.filter(y=>y!==f);if(!filas.length)nuevaFila();pintaFilas();actualizaBoton()};if(f.file){const rp=document.createElement('button');rp.type='button';rp.className='btn light mini';rp.textContent='Repetir guía';rp.onclick=()=>repiteGuia(f);c.appendChild(rp)}c.appendChild(x);tr.append(a,b,c);tb.appendChild(tr)});actualizaBoton()}
+function agregaGuias(fs){for(const file of fs){const libre=filas.find(f=>!f.file);if(libre)libre.file=file;else nuevaFila(file)}pintaFilas()}
+$('addFila').onclick=()=>{nuevaFila();pintaFilas()};$('pickMas').onclick=()=>$('fileMas').click();$('fileMas').onchange=e=>{agregaGuias([...e.target.files]);e.target.value=''};$('fileFila').onchange=e=>{if(filaDestino&&e.target.files[0]){filaDestino.file=e.target.files[0];pintaFilas()}e.target.value=''};arrastre('dropMas',agregaGuias);
+$('clearMas').onclick=()=>{filas=[];nuevaFila();resMas=null;pintaFilas();$('resMas').classList.add('hidden');$('statusMas').textContent='Escribe los códigos Nodex y agrega las guías.'};
+nuevaFila();pintaFilas();
+function reagrupa(){const vistos=new Map(),salida=[];for(const r of resMas.registros){const k=r.numeroGuia;if(k&&vistos.has(k)){const x=vistos.get(k);x.nodex=[...new Set([...x.nodex,...r.nodex])];x.soportes=[...new Set([...x.soportes,...r.soportes])];if(x.valorEnvio===null||x.valorEnvio===undefined)x.valorEnvio=r.valorEnvio}else{if(k)vistos.set(k,r);salida.push(r)}}resMas.registros=salida.map(GuiaOCR.distribuye)}
+function pintaMas(){const tb=$('tbodyMas');tb.innerHTML='';resMas.registros.forEach(r=>{const tr=document.createElement('tr');
+  const s=document.createElement('td');const th=document.createElement('div');th.className='thumbs';r.soportes.forEach(n=>{const u=urlsMas.get(n);const a=document.createElement('a');a.title=n;if(u){a.href=u;a.target='_blank';a.rel='noopener';if(/\.pdf$/i.test(n))a.textContent='PDF';else{const im=document.createElement('img');im.src=u;im.alt=n;a.appendChild(im)}}else a.textContent=n;th.appendChild(a)});s.appendChild(th);tr.appendChild(s);
+  const edit=(k,dinero)=>{const td=document.createElement('td');td.contentEditable='true';td.textContent=dinero?pesos(r[k]):(r[k]||'');td.classList.toggle('empty',!td.textContent&&(k==='numeroGuia'||k==='destinatario'));td.dataset.campo=k;td.addEventListener('blur',()=>{const t=td.textContent.trim();const nuevo=dinero?soloDigitos(t):t;if(nuevo===r[k]||(nuevo===''&&!r[k])){td.textContent=dinero?pesos(r[k]):(r[k]||'');return}r[k]=nuevo;reagrupa();pintaMas()});return td};
+  tr.append(edit('numeroGuia'),edit('valorEnvio',true));
+  const nx=document.createElement('td');const ul=document.createElement('div');ul.className='reparto';r.distribucion.forEach(d=>{const l=document.createElement('div');const c=document.createElement('b');c.textContent=d.nodex;const v=document.createElement('span');v.textContent=d.valorAsignado===null?'sin valor':pesos(d.valorAsignado);l.append(c,v);ul.appendChild(l)});nx.appendChild(ul);tr.appendChild(nx);
+  tr.append(edit('transportadora'),edit('destinatario'),edit('fechaProbableEntrega'));
+  const est=document.createElement('td');const b=document.createElement('span');b.className='badge '+(r.estado==='OK'?'ok':'rev');b.textContent=r.estado==='OK'?'✓ OK':'Revisar';const o=document.createElement('div');o.className='obs';o.textContent=[r.nodex.length>1?'Guía compartida por '+r.nodex.length+' Nodex: valor dividido.':'',...r.observaciones].filter(Boolean).join(' ');est.append(b,o);tr.appendChild(est);tb.appendChild(tr)});
+ const rs=resMas.registros;$('cntGuias').textContent=rs.length+' guías';$('cntNodex').textContent=rs.reduce((a,r)=>a+r.nodex.length,0)+' Nodex';$('cntRev').textContent=rs.filter(r=>r.estado!=='OK').length+' por revisar';$('resMas').classList.remove('hidden')}
+async function correMas(){if(!listo())return;const validas=[];let malas=0;const inputs=[...document.querySelectorAll('#filasMas input.nodex')];filas.forEach((f,i)=>{const n=codigoNodex(f.nodex);if(!f.file&&!f.nodex.trim())return;if(!f.file||!n){malas++;if(!n&&inputs[i])inputs[i].classList.add('error');return}validas.push({nodex:n,file:f.file})});
+ if(malas){const s=$('statusMas');s.textContent='';const d=document.createElement('span');d.className='danger';d.textContent=malas+' fila(s) incompletas: cada fila lleva un solo código Nodex y su guía.';s.appendChild(d);return}if(!validas.length)return;
+ $('runMas').disabled=true;urlsMas.forEach(u=>URL.revokeObjectURL(u));urlsMas.clear();const t0=performance.now();
+ try{resMas=await GuiaOCR.procesarLote(validas,progreso('statusMas'));resMas.archivosUsados.forEach(f=>urlsMas.set(f.name,URL.createObjectURL(f)));pintaMas();const s=$('statusMas');s.innerHTML='<span class="ok">✓ Lectura terminada.</span>';s.append(' '+resMas.archivosUsados.length+' archivo(s) → '+resMas.registros.length+' guía(s) en '+((performance.now()-t0)/1000).toFixed(0)+' s.');resMas.errores.forEach(e=>{const d=document.createElement('div');d.className='danger';d.textContent=e.archivo+': '+e.error;s.appendChild(d)})}catch(e){console.error(e);const s=$('statusMas');s.textContent='';const d=document.createElement('span');d.className='danger';d.textContent='No se pudo completar la carga: '+e.message;s.appendChild(d)}$('runMas').disabled=false}
+$('runMas').onclick=correMas;
+const filasMasExcel=()=>resMas.registros.flatMap(r=>r.distribucion.map(d=>({'Código Nodex':d.nodex,'Número de Guía':r.numeroGuia,'Valor del Envío':d.valorAsignado,'Transportadora':r.transportadora,'Destinatario':r.destinatario,'Fecha Probable de Entrega':r.fechaProbableEntrega,'Soporte':r.soportes.join(' | '),'Estado':r.estado,'Observaciones':r.observaciones.join(' ')})));
+$('xlsxMas').onclick=()=>excel(filasMasExcel(),'Carga masiva','Carga_Masiva_Guias.xlsx',[14,18,14,18,38,22,40,10,70]);
+$('jsonMas').onclick=()=>descarga('Carga_Masiva_Guias.json',JSON.stringify(resMas.registros,null,2),'application/json');
+</script></body></html>

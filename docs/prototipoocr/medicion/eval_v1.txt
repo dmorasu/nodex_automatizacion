@@ -1,0 +1,134 @@
+﻿┌─────────┬──────────────────────────────┬───────┬─────────┬────────────┬──────────────────┬──────────────────┬──────────────────┬───────────────────┬──────────────────┬───────────────┬──────────────────┬─────────────────┬─────────────┬────────────────────┬──────────────┐
+│ (index) │ grupo                        │ guias │ rastreo │ sinLectura │ numeroGuia       │ transportadora   │ valor            │ valor (repartido) │ fecha            │ fecha ±3 días │ destinatario     │ todo bien       │ marcadas OK │ OK con guía errada │ seg. mediana │
+├─────────┼──────────────────────────────┼───────┼─────────┼────────────┼──────────────────┼──────────────────┼──────────────────┼───────────────────┼──────────────────┼───────────────┼──────────────────┼─────────────────┼─────────────┼────────────────────┼──────────────┤
+│ 0       │ 'TOTAL'                      │ 737   │ 0       │ 31         │ '79 % (555/706)' │ '92 % (532/578)' │ '35 % (170/485)' │ 7                 │ '65 % (455/704)' │ 58            │ '26 % (183/706)' │ '8 % (60/737)'  │ 236         │ 48                 │ '5.5'        │
+│ 1       │ 'Transp: Envía'              │ 523   │ 0       │ 12         │ '77 % (395/511)' │ '93 % (473/511)' │ '38 % (134/353)' │ 6                 │ '67 % (343/510)' │ 48            │ '26 % (132/511)' │ '11 % (55/523)' │ 156         │ 28                 │ '5.3'        │
+│ 2       │ 'Tipo: Foto/imagen'          │ 522   │ 0       │ 9          │ '72 % (369/513)' │ '89 % (363/407)' │ '46 % (167/364)' │ 7                 │ '60 % (306/512)' │ 35            │ '34 % (175/513)' │ '11 % (56/522)' │ 234         │ 48                 │ '7.9'        │
+│ 3       │ 'Envía · Foto/imagen'        │ 363   │ 0       │ 4          │ '70 % (250/359)' │ '90 % (323/359)' │ '52 % (132/254)' │ 6                 │ '59 % (212/359)' │ 31            │ '35 % (127/359)' │ '15 % (53/363)' │ 156         │ 28                 │ '8.1'        │
+│ 4       │ 'Tipo: PDF'                  │ 215   │ 0       │ 22         │ '96 % (186/193)' │ '99 % (169/171)' │ '2 % (3/121)'    │ 0                 │ '78 % (149/192)' │ 23            │ '4 % (8/193)'    │ '2 % (4/215)'   │ 2           │ 0                  │ '0.2'        │
+│ 5       │ 'Envía · PDF'                │ 160   │ 0       │ 8          │ '95 % (145/152)' │ '99 % (150/152)' │ '2 % (2/99)'     │ 0                 │ '87 % (131/151)' │ 17            │ '3 % (5/152)'    │ '1 % (2/160)'   │ 0           │ 0                  │ '0.2'        │
+│ 6       │ 'Transp: sin dato'           │ 128   │ 0       │ 0          │ '77 % (99/128)'  │ '—'              │ '25 % (32/126)'  │ 1                 │ '83 % (105/127)' │ 6             │ '24 % (31/128)'  │ '0 % (0/128)'   │ 71          │ 19                 │ '6.0'        │
+│ 7       │ 'sin dato · Foto/imagen'     │ 106   │ 0       │ 0          │ '73 % (77/106)'  │ '—'              │ '30 % (32/105)'  │ 1                 │ '85 % (89/105)'  │ 0             │ '29 % (31/106)'  │ '0 % (0/106)'   │ 71          │ 19                 │ '7.7'        │
+│ 8       │ 'Transp: Servientrega'       │ 41    │ 0       │ 11         │ '83 % (25/30)'   │ '90 % (27/30)'   │ '60 % (3/5)'     │ 0                 │ '7 % (2/30)'     │ 2             │ '43 % (13/30)'   │ '5 % (2/41)'    │ 4           │ 0                  │ '6.4'        │
+│ 9       │ 'Transp: Inter'              │ 40    │ 0       │ 8          │ '100 % (32/32)'  │ '91 % (29/32)'   │ '100 % (1/1)'    │ 0                 │ '16 % (5/32)'    │ 2             │ '19 % (6/32)'    │ '8 % (3/40)'    │ 4           │ 0                  │ '5.2'        │
+│ 10      │ 'Servientrega · Foto/imagen' │ 31    │ 0       │ 5          │ '81 % (21/26)'   │ '88 % (23/26)'   │ '50 % (2/4)'     │ 0                 │ '0 % (0/26)'     │ 2             │ '38 % (10/26)'   │ '0 % (0/31)'    │ 2           │ 0                  │ '7.1'        │
+│ 11      │ 'Inter · PDF'                │ 23    │ 0       │ 8          │ '100 % (15/15)'  │ '100 % (15/15)'  │ '—'              │ 0                 │ '0 % (0/15)'     │ 0             │ '0 % (0/15)'     │ '0 % (0/23)'    │ 0           │ 0                  │ '5.5'        │
+│ 12      │ 'sin dato · PDF'             │ 22    │ 0       │ 0          │ '100 % (22/22)'  │ '—'              │ '0 % (0/21)'     │ 0                 │ '73 % (16/22)'   │ 6             │ '0 % (0/22)'     │ '0 % (0/22)'    │ 0           │ 0                  │ '0.2'        │
+│ 13      │ 'Inter · Foto/imagen'        │ 17    │ 0       │ 0          │ '100 % (17/17)'  │ '82 % (14/17)'   │ '100 % (1/1)'    │ 0                 │ '29 % (5/17)'    │ 2             │ '35 % (6/17)'    │ '18 % (3/17)'   │ 4           │ 0                  │ '4.2'        │
+│ 14      │ 'Servientrega · PDF'         │ 10    │ 0       │ 6          │ '100 % (4/4)'    │ '100 % (4/4)'    │ '100 % (1/1)'    │ 0                 │ '50 % (2/4)'     │ 0             │ '75 % (3/4)'     │ '20 % (2/10)'   │ 2           │ 0                  │ '4.2'        │
+│ 15      │ 'Transp: Coordinadora'       │ 3     │ 0       │ 0          │ '67 % (2/3)'     │ '33 % (1/3)'     │ '—'              │ 0                 │ '0 % (0/3)'      │ 0             │ '33 % (1/3)'     │ '0 % (0/3)'     │ 1           │ 1                  │ '4.1'        │
+│ 16      │ 'Coordinadora · Foto/imagen' │ 3     │ 0       │ 0          │ '67 % (2/3)'     │ '33 % (1/3)'     │ '—'              │ 0                 │ '0 % (0/3)'      │ 0             │ '33 % (1/3)'     │ '0 % (0/3)'     │ 1           │ 1                  │ '4.1'        │
+│ 17      │ 'Transp: TCC'                │ 2     │ 0       │ 0          │ '100 % (2/2)'    │ '100 % (2/2)'    │ '—'              │ 0                 │ '0 % (0/2)'      │ 0             │ '0 % (0/2)'      │ '0 % (0/2)'     │ 0           │ 0                  │ '2.4'        │
+│ 18      │ 'TCC · Foto/imagen'          │ 2     │ 0       │ 0          │ '100 % (2/2)'    │ '100 % (2/2)'    │ '—'              │ 0                 │ '0 % (0/2)'      │ 0             │ '0 % (0/2)'      │ '0 % (0/2)'     │ 0           │ 0                  │ '2.4'        │
+└─────────┴──────────────────────────────┴───────┴─────────┴────────────┴──────────────────┴──────────────────┴──────────────────┴───────────────────┴──────────────────┴───────────────┴──────────────────┴─────────────────┴─────────────┴────────────────────┴──────────────┘
+
+== Guías marcadas OK: 236; número igual a lo digitado: 188; distinto: 48
+   384 3912 GUIA.jpg · leído 036003871326 (undefined) · digitado 036003671528
+   385 3913 GUIA.jpg · leído 036003871326 (undefined) · digitado 036003671528
+   387 3915 GUIA.jpg · leído 036003871326 (undefined) · digitado 036003671528
+   386 3914 GUIA.jpg · leído 036003871326 (undefined) · digitado 036003671528
+   388 3916 GUIA.jpg · leído 036003871326 (undefined) · digitado 036003671528
+   389 3874 GUIA.jpg · leído 036003871326 (undefined) · digitado 036003671528
+   650 4048_GUIA.jpg · leído 037008732223 (undefined) · digitado 037005732223
+   656 4039_GUIA.jpg · leído 037008732249 (undefined) · digitado 037005732249
+   719 4131_guia.jpg · leído 038003677135 (undefined) · digitado 036003677135
+   745 4173_GUIA.jpg · leído 038003677200 (undefined) · digitado 036003677200
+   746 4127_GUIA.jpg · leído 038003677190 (undefined) · digitado 036003677190
+   806 4042_guia.jpg · leído 037005734124 (undefined) · digitado 037005734124 117002173405
+   988 4312_guia.jpg · leído 036003679416 (undefined) · digitado 036003679412
+   1270 4592_GUIA.jpg · leído 037005744300 (undefined) · digitado 037005743300
+   1271 4556_GUIA.jpg · leído 036003684126 (undefined) · digitado 036003677195
+   1569 4733_guia.jpg · leído 038003689434 (undefined) · digitado 036003689434
+   1596 4499_guia.jpg · leído 036003823115 (undefined) · digitado 36003683115
+   1910 4866_guia.jpg · leído 037005768515 (undefined) · digitado 037005756515 017007943440
+   1921 4857_GUIA.jpg · leído 037005786603 (undefined) · digitado 037005756603
+   1988 4977_GUIA.jpg · leído 036003698565 (undefined) · digitado 036003696565
+   2383 5175-5181 GUIA.jpg · leído 036003701651 (undefined) · digitado 036003701358
+   2385 5175-5181 GUIA.jpg · leído 036003701651 (undefined) · digitado 036003701358
+   2384 5175-5181 GUIA.jpg · leído 036003701651 (undefined) · digitado 036003701358
+   2386 5175-5181 GUIA.jpg · leído 036003701651 (undefined) · digitado 036003701358
+   2387 5175-5181 GUIA.jpg · leído 036003701651 (undefined) · digitado 036003701358
+   2388 5175-5181 GUIA.jpg · leído 036003701651 (undefined) · digitado 036003701358
+   2389 5175-5181 GUIA.jpg · leído 036003701651 (undefined) · digitado 036003701358
+   2573 5251_guia.jpg · leído 036003702256 (undefined) · digitado 036003703256
+   2804 5299_guia.jpg · leído 038003708209 (undefined) · digitado 036003706209
+   2876 5386_GUIA.jpg · leído 036003707216 (undefined) · digitado 036003707218
+   3032 5413-5428 GUIA.jpg · leído 036003708666 (undefined) · digitado 036003708659
+   3034 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3035 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3036 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3037 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3038 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3039 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3040 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3041 5428 5439 GUIA.jpg · leído 036003708669 (undefined) · digitado 036003708659
+   3055 5408 5411_GUIA.jpg · leído 036003708651 (undefined) · digitado 036003708661
+   3056 5408 5411_GUIA.jpg · leído 036003708651 (undefined) · digitado 036003708661
+   3057 5408 5411_GUIA.jpg · leído 036003708651 (undefined) · digitado 036003708661
+   3058 5408 5411_GUIA.jpg · leído 036003708651 (undefined) · digitado 036003708661
+   3059 5408 5411_GUIA.jpg · leído 036003708651 (undefined) · digitado 036003708661
+   3535 5633_GUIA.jpg · leído 038003714453 (undefined) · digitado 036003714453
+   3997 5874_GUIA.jpg · leído 037005790435 (undefined) · digitado 037005790836
+   4320 6042_guia.jpg · leído 20027990947 (undefined) · digitado 20027990047
+   4412 6090_GUIA.jpg · leído 036004730141 (undefined) · digitado 036003730141
+
+== Cómo se confirmó el número { '—': 706 }
+
+== Estado { Revisar: 486, OK: 236, Error: 15 }
+
+== Forma de pago (logísticas desde el 2026-11-04)
+   1  · leído "—" · digitado contra entrega=false
+   25 Envía · leído "—" · digitado contra entrega=false
+   2 Envía · leído "—" · digitado contra entrega=true
+   2 Inter · leído "—" · digitado contra entrega=true
+
+== guiaMal
+  185 3531_GUIA.jpg · leído 90017003 · digitado 046001801319 (Envía, Foto/imagen)
+  384 3912 GUIA.jpg · leído 036003871326 · digitado 036003671528 (Envía, Foto/imagen)
+  385 3913 GUIA.jpg · leído 036003871326 · digitado 036003671528 (, Foto/imagen)
+  387 3915 GUIA.jpg · leído 036003871326 · digitado 036003671528 (, Foto/imagen)
+  386 3914 GUIA.jpg · leído 036003871326 · digitado 036003671528 (, Foto/imagen)
+  388 3916 GUIA.jpg · leído 036003871326 · digitado 036003671528 (, Foto/imagen)
+  389 3874 GUIA.jpg · leído 036003871326 · digitado 036003671528 (Envía, Foto/imagen)
+  439 3946_GUIA.jpg · leído 0360036726 · digitado 036003672634 (Envía, Foto/imagen)
+  394 3798_GUIA.jpg · leído 03600367 · digitado 036003671496 (Envía, Foto/imagen)
+  441 3953_GUIA.jpg · leído 036903672643 · digitado 036003672643 (Envía, Foto/imagen)
+  515 3382_guia.jpg · leído 9192501289 · digitado 9192501209 (Servientrega, Foto/imagen)
+  650 4048_GUIA.jpg · leído 037008732223 · digitado 037005732223 (Envía, Foto/imagen)
+  656 4039_GUIA.jpg · leído 037008732249 · digitado 037005732249 (Envía, Foto/imagen)
+  719 4131_guia.jpg · leído 038003677135 · digitado 036003677135 (Envía, Foto/imagen)
+  720 4117 - 4122 GUIA.jpg · leído 03600367716 · digitado 036003677168 (Envía, Foto/imagen)
+
+== valorMal
+  27 so-guia.pdf · leído null · digitado 14700 · trámites en el nombre 0
+  93 soporte_guia.pdf · leído null · digitado 16900 · trámites en el nombre 0
+  157 3632_GUIA.pdf · leído null · digitado 14700 · trámites en el nombre 1
+  158 3570_GUIA.pdf · leído null · digitado 14700 · trámites en el nombre 1
+  351 3863_GUIA.pdf · leído null · digitado 14700 · trámites en el nombre 1
+  383 3922_GUIA.jpg · leído 10000 · digitado 14700 · trámites en el nombre 1
+  433 3798_sort_guia.pdf · leído null · digitado 10000 · trámites en el nombre 1
+  394 3798_GUIA.jpg · leído 110000 · digitado 10000 · trámites en el nombre 1
+  511 3990_GUIA.jpg · leído 16800 · digitado 16900 · trámites en el nombre 1
+  518 3874_guia.pdf · leído null · digitado 16900 · trámites en el nombre 1
+  519 3888_GUIA.pdf · leído null · digitado 14700 · trámites en el nombre 1
+  521 GUIA 3912-3917.pdf · leído null · digitado 16900 · trámites en el nombre 2
+  522 GUIA 3912-3917.pdf · leído null · digitado 16900 · trámites en el nombre 2
+  523 GUIA 3912-3917.pdf · leído null · digitado 16900 · trámites en el nombre 2
+  524 GUIA 3912-3917.pdf · leído null · digitado 16900 · trámites en el nombre 2
+
+== okMal
+  384 3912 GUIA.jpg · leído 036003871326 · digitado 036003671528
+  385 3913 GUIA.jpg · leído 036003871326 · digitado 036003671528
+  387 3915 GUIA.jpg · leído 036003871326 · digitado 036003671528
+  386 3914 GUIA.jpg · leído 036003871326 · digitado 036003671528
+  388 3916 GUIA.jpg · leído 036003871326 · digitado 036003671528
+  389 3874 GUIA.jpg · leído 036003871326 · digitado 036003671528
+  650 4048_GUIA.jpg · leído 037008732223 · digitado 037005732223
+  656 4039_GUIA.jpg · leído 037008732249 · digitado 037005732249
+  719 4131_guia.jpg · leído 038003677135 · digitado 036003677135
+  745 4173_GUIA.jpg · leído 038003677200 · digitado 036003677200
+  746 4127_GUIA.jpg · leído 038003677190 · digitado 036003677190
+  806 4042_guia.jpg · leído 037005734124 · digitado 037005734124 117002173405
+  988 4312_guia.jpg · leído 036003679416 · digitado 036003679412
+  1270 4592_GUIA.jpg · leído 037005744300 · digitado 037005743300
+  1271 4556_GUIA.jpg · leído 036003684126 · digitado 036003677195

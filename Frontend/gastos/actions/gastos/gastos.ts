@@ -37,6 +37,8 @@ export async function anularGasto(id: number, motivo: string): Promise<Resultado
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }
 
   revalidatePath(`/solicitudes/${id}`)
+  // Un gasto de caja menor anulado cambia el saldo y las bandejas de la caja
+  revalidatePath("/tesoreria/caja-menor", "layout")
   return { ok: true, datos: undefined }
 }
 

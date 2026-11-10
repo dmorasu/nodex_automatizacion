@@ -66,7 +66,13 @@ export default async function DetalleGastoPage(props: { params: Promise<{ id: st
                 Editar
               </Link>
             )}
-            {gasto.permisos.anular && <AnularGasto gastoId={gasto.id} codigo={gasto.codigo} />}
+            {gasto.permisos.anular && (
+              <AnularGasto
+                gastoId={gasto.id}
+                codigo={gasto.codigo}
+                cajaMenor={["PAGADO_CAJA", "PENDIENTE_REEMBOLSO", "EN_REEMBOLSO"].includes(gasto.estado.codigo) ? (gasto.bolsa?.nombre ?? "la caja") : null}
+              />
+            )}
             {/* Corregir un pago confirmado con un valor equivocado: solo Administrador de Gastos (el backend lo revisa) */}
             {sesion.roles.includes(ROLES.ADMIN) && ["PAGADO", "PAGADO_CAJA"].includes(gasto.estado.codigo) && (
               <CorregirValorPagado

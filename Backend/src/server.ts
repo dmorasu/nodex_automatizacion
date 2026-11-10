@@ -58,7 +58,7 @@ import { modoEnsayo } from "./utils/modoEnsayo"
 import { autenticacion } from "./middleware/auth"
 import { requiereRol } from "./middleware/gastos/requiereRol"
 import { activarHistorialTramites } from "./services/historialTramites"
-import { activarDependenciaEnvio } from "./services/dependenciaEnvio"
+import { activarDependenciaEnvio, liberarDependientesCumplidos } from "./services/dependenciaEnvio"
 import { activarReglasLogistica } from "./services/reglasLogistica"
 
 
@@ -79,6 +79,9 @@ async function connectDB() {
         // Región y ciudad de los tramitadores = las de su municipio de residencia
         const residencias = await sincronizarResidencias()
         if (residencias) console.log(`🏠 Región y ciudad tomadas del municipio de residencia en ${residencias} tramitadores`)
+        // Trámites que dependen de un envío y ya cumplen (ej. sin gastos y envío Finalizado, regla del 2026-11-10)
+        const liberados = await liberarDependientesCumplidos()
+        if (liberados.length) console.log(`📦 Liberados para programar (envío Finalizado y pago completo): ${liberados.map(id => `#${id}`).join(', ')}`)
         await ajustarEsquemaMensajeria()
         await ajustarEsquemaGastos()
         await seedGastos()

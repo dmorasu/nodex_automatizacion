@@ -17,8 +17,9 @@ const TRANSICIONES: Record<CodigoEstadoGasto, CodigoEstadoGasto[]> = {
   EN_CUENTA_COBRO: ['FACTURADO', 'LEGALIZADO'],   // FACTURADO = se sacó de la cuenta de cobro
   LEGALIZADO: ['CONTABILIZADO'],
   // Caja menor (no pasa por Legalización ni por Contabilidad)
-  PAGADO_CAJA: ['PENDIENTE_REEMBOLSO'],
-  PENDIENTE_REEMBOLSO: ['EN_REEMBOLSO', 'PAGADO_CAJA'],   // PAGADO_CAJA = se deshizo la legalización
+  // ANULADO = lo anula el Administrador de Gastos y el efectivo vuelve a la caja (anularGastoCaja)
+  PAGADO_CAJA: ['PENDIENTE_REEMBOLSO', 'ANULADO'],
+  PENDIENTE_REEMBOLSO: ['EN_REEMBOLSO', 'PAGADO_CAJA', 'ANULADO'],   // PAGADO_CAJA = se deshizo la legalización
   EN_REEMBOLSO: ['PENDIENTE_REEMBOLSO', 'LEGALIZADO_CAJA'], // PENDIENTE = se sacó del reembolso
   LEGALIZADO_CAJA: [],
   CONTABILIZADO: [],

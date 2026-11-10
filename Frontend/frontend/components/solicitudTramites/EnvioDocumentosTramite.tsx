@@ -78,7 +78,7 @@ export default function EnvioDocumentosTramite({ estado }: { estado: EstadoDepen
 
       <Condicion cumplida={estado.pagoCompleto} titulo="Pago confirmado">
         {gastos.length === 0 ? (
-          <span className="text-amber-700">El trámite no tiene gastos</span>
+          <span className="text-slate-500">El trámite no tiene gastos</span>
         ) : (
           <ul className="space-y-0.5">
             {gastos.map(g => (

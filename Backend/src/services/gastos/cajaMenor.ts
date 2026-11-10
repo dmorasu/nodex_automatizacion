@@ -11,6 +11,7 @@ import DocumentosGasto from '../../models/gastos/documentosGasto'
 import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
 import Usuarios from '../../models/usuarios'
 import EstadosGasto from '../../models/gastos/estadosGasto'
+import MovimientosBolsa from '../../models/gastos/movimientosBolsa'
 import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { registrarMovimientos } from './bolsas'
@@ -577,6 +578,60 @@ export const anularReembolso = (id: number, usuarioId: number) =>
     await reembolso.update({ estado: ESTADOS_REEMBOLSO_CAJA.ANULADO }, { transaction })
     await registrarHistorial(reembolso.id, 'ANULADO', detalle ? `Volvieron a pendientes: ${detalle}` : null, usuarioId, transaction)
     return reembolso
+  })
+
+// ── Anular un gasto ya entregado ───────────
+
+// Estados de caja menor en los que el Administrador de Gastos puede anular (pedido del usuario,
+// 2026-11-10). En un reembolso solo si está en borrador: enviado o aprobado ya lo vio Dirección de
+// Negocio, y legalizado la caja ya se repuso con ese dinero.
+export const ESTADOS_ANULABLES_CAJA: string[] = [
+  ESTADOS_GASTO.PAGADO_CAJA, ESTADOS_GASTO.PENDIENTE_REEMBOLSO, ESTADOS_GASTO.EN_REEMBOLSO
+]
+
+// Anula un gasto de caja menor ya entregado: todo lo que salió de la caja por ese gasto (el efectivo,
+// la diferencia al legalizar, sus correcciones) vuelve a ella con un REVERSO por el neto, así el
+// cuadre sigue en cero. La legalización queda guardada como registro; los soportes, en los documentos.
+export const anularGastoCaja = (gastoId: number, motivo: string, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const [gasto] = await gastosBloqueados([gastoId], transaction)
+    const estado = await codigoEstadoGasto(gasto.estadoId)
+    if (!ESTADOS_ANULABLES_CAJA.includes(estado)) {
+      throw new ErrorGastos(`${gasto.codigo}: solo se anula un gasto de caja menor entregado, legalizado o en un reembolso en borrador`)
+    }
+    const caja = await cajaBloqueada(gasto.bolsaId, transaction)
+
+    // En un reembolso en borrador: primero sale de él (queda en su historial)
+    if (estado === ESTADOS_GASTO.EN_REEMBOLSO) {
+      const legalizacion = await LegalizacionesCaja.findOne({ where: { solicitudGastoId: gasto.id }, transaction })
+      const reembolso = await reembolsoBloqueado(legalizacion!.reembolsoCajaId!, transaction)
+      if (reembolso.estado !== ESTADOS_REEMBOLSO_CAJA.BORRADOR) {
+        throw new ErrorGastos(`${gasto.codigo} está en el reembolso ${reembolso.codigo}, que ya no está en borrador: no se puede anular`)
+      }
+      await sacarGastos(reembolso, [gasto.id], usuarioId, `Se sacó del reembolso ${reembolso.codigo} para anularlo`, transaction)
+      await registrarHistorial(reembolso.id, 'QUITADO', `${gasto.codigo} (anulado: ${motivo})`, usuarioId, transaction)
+      // sacarGastos cambió el estado sobre otra instancia del gasto
+      await gasto.reload({ transaction })
+    }
+
+    const movimientos = await MovimientosBolsa.findAll({
+      where: { bolsaId: caja.id, solicitudGastoId: gasto.id }, attributes: ['valor'], transaction
+    })
+    const netoC = movimientos.reduce((suma, m) => suma + aCentavos(m.valor), 0)
+    if (netoC !== 0) {
+      await registrarMovimientos(caja.id, [{
+        tipo: TIPOS_MOVIMIENTO_BOLSA.REVERSO,
+        valor: -netoC / 100,
+        solicitudGastoId: gasto.id,
+        observacion: `Anulación de ${gasto.codigo}: lo entregado vuelve a la caja`
+      }], usuarioId, transaction)
+    }
+
+    await cambiarEstadoGasto(gasto, ESTADOS_GASTO.ANULADO, usuarioId, transaction, {
+      observacion: [motivo, netoC !== 0 ? `vuelven a ${caja.nombre}: ${formatoMoneda(-netoC / 100)}` : null].filter(Boolean).join(' · '),
+      cambios: { motivoAnulacion: motivo }
+    })
+    return { bolsaId: caja.id }
   })
 
 // ── Alerta de saldo ────────────────────────

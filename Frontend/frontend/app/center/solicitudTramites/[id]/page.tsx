@@ -92,6 +92,13 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
     />
   );
 
+  const botonRotulo = (
+    <Link href={`/center/rotulos/nuevo?tramite=${solicitudTramite.id}`} className={claseBotonEnlace}>
+      <Package size={16} className="text-amber-500" />
+      Rótulo de envío
+    </Link>
+  );
+
   // Historial de estados, del más reciente al más antiguo. El estado actual es el de la
   // solicitud; si no lo tiene (trámites viejos), el último del historial.
   const historialEstados = [...(solicitudTramite.estadosTramites ?? [])]
@@ -152,6 +159,8 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
                 </Link>
                 {botonSubsanar}
                 {botonCrearGasto}
+                {/* Desde el 2026-11-10 Gestión de activos también genera rótulos (decisión del usuario) */}
+                {botonRotulo}
               </>
             ) : (
               <>
@@ -160,10 +169,7 @@ export default async function DetalleSolicitudTramite(props: { params: Promise<{
                 <AddTramitadorBoton />
                 <AddProgramacionBoton />
                 <AddLogisticatoBoton />
-                <Link href={`/center/rotulos/nuevo?tramite=${solicitudTramite.id}`} className={claseBotonEnlace}>
-                  <Package size={16} className="text-amber-500" />
-                  Rótulo de envío
-                </Link>
+                {botonRotulo}
                 <AddSubEstadoBoton />
                 <AddCuentaCobroBoton />
                 <AddTrazabilidadBoton />

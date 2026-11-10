@@ -62,7 +62,7 @@ export default function CenterMenu({
   const ruta = usePathname()
 
   // Gestión de activos no ve el tablero, los reportados como realizados, las rutas, la gestión masiva ni los catálogos
-  // (sí la agenda de mensajeros, donde aparta espacios)
+  // (sí la agenda de mensajeros, solo de consulta, y desde el 2026-11-10 las Ayudas: directorio y rótulos)
   const esTorreControl = perfil === "TORRE_CONTROL"
 
   const secciones: Seccion[] = [
@@ -93,8 +93,8 @@ export default function CenterMenu({
     {
       titulo: "Ayudas",
       opciones: [
-        { href: "/center/directorio", nombre: "Directorio de tramitadores", icono: Contact, visible: esTorreControl },
-        { href: "/center/rotulos", nombre: "Rótulos de envío", icono: Package, visible: esTorreControl }
+        { href: "/center/directorio", nombre: "Directorio de tramitadores", icono: Contact, visible: true },
+        { href: "/center/rotulos", nombre: "Rótulos de envío", icono: Package, visible: true }
       ]
     },
     {

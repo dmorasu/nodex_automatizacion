@@ -95,15 +95,29 @@ const buscarTramitadores = async (ids: number[]) => {
   return new Map(filas.map(t => [t.id, tramitadorParaRotulo(t)]))
 }
 
+// Gestión de activos (desde el 2026-11-10) usa los rótulos solo con los trámites de su área:
+// `creadores` = ids de usuarios permitidos (creadoresPermitidos); null = sin límite (Torre de control).
+// Un trámite de otra área se trata como si no existiera, igual que en el resto de Trámites.
+export type CreadoresPermitidos = number[] | null
+
+const delArea = (creadores: CreadoresPermitidos) => (creadores ? { usuarioId: { [Op.in]: creadores } } : {})
+
+// Rótulos que llevan al menos un trámite creado por esos usuarios
+const rotulosDelArea = (creadores: number[]) => db.literal(`(
+  SELECT ret.rotulo_id FROM rotulos_envio_tramites ret
+  JOIN "SolicitudTramites" s ON s.id = ret.solicitud_tramite_id
+  WHERE s."usuarioId" IN (${creadores.map(Number).join(',') || 'NULL'})
+)`)
+
 // Registros que usa el rótulo. Los trámites que no existen se avisan como dato faltante
-const cargarContexto = async (e: EntradaRotulo) => {
+const cargarContexto = async (e: EntradaRotulo, creadores: CreadoresPermitidos) => {
   const ids = [e.remitente?.tramitadorId, e.destinatario?.tramitadorId].filter((x): x is number => Boolean(x))
   const [sedes, tramitadores, operacion, municipio, existentes] = await Promise.all([
     sedesActivas(),
     buscarTramitadores(ids),
     e.operacionId ? Operaciones.findByPk(e.operacionId, { attributes: ['nombreOperacion', 'centroDeCostos'] }) : null,
     e.destinatario?.municipioId ? Municipios.findByPk(e.destinatario.municipioId, { attributes: ['nombreMunicipio', 'departamento'] }) : null,
-    e.tramites.length ? SolicitudTramites.findAll({ where: { id: e.tramites.map(t => t.id) }, attributes: ['id'] }) : []
+    e.tramites.length ? SolicitudTramites.findAll({ where: { id: e.tramites.map(t => t.id), ...delArea(creadores) }, attributes: ['id'] }) : []
   ])
   const contexto: ContextoRotulo = {
     sedes, tramitadores,
@@ -115,8 +129,8 @@ const cargarContexto = async (e: EntradaRotulo) => {
   return { contexto, noExisten }
 }
 
-const armar = async (e: EntradaRotulo) => {
-  const { contexto, noExisten } = await cargarContexto(e)
+const armar = async (e: EntradaRotulo, creadores: CreadoresPermitidos) => {
+  const { contexto, noExisten } = await cargarContexto(e, creadores)
   const { rotulo, faltan } = armarRotulo(e, contexto)
   return { rotulo, faltan: [...noExisten, ...faltan] }
 }
@@ -162,8 +176,9 @@ export const opcionesRotulo = async () => {
 }
 
 // ── Datos de un trámite para prellenar el rótulo o agregarlo al envío ──
-export const tramiteParaRotulo = async (id: number) => {
-  const t = await SolicitudTramites.findByPk(id, {
+export const tramiteParaRotulo = async (id: number, creadores: CreadoresPermitidos) => {
+  const t = await SolicitudTramites.findOne({
+    where: { id, ...delArea(creadores) },
     attributes: ['id', 'placa', 'matriculaInmobiliaria', 'direccionTramite', 'operacionesId', 'tramitadorId', 'municipiosId'],
     include: [
       { model: Clientes, attributes: ['nombreCliente', 'identificacionCliente', 'telefono', 'telefonoMovil'] },
@@ -191,8 +206,8 @@ export const tramiteParaRotulo = async (id: number) => {
 }
 
 // ── Vista previa: el PDF tal como saldría (sin guardar) y lo que falta ──
-export const vistaPreviaRotulo = async (e: EntradaRotulo) => {
-  const { rotulo, faltan } = await armar(e)
+export const vistaPreviaRotulo = async (e: EntradaRotulo, creadores: CreadoresPermitidos) => {
+  const { rotulo, faltan } = await armar(e, creadores)
   const pdf = await generarPdfRotulo(rotulo)
   return { faltan, tamano: rotulo.tamano, paga: rotulo.paga, contraentrega: rotulo.contraentrega, pdf: pdf.toString('base64') }
 }
@@ -206,8 +221,8 @@ const transportadoraDelCatalogo = async (nombre: string) => {
 }
 
 // ── Generar: guarda el rótulo, deja el PDF en cada trámite y (si se pide) llena la logística ──
-export const crearRotulo = async (e: EntradaRotulo, usuarioId: number, llenarLogistica: boolean) => {
-  const { rotulo, faltan } = await armar(e)
+export const crearRotulo = async (e: EntradaRotulo, usuarioId: number, llenarLogistica: boolean, creadores: CreadoresPermitidos) => {
+  const { rotulo, faltan } = await armar(e, creadores)
   if (faltan.length) throw Object.assign(new ErrorGastos(`Faltan datos: ${faltan.join('; ')}`), { faltan })
 
   const pdf = await generarPdfRotulo(rotulo)
@@ -271,13 +286,17 @@ export const crearRotulo = async (e: EntradaRotulo, usuarioId: number, llenarLog
 }
 
 // ── Historial ──
-export const listarRotulos = async ({ tramiteId, q, limite = 50 }: { tramiteId?: number | null, q?: string, limite?: number }) => {
+export const listarRotulos = async ({ tramiteId, q, limite = 50, creadores = null }: { tramiteId?: number | null, q?: string, limite?: number, creadores?: CreadoresPermitidos }) => {
   const busqueda = String(q ?? '').trim()
   const porNumero = /^#?\d+$/.test(busqueda) ? Number(busqueda.replace('#', '')) : null
   const filtroTramite = tramiteId ?? porNumero
   const filas = await RotuloEnvio.findAll({
     where: {
-      ...(filtroTramite ? { id: { [Op.in]: db.literal(`(SELECT rotulo_id FROM rotulos_envio_tramites WHERE solicitud_tramite_id = ${Number(filtroTramite)})`) } } : {}),
+      // Op.and: el filtro por trámite y el del área son los dos sobre el id
+      [Op.and]: [
+        ...(filtroTramite ? [{ id: { [Op.in]: db.literal(`(SELECT rotulo_id FROM rotulos_envio_tramites WHERE solicitud_tramite_id = ${Number(filtroTramite)})`) } }] : []),
+        ...(creadores ? [{ id: { [Op.in]: rotulosDelArea(creadores) } }] : [])
+      ],
       ...(busqueda && !porNumero ? { destinatario: { [Op.iLike]: `%${busqueda.replace(/[%_]/g, '')}%` } } : {})
     },
     include: [
@@ -306,8 +325,8 @@ export const listarRotulos = async ({ tramiteId, q, limite = 50 }: { tramiteId?:
   })
 }
 
-export const pdfDeRotulo = async (id: number) => {
-  const r = await RotuloEnvio.findByPk(id)
+export const pdfDeRotulo = async (id: number, creadores: CreadoresPermitidos) => {
+  const r = await RotuloEnvio.findOne({ where: { [Op.and]: [{ id }, ...(creadores ? [{ id: { [Op.in]: rotulosDelArea(creadores) } }] : [])] } })
   if (!r) throw new ErrorGastos('El rótulo no existe', 404)
   const datos = r.datos as unknown as Rotulo
   return { contenido: await generarPdfRotulo(datos), nombre: nombreArchivoRotulo(datos) }

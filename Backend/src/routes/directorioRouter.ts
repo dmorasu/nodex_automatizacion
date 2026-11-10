@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from 'express'
 import { datosDirectorio } from '../services/directorioTramitadores'
 
-// Directorio de tramitadores (/api/directorio): Torre de control, administradores y Analista de
-// trámites (todos trabajan con el rol de Torre de control; lo exige server.ts)
+// Directorio de tramitadores (/api/directorio): Torre de control, administradores, Analista de
+// trámites y, desde el 2026-11-10, Gestión de activos (decisión del usuario; lo exige server.ts)
 const router = Router()
 
 router.get('/', async (_req: Request, res: Response) => {

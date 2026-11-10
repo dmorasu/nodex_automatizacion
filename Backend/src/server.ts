@@ -189,8 +189,8 @@ app.use('/api/cuentas-cobro-tramitadores', ...soloTorreControl, cuentasCobroTram
 // Calificaciones de la encuesta de finalizado, por trámite y por tramitador
 app.use('/api/calificaciones', ...soloTorreControl, calificacionesRouter)
 // Directorio de tramitadores (Ayudas Torre de Control)
-app.use('/api/directorio', ...soloTorreControl, directorioRouter)
-app.use('/api/rotulos', ...soloTorreControl, rotulosRouter)
+app.use('/api/directorio', ...accesoTramites, directorioRouter)
+app.use('/api/rotulos', ...accesoTramites, rotulosRouter)
 
 // 🔹 Gastos: cada ruta valida sesión y rol dentro de su router
 app.use('/api/gastos', gastosRouter)

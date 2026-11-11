@@ -22,6 +22,8 @@ type Definicion = {
   masiva?: { accion: TipoAccion, texto: string }
   // Sin acción masiva: enlace a la página donde se resuelve
   enlace?: { href: string, texto: string }
+  // Botones por municipio con su cantidad que filtran la lista
+  porMunicipio?: boolean
 }
 
 const CAMBIAR_ESTADO = { accion: "estados", texto: "Cambiar estado" } as const
@@ -61,6 +63,7 @@ const ALERTAS: Definicion[] = [
   {
     clave: "sinTramitador",
     masiva: { accion: "tramitador", texto: "Asignar tramitador" },
+    porMunicipio: true,
     nivel: "amarillo",
     nombre: "Sin tramitador",
     descripcion: () => "Trámites abiertos sin tramitador asignado."
@@ -138,6 +141,18 @@ const NIVELES: Record<Nivel, {
   }
 }
 
+const SIN_MUNICIPIO = "Sin municipio"
+
+// Municipios de la lista con su cantidad, de más a menos trámites
+const contarMunicipios = (items: TramiteAlerta[]) => {
+  const conteo = new Map<string, number>()
+  for (const t of items) {
+    const municipio = t.municipio ?? SIN_MUNICIPIO
+    conteo.set(municipio, (conteo.get(municipio) ?? 0) + 1)
+  }
+  return [...conteo.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
+}
+
 // Orden del semáforo: primero lo urgente
 const ORDEN_NIVELES: Nivel[] = ["rojo", "amarillo", "verde"]
 
@@ -150,8 +165,16 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
 
   // Trámites marcados de la alerta abierta (se limpia al cambiar de alerta)
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set())
+  // Municipio elegido en las alertas que se agrupan por municipio (null = todos)
+  const [municipio, setMunicipio] = useState<string | null>(null)
   const abrirAlerta = (clave: ClaveAlerta) => {
     setActiva(clave)
+    setSeleccion(new Set())
+    setMunicipio(null)
+  }
+  // Al cambiar de municipio se quitan las marcas: así no quedan marcados trámites que no se ven
+  const elegirMunicipio = (nombre: string | null) => {
+    setMunicipio(nombre)
     setSeleccion(new Set())
   }
   const alternar = (id: number) => setSeleccion(actual => {
@@ -163,10 +186,12 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
 
   const definicion = alertas.find(a => a.clave === activa)!
   const lista = tablero.atencion[activa]
+  const municipios = definicion.porMunicipio ? contarMunicipios(lista.items) : []
+  const items = municipio ? lista.items.filter(t => (t.municipio ?? SIN_MUNICIPIO) === municipio) : lista.items
   const nivelActivo = NIVELES[definicion.nivel]
   const IconoActivo = nivelActivo.icono
   const { masiva, enlace } = definicion
-  const todosMarcados = lista.items.length > 0 && lista.items.every(t => seleccion.has(t.id))
+  const todosMarcados = items.length > 0 && items.every(t => seleccion.has(t.id))
   const urlMasiva = masiva && `/center/gestionMasiva?accion=${masiva.accion}&ids=${[...seleccion].join(",")}`
 
   return (
@@ -241,6 +266,31 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
           </p>
         ) : (
           <>
+            {municipios.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {[[null, lista.items.length] as const, ...municipios].map(([nombre, cantidad]) => {
+                  const elegido = municipio === nombre
+                  return (
+                    <button
+                      key={nombre ?? "todos"}
+                      type="button"
+                      onClick={() => elegirMunicipio(nombre)}
+                      aria-pressed={elegido}
+                      className={clsx(
+                        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition",
+                        elegido ? "border-sky-500 bg-sky-500 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      {nombre ?? "Todos"}
+                      <span className={clsx("rounded px-1 text-[10px] font-bold", elegido ? "bg-white/90 text-slate-900" : "bg-slate-100 text-slate-500")}>
+                        {miles(cantidad)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             {/* Marcar trámites y gestionarlos juntos en la Gestión masiva */}
             {masiva && (
               <div className="mb-2 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2 text-xs">
@@ -248,10 +298,10 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
                   <input
                     type="checkbox"
                     checked={todosMarcados}
-                    onChange={() => setSeleccion(todosMarcados ? new Set() : new Set(lista.items.map(t => t.id)))}
+                    onChange={() => setSeleccion(todosMarcados ? new Set() : new Set(items.map(t => t.id)))}
                     className="h-4 w-4 accent-sky-500"
                   />
-                  Marcar todos ({miles(lista.items.length)})
+                  Marcar todos ({miles(items.length)})
                 </label>
                 {seleccion.size > 0 && (
                   <>
@@ -278,7 +328,7 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
             )}
 
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
-              {lista.items.map(t => (
+              {items.map(t => (
                 <li key={t.id} className={clsx("flex items-stretch", seleccion.has(t.id) && "bg-sky-50/60")}>
                   {masiva && (
                     <label className="flex shrink-0 cursor-pointer items-center pl-4 pr-1">
@@ -300,6 +350,7 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
                       <span className="block truncate font-medium text-slate-700">{t.tipo ?? "Sin tipo"} · {t.cliente ?? "Sin cliente"}</span>
                       <span className="block truncate text-[11px] text-slate-400">
                         {t.placa ?? "—"} · Analista: {t.analista ?? "—"} · Tramitador: {t.tramitador ?? "—"}
+                        {definicion.porMunicipio && ` · ${t.municipio ?? SIN_MUNICIPIO}`}
                         {t.fechaProgramada && ` · Programado ${fechaCorta(t.fechaProgramada)}`}
                       </span>
                       {t.diasSinEntrega !== undefined && (

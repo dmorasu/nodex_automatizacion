@@ -280,6 +280,35 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
           </p>
         ) : (
           <>
+            {/* Resumen por municipio: barra proporcional a la cantidad; al tocarla filtra la lista */}
+            {municipios.length > 0 && (
+              <div className="mb-3 rounded-lg border border-slate-200 px-4 py-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Por municipio</p>
+                <ul className="max-h-56 gap-x-8 overflow-y-auto lg:columns-2">
+                  {municipios.map(([nombre, cantidad]) => {
+                    const elegido = municipio === nombre
+                    return (
+                      <li key={nombre} className="break-inside-avoid">
+                        <button
+                          type="button"
+                          onClick={() => elegirMunicipio(elegido ? null : nombre)}
+                          aria-pressed={elegido}
+                          title={`${nombre}: ${cantidad} trámite${cantidad === 1 ? "" : "s"}`}
+                          className={clsx("flex w-full items-center gap-3 rounded px-1.5 py-1 text-left text-xs hover:bg-slate-50", elegido && "bg-sky-50")}
+                        >
+                          <span className={clsx("w-36 shrink-0 truncate", elegido ? "font-semibold text-slate-800" : "text-slate-600")}>{nombre}</span>
+                          <span className="h-2 min-w-0 flex-1">
+                            <span className="block h-2 rounded-r bg-[#0284c7]" style={{ width: `${Math.max(4, (cantidad / municipios[0][1]) * 100)}%` }} />
+                          </span>
+                          <span className="w-8 shrink-0 text-right font-semibold tabular-nums text-slate-700">{miles(cantidad)}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+
             {/* Marcar trámites y gestionarlos juntos en la Gestión masiva */}
             {masiva && (
               <div className="mb-2 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2 text-xs">

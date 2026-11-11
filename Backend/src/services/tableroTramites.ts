@@ -30,8 +30,10 @@ import { sumarDiasHabiles } from '../utils/diasHabiles'
 //   · Finalizado fuera de plazo (2026-10-21, gráfica de creados vs finalizados): el analista lo
 //     marcó Finalizado después del día hábil siguiente al reporte "realizado" del tramitador
 //     (el último que no fue devuelto). Sin reporte del tramitador no se puede medir: cuenta normal.
-//   · Vencen hoy (2026-10-13): abiertos cuya fecha de entrega del resultado (la que se pone al
-//     crear el trámite) es hoy. Es la lista del día a día de las analistas.
+//   · Vencen hoy (2026-10-13; cambiado el 2026-11-11 a pedido del usuario): abiertos cuya fecha de
+//     diligencia de la Programación (cuándo se va a realizar) es hoy. Antes tomaba la fecha de
+//     entrega del resultado que se pone al crear el trámite, que no es la que se trabaja en el día.
+//     Como en Vencidos, los que están en espera por novedad no cuentan.
 // =====================================
 
 export const DIAS_GRACIA = 2
@@ -477,7 +479,8 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
   // ── Requiere atención ──
   const sinMovimiento = (f: Fila) => diasEntre(f.ultimaActividad, hoy)
   const atencion = {
-    vencenHoy: alerta(abiertos.filter(f => f.fechaEntrega === hoy).map(f => resumenTramite(f))),
+    // Los que están en novedad no vencen: dependen de un tercero y tienen su propia alerta
+    vencenHoy: alerta(abiertos.filter(f => f.fechaProgramada === hoy && f.estado !== EN_NOVEDAD).map(f => resumenTramite(f))),
     vencidos: alerta(abiertos.filter(esVencido)
       .map(f => resumenTramite(f, { diasAtraso: diasVencido(f) }))
       .sort((a, b) => b.diasAtraso - a.diasAtraso)),

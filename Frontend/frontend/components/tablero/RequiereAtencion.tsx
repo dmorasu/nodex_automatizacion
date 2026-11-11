@@ -33,7 +33,7 @@ const ALERTAS: Definicion[] = [
     masiva: CAMBIAR_ESTADO,
     nivel: "rojo",
     nombre: "Vencen hoy",
-    descripcion: () => "Trámites abiertos cuya fecha de entrega del resultado es hoy."
+    descripcion: () => "Trámites abiertos cuya fecha de diligencia en la programación es hoy (sin los que están en novedad)."
   },
   {
     clave: "vencidos",

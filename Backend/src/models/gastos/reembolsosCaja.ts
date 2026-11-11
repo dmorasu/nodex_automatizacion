@@ -70,6 +70,20 @@ class ReembolsosCaja extends Model {
   @BelongsTo(() => Usuarios, { foreignKey: 'legalizadoPor', as: 'legalizador' })
   declare legalizador: Usuarios
 
+  // Contabilidad confirma que registró el reembolso en SIESA (2026-11-11). Es informativo: Tesorería
+  // lo ve para retirar el dinero y reponer la caja, pero no la bloquea
+  @Column({ type: DataType.DATE })
+  declare contabilizadoEn: Date | null
+
+  @Column({ type: DataType.STRING(100) })
+  declare documentoContable: string | null
+
+  @Column({ type: DataType.INTEGER })
+  declare contabilizadoPor: number | null
+
+  @BelongsTo(() => Usuarios, { foreignKey: 'contabilizadoPor', as: 'contabilizador' })
+  declare contabilizador: Usuarios
+
   // Fecha en que se recibió el dinero del reembolso
   @Column({ type: DataType.DATEONLY })
   declare fechaLegalizacion: string | null

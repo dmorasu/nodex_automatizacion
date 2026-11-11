@@ -61,6 +61,10 @@ export const legalizarCuenta = async (cuentaId: number, fechaRadicacion: string)
 export const anularCuenta = async (cuentaId: number, motivo: string) =>
   ejecutar(`/gastos/cuentas-cobro/${cuentaId}/anular`, "POST", { motivo })
 
+// Reversa una cuenta legalizada por error: sale el dinero de la bolsa y vuelve a Borrador
+export const reversarCuenta = async (cuentaId: number, motivo: string) =>
+  ejecutar(`/gastos/cuentas-cobro/${cuentaId}/reversar`, "POST", { motivo })
+
 export const subirDocumentosCuenta = async (cuentaId: number, archivos: FormData) =>
   ejecutar(`/gastos/cuentas-cobro/${cuentaId}/documentos`, "POST", archivos)
 

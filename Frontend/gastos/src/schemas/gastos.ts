@@ -369,6 +369,8 @@ export const CuentaListadoSchema = z.object({
   fechaLegalizacion: textoNulo,
   createdAt: z.string(),
   cantidadGastos: z.number(),
+  // Bolsas de los gastos de la cuenta (el detalle no las trae: salen de sus líneas)
+  bolsas: z.array(z.string()).default([]),
   estado: ItemCatalogoSchema,
   creador: UsuarioCortoSchema
 })
@@ -404,7 +406,7 @@ export const LineaCuentaSchema = z.object({
   })
 })
 
-export const CuentaDetalleSchema = CuentaListadoSchema.omit({ cantidadGastos: true }).extend({
+export const CuentaDetalleSchema = CuentaListadoSchema.omit({ cantidadGastos: true, bolsas: true }).extend({
   observacion: textoNulo,
   motivoAnulacion: textoNulo,
   contabilizacion: z.object({
@@ -424,7 +426,8 @@ export const CuentaDetalleSchema = CuentaListadoSchema.omit({ cantidadGastos: tr
   permisos: z.object({
     editar: z.boolean(),
     legalizar: z.boolean(),
-    subirDocumentos: z.boolean()
+    subirDocumentos: z.boolean(),
+    reversar: z.boolean().default(false)
   })
 })
 
@@ -921,7 +924,11 @@ export const ReembolsoListadoSchema = z.object({
   cantidadGastos: z.coerce.number().default(0),
   bolsa: z.object({ id: z.number(), nombre: z.string() }),
   creador: UsuarioCortoSchema,
-  aprobador: UsuarioCortoSchema
+  aprobador: UsuarioCortoSchema,
+  // Contabilidad lo registró en SIESA (informativo para Tesorería)
+  contabilizadoEn: textoNulo.default(null),
+  documentoContable: textoNulo.default(null),
+  contabilizador: UsuarioCortoSchema.optional()
 })
 export type ReembolsoListado = z.infer<typeof ReembolsoListadoSchema>
 
@@ -954,7 +961,7 @@ export const ReembolsoDetalleSchema = ReembolsoListadoSchema.omit({ cantidadGast
     createdAt: z.string(),
     usuario: UsuarioCortoSchema
   })).default([]),
-  permisos: z.object({ editar: z.boolean(), aprobar: z.boolean(), legalizar: z.boolean() })
+  permisos: z.object({ editar: z.boolean(), aprobar: z.boolean(), legalizar: z.boolean(), contabilizar: z.boolean().default(false) })
 })
 export type ReembolsoDetalle = z.infer<typeof ReembolsoDetalleSchema>
 
@@ -973,6 +980,7 @@ export const ACCIONES_REEMBOLSO: Record<string, { nombre: string, color: string 
   DEVUELTO: { nombre: "Devuelto por Dirección", color: "bg-red-500" },
   APROBADO: { nombre: "Aprobado", color: "bg-teal-500" },
   LEGALIZADO: { nombre: "Legalizado", color: "bg-emerald-500" },
+  CONTABILIZADO: { nombre: "Contabilizado en SIESA", color: "bg-sky-500" },
   ANULADO: { nombre: "Anulado", color: "bg-red-500" }
 }
 

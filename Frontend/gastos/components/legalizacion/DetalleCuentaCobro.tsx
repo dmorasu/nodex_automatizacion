@@ -16,6 +16,7 @@ import Dato from "../ui/Dato"
 // los botones que se muestran dependen de los permisos que envía el backend.
 export default async function DetalleCuentaCobro({ id, rutaBase }: { id: number, rutaBase: string }) {
   const [sesion, cuenta] = await Promise.all([obtenerSesion(), obtenerCuenta(id)])
+  const bolsas = [...new Set(cuenta.lineas.map(l => l.solicitudGasto.bolsa?.nombre).filter(Boolean))].sort()
 
   return (
     <div className="space-y-6">
@@ -45,8 +46,9 @@ export default async function DetalleCuentaCobro({ id, rutaBase }: { id: number,
       )}
 
       {/* Totales */}
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {[
+          ["Bolsa", bolsas.length ? bolsas.join(", ") : "—"],
           ["Gastos", String(cuenta.lineas.length)],
           ["Total facturas", formatoMoneda(cuenta.totalFacturas)],
           ["4x1000", formatoMoneda(cuenta.totalCuatroXMil)],

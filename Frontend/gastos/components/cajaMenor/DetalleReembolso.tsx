@@ -5,9 +5,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { ArrowLeft, Ban, CheckCircle2, FileCheck2, Loader2, Paperclip, Send, Undo2 } from "lucide-react"
+import { ArrowLeft, Ban, BookCheck, CheckCircle2, FileCheck2, Loader2, Paperclip, Send, Undo2 } from "lucide-react"
 import {
-  anularReembolso, aprobarReembolso, enviarReembolso, legalizarReembolso, quitarDelReembolso, rechazarReembolso
+  anularReembolso, aprobarReembolso, contabilizarReembolso, enviarReembolso, legalizarReembolso, quitarDelReembolso, rechazarReembolso
 } from "@/actions/gastos/cajaMenor"
 import { formatoFecha, formatoFechaHora, formatoMoneda } from "@/src/lib/formato"
 import { ACCIONES_REEMBOLSO, ESTADOS_REEMBOLSO, type ReembolsoDetalle } from "@/src/schemas/gastos"
@@ -23,7 +23,8 @@ const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "Am
 // Detalle del reembolso de caja menor. Las acciones dependen de los permisos que manda el backend:
 //  · Tesorería (borrador): quitar gastos, enviar a Dirección o anular;
 //  · Dirección de Negocio (por aprobar): aprobar o devolver con motivo;
-//  · Tesorería (aprobado): legalizar con la fecha en que llegó el dinero y el soporte.
+//  · Tesorería (aprobado): legalizar con la fecha en que llegó el dinero y el soporte;
+//  · Contabilidad (aprobado o legalizado): marcarlo contabilizado en SIESA (informativo para Tesorería).
 export default function DetalleReembolso({ reembolso, volver }: { reembolso: ReembolsoDetalle, volver: { href: string, texto: string } }) {
   const router = useRouter()
   const [seleccion, setSeleccion] = useState<number[]>([])
@@ -31,6 +32,8 @@ export default function DetalleReembolso({ reembolso, volver }: { reembolso: Ree
   const [fecha, setFecha] = useState(hoyEnBogota())
   const [observacion, setObservacion] = useState("")
   const [archivos, setArchivos] = useState<File[]>([])
+  const [contabilizando, setContabilizando] = useState(false)
+  const [documentoContable, setDocumentoContable] = useState("")
   const [procesando, startProcesar] = useTransition()
   const { permisos } = reembolso
 
@@ -54,6 +57,11 @@ export default function DetalleReembolso({ reembolso, volver }: { reembolso: Ree
     formData.append("datos", JSON.stringify({ fechaLegalizacion: fecha, observacion: observacion.trim() || null }))
     archivos.forEach(a => formData.append("archivos", a))
     ejecutar(() => legalizarReembolso(reembolso.id, formData), "Reembolso legalizado: la caja se repuso", () => setLegalizando(false))
+  }
+
+  const contabilizar = () => {
+    if (!documentoContable.trim()) return toast.error("Indique el documento contable de SIESA")
+    ejecutar(() => contabilizarReembolso(reembolso.id, documentoContable.trim()), "Reembolso contabilizado", () => setContabilizando(false))
   }
 
   const alternar = (id: number) => setSeleccion(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
@@ -102,6 +110,11 @@ export default function DetalleReembolso({ reembolso, volver }: { reembolso: Ree
                   {procesando ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} Aprobar
                 </button>
               </>
+            )}
+            {permisos.contabilizar && (
+              <button type="button" onClick={() => setContabilizando(true)} className={claseBotonPrimario}>
+                <BookCheck size={15} /> Contabilizar
+              </button>
             )}
             {permisos.legalizar && (
               <button type="button" onClick={() => setLegalizando(true)} className={claseBotonPrimario}>
@@ -171,6 +184,7 @@ export default function DetalleReembolso({ reembolso, volver }: { reembolso: Ree
               <Dato etiqueta="Creado por" valor={`${reembolso.creador?.nombreUsuario ?? ""} · ${formatoFechaHora(reembolso.createdAt)}`} />
               {reembolso.fechaEnvio && <Dato etiqueta="Enviado a Dirección" valor={formatoFechaHora(reembolso.fechaEnvio)} />}
               {reembolso.fechaAprobacion && <Dato etiqueta="Aprobado por" valor={`${reembolso.aprobador?.nombreUsuario ?? ""} · ${formatoFechaHora(reembolso.fechaAprobacion)}`} />}
+              {reembolso.contabilizadoEn && <Dato etiqueta="Contabilizado en SIESA" valor={`${reembolso.documentoContable ?? ""} · ${reembolso.contabilizador?.nombreUsuario ?? ""} · ${formatoFechaHora(reembolso.contabilizadoEn)}`} />}
               {reembolso.fechaLegalizacion && <Dato etiqueta="Legalizado" valor={`${formatoFecha(reembolso.fechaLegalizacion)} · ${reembolso.legalizador?.nombreUsuario ?? ""}`} />}
               {reembolso.observacion && <Dato etiqueta="Observación" valor={reembolso.observacion} />}
             </dl>
@@ -199,6 +213,30 @@ export default function DetalleReembolso({ reembolso, volver }: { reembolso: Ree
           )}
         </div>
       </div>
+
+      {contabilizando && (
+        <Dialog open onClose={() => !procesando && setContabilizando(false)} className="relative z-50">
+          <div className="fixed inset-0 bg-slate-900/30" aria-hidden="true" />
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+              <DialogTitle className="text-sm font-semibold text-slate-800">Contabilizar {reembolso.codigo}</DialogTitle>
+              <p className="mt-1 text-xs text-slate-500">
+                {reembolso.bolsa.nombre} · {formatoMoneda(reembolso.total)}. Tesorería lo verá contabilizado para retirar el dinero y reponer la caja.
+              </p>
+              <label className="mt-4 block">
+                <span className={claseLabel}>Documento contable (SIESA) <span className="text-red-400">*</span></span>
+                <input value={documentoContable} onChange={e => setDocumentoContable(e.target.value)} maxLength={100} className={claseInput} autoFocus />
+              </label>
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={() => setContabilizando(false)} disabled={procesando} className={claseBotonSecundario}>Cancelar</button>
+                <button type="button" onClick={contabilizar} disabled={procesando} className={claseBotonPrimario}>
+                  {procesando ? <Loader2 size={15} className="animate-spin" /> : <BookCheck size={15} />} Contabilizar
+                </button>
+              </div>
+            </DialogPanel>
+          </div>
+        </Dialog>
+      )}
 
       {legalizando && (
         <Dialog open onClose={() => !procesando && setLegalizando(false)} className="relative z-50">

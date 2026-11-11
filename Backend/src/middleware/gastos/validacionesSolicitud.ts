@@ -83,6 +83,24 @@ export const validarAnulacion = [
     .isLength({ max: 1000 }).withMessage('El motivo no puede superar 1000 caracteres')
 ]
 
+// Reversar la legalización de una cuenta de cobro
+export const validarReverso = [
+  validarId,
+  body('motivo')
+    .isString().trim()
+    .notEmpty().withMessage('Debe indicar el motivo del reverso')
+    .isLength({ max: 1000 }).withMessage('El motivo no puede superar 1000 caracteres')
+]
+
+// Contabilidad marca un reembolso de caja menor como contabilizado en SIESA
+export const validarContabilizarReembolso = [
+  validarId,
+  body('documentoContable')
+    .isString().trim()
+    .notEmpty().withMessage('Indique el documento contable de SIESA')
+    .isLength({ max: 100 }).withMessage('El documento contable no puede superar 100 caracteres')
+]
+
 // Corrección del valor de un gasto pagado (Administrador de Gastos)
 export const validarCorreccionValor = [
   validarId,

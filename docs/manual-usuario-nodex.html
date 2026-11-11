@@ -741,6 +741,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span><b>Legalizar:</b> en <b>Por legalizar</b>, presione <b>Legalizar</b> en el gasto y llene la factura: número, fecha, beneficiario (CC o NIT), placa o matrícula, quién legaliza, valor del soporte y el <b>soporte</b>. Si el gasto ya tiene soporte cargado, no hay que volver a subirlo. Queda <b>Pendiente por reembolso</b>.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
             <li><span><b>Armar el reembolso:</b> en <b>Pendientes por reembolso</b>, marque los gastos y presione <b>Armar reembolso</b>. Queda en borrador con un número como <span class="codigo">RCM-2026-000001</span>; ahí puede quitar gastos o anularlo. Luego presione <b>Enviar a aprobación</b>.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
             <li><span><b>Aprobar:</b> en Aprobación de pagos → <b>Reembolsos de caja menor</b>, abra el reembolso, revise los gastos y sus soportes y presione <b>Aprobar</b> o <b>Devolver</b> con el motivo.<span class="quien">Dirección de Negocio</span></span></li>
+            <li><span><b>Contabilizar:</b> en Contabilidad → <b>Cajas menores</b>, abra el reembolso aprobado, presione <b>Contabilizar</b> y escriba el documento de SIESA. En la lista de reembolsos de Tesorería sale <b>Contabilizado</b> con el documento.<span class="quien">Contabilidad</span></span></li>
             <li><span><b>Legalizar el reembolso:</b> cuando llegue el dinero, abra el reembolso, presione <b>Legalizar reembolso</b>, ponga la fecha y adjunte el soporte (obligatorio). La caja vuelve a su fondo.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
           </ol>
           <ul>
@@ -820,6 +821,8 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><b>Soportes de tramitadores:</b> apruebe o rechace lo que suben desde el celular.</li>
             <li><b>Reintegros:</b> al aprobarlos, el dinero vuelve a la bolsa.</li>
             <li><b>Descargar documentos:</b> un ZIP con todos los archivos sueltos (sin carpetas), cada uno con el código del gasto adelante.</li>
+            <li><b>Cuentas de cobro:</b> la lista muestra la <b>bolsa</b> de cada cuenta (también en Tesorería y Contabilidad). Al <b>Legalizar</b> puede adjuntar el archivo de la cuenta de cobro; queda en <b>Documentos</b> de la cuenta, donde también se puede subir después.</li>
+            <li><b>Reversar legalización:</b> si una cuenta se legalizó por error, ábrala y presione <b>Reversar legalización</b> con el motivo. Sale de la bolsa lo que entró al legalizarla y la cuenta vuelve a <b>Borrador</b> para corregirla, anularla o legalizarla de nuevo. Solo mientras Contabilidad no la haya contabilizado.</li>
           </ul>
           <p><b>Filtros:</b> en Gastos sin factura, Gastos con factura y Descargar documentos puede filtrar por <b>bolsa</b>, <b>Código BPR/FTF</b>, <b>placa</b> y <b>matrícula</b> (no importan guiones ni espacios), además del buscador.</p>
           <p><b>4x1000:</b> las tablas muestran la columna 4x1000. Con factura registrada es el valor calculado sobre la factura; sin factura sale <b>estimado</b> sobre lo pagado.</p>
@@ -844,6 +847,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li>En <b>No reembolsables</b> (los que asume la bolsa y no salen en Legalización), registre la factura y contabilice cada gasto con su documento contable.</li>
             <li>Consulte los egresos con los pagos confirmados.</li>
             <li>Confirme los <b>anticipos de clientes</b> y facture las <b>solicitudes de factura</b> (ver esos temas).</li>
+            <li>En <b>Cajas menores</b>, los reembolsos aprobados por Dirección: ábralo, presione <b>Contabilizar</b> y escriba el documento contable de SIESA. Tesorería lo verá contabilizado en Caja menor para retirar el dinero y reponer la caja.</li>
           </ul>
         </div>
       </details>

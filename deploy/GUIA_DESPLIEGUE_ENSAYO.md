@@ -282,6 +282,10 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Gastos: reversar cuentas de cobro, bolsa en las cuentas, Cajas menores en Contabilidad y adjuntar la cuenta al legalizar (2026-11-11)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
+- **Base:** el arranque agrega a `gastos_reembolsos_caja` las columnas `contabilizado_en`, `documento_contable` y `contabilizado_por` (`contabilizacionReembolsosCaja` en `ajustesEsquemaGastos.ts`; solo agrega). Sin variables. Comprobar: `sudo -u postgres psql -d nodex -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'gastos_reembolsos_caja' AND column_name LIKE 'contabiliza%' OR column_name = 'documento_contable'"`.
+- Pruebas: Legalización → Cuentas de cobro muestra la columna Bolsa (también en Tesorería y Contabilidad); en la CDC 109_2026 SUFI, **Reversar legalización** con el motivo → la bolsa 1305 baja $2.406.588 (movimiento REVERSO), la cuenta queda en Borrador y sus gastos En cuenta de cobro; después anularla (gastos a Facturado) si es lo que corresponde. Contabilidad → **Cajas menores** → abrir RCM-2026-000001 → **Contabilizar** con el documento de SIESA → en Tesorería → Caja menor → reembolsos sale "Contabilizado". Legalizar una cuenta adjuntando el archivo de la cuenta de cobro y verlo en Documentos.
+
 **Novedad de pago en lugar de Sin fondos (2026-11-03)** — cambian el backend y Nodex Gastos: compilar **los dos a la vez** y reiniciar `nodex-api` y `nodex-gastos` (la ruta `POST /api/gastos/solicitudes/sin-fondos`, ya en producción, pasa a `/novedad-pago`: con solo uno de los dos el botón falla).
 - **Sin variables ni cambios de base.** Las notas "sin fondos" que ya hay en el historial no cambian. Pruebas: en Tesorería → Por pagar, Novedad de pago con cada motivo (Otro sin observación debe pedirla) y ver la nota en el historial del gasto.
 

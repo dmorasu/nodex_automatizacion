@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react"
 import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { CheckCircle2, Loader2 } from "lucide-react"
-import { legalizarCuenta } from "@/actions/gastos/legalizacion"
+import { CheckCircle2, Loader2, Paperclip } from "lucide-react"
+import { legalizarCuenta, subirDocumentosCuenta } from "@/actions/gastos/legalizacion"
 import { formatoMoneda } from "@/src/lib/formato"
 import type { CuentaDetalle } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
@@ -15,6 +15,8 @@ export default function LegalizarCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
   const [abierto, setAbierto] = useState(false)
   const [fechaRadicacion, setFechaRadicacion] = useState(cuenta.fechaRadicacion ?? hoyEnBogota())
   const [legalizando, startLegalizar] = useTransition()
+  // La cuenta de cobro firmada se puede adjuntar al legalizar (queda en Documentos de la cuenta)
+  const [archivos, setArchivos] = useState<File[]>([])
 
   // Cuánto vuelve a cada bolsa al legalizar
   const porBolsa = new Map<string, number>()
@@ -35,6 +37,16 @@ export default function LegalizarCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
       }
 
       toast.success(`Cuenta de cobro ${cuenta.numeroCuentaCobro} legalizada`)
+
+      // La cuenta ya quedó legalizada: si el archivo no sube, se avisa y se puede cargar en Documentos
+      if (archivos.length) {
+        const datos = new FormData()
+        archivos.forEach(archivo => datos.append("archivos", archivo))
+        const subida = await subirDocumentosCuenta(cuenta.id, datos)
+        if (!subida.ok) subida.errores.forEach(error => toast.error(`Cuenta de cobro: ${error}`))
+      }
+
+      setArchivos([])
       setAbierto(false)
     })
   }
@@ -54,7 +66,7 @@ export default function LegalizarCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
             <DialogTitle className="text-sm font-semibold text-slate-800">Legalizar {cuenta.numeroCuentaCobro}</DialogTitle>
             <p className="mt-1 text-xs text-slate-400">
               Los {cuenta.lineas.length} gasto(s) quedan Legalizados, el total de la cuenta de cobro vuelve a la bolsa y la cuenta pasa a Contabilidad.
-              No se puede deshacer.
+              Solo se puede reversar mientras Contabilidad no la contabilice.
             </p>
 
             <div className="mt-4 rounded-md bg-slate-50 px-4 py-3 text-xs">
@@ -73,6 +85,17 @@ export default function LegalizarCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
               <span className={claseLabel}>Fecha de radicación <span className="text-red-400">*</span></span>
               <input type="date" value={fechaRadicacion} onChange={e => setFechaRadicacion(e.target.value)} className={claseInput} />
             </label>
+
+            {cuenta.permisos.subirDocumentos && (
+              <div className="mt-4">
+                <span className={claseLabel}>Cuenta de cobro</span>
+                <label className={`${claseBotonSecundario} cursor-pointer`}>
+                  <Paperclip size={15} /> Adjuntar archivo
+                  <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" className="sr-only" onChange={e => setArchivos(Array.from(e.target.files ?? []))} />
+                </label>
+                {archivos.length > 0 && <ul className="mt-2 space-y-1 text-xs text-slate-600">{archivos.map(a => <li key={a.name}>· {a.name}</li>)}</ul>}
+              </div>
+            )}
 
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={() => setAbierto(false)} disabled={legalizando} className={claseBotonSecundario}>Cancelar</button>

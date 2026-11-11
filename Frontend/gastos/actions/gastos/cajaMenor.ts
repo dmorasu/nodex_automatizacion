@@ -83,6 +83,11 @@ export async function aprobarReembolso(id: number) {
   return enviar(`reembolsos/${id}/aprobar`)
 }
 
+// Contabilidad: el reembolso quedó registrado en SIESA con este documento contable
+export async function contabilizarReembolso(id: number, documentoContable: string) {
+  return enviar(`reembolsos/${id}/contabilizar`, { documentoContable })
+}
+
 export async function rechazarReembolso(id: number, motivo: string) {
   return enviar(`reembolsos/${id}/rechazar`, { motivo })
 }

@@ -471,7 +471,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span class="chip rojo">Vencidos</span> abiertos que pasaron más de 2 días desde la fecha de diligencia programada. Los que están en espera por novedad no cuentan aquí.</li>
             <li><span class="chip ambar">En espera por novedad</span> todos los trámites en novedad, con los días que llevan; primero los más antiguos.</li>
             <li><span class="chip ambar">Sin movimiento, sin programación, sin tramitador, sin analista</span> lo que le falta a cada trámite.</li>
-            <li><span class="chip">Seguimiento</span> (grupo <b>Al día</b>) los trámites abiertos que no están en ninguna otra alerta, primero los de diligencia más próxima.</li>
+            <li><span class="chip">Seguimiento</span> (grupo <b>Al día</b>) los trámites <b>En Curso</b> que no están en ninguna otra alerta, primero los de diligencia más próxima.</li>
             <li>En <b>Sin tramitador</b>, el recuadro <b>Por municipio</b> muestra cuántos trámites hay en cada municipio (al tocar uno se ven solo esos); la lista sale agrupada por municipio y se puede filtrar con la lista <b>Municipio</b>. La casilla de cada municipio marca todos sus trámites para usar <b>Asignar tramitador</b>.</li>
             <li><span class="chip verde">Realizado sin finalizar</span> el tramitador lo reportó hecho; solo falta revisarlo y cerrarlo.</li>
             <li><span class="chip ambar">Seguimiento logístico</span> envíos con guía o transportadora que todavía no tienen la fecha de entrega por la transportadora, aunque el trámite ya esté finalizado. Muestra la transportadora, la guía y los días de atraso frente a la fecha probable. <b>Registrar entrega</b> abre la gestión masiva de logística con los marcados.</li>
@@ -741,6 +741,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span><b>Legalizar:</b> en <b>Por legalizar</b>, presione <b>Legalizar</b> en el gasto y llene la factura: número, fecha, beneficiario (CC o NIT), placa o matrícula, quién legaliza, valor del soporte y el <b>soporte</b>. Si el gasto ya tiene soporte cargado, no hay que volver a subirlo. Queda <b>Pendiente por reembolso</b>.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
             <li><span><b>Armar el reembolso:</b> en <b>Pendientes por reembolso</b>, marque los gastos y presione <b>Armar reembolso</b>. Queda en borrador con un número como <span class="codigo">RCM-2026-000001</span>; ahí puede quitar gastos o anularlo. Luego presione <b>Enviar a aprobación</b>.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
             <li><span><b>Aprobar:</b> en Aprobación de pagos → <b>Reembolsos de caja menor</b>, abra el reembolso, revise los gastos y sus soportes y presione <b>Aprobar</b> o <b>Devolver</b> con el motivo.<span class="quien">Dirección de Negocio</span></span></li>
+            <li><span><b>Contabilizar:</b> en Contabilidad → <b>Cajas menores</b>, abra el reembolso aprobado, presione <b>Contabilizar</b> y escriba el documento de SIESA. En la lista de reembolsos de Tesorería sale <b>Contabilizado</b> con el documento.<span class="quien">Contabilidad</span></span></li>
             <li><span><b>Legalizar el reembolso:</b> cuando llegue el dinero, abra el reembolso, presione <b>Legalizar reembolso</b>, ponga la fecha y adjunte el soporte (obligatorio). La caja vuelve a su fondo.<span class="quien">Tesorería o la auxiliar de la caja</span></span></li>
           </ol>
           <ul>
@@ -817,9 +818,11 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><b>Gastos sin factura:</b> los pagados que aún no tienen factura, con el número y el <b>estado del trámite</b> en Nodex Trámites. Desde aquí registra la factura.</li>
             <li><b>Gastos con factura:</b> arriba <b>Factura registrada</b> (lista para la cuenta de cobro) y abajo <b>Factura subida por el tramitador</b> (falta registrarla).</li>
             <li><b>Carga masiva de facturas:</b> suba varios archivos y el sistema los reparte por código, trámite, placa o matrícula.</li>
-            <li><b>Soportes de tramitadores:</b> apruebe o rechace lo que suben desde el celular.</li>
+            <li><b>Soportes de tramitadores:</b> apruebe o rechace lo que suben desde el celular. Si el tramitador subió la factura en el trámite antes de que pagaran el gasto, llega aquí sola cuando Tesorería confirma el pago.</li>
             <li><b>Reintegros:</b> al aprobarlos, el dinero vuelve a la bolsa.</li>
             <li><b>Descargar documentos:</b> un ZIP con todos los archivos sueltos (sin carpetas), cada uno con el código del gasto adelante.</li>
+            <li><b>Cuentas de cobro:</b> la lista muestra la <b>bolsa</b> de cada cuenta (también en Tesorería y Contabilidad). Al <b>Legalizar</b> puede adjuntar el archivo de la cuenta de cobro; queda en <b>Documentos</b> de la cuenta, donde también se puede subir después.</li>
+            <li><b>Reversar legalización:</b> si una cuenta se legalizó por error, ábrala y presione <b>Reversar legalización</b> con el motivo. Sale de la bolsa lo que entró al legalizarla y la cuenta vuelve a <b>Borrador</b> para corregirla, anularla o legalizarla de nuevo. Solo mientras Contabilidad no la haya contabilizado.</li>
           </ul>
           <p><b>Filtros:</b> en Gastos sin factura, Gastos con factura y Descargar documentos puede filtrar por <b>bolsa</b>, <b>Código BPR/FTF</b>, <b>placa</b> y <b>matrícula</b> (no importan guiones ni espacios), además del buscador.</p>
           <p><b>4x1000:</b> las tablas muestran la columna 4x1000. Con factura registrada es el valor calculado sobre la factura; sin factura sale <b>estimado</b> sobre lo pagado.</p>
@@ -844,6 +847,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li>En <b>No reembolsables</b> (los que asume la bolsa y no salen en Legalización), registre la factura y contabilice cada gasto con su documento contable.</li>
             <li>Consulte los egresos con los pagos confirmados.</li>
             <li>Confirme los <b>anticipos de clientes</b> y facture las <b>solicitudes de factura</b> (ver esos temas).</li>
+            <li>En <b>Cajas menores</b>, los reembolsos aprobados por Dirección: ábralo, presione <b>Contabilizar</b> y escriba el documento contable de SIESA. Tesorería lo verá contabilizado en Caja menor para retirar el dinero y reponer la caja.</li>
           </ul>
         </div>
       </details>

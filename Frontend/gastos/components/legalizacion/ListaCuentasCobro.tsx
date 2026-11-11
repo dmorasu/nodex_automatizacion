@@ -45,6 +45,7 @@ export default async function ListaCuentasCobro({ searchParams, rutaBase }: { se
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3 font-semibold">Cuenta de cobro</th>
+              <th className="px-4 py-3 font-semibold">Bolsa</th>
               <th className="px-4 py-3 font-semibold">Creada</th>
               <th className="px-4 py-3 font-semibold">Radicación</th>
               <th className="px-4 py-3 font-semibold text-center">Gastos</th>
@@ -62,6 +63,7 @@ export default async function ListaCuentasCobro({ searchParams, rutaBase }: { se
                   </Link>
                   <p className="text-[11px] text-slate-400">{cuenta.creador?.nombreUsuario}</p>
                 </td>
+                <td className="px-4 py-3 font-medium text-slate-700">{cuenta.bolsas.length ? cuenta.bolsas.join(", ") : "—"}</td>
                 <td className="px-4 py-3 text-slate-500">{formatoFecha(cuenta.createdAt)}</td>
                 <td className="px-4 py-3 text-slate-500">{formatoFecha(cuenta.fechaRadicacion)}</td>
                 <td className="px-4 py-3 text-center text-slate-600">{cuenta.cantidadGastos}</td>

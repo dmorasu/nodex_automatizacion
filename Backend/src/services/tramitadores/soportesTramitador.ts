@@ -1,4 +1,4 @@
-import { QueryTypes, type Transaction } from 'sequelize'
+import { Op, QueryTypes, type Transaction } from 'sequelize'
 import { db } from '../../config/db'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import EstadosGasto from '../../models/gastos/estadosGasto'
@@ -13,7 +13,9 @@ import Tramitador from '../../models/tramitador'
 import Usuarios from '../../models/usuarios'
 import SoporteTramitador, { ESTADOS_SOPORTE, TIPOS_SOPORTE } from '../../models/tramitadores/soporteTramitador'
 import ArchivoSoporte from '../../models/tramitadores/archivoSoporte'
-import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
+import DocumentoSolicitud from '../../models/documentosSolicitud'
+import SolicitudTramites from '../../models/solicitudTramites'
+import { subirArchivo, eliminarArchivo, obtenerArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { ESTADOS_GASTO, ESTADOS_REINTEGRO, TIPOS_DOCUMENTO } from '../gastos/constantes'
 import { notificarReintegroTramitador } from '../gastos/notificacionesGastos'
@@ -301,6 +303,116 @@ const crearSoporte = async (
     // No dejar archivos sueltos en Azure si algo falló
     await Promise.allSettled(subidos.map(nombre => eliminarArchivo(rutaDirectorio, nombre)))
     throw error
+  }
+}
+
+// =====================================
+// FACTURAS SUBIDAS EN EL TRÁMITE ANTES DEL PAGO (2026-11-11)
+// Una factura que el tramitador sube en el trámite solo llega al gasto si el gasto ya está Pagado
+// (subirDocumentosTramite). Si la subió antes (gasto programado o aprobado), quedaba solo en el
+// trámite y nunca llegaba a Legalización (trámite 3244, GAS-2026-000470). Al pagar el gasto se
+// pasan como soporte por revisar las facturas que ese tramitador subió en el trámite desde que se
+// creó el gasto. Para no equivocar el gasto, solo si el trámite tiene un solo gasto (sin anulados);
+// y solo si el gasto no tiene ya factura registrada ni una factura del tramitador (en cualquier estado).
+// =====================================
+
+export type FacturaPorPasar = { gastoId: number, codigoGasto: string, solicitudTramiteId: number, documentos: { id: number, nombre: string }[] }
+
+// Qué facturas del trámite le corresponden al gasto (sin cambiar nada)
+export const facturasDelTramitePorPasar = async (gastoId: number): Promise<FacturaPorPasar | null> => {
+  const gasto = await SolicitudesGasto.findByPk(gastoId, {
+    attributes: ['id', 'codigo', 'solicitudTramiteId', 'tramitadorId', 'createdAt'],
+    include: [{ model: EstadosGasto, attributes: ['codigo'] }]
+  })
+  if (!gasto?.solicitudTramiteId || gasto.estado?.codigo !== ESTADOS_GASTO.PAGADO) return null
+
+  const gastosDelMismoTramite = await SolicitudesGasto.count({
+    where: { solicitudTramiteId: gasto.solicitudTramiteId },
+    include: [{ model: EstadosGasto, attributes: [], where: { codigo: { [Op.ne]: ESTADOS_GASTO.ANULADO } } }]
+  })
+  if (gastosDelMismoTramite !== 1) return null
+
+  const [conFactura, conSoporte] = await Promise.all([
+    FacturasGasto.count({ where: { solicitudGastoId: gasto.id } }),
+    SoporteTramitador.count({ where: { solicitudGastoId: gasto.id, tipo: TIPOS_SOPORTE.FACTURA } })
+  ])
+  if (conFactura || conSoporte) return null
+
+  const tramite = await SolicitudTramites.findByPk(gasto.solicitudTramiteId, { attributes: ['id', 'tramitadorId'] })
+  const tramitadorId = gasto.tramitadorId ?? tramite?.tramitadorId
+  if (!tramitadorId) return null
+
+  const documentos = await DocumentoSolicitud.findAll({
+    where: {
+      solicitudTramiteId: gasto.solicitudTramiteId,
+      tramitadorId,
+      tipoDocumento: TIPOS_SOPORTE.FACTURA,
+      createdAt: { [Op.gte]: gasto.createdAt }
+    },
+    order: [['createdAt', 'ASC']]
+  })
+  if (!documentos.length) return null
+
+  return {
+    gastoId: gasto.id,
+    codigoGasto: gasto.codigo,
+    solicitudTramiteId: gasto.solicitudTramiteId,
+    documentos: documentos.map(d => ({ id: d.id, nombre: d.nombreOriginal }))
+  }
+}
+
+// Pasa al gasto, como un soporte Factura pendiente de revisión, las facturas que le corresponden.
+// El archivo se copia a la carpeta del gasto (el del trámite se puede borrar desde Nodex Trámites)
+export const pasarFacturasDelTramite = async (gastoId: number) => {
+  const porPasar = await facturasDelTramitePorPasar(gastoId)
+  if (!porPasar) return null
+
+  const documentos = await DocumentoSolicitud.findAll({ where: { id: porPasar.documentos.map(d => d.id) }, order: [['createdAt', 'ASC']] })
+  const rutaDirectorio = `gastos/${porPasar.codigoGasto}/tramitador`
+  const subidos: { nombreArchivo: string, documento: DocumentoSolicitud }[] = []
+
+  try {
+    for (const documento of documentos) {
+      const contenido = await obtenerArchivo(documento.rutaArchivo.substring(0, documento.rutaArchivo.lastIndexOf('/')), documento.nombreArchivo)
+      const nombreArchivo = nombreSeguro(documento.nombreOriginal)
+      await subirArchivo(rutaDirectorio, nombreArchivo, contenido)
+      subidos.push({ nombreArchivo, documento })
+    }
+
+    return await db.transaction(async transaction => {
+      const soporte = await SoporteTramitador.create({
+        solicitudGastoId: porPasar.gastoId,
+        reintegroId: null,
+        tramitadorId: documentos[0].tramitadorId,
+        tipo: TIPOS_SOPORTE.FACTURA,
+        observacion: `Factura subida en el trámite #${porPasar.solicitudTramiteId} antes del pago; pasó al gasto al pagarlo`
+      }, { transaction })
+
+      await ArchivoSoporte.bulkCreate(subidos.map(({ nombreArchivo, documento }) => ({
+        soporteId: soporte.id,
+        nombreOriginal: conPrefijo(NOMBRES_TIPO_SOPORTE.FACTURA, documento.nombreOriginal),
+        nombreArchivo,
+        rutaDirectorio,
+        tipoArchivo: documento.tipoArchivo,
+        tamano: documento.tamano
+      })), { transaction })
+
+      return { ...porPasar, soporteId: soporte.id }
+    })
+  } catch (error) {
+    await Promise.allSettled(subidos.map(s => eliminarArchivo(rutaDirectorio, s.nombreArchivo)))
+    throw error
+  }
+}
+
+// Después de confirmar un pago (fuera de su transacción: un fallo aquí no revierte el pago)
+export const pasarFacturasDeGastosPagados = async (gastoIds: number[]) => {
+  for (const gastoId of gastoIds) {
+    try {
+      await pasarFacturasDelTramite(gastoId)
+    } catch (error) {
+      console.error(`No se pudo pasar al gasto ${gastoId} la factura subida en su trámite:`, error)
+    }
   }
 }
 

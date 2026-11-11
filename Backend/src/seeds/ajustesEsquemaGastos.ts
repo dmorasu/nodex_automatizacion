@@ -227,6 +227,22 @@ export const ajustarEsquemaGastos = async () => {
   await bolsasSinSaldo()
   await parametrosConValoresGrandes()
   await tramitadorDesdeElTramite()
+  await contabilizacionReembolsosCaja()
+}
+
+// 2026-11-11 · Contabilidad marca el reembolso de caja menor como contabilizado en SIESA (con el
+// documento contable); Tesorería lo ve en Caja menor. Solo agrega columnas
+const contabilizacionReembolsosCaja = async () => {
+  const columnas = await columnasDe('gastos_reembolsos_caja')
+  if (!columnas) return
+  const nuevas: [string, string][] = [
+    ['contabilizado_en', 'TIMESTAMP WITH TIME ZONE'],
+    ['documento_contable', 'VARCHAR(100)'],
+    ['contabilizado_por', 'INTEGER REFERENCES "Usuarios" (id) ON UPDATE CASCADE ON DELETE SET NULL']
+  ]
+  for (const [columna, tipo] of nuevas) {
+    if (!columnas[columna]) await db.query(`ALTER TABLE gastos_reembolsos_caja ADD COLUMN ${columna} ${tipo}`)
+  }
 }
 
 // 2026-11-03 · Gastos creados cuando su trámite aún no tenía tramitador: se llenan con el que tiene

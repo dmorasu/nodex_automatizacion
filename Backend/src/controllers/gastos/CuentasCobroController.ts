@@ -19,7 +19,8 @@ import {
   crearCuenta,
   estadosCuenta,
   legalizarCuenta,
-  quitarLinea
+  quitarLinea,
+  reversarLegalizacion
 } from '../../services/gastos/cuentasCobro'
 import { ROLES_TESORERIA_OPERATIVA, ESTADOS_CUENTA_COBRO, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
@@ -46,7 +47,12 @@ export class CuentasCobroController {
         include: [
           { model: EstadosCuentaCobro, attributes: ATRIBUTOS_ESTADO },
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
-          { model: CuentasCobroGastos, attributes: ['id'] }
+          // Bolsa de cada gasto: la lista muestra a qué bolsa(s) corresponde la cuenta (2026-11-11)
+          {
+            model: CuentasCobroGastos,
+            attributes: ['id'],
+            include: [{ model: SolicitudesGasto, attributes: ['id'], include: [{ model: Bolsas, attributes: ['id', 'nombre'] }] }]
+          }
         ],
         order: [['id', 'DESC']],
         limit: tamano,
@@ -60,7 +66,8 @@ export class CuentasCobroController {
         tamano,
         registros: rows.map(cuenta => {
           const { lineas, ...datos } = cuenta.toJSON()
-          return { ...datos, cantidadGastos: lineas.length }
+          const bolsas = [...new Set(lineas.map((l: any) => l.solicitudGasto?.bolsa?.nombre).filter(Boolean))].sort() as string[]
+          return { ...datos, cantidadGastos: lineas.length, bolsas }
         })
       })
     } catch (error) {
@@ -125,7 +132,9 @@ export class CuentasCobroController {
           editar: enBorrador && esLegalizacion,
           // Marcarla como legalizada: Legalización o Tesorería
           legalizar: enBorrador && (esLegalizacion || esTesoreria),
-          subirDocumentos: esLegalizacion && cuenta.estado.codigo !== ESTADOS_CUENTA_COBRO.ANULADA
+          subirDocumentos: esLegalizacion && cuenta.estado.codigo !== ESTADOS_CUENTA_COBRO.ANULADA,
+          // Reversar la legalización: Legalización (o Admin), mientras no esté contabilizada
+          reversar: esLegalizacion && cuenta.estado.codigo === ESTADOS_CUENTA_COBRO.LEGALIZADA && !cuenta.contabilizacion?.contabilizado
         }
       })
     } catch (error) {
@@ -175,6 +184,16 @@ export class CuentasCobroController {
     try {
       await legalizarCuenta(Number(req.params.id), req.body.fechaRadicacion ?? null, req.usuario.id)
       res.json('Cuenta de cobro legalizada')
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /cuentas-cobro/:id/reversar  { motivo }
+  static reversar = async (req: Request, res: Response) => {
+    try {
+      await reversarLegalizacion(Number(req.params.id), req.body.motivo, req.usuario.id)
+      res.json('Legalización reversada: la cuenta de cobro volvió a Borrador')
     } catch (error) {
       responderError(res, error)
     }

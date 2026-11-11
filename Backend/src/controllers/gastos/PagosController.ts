@@ -13,6 +13,7 @@ import Anticipos from '../../models/gastos/anticipos'
 import { atributosSaldoAnticipo } from './SolicitudesGastoController'
 import { aprobarGastos, confirmarPago, confirmarPagos, corregirValorPagado, pagarDirecto, registrarNovedadPago, programarPago, sacarDelLote } from '../../services/gastos/pagos'
 import { notificarGastosPagados, notificarLoteProgramado, notificarRevisionLote } from '../../services/gastos/notificacionesGastos'
+import { pasarFacturasDeGastosPagados } from '../../services/tramitadores/soportesTramitador'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { ATRIBUTOS_USUARIO, esAdmin, idsTiposCertificados, responderError, soloCertificados } from './utilidades'
 import { ESTADOS_LOTE, FORMA_PAGO_CAJA_MENOR, ROLES } from '../../services/gastos/constantes'
@@ -103,6 +104,8 @@ export class PagosController {
 
       // Fuera de la transacción: un fallo en el correo no revierte el pago
       void notificarGastosPagados(ids)
+      // Facturas que el tramitador subió en el trámite antes del pago
+      void pasarFacturasDeGastosPagados(ids)
 
       res.status(201).json({ loteId: lote.id, total: lote.total })
     } catch (error) {
@@ -165,6 +168,7 @@ export class PagosController {
 
       // Fuera de la transacción: un fallo en el correo no revierte el pago
       void notificarGastosPagados(gastoIds)
+      void pasarFacturasDeGastosPagados(gastoIds)
 
       res.json({ loteId: lote.id, total: lote.total })
     } catch (error) {
@@ -195,6 +199,7 @@ export class PagosController {
 
       // Fuera de la transacción: un fallo en el correo no revierte el pago
       void notificarGastosPagados(gastoIds)
+      void pasarFacturasDeGastosPagados(gastoIds)
 
       res.json({ lotes: loteIds.length, gastos: gastoIds.length })
     } catch (error) {

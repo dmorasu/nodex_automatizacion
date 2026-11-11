@@ -11,7 +11,7 @@ import Usuarios from '../../models/usuarios'
 import {
   actualizarCaja, agregarAlReembolso, anularReembolso, aprobarReembolso, asignarCaja, cajaDelUsuario, crearCaja,
   crearReembolso, deshacerLegalizacionCaja, enviarReembolso, legalizarGastoCaja, legalizarReembolso, pagarConCaja,
-  quitarDelReembolso, rechazarReembolso, resumenCajas, revisarTopeCaja, usuariosDeCajas, historialCaja, cajaBloqueada,
+  quitarDelReembolso, rechazarReembolso, contabilizarReembolso, resumenCajas, revisarTopeCaja, usuariosDeCajas, historialCaja, cajaBloqueada,
   type FiltrosHistorialCaja, subirSoportesCaja
 } from '../../services/gastos/cajaMenor'
 import { generarExcelHistorialCaja } from '../../services/gastos/excelCajaMenor'
@@ -213,12 +213,15 @@ export class CajaMenorController {
       const { count, rows } = await ReembolsosCaja.findAndCountAll({
         where: {
           ...(bolsaId ? { bolsaId } : permitidas ? { bolsaId: permitidas } : {}),
-          ...(req.query.estado ? { estado: String(req.query.estado).split(',') } : {})
+          ...(req.query.estado ? { estado: String(req.query.estado).split(',') } : {}),
+          // Contabilidad: por contabilizar (no) o ya contabilizados en SIESA (si)
+          ...(req.query.contabilizado === 'si' ? { contabilizadoEn: { [Op.ne]: null } } : req.query.contabilizado === 'no' ? { contabilizadoEn: null } : {})
         },
         include: [
           { model: Bolsas, attributes: ['id', 'nombre'] },
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
-          { model: Usuarios, as: 'aprobador', attributes: ATRIBUTOS_USUARIO }
+          { model: Usuarios, as: 'aprobador', attributes: ATRIBUTOS_USUARIO },
+          { model: Usuarios, as: 'contabilizador', attributes: ATRIBUTOS_USUARIO }
         ],
         attributes: {
           include: [[ReembolsosCaja.sequelize!.literal(`(SELECT COUNT(*) FROM gastos_legalizaciones_caja l WHERE l.reembolso_caja_id = "ReembolsosCaja"."id")`), 'cantidadGastos']]
@@ -243,6 +246,7 @@ export class CajaMenorController {
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
           { model: Usuarios, as: 'aprobador', attributes: ATRIBUTOS_USUARIO },
           { model: Usuarios, as: 'legalizador', attributes: ATRIBUTOS_USUARIO },
+          { model: Usuarios, as: 'contabilizador', attributes: ATRIBUTOS_USUARIO },
           { model: TrazabilidadReembolsosCaja, include: [{ model: Usuarios, attributes: ATRIBUTOS_USUARIO }] },
           {
             model: LegalizacionesCaja,
@@ -281,7 +285,10 @@ export class CajaMenorController {
         permisos: {
           editar: tesoreria && reembolso.estado === 'BORRADOR',
           aprobar: direccion && reembolso.estado === 'POR_APROBAR',
-          legalizar: tesoreria && reembolso.estado === 'APROBADO'
+          legalizar: tesoreria && reembolso.estado === 'APROBADO',
+          // Contabilidad (o Admin): aprobado o ya legalizado, mientras no esté contabilizado
+          contabilizar: (roles.includes(ROLES.CONTABILIDAD) || roles.includes(ROLES.ADMIN)) &&
+            (reembolso.estado === 'APROBADO' || reembolso.estado === 'LEGALIZADO') && !json.contabilizadoEn
         }
       })
     } catch (error) {
@@ -327,6 +334,16 @@ export class CajaMenorController {
       const reembolso = await enviarReembolso(Number(req.params.id), req.usuario.id)
       void notificarReembolsoEnviado(reembolso.id)
       res.json('Reembolso enviado a Dirección de Negocio')
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // POST /caja-menor/reembolsos/:id/contabilizar  { documentoContable } (Contabilidad)
+  static contabilizar = async (req: Request, res: Response) => {
+    try {
+      const reembolso = await contabilizarReembolso(Number(req.params.id), req.body.documentoContable, req.usuario.id)
+      res.json(`Reembolso ${reembolso.codigo} contabilizado`)
     } catch (error) {
       responderError(res, error)
     }

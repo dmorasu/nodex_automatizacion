@@ -5,6 +5,7 @@ import CuentasCobroGastos from '../../models/gastos/cuentasCobroGastos'
 import EstadosCuentaCobro from '../../models/gastos/estadosCuentaCobro'
 import TrazabilidadCuentasCobro from '../../models/gastos/trazabilidadCuentasCobro'
 import Contabilizaciones from '../../models/gastos/contabilizaciones'
+import MovimientosBolsa from '../../models/gastos/movimientosBolsa'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import FacturasGasto from '../../models/gastos/facturasGasto'
 import { catalogoEnMemoria } from './catalogoEnMemoria'
@@ -253,6 +254,69 @@ export const legalizarCuenta = (cuentaId: number, fechaRadicacion: string | null
 
     await cuenta.update({ fechaRadicacion: radicacion, fechaLegalizacion: new Date() }, { transaction })
     await registrarTrazabilidad(cuenta, ESTADOS_CUENTA_COBRO.LEGALIZADA, usuarioId, transaction, 'Cuenta de cobro legalizada')
+  })
+
+// Reversa una cuenta legalizada por error (2026-11-11, pedido del usuario: la CDC 109_2026 SUFI era
+// de legalización de anticipo y el banco no la paga). Solo mientras Contabilidad no la contabilice:
+// sale de la bolsa lo que entró al legalizarla (un REVERSO por cada movimiento), se borra la
+// contabilización pendiente y la cuenta vuelve a Borrador con sus gastos En cuenta de cobro, para
+// corregirla, quitar gastos, anularla o volver a legalizarla. Todo o nada.
+export const reversarLegalizacion = (cuentaId: number, motivo: string, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const cuenta = await CuentasCobro.findByPk(cuentaId, { transaction, lock: transaction.LOCK.UPDATE })
+    if (!cuenta) throw new ErrorGastos('La cuenta de cobro no existe', 404)
+
+    if (await estadosCuenta.codigo(cuenta.estadoId) !== ESTADOS_CUENTA_COBRO.LEGALIZADA) {
+      throw new ErrorGastos(`La cuenta de cobro ${cuenta.numeroCuentaCobro} no está legalizada`)
+    }
+
+    const contabilizacion = await Contabilizaciones.findOne({ where: { cuentaCobroId: cuenta.id }, transaction, lock: transaction.LOCK.UPDATE })
+    if (contabilizacion?.contabilizado) {
+      throw new ErrorGastos(`La cuenta de cobro ${cuenta.numeroCuentaCobro} ya fue contabilizada: no se puede reversar`)
+    }
+
+    const nota = `Legalización de la cuenta de cobro ${cuenta.numeroCuentaCobro} reversada: ${motivo}`
+
+    // Sale de cada bolsa lo que la cuenta tiene neto en ella: sus legalizaciones menos los reversos
+    // anteriores (una cuenta se puede legalizar y reversar más de una vez). El saldo debe alcanzar
+    const movimientos = await MovimientosBolsa.findAll({
+      where: { cuentaCobroId: cuenta.id, tipo: [TIPOS_MOVIMIENTO_BOLSA.LEGALIZACION, TIPOS_MOVIMIENTO_BOLSA.REVERSO] },
+      transaction
+    })
+    const netoPorBolsa = new Map<string, { bolsaId: number, clienteId: number | null, centavos: number }>()
+    for (const movimiento of movimientos) {
+      const clave = `${movimiento.bolsaId}-${movimiento.clienteId ?? ''}`
+      const actual = netoPorBolsa.get(clave) ?? { bolsaId: movimiento.bolsaId, clienteId: movimiento.clienteId ?? null, centavos: 0 }
+      actual.centavos += aCentavos(movimiento.valor)
+      netoPorBolsa.set(clave, actual)
+    }
+    for (const { bolsaId, clienteId, centavos } of netoPorBolsa.values()) {
+      if (centavos <= 0) continue
+      await registrarMovimientos(bolsaId, [{
+        tipo: TIPOS_MOVIMIENTO_BOLSA.REVERSO,
+        valor: -centavos / 100,
+        cuentaCobroId: cuenta.id,
+        clienteId,
+        observacion: nota
+      }], usuarioId, transaction)
+    }
+
+    const lineas = await CuentasCobroGastos.findAll({ where: { cuentaCobroId: cuenta.id }, transaction })
+    const gastos = await SolicitudesGasto.findAll({
+      where: { id: { [Op.in]: lineas.map(l => l.solicitudGastoId) } },
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+    for (const gasto of gastos) {
+      await cambiarEstadoGasto(gasto, ESTADOS_GASTO.EN_CUENTA_COBRO, usuarioId, transaction, {
+        observacion: nota,
+        cambios: { observacionLegalizacion: null }
+      })
+    }
+
+    await contabilizacion?.destroy({ transaction })
+    await cuenta.update({ fechaLegalizacion: null }, { transaction })
+    await registrarTrazabilidad(cuenta, ESTADOS_CUENTA_COBRO.BORRADOR, usuarioId, transaction, nota)
   })
 
 // Solo en borrador: los gastos vuelven a Facturado. Las líneas se conservan como historial.

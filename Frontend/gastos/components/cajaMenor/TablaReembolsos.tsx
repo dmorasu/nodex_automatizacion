@@ -31,10 +31,12 @@ export default function TablaReembolsos({ reembolsos, base, vacio }: { reembolso
                 <p>Creado {formatoFecha(r.createdAt.slice(0, 10))}</p>
                 {r.fechaAprobacion && <p>Aprobado {formatoFecha(r.fechaAprobacion.slice(0, 10))}</p>}
                 {r.fechaLegalizacion && <p>Legalizado {formatoFecha(r.fechaLegalizacion)}</p>}
+                {r.contabilizadoEn && <p>Contabilizado {formatoFecha(r.contabilizadoEn.slice(0, 10))}</p>}
               </td>
               <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">{formatoMoneda(r.total)}</td>
               <td className="px-4 py-3">
                 <EstadoGasto codigo={r.estado} nombre={ESTADOS_REEMBOLSO[r.estado] ?? r.estado} />
+                {r.contabilizadoEn && <p className="mt-1 text-[11px] font-semibold text-sky-700">Contabilizado · {r.documentoContable}</p>}
                 {r.estado === "BORRADOR" && r.motivoRechazo && <p className="mt-1 max-w-[220px] text-[11px] text-red-600">Devuelto: {r.motivoRechazo}</p>}
               </td>
             </tr>

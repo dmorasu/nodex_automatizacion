@@ -26,10 +26,11 @@ export const obtenerGastosCaja = async (bolsaId: number, estado: string) => {
   return ListadoGastosSchema.parse(await req.json())
 }
 
-export const obtenerReembolsos = async (filtros: { bolsaId?: number, estado?: string, pagina?: number }) => {
+export const obtenerReembolsos = async (filtros: { bolsaId?: number, estado?: string, contabilizado?: "si" | "no", pagina?: number }) => {
   const params = new URLSearchParams()
   if (filtros.bolsaId) params.set("bolsaId", String(filtros.bolsaId))
   if (filtros.estado) params.set("estado", filtros.estado)
+  if (filtros.contabilizado) params.set("contabilizado", filtros.contabilizado)
   if (filtros.pagina) params.set("pagina", String(filtros.pagina))
   const req = await fetchApi(`/gastos/caja-menor/reembolsos?${params}`)
   if (!req.ok) throw new Error("No se pudieron cargar los reembolsos")

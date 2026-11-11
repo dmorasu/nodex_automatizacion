@@ -51,6 +51,8 @@ import {
   validarConfirmacionPagos,
   validarRecarga,
   validarAnulacion,
+  validarReverso,
+  validarContabilizarReembolso,
   validarCorreccionValor,
   validarBolsa,
   validarCrearBolsa,
@@ -277,6 +279,7 @@ router.post('/cuentas-cobro/:id/gastos', soloLegalizacion, validarAgregarGastos,
 router.delete('/cuentas-cobro/:id/gastos/:lineaId', soloLegalizacion, validarId, handleInputErrors, CuentasCobroController.quitarLinea)
 router.post('/cuentas-cobro/:id/legalizar', legalizarCuentas, validarLegalizar, handleInputErrors, CuentasCobroController.legalizar)
 router.post('/cuentas-cobro/:id/anular', soloLegalizacion, validarAnulacion, handleInputErrors, CuentasCobroController.anular)
+router.post('/cuentas-cobro/:id/reversar', soloLegalizacion, validarReverso, handleInputErrors, CuentasCobroController.reversar)
 router.post('/cuentas-cobro/:id/documentos', soloLegalizacion, recibirDocumentos, validarId, handleInputErrors, DocumentosGastoController.subirACuenta)
 
 router.get('/reintegros', soloLegalizacion, ReintegrosController.getAll)
@@ -380,7 +383,8 @@ router.put('/admin/parametros/:clave',
 // verifica el controlador). Dirección de Negocio aprueba los reembolsos.
 // =====================================
 const tesoreriaCaja = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA)
-const cajaODireccion = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA, ROLES.DIRECCION_NEGOCIO)
+// Contabilidad también ve los reembolsos: los marca como contabilizados en SIESA (2026-11-11)
+const cajaODireccion = requiereRol(ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.AUXILIAR_TESORERIA_CAJA, ROLES.DIRECCION_NEGOCIO, ROLES.CONTABILIDAD)
 
 router.get('/caja-menor/cajas', tesoreriaCaja, CajaMenorController.cajas)
 router.get('/caja-menor/cajas/:id/historial', tesoreriaCaja, validarHistorialCaja, handleInputErrors, CajaMenorController.historial)
@@ -404,6 +408,7 @@ router.post('/caja-menor/reembolsos/:id/enviar', tesoreriaCaja, validarId, handl
 router.post('/caja-menor/reembolsos/:id/anular', tesoreriaCaja, validarId, handleInputErrors, CajaMenorController.anular)
 router.post('/caja-menor/reembolsos/:id/aprobar', soloDireccion, validarId, handleInputErrors, CajaMenorController.aprobar)
 router.post('/caja-menor/reembolsos/:id/rechazar', soloDireccion, validarId, validarMotivo, handleInputErrors, CajaMenorController.rechazar)
+router.post('/caja-menor/reembolsos/:id/contabilizar', soloContabilidad, validarContabilizarReembolso, handleInputErrors, CajaMenorController.contabilizar)
 router.post('/caja-menor/reembolsos/:id/legalizar', tesoreriaCaja, recibirDocumentos, leerDatosJson, validarLegalizacionReembolso, handleInputErrors, CajaMenorController.legalizar)
 
 

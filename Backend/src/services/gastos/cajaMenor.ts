@@ -524,6 +524,21 @@ export const aprobarReembolso = (id: number, usuarioId: number) =>
     return reembolso
   })
 
+// Contabilidad: confirma que registró en SIESA el reembolso aprobado (o ya legalizado) con su documento
+// contable. Informativo: Tesorería lo ve para retirar el dinero, pero puede legalizar sin esperar
+export const contabilizarReembolso = (id: number, documentoContable: string, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const reembolso = await reembolsoBloqueado(id, transaction)
+    if (reembolso.estado !== ESTADOS_REEMBOLSO_CAJA.APROBADO && reembolso.estado !== ESTADOS_REEMBOLSO_CAJA.LEGALIZADO) {
+      throw new ErrorGastos(`El reembolso ${reembolso.codigo} debe estar aprobado por Dirección para contabilizarlo`)
+    }
+    if (reembolso.contabilizadoEn) throw new ErrorGastos(`El reembolso ${reembolso.codigo} ya está contabilizado`)
+    const documento = documentoContable.trim()
+    await reembolso.update({ contabilizadoEn: new Date(), documentoContable: documento, contabilizadoPor: usuarioId }, { transaction })
+    await registrarHistorial(reembolso.id, 'CONTABILIZADO', `Contabilizado en SIESA · documento ${documento}`, usuarioId, transaction)
+    return reembolso
+  })
+
 // Vuelve a borrador con el motivo, para que Tesorería lo corrija y lo envíe de nuevo
 export const rechazarReembolso = (id: number, motivo: string, usuarioId: number) =>
   db.transaction(async transaction => {

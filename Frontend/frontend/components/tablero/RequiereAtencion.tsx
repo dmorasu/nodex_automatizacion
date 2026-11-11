@@ -113,7 +113,7 @@ const ALERTAS: Definicion[] = [
     masiva: AGREGAR_TRAZABILIDAD,
     nivel: "azul",
     nombre: "Seguimiento",
-    descripcion: () => "Trámites abiertos que no están en ninguna otra alerta. Primero la diligencia más próxima.",
+    descripcion: () => "Trámites en curso que no están en ninguna otra alerta. Primero la diligencia más próxima.",
     dias: t => textoDiligencia(t.diasParaDiligencia ?? null)
   }
 ]

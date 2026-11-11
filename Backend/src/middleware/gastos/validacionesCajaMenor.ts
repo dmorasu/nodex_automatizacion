@@ -76,6 +76,7 @@ export const validarListadoReembolsos = [
   query('bolsaId').optional().isInt({ min: 1 }),
   query('estado').optional().custom(valor => String(valor).split(',').every(e => (Object.values(ESTADOS_REEMBOLSO_CAJA) as string[]).includes(e)))
     .withMessage('Estado no válido'),
+  query('contabilizado').optional().isIn(['si', 'no']).withMessage('Filtro de contabilización no válido'),
   query('pagina').optional().isInt({ min: 1 }),
   query('tamano').optional().isInt({ min: 1, max: 100 })
 ]

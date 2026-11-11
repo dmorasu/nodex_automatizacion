@@ -21,7 +21,7 @@ export function BotonesCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
         mensajeExito={`Legalización de ${cuenta.numeroCuentaCobro} reversada`}
         onConfirmar={motivo => reversarCuenta(cuenta.id, motivo)}
       />}
-      {cuenta.permisos.editar && <BotonConMotivo
+      {cuenta.permisos.anular && <BotonConMotivo
         etiqueta="Anular"
         titulo={`Anular ${cuenta.numeroCuentaCobro}`}
         descripcion="Los gastos de la cuenta vuelven a Gastos con factura y quedan disponibles para otra cuenta de cobro."

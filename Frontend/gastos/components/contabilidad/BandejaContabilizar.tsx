@@ -15,8 +15,8 @@ const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "Am
 
 // Cuentas de cobro por contabilizar, con selección para contabilizarlas de una vez.
 // Cada cuenta lleva su documento contable (se puede copiar el mismo a todas).
-// También salen los borradores para que Contabilidad los vea, pero solo se seleccionan
-// las legalizadas: el backend no contabiliza una cuenta que no esté Legalizada.
+// También salen los borradores (2026-11-11): al contabilizarlos siguen en Borrador y quedan
+// Contabilizados cuando Legalización los legaliza.
 export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListado[] }) {
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set())
   const [abierto, setAbierto] = useState(false)
@@ -25,10 +25,9 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
   const [documentos, setDocumentos] = useState<Record<number, string>>({})
   const [guardando, startGuardar] = useTransition()
 
-  const seleccionables = useMemo(() => cuentas.filter(c => c.estado.codigo === "LEGALIZADA"), [cuentas])
-  const seleccionadas = useMemo(() => seleccionables.filter(c => seleccion.has(c.id)), [seleccionables, seleccion])
+  const seleccionadas = useMemo(() => cuentas.filter(c => seleccion.has(c.id)), [cuentas, seleccion])
   const total = seleccionadas.reduce((suma, c) => suma + Number(c.totalLegalizado), 0)
-  const todasMarcadas = seleccionables.length > 0 && seleccionadas.length === seleccionables.length
+  const todasMarcadas = cuentas.length > 0 && seleccionadas.length === cuentas.length
 
   const alternar = (id: number) =>
     setSeleccion(actual => {
@@ -89,8 +88,7 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
                 <input
                   type="checkbox"
                   checked={todasMarcadas}
-                  disabled={seleccionables.length === 0}
-                  onChange={() => setSeleccion(todasMarcadas ? new Set() : new Set(seleccionables.map(c => c.id)))}
+                  onChange={() => setSeleccion(todasMarcadas ? new Set() : new Set(cuentas.map(c => c.id)))}
                   className="h-4 w-4 accent-emerald-600"
                   aria-label="Seleccionar todas"
                 />
@@ -106,19 +104,16 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {cuentas.map(cuenta => {
-              const legalizada = cuenta.estado.codigo === "LEGALIZADA"
-              return (
+            {cuentas.map(cuenta => (
               <tr
                 key={cuenta.id}
-                onClick={() => legalizada && alternar(cuenta.id)}
-                className={legalizada ? `cursor-pointer ${seleccion.has(cuenta.id) ? "bg-emerald-50/60" : "hover:bg-slate-50"}` : "hover:bg-slate-50"}
+                onClick={() => alternar(cuenta.id)}
+                className={`cursor-pointer ${seleccion.has(cuenta.id) ? "bg-emerald-50/60" : "hover:bg-slate-50"}`}
               >
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
                     checked={seleccion.has(cuenta.id)}
-                    disabled={!legalizada}
                     onChange={() => alternar(cuenta.id)}
                     onClick={e => e.stopPropagation()}
                     className="h-4 w-4 accent-emerald-600"
@@ -138,8 +133,7 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
                 <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatoMoneda(cuenta.totalLegalizado)}</td>
                 <td className="px-4 py-3"><EstadoGasto codigo={cuenta.estado.codigo} nombre={cuenta.estado.nombre} /></td>
               </tr>
-              )
-            })}
+            ))}
           </tbody>
         </table>
 
@@ -157,7 +151,7 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
               <div className="px-6 py-4 border-b border-slate-100">
                 <DialogTitle className="text-sm font-semibold text-slate-800">Contabilizar {seleccionadas.length} cuenta(s) de cobro</DialogTitle>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  Las cuentas y sus gastos quedan Contabilizados. Esta acción no se puede deshacer.
+                  Las legalizadas y sus gastos quedan Contabilizados; las que están en Borrador, al legalizarlas. Esta acción no se puede deshacer.
                 </p>
               </div>
 

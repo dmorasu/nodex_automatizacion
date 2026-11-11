@@ -250,10 +250,25 @@ export const legalizarCuenta = (cuentaId: number, fechaRadicacion: string | null
       }], usuarioId, transaction)
     }
 
-    await Contabilizaciones.create({ cuentaCobroId: cuenta.id }, { transaction })
+    // Si Contabilidad ya la contabilizó en borrador (2026-11-11) la contabilización existe
+    const [contabilizacion] = await Contabilizaciones.findOrCreate({
+      where: { cuentaCobroId: cuenta.id },
+      defaults: { cuentaCobroId: cuenta.id },
+      transaction
+    })
 
     await cuenta.update({ fechaRadicacion: radicacion, fechaLegalizacion: new Date() }, { transaction })
     await registrarTrazabilidad(cuenta, ESTADOS_CUENTA_COBRO.LEGALIZADA, usuarioId, transaction, 'Cuenta de cobro legalizada')
+
+    // Contabilizada en borrador: el dinero ya volvió a la bolsa, queda Contabilizada sin pasar otra vez por Contabilidad
+    if (contabilizacion.contabilizado) {
+      const notaContable = `Contabilizado con documento ${contabilizacion.documentoContable} (cuenta de cobro ${cuenta.numeroCuentaCobro})`
+      for (const gasto of gastos) {
+        await cambiarEstadoGasto(gasto, ESTADOS_GASTO.CONTABILIZADO, usuarioId, transaction, { observacion: notaContable })
+      }
+      await registrarTrazabilidad(cuenta, ESTADOS_CUENTA_COBRO.CONTABILIZADA, usuarioId, transaction,
+        `Documento contable ${contabilizacion.documentoContable} (contabilizada en borrador)`)
+    }
   })
 
 // Reversa una cuenta legalizada por error (2026-11-11, pedido del usuario: la CDC 109_2026 SUFI era
@@ -323,6 +338,11 @@ export const reversarLegalizacion = (cuentaId: number, motivo: string, usuarioId
 export const anularCuenta = (cuentaId: number, motivo: string, usuarioId: number) =>
   db.transaction(async transaction => {
     const cuenta = await cuentaEnBorrador(cuentaId, transaction)
+    // Contabilizada en borrador (2026-11-11): ya tiene documento contable, no se anula
+    const contabilizacion = await Contabilizaciones.findOne({ where: { cuentaCobroId: cuenta.id }, transaction })
+    if (contabilizacion?.contabilizado) {
+      throw new ErrorGastos(`La cuenta de cobro ${cuenta.numeroCuentaCobro} ya fue contabilizada: no se puede anular`)
+    }
     const lineas = await CuentasCobroGastos.findAll({ where: { cuentaCobroId: cuenta.id }, transaction })
 
     const gastos = await SolicitudesGasto.findAll({

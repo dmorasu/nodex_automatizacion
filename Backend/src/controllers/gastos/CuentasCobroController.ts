@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { Op, WhereOptions } from 'sequelize'
+import { Op, WhereOptions, literal } from 'sequelize'
 import CuentasCobro from '../../models/gastos/cuentasCobro'
 import CuentasCobroGastos from '../../models/gastos/cuentasCobroGastos'
 import EstadosCuentaCobro from '../../models/gastos/estadosCuentaCobro'
@@ -44,6 +44,10 @@ export class CuentasCobroController {
         condiciones.push({ estadoId: { [Op.in]: await Promise.all(codigos.map(codigo => estadosCuenta.id(codigo as never))) } })
       }
       if (busqueda) condiciones.push({ numeroCuentaCobro: { [Op.iLike]: `%${busqueda}%` } })
+      // Bandeja de Contabilidad: sin los borradores que ya contabilizó (siguen en Borrador hasta legalizarse)
+      if (req.query.porContabilizar === 'si') {
+        condiciones.push({ id: { [Op.notIn]: literal('(SELECT cuenta_cobro_id FROM gastos_contabilizaciones WHERE contabilizado)') } })
+      }
 
       const { count, rows } = await CuentasCobro.findAndCountAll({
         where: { [Op.and]: condiciones },
@@ -136,6 +140,8 @@ export class CuentasCobroController {
           editar: enBorrador && esLegalizacion,
           // Marcarla como legalizada: Legalización o Tesorería
           legalizar: enBorrador && (esLegalizacion || esTesoreria),
+          // Anular: no si Contabilidad ya la contabilizó en borrador (2026-11-11)
+          anular: enBorrador && esLegalizacion && !cuenta.contabilizacion?.contabilizado,
           subirDocumentos: esLegalizacion && cuenta.estado.codigo !== ESTADOS_CUENTA_COBRO.ANULADA,
           // Reversar la legalización: Legalización (o Admin), mientras no esté contabilizada
           reversar: esLegalizacion && cuenta.estado.codigo === ESTADOS_CUENTA_COBRO.LEGALIZADA && !cuenta.contabilizacion?.contabilizado

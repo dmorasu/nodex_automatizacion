@@ -30,7 +30,7 @@ const ATRIBUTOS_ESTADO = ['id', 'codigo', 'nombre']
 
 export class CuentasCobroController {
 
-  // GET /cuentas-cobro?estado=&busqueda=&pagina=&tamano=
+  // GET /cuentas-cobro?estado=A,B&busqueda=&pagina=&tamano=
   static getAll = async (req: Request, res: Response) => {
     try {
       const pagina = Number(req.query.pagina ?? 1)
@@ -38,7 +38,11 @@ export class CuentasCobroController {
       const busqueda = String(req.query.busqueda ?? '').trim()
 
       const condiciones: WhereOptions[] = []
-      if (req.query.estado) condiciones.push({ estadoId: await estadosCuenta.id(req.query.estado as never) })
+      // Varios estados separados por coma: la bandeja de Contabilidad pide BORRADOR y LEGALIZADA (2026-11-11)
+      if (req.query.estado) {
+        const codigos = String(req.query.estado).split(',')
+        condiciones.push({ estadoId: { [Op.in]: await Promise.all(codigos.map(codigo => estadosCuenta.id(codigo as never))) } })
+      }
       if (busqueda) condiciones.push({ numeroCuentaCobro: { [Op.iLike]: `%${busqueda}%` } })
 
       const { count, rows } = await CuentasCobro.findAndCountAll({

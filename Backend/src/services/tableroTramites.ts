@@ -48,6 +48,7 @@ const TIPOS_ENVIO = '^env[ií]o de (documentaci[oó]n|tarjeta)'
 const GASTO_SIN_PAGAR = ['SOLICITADO', 'PROGRAMADO', 'APROBADO_PAGO']
 // Nombre que toma el trámite sin estado en la consulta (COALESCE)
 const SIN_INICIAR = 'Sin Iniciar'
+const EN_CURSO = 'En Curso'
 
 export type FiltrosTablero = {
   desde: string            // YYYY-MM-DD (período para finalizados, % a tiempo, ciclo, valor y causas)
@@ -522,10 +523,10 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
       // Días de atraso frente a la fecha probable de entrega del envío (0 si aún no llega)
       diasSinEntrega: s.fechaProbableEnvio ? Math.max(diasEntre(s.fechaProbableEnvio, hoy), 0) : 0
     }))),
-    // Seguimiento (2026-11-11, pedido del usuario): abiertos que no están en ninguna otra alerta, para
-    // tenerlos a la vista. Primero la diligencia más próxima; los que no tienen fecha, al final
+    // Seguimiento (2026-11-11, pedido del usuario): solo los En Curso (ningún otro estado) que no están
+    // en ninguna otra alerta. Primero la diligencia más próxima; los que no tienen fecha, al final
     seguimiento: alerta(abiertos
-      .filter(f => !enAlgunaAlerta(f))
+      .filter(f => f.estado === EN_CURSO && !enAlgunaAlerta(f))
       .map(f => resumenTramite(f, { diasParaDiligencia: f.fechaProgramada ? diasEntre(hoy, f.fechaProgramada) : null }))
       .sort((a, b) => (a.diasParaDiligencia ?? Infinity) - (b.diasParaDiligencia ?? Infinity) || a.id - b.id))
   }

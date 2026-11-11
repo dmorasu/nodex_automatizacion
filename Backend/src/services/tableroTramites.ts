@@ -478,9 +478,19 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
 
   // ── Requiere atención ──
   const sinMovimiento = (f: Fila) => diasEntre(f.ultimaActividad, hoy)
+  // Criterio de cada alerta en un solo lugar: lo usan su lista y "Seguimiento" (lo que no está en ninguna)
+  // Los que están en novedad no vencen: dependen de un tercero y tienen su propia alerta
+  const venceHoy = (f: Fila) => f.fechaProgramada === hoy && f.estado !== EN_NOVEDAD
+  // Los que esperan el envío de documentos o el pago no se pueden programar todavía: no son alerta
+  const esSinProgramacion = (f: Fila) => f.estado === SIN_INICIAR && !f.fechaProgramada && !esperandoEnvio(f)
+  const esSinMovimiento = (f: Fila) => f.estado !== EN_NOVEDAD && !esperandoEnvio(f) && sinMovimiento(f) > DIAS_GRACIA
+  const conEnvioPendiente = new Set(seguimiento.map(s => s.id))
+  const enAlgunaAlerta = (f: Fila) =>
+    venceHoy(f) || esVencido(f) || f.estado === EN_NOVEDAD || f.reportadoRealizado || !f.tramitadorId ||
+    esSinProgramacion(f) || esSinMovimiento(f) || !f.analistaId || conEnvioPendiente.has(f.id)
+
   const atencion = {
-    // Los que están en novedad no vencen: dependen de un tercero y tienen su propia alerta
-    vencenHoy: alerta(abiertos.filter(f => f.fechaProgramada === hoy && f.estado !== EN_NOVEDAD).map(f => resumenTramite(f))),
+    vencenHoy: alerta(abiertos.filter(venceHoy).map(f => resumenTramite(f))),
     vencidos: alerta(abiertos.filter(esVencido)
       .map(f => resumenTramite(f, { diasAtraso: diasVencido(f) }))
       .sort((a, b) => b.diasAtraso - a.diasAtraso)),
@@ -498,10 +508,9 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
         .map(f => resumenTramite(f))
       return { total: items.length, items }
     })(),
-    // Los que esperan el envío de documentos o el pago no se pueden programar todavía: no son alerta
-    sinProgramacion: alerta(abiertos.filter(f => f.estado === SIN_INICIAR && !f.fechaProgramada && !esperandoEnvio(f)).map(f => resumenTramite(f))),
+    sinProgramacion: alerta(abiertos.filter(esSinProgramacion).map(f => resumenTramite(f))),
     sinMovimiento: alerta(abiertos
-      .filter(f => f.estado !== EN_NOVEDAD && !esperandoEnvio(f) && sinMovimiento(f) > DIAS_GRACIA)
+      .filter(esSinMovimiento)
       .map(f => resumenTramite(f, { diasSinMovimiento: sinMovimiento(f) }))
       .sort((a, b) => b.diasSinMovimiento - a.diasSinMovimiento)),
     sinAnalista: alerta(abiertos.filter(f => !f.analistaId).map(f => resumenTramite(f))),
@@ -512,7 +521,13 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
       ultimaGestionTipo: null,
       // Días de atraso frente a la fecha probable de entrega del envío (0 si aún no llega)
       diasSinEntrega: s.fechaProbableEnvio ? Math.max(diasEntre(s.fechaProbableEnvio, hoy), 0) : 0
-    })))
+    }))),
+    // Seguimiento (2026-11-11, pedido del usuario): abiertos que no están en ninguna otra alerta, para
+    // tenerlos a la vista. Primero la diligencia más próxima; los que no tienen fecha, al final
+    seguimiento: alerta(abiertos
+      .filter(f => !enAlgunaAlerta(f))
+      .map(f => resumenTramite(f, { diasParaDiligencia: f.fechaProgramada ? diasEntre(hoy, f.fechaProgramada) : null }))
+      .sort((a, b) => (a.diasParaDiligencia ?? Infinity) - (b.diasParaDiligencia ?? Infinity) || a.id - b.id))
   }
 
   // ── Por analista ──

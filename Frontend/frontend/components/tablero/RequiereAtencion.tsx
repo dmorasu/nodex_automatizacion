@@ -3,15 +3,15 @@
 import { Fragment, useState } from "react"
 import Link from "next/link"
 import clsx from "clsx"
-import { ArrowRight, CheckCircle2, ChevronRight, CircleCheck, Flame, MapPin, TriangleAlert, type LucideIcon } from "lucide-react"
+import { ArrowRight, CheckCircle2, ChevronRight, CircleCheck, Eye, Flame, MapPin, TriangleAlert, type LucideIcon } from "lucide-react"
 import EstadoTramite from "@/components/solicitudTramites/EstadoTramite"
 import SelectBuscable from "@/components/ui/SelectBuscable"
 import { claseInput } from "@/components/ui/estilos"
 import { fechaCorta, miles, type ClaveAlerta, type Tablero, type TramiteAlerta } from "@/src/tablero"
 import type { TipoAccion } from "@/components/gestionMasiva/camposAcciones"
 
-// Semáforo: rojo = urgente, amarillo = revisar, verde = solo falta cerrarlo
-type Nivel = "rojo" | "amarillo" | "verde"
+// Semáforo: rojo = urgente, amarillo = revisar, verde = solo falta cerrarlo, azul = al día (en seguimiento)
+type Nivel = "rojo" | "amarillo" | "verde" | "azul"
 
 type Definicion = {
   clave: ClaveAlerta
@@ -27,6 +27,14 @@ type Definicion = {
   // Lista agrupada por municipio, con filtro de municipio
   porMunicipio?: boolean
 }
+
+// Cuánto falta para la fecha de diligencia (Seguimiento)
+const textoDiligencia = (dias: number | null) =>
+  dias === null ? "Sin fecha de diligencia"
+    : dias === 0 ? "Diligencia hoy"
+      : dias === 1 ? "Diligencia mañana"
+        : dias > 1 ? `Diligencia en ${dias} días`
+          : `Diligencia hace ${-dias} día${dias === -1 ? "" : "s"}`
 
 const CAMBIAR_ESTADO = { accion: "estados", texto: "Cambiar estado" } as const
 const AGREGAR_TRAZABILIDAD = { accion: "trazabilidad", texto: "Agregar trazabilidad" } as const
@@ -99,6 +107,14 @@ const ALERTAS: Definicion[] = [
     nivel: "amarillo",
     nombre: "Sin analista",
     descripcion: () => "Trámites abiertos sin analista asignado."
+  },
+  {
+    clave: "seguimiento",
+    masiva: AGREGAR_TRAZABILIDAD,
+    nivel: "azul",
+    nombre: "Seguimiento",
+    descripcion: () => "Trámites abiertos que no están en ninguna otra alerta. Primero la diligencia más próxima.",
+    dias: t => textoDiligencia(t.diasParaDiligencia ?? null)
   }
 ]
 
@@ -140,6 +156,15 @@ const NIVELES: Record<Nivel, {
     seleccionada: "border-emerald-600 bg-emerald-600 text-white shadow-sm",
     barra: "border-l-emerald-600",
     textoIcono: "text-emerald-600"
+  },
+  azul: {
+    titulo: "Al día",
+    icono: Eye,
+    punto: "bg-sky-600",
+    contador: "bg-sky-600 text-white",
+    seleccionada: "border-sky-600 bg-sky-600 text-white shadow-sm",
+    barra: "border-l-sky-600",
+    textoIcono: "text-sky-600"
   }
 }
 
@@ -156,7 +181,7 @@ const contarMunicipios = (items: TramiteAlerta[]) => {
 }
 
 // Orden del semáforo: primero lo urgente
-const ORDEN_NIVELES: Nivel[] = ["rojo", "amarillo", "verde"]
+const ORDEN_NIVELES: Nivel[] = ["rojo", "amarillo", "verde", "azul"]
 
 // Lo que hay que atender: cada alerta lista sus trámites con enlace al detalle
 export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tablero: Tablero, mostrarSinAnalista: boolean }) {

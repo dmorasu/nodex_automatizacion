@@ -15,7 +15,8 @@ const NOMBRES_ALERTA: Record<string, string> = {
   sinProgramacion: 'Sin programación',
   sinMovimiento: 'Sin movimiento',
   sinAnalista: 'Sin analista',
-  seguimientoLogistico: 'Seguimiento logístico'
+  seguimientoLogistico: 'Seguimiento logístico',
+  seguimiento: 'Seguimiento'
 }
 
 const porcentaje = (valor: number | null) => (valor === null ? '' : valor / 100)
@@ -73,6 +74,7 @@ export const generarExcelTablero = (t: TableroTramites, alcance: string) => {
       ...(x.diasEnNovedad !== undefined ? { 'Días en novedad': x.diasEnNovedad } : {}),
       ...(x.diasAtraso !== undefined ? { 'Días de atraso': x.diasAtraso } : {}),
       ...(x.diasSinMovimiento !== undefined ? { 'Días sin movimiento': x.diasSinMovimiento } : {}),
+      ...(x.diasParaDiligencia !== undefined ? { 'Días para la diligencia': x.diasParaDiligencia ?? '' } : {}),
       ...(x.diasSinEntrega !== undefined ? {
         'Transportadora': x.transportadora ?? '',
         'Guía': x.guia ?? '',

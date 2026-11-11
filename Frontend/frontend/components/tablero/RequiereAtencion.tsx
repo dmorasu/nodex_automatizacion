@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import Link from "next/link"
 import clsx from "clsx"
-import { ArrowRight, CheckCircle2, ChevronRight, CircleCheck, Flame, TriangleAlert, type LucideIcon } from "lucide-react"
+import { ArrowRight, CheckCircle2, ChevronRight, CircleCheck, Flame, MapPin, TriangleAlert, type LucideIcon } from "lucide-react"
 import EstadoTramite from "@/components/solicitudTramites/EstadoTramite"
+import SelectBuscable from "@/components/ui/SelectBuscable"
+import { claseInput } from "@/components/ui/estilos"
 import { fechaCorta, miles, type ClaveAlerta, type Tablero, type TramiteAlerta } from "@/src/tablero"
 import type { TipoAccion } from "@/components/gestionMasiva/camposAcciones"
 
@@ -22,6 +24,8 @@ type Definicion = {
   masiva?: { accion: TipoAccion, texto: string }
   // Sin acción masiva: enlace a la página donde se resuelve
   enlace?: { href: string, texto: string }
+  // Lista agrupada por municipio, con filtro de municipio
+  porMunicipio?: boolean
 }
 
 const CAMBIAR_ESTADO = { accion: "estados", texto: "Cambiar estado" } as const
@@ -61,6 +65,7 @@ const ALERTAS: Definicion[] = [
   {
     clave: "sinTramitador",
     masiva: { accion: "tramitador", texto: "Asignar tramitador" },
+    porMunicipio: true,
     nivel: "amarillo",
     nombre: "Sin tramitador",
     descripcion: () => "Trámites abiertos sin tramitador asignado."
@@ -138,6 +143,18 @@ const NIVELES: Record<Nivel, {
   }
 }
 
+const SIN_MUNICIPIO = "Sin municipio"
+
+// Municipios de la lista con su cantidad, de más a menos trámites
+const contarMunicipios = (items: TramiteAlerta[]) => {
+  const conteo = new Map<string, number>()
+  for (const t of items) {
+    const municipio = t.municipio ?? SIN_MUNICIPIO
+    conteo.set(municipio, (conteo.get(municipio) ?? 0) + 1)
+  }
+  return [...conteo.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
+}
+
 // Orden del semáforo: primero lo urgente
 const ORDEN_NIVELES: Nivel[] = ["rojo", "amarillo", "verde"]
 
@@ -150,8 +167,16 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
 
   // Trámites marcados de la alerta abierta (se limpia al cambiar de alerta)
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set())
+  // Municipio elegido en las alertas que se agrupan por municipio (null = todos)
+  const [municipio, setMunicipio] = useState<string | null>(null)
   const abrirAlerta = (clave: ClaveAlerta) => {
     setActiva(clave)
+    setSeleccion(new Set())
+    setMunicipio(null)
+  }
+  // Al cambiar de municipio se quitan las marcas: así no quedan marcados trámites que no se ven
+  const elegirMunicipio = (nombre: string | null) => {
+    setMunicipio(nombre)
     setSeleccion(new Set())
   }
   const alternar = (id: number) => setSeleccion(actual => {
@@ -163,10 +188,24 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
 
   const definicion = alertas.find(a => a.clave === activa)!
   const lista = tablero.atencion[activa]
+  const municipios = definicion.porMunicipio ? contarMunicipios(lista.items) : []
+  const items = municipio ? lista.items.filter(t => (t.municipio ?? SIN_MUNICIPIO) === municipio) : lista.items
   const nivelActivo = NIVELES[definicion.nivel]
   const IconoActivo = nivelActivo.icono
   const { masiva, enlace } = definicion
-  const todosMarcados = lista.items.length > 0 && lista.items.every(t => seleccion.has(t.id))
+  // Con porMunicipio, un grupo por municipio en el orden del filtro; si no, un solo grupo sin encabezado
+  const grupos: [string | null, TramiteAlerta[]][] = definicion.porMunicipio
+    ? municipios
+      .map(([nombre]) => [nombre, items.filter(t => (t.municipio ?? SIN_MUNICIPIO) === nombre)] as [string, TramiteAlerta[]])
+      .filter(([, delGrupo]) => delGrupo.length > 0)
+    : [[null, items]]
+  const marcarGrupo = (delGrupo: TramiteAlerta[]) => setSeleccion(actual => {
+    const nueva = new Set(actual)
+    const todos = delGrupo.every(t => nueva.has(t.id))
+    delGrupo.forEach(t => (todos ? nueva.delete(t.id) : nueva.add(t.id)))
+    return nueva
+  })
+  const todosMarcados = items.length > 0 && items.every(t => seleccion.has(t.id))
   const urlMasiva = masiva && `/center/gestionMasiva?accion=${masiva.accion}&ids=${[...seleccion].join(",")}`
 
   return (
@@ -241,17 +280,57 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
           </p>
         ) : (
           <>
+            {/* Resumen por municipio: barra proporcional a la cantidad; al tocarla filtra la lista */}
+            {municipios.length > 0 && (
+              <div className="mb-3 rounded-lg border border-slate-200 px-4 py-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Por municipio</p>
+                <ul className="max-h-56 gap-x-8 overflow-y-auto lg:columns-2">
+                  {municipios.map(([nombre, cantidad]) => {
+                    const elegido = municipio === nombre
+                    return (
+                      <li key={nombre} className="break-inside-avoid">
+                        <button
+                          type="button"
+                          onClick={() => elegirMunicipio(elegido ? null : nombre)}
+                          aria-pressed={elegido}
+                          title={`${nombre}: ${cantidad} trámite${cantidad === 1 ? "" : "s"}`}
+                          className={clsx("flex w-full items-center gap-3 rounded px-1.5 py-1 text-left text-xs hover:bg-slate-50", elegido && "bg-sky-50")}
+                        >
+                          <span className={clsx("w-36 shrink-0 truncate", elegido ? "font-semibold text-slate-800" : "text-slate-600")}>{nombre}</span>
+                          <span className="h-2 min-w-0 flex-1">
+                            <span className="block h-2 rounded-r bg-[#0284c7]" style={{ width: `${Math.max(4, (cantidad / municipios[0][1]) * 100)}%` }} />
+                          </span>
+                          <span className="w-8 shrink-0 text-right font-semibold tabular-nums text-slate-700">{miles(cantidad)}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+
             {/* Marcar trámites y gestionarlos juntos en la Gestión masiva */}
             {masiva && (
               <div className="mb-2 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                {municipios.length > 0 && (
+                  <label className="flex w-full items-center gap-2 sm:w-72">
+                    <span className="shrink-0 font-medium text-slate-500">Municipio</span>
+                    <span className="min-w-0 flex-1">
+                      <SelectBuscable value={municipio ?? ""} onChange={e => elegirMunicipio(e.target.value || null)} className={`${claseInput} h-8 text-xs`} aria-label="Municipio">
+                        <option value="">Todos ({miles(lista.items.length)})</option>
+                        {municipios.map(([nombre, cantidad]) => <option key={nombre} value={nombre}>{nombre} ({miles(cantidad)})</option>)}
+                      </SelectBuscable>
+                    </span>
+                  </label>
+                )}
                 <label className="inline-flex cursor-pointer items-center gap-2 text-slate-600">
                   <input
                     type="checkbox"
                     checked={todosMarcados}
-                    onChange={() => setSeleccion(todosMarcados ? new Set() : new Set(lista.items.map(t => t.id)))}
+                    onChange={() => setSeleccion(todosMarcados ? new Set() : new Set(items.map(t => t.id)))}
                     className="h-4 w-4 accent-sky-500"
                   />
-                  Marcar todos ({miles(lista.items.length)})
+                  Marcar todos ({miles(items.length)})
                 </label>
                 {seleccion.size > 0 && (
                   <>
@@ -278,7 +357,25 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
             )}
 
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
-              {lista.items.map(t => (
+              {grupos.map(([nombre, delGrupo]) => (
+                <Fragment key={nombre ?? "todos"}>
+                  {nombre !== null && (
+                    <li className="flex items-center gap-2 bg-slate-50 px-4 py-2 text-xs">
+                      {masiva && (
+                        <input
+                          type="checkbox"
+                          checked={delGrupo.every(t => seleccion.has(t.id))}
+                          onChange={() => marcarGrupo(delGrupo)}
+                          className="h-4 w-4 accent-sky-500"
+                          aria-label={`Marcar los de ${nombre}`}
+                        />
+                      )}
+                      <MapPin size={13} className="shrink-0 text-slate-400" aria-hidden="true" />
+                      <span className="font-semibold text-slate-700">{nombre}</span>
+                      <span className="text-slate-400">{miles(delGrupo.length)} trámite{delGrupo.length === 1 ? "" : "s"}</span>
+                    </li>
+                  )}
+                  {delGrupo.map(t => (
                 <li key={t.id} className={clsx("flex items-stretch", seleccion.has(t.id) && "bg-sky-50/60")}>
                   {masiva && (
                     <label className="flex shrink-0 cursor-pointer items-center pl-4 pr-1">
@@ -321,6 +418,8 @@ export default function RequiereAtencion({ tablero, mostrarSinAnalista }: { tabl
                     <ChevronRight size={15} className="shrink-0 text-slate-300 group-hover:text-sky-500" aria-hidden="true" />
                   </Link>
                 </li>
+                  ))}
+                </Fragment>
               ))}
             </ul>
             {lista.total > lista.items.length && (

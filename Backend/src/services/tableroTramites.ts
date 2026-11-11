@@ -490,7 +490,14 @@ export const obtenerTablero = async (filtros: FiltrosTablero, hoy: string, opcio
       .map(f => resumenTramite(f, { diasEnNovedad: f.ultimoEstado ? diasEntre(f.ultimoEstado, hoy) : 0 }))
       .sort((a, b) => b.diasEnNovedad - a.diasEnNovedad)),
     realizadoSinFinalizar: alerta(abiertos.filter(f => f.reportadoRealizado).map(f => resumenTramite(f))),
-    sinTramitador: alerta(abiertos.filter(f => !f.tramitadorId).map(f => resumenTramite(f))),
+    // Completa (sin el límite de la lista) y ordenada por municipio: la pantalla la agrupa por
+    // municipio para que el analista consiga tramitador y negocie el valor por zona (2026-11-11)
+    sinTramitador: (() => {
+      const items = abiertos.filter(f => !f.tramitadorId)
+        .sort((a, b) => (a.municipio ?? '').localeCompare(b.municipio ?? '', 'es') || a.id - b.id)
+        .map(f => resumenTramite(f))
+      return { total: items.length, items }
+    })(),
     // Los que esperan el envío de documentos o el pago no se pueden programar todavía: no son alerta
     sinProgramacion: alerta(abiertos.filter(f => f.estado === SIN_INICIAR && !f.fechaProgramada && !esperandoEnvio(f)).map(f => resumenTramite(f))),
     sinMovimiento: alerta(abiertos

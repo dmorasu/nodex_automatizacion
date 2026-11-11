@@ -594,8 +594,9 @@ static filtrarSolicitudes = async (req: Request, res: Response) => {
     if (analistaId === 'sin') where.analistaAsignado = null
     else if (Number(analistaId) > 0) where.analistaAsignado = Number(analistaId)
 
-    // El analista ve solo sus trámites; al buscar por número o identificación, encuentra cualquiera
-    if (esAnalistaTramites(req) && !search) where.analistaAsignado = req.usuario.id
+    // El analista ve solo sus trámites; al buscar por número, identificación o placa encuentra
+    // cualquiera: con la placa ve todo lo de ese vehículo aunque lo lleve otro analista (2026-11-11)
+    if (esAnalistaTramites(req) && !search && !String(placa ?? '').trim()) where.analistaAsignado = req.usuario.id
 
     // ==================================================
     // 🔹 FILTRO POR FECHA FINALIZACIÓN SERVICIO

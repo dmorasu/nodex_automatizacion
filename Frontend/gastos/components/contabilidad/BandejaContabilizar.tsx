@@ -8,12 +8,15 @@ import { BookCheck, CopyCheck, Loader2 } from "lucide-react"
 import { contabilizarCuentas } from "@/actions/gastos/contabilidad"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import type { CuentaListado } from "@/src/schemas/gastos"
+import EstadoGasto from "../gastos/EstadoGasto"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
-// Cuentas de cobro legalizadas, con selección para contabilizarlas de una vez.
+// Cuentas de cobro por contabilizar, con selección para contabilizarlas de una vez.
 // Cada cuenta lleva su documento contable (se puede copiar el mismo a todas).
+// También salen los borradores para que Contabilidad los vea, pero solo se seleccionan
+// las legalizadas: el backend no contabiliza una cuenta que no esté Legalizada.
 export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListado[] }) {
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set())
   const [abierto, setAbierto] = useState(false)
@@ -22,9 +25,10 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
   const [documentos, setDocumentos] = useState<Record<number, string>>({})
   const [guardando, startGuardar] = useTransition()
 
-  const seleccionadas = useMemo(() => cuentas.filter(c => seleccion.has(c.id)), [cuentas, seleccion])
+  const seleccionables = useMemo(() => cuentas.filter(c => c.estado.codigo === "LEGALIZADA"), [cuentas])
+  const seleccionadas = useMemo(() => seleccionables.filter(c => seleccion.has(c.id)), [seleccionables, seleccion])
   const total = seleccionadas.reduce((suma, c) => suma + Number(c.totalLegalizado), 0)
-  const todasMarcadas = cuentas.length > 0 && seleccionadas.length === cuentas.length
+  const todasMarcadas = seleccionables.length > 0 && seleccionadas.length === seleccionables.length
 
   const alternar = (id: number) =>
     setSeleccion(actual => {
@@ -85,7 +89,8 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
                 <input
                   type="checkbox"
                   checked={todasMarcadas}
-                  onChange={() => setSeleccion(todasMarcadas ? new Set() : new Set(cuentas.map(c => c.id)))}
+                  disabled={seleccionables.length === 0}
+                  onChange={() => setSeleccion(todasMarcadas ? new Set() : new Set(seleccionables.map(c => c.id)))}
                   className="h-4 w-4 accent-emerald-600"
                   aria-label="Seleccionar todas"
                 />
@@ -97,19 +102,23 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
               <th className="px-4 py-3 font-semibold text-right">Facturas</th>
               <th className="px-4 py-3 font-semibold text-right">4x1000</th>
               <th className="px-4 py-3 font-semibold text-right">Total legalizado</th>
+              <th className="px-4 py-3 font-semibold">Estado</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {cuentas.map(cuenta => (
+            {cuentas.map(cuenta => {
+              const legalizada = cuenta.estado.codigo === "LEGALIZADA"
+              return (
               <tr
                 key={cuenta.id}
-                onClick={() => alternar(cuenta.id)}
-                className={`cursor-pointer ${seleccion.has(cuenta.id) ? "bg-emerald-50/60" : "hover:bg-slate-50"}`}
+                onClick={() => legalizada && alternar(cuenta.id)}
+                className={legalizada ? `cursor-pointer ${seleccion.has(cuenta.id) ? "bg-emerald-50/60" : "hover:bg-slate-50"}` : "hover:bg-slate-50"}
               >
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
                     checked={seleccion.has(cuenta.id)}
+                    disabled={!legalizada}
                     onChange={() => alternar(cuenta.id)}
                     onClick={e => e.stopPropagation()}
                     className="h-4 w-4 accent-emerald-600"
@@ -117,7 +126,7 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
                   />
                 </td>
                 <td className="px-4 py-3">
-                  <Link href={`/contabilidad/cuentas/${cuenta.id}`} onClick={e => e.stopPropagation()} className="font-semibold text-emerald-700 hover:underline">
+                  <Link href={`/contabilidad/por-contabilizar/${cuenta.id}`} onClick={e => e.stopPropagation()} className="font-semibold text-emerald-700 hover:underline">
                     {cuenta.numeroCuentaCobro}
                   </Link>
                 </td>
@@ -127,13 +136,15 @@ export default function BandejaContabilizar({ cuentas }: { cuentas: CuentaListad
                 <td className="px-4 py-3 text-right text-slate-600">{formatoMoneda(cuenta.totalFacturas)}</td>
                 <td className="px-4 py-3 text-right text-slate-500">{formatoMoneda(cuenta.totalCuatroXMil)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatoMoneda(cuenta.totalLegalizado)}</td>
+                <td className="px-4 py-3"><EstadoGasto codigo={cuenta.estado.codigo} nombre={cuenta.estado.nombre} /></td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
 
         {cuentas.length === 0 && (
-          <p className="py-14 text-center text-sm text-slate-400">No hay cuentas de cobro legalizadas pendientes de contabilizar.</p>
+          <p className="py-14 text-center text-sm text-slate-400">No hay cuentas de cobro pendientes de contabilizar.</p>
         )}
       </div>
 

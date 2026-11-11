@@ -427,7 +427,8 @@ export const CuentaDetalleSchema = CuentaListadoSchema.omit({ cantidadGastos: tr
     editar: z.boolean(),
     legalizar: z.boolean(),
     subirDocumentos: z.boolean(),
-    reversar: z.boolean().default(false)
+    reversar: z.boolean().default(false),
+    anular: z.boolean().default(false)
   })
 })
 

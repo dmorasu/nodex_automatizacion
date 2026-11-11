@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { fetchApi } from "./api"
 import { CuentaDetalleSchema, ListadoCuentasSchema, ListadoReintegrosSchema } from "../schemas/gastos"
 
-export const obtenerCuentas = async (filtros: { estado?: string, busqueda?: string, pagina?: number, tamano?: number }) => {
+export const obtenerCuentas = async (filtros: { estado?: string, busqueda?: string, pagina?: number, tamano?: number, porContabilizar?: "si" }) => {
   const consulta = new URLSearchParams(
     Object.entries(filtros).filter(([, v]) => v).map(([k, v]) => [k, String(v)])
   )

@@ -95,9 +95,12 @@ export const contabilizarGastos = (
 
 export type CuentaAContabilizar = { id: number, documentoContable: string }
 
-// Contabiliza una o varias cuentas de cobro legalizadas. Todo o nada:
+// Contabiliza una o varias cuentas de cobro. Todo o nada:
 // · la contabilización queda Contabilizada con documento, fecha y usuario
-// · la cuenta pasa a CONTABILIZADA y sus gastos a CONTABILIZADO
+// · legalizada: la cuenta pasa a CONTABILIZADA y sus gastos a CONTABILIZADO
+// · en borrador (decisión del usuario, 2026-11-11): solo se guarda la contabilización y la cuenta
+//   sigue en Borrador para que Legalización la termine; al legalizarla (dinero a la bolsa) queda
+//   Contabilizada de una vez (`legalizarCuenta`)
 export const contabilizarCuentas = (
   cuentas: CuentaAContabilizar[],
   fechaContabilizacion: string | null,
@@ -115,6 +118,7 @@ export const contabilizarCuentas = (
     if (registros.length !== ids.length) throw new ErrorGastos('Una o más cuentas de cobro no existen')
 
     const legalizada = await estadosCuenta.id(ESTADOS_CUENTA_COBRO.LEGALIZADA)
+    const borrador = await estadosCuenta.id(ESTADOS_CUENTA_COBRO.BORRADOR)
     const contabilizada = await estadosCuenta.id(ESTADOS_CUENTA_COBRO.CONTABILIZADA)
     const fecha = fechaContabilizacion ? new Date(`${fechaContabilizacion}T12:00:00`) : new Date()
 
@@ -122,8 +126,8 @@ export const contabilizarCuentas = (
       const cuenta = registros.find(c => c.id === id)!
       const documento = documentoContable?.trim()
 
-      if (cuenta.estadoId !== legalizada) {
-        throw new ErrorGastos(`La cuenta de cobro ${cuenta.numeroCuentaCobro} no está legalizada`)
+      if (cuenta.estadoId !== legalizada && cuenta.estadoId !== borrador) {
+        throw new ErrorGastos(`La cuenta de cobro ${cuenta.numeroCuentaCobro} no está en borrador ni legalizada`)
       }
       if (!documento) {
         throw new ErrorGastos(`Falta el documento contable de la cuenta ${cuenta.numeroCuentaCobro}`)
@@ -135,6 +139,9 @@ export const contabilizarCuentas = (
         defaults: { cuentaCobroId: cuenta.id },
         transaction
       })
+      if (contabilizacion.contabilizado) {
+        throw new ErrorGastos(`La cuenta de cobro ${cuenta.numeroCuentaCobro} ya fue contabilizada`)
+      }
 
       await contabilizacion.update({
         contabilizado: true,
@@ -142,6 +149,17 @@ export const contabilizarCuentas = (
         fechaContabilizacion: fecha,
         contabilizadoPor: usuarioId
       }, { transaction })
+
+      if (cuenta.estadoId === borrador) {
+        await TrazabilidadCuentasCobro.create({
+          cuentaCobroId: cuenta.id,
+          estadoAnteriorId: borrador,
+          estadoNuevoId: borrador,
+          usuarioId,
+          observacion: `Contabilizada en borrador con documento ${documento}: queda Contabilizada al legalizarla`
+        }, { transaction })
+        continue
+      }
 
       const nota = `Contabilizado con documento ${documento} (cuenta de cobro ${cuenta.numeroCuentaCobro})`
 

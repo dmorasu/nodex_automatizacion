@@ -341,7 +341,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
         <div class="cuerpo">
           <ol class="pasos">
             <li><span>Escriba en <b>Buscar</b> el número del trámite o la identificación del cliente.</span></li>
-            <li><span>Si necesita, use los filtros: placa, estado, tipo, analista, tramitador, operación o fechas.</span></li>
+            <li><span>Si necesita, use los filtros: placa (encuentra el trámite por cualquiera de sus placas), estado, tipo, analista, tramitador, operación o fechas.</span></li>
             <li><span>Presione <b>Filtrar</b>. Con <b>Limpiar</b> vuelve a ver todo.</span></li>
             <li><span>Toque el número del trámite o el <b>ojo</b> para abrirlo, o el <b>lápiz</b> para editarlo.</span></li>
           </ol>
@@ -363,8 +363,8 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
             <li><span>Elija cliente, tipo de trámite, operación y entidad.</span></li>
             <li><span>En <b>Dirección</b>, escriba la dirección o el lugar y elija una sugerencia. También puede pegar un enlace de Google Maps. El municipio se llena solo.</span></li>
             <li><span>Escriba el <b>detalle</b>: el contador le avisa cuando se acerca a los 200 caracteres.</span></li>
-            <li><span>Marque <b>Placa</b> (vehículos) o <b>Matrícula inmobiliaria</b> (inmuebles) y escriba el número.</span></li>
-            <li><span>En <b>¿Depende de envío de documentos?</b> marque <b>Sí</b> si el trámite no puede empezar hasta que lleguen los documentos. Aparecen los envíos de esa placa o matrícula: elija el que corresponde. Si todavía no existe, guarde sin elegir y relaciónelo después en <b>Editar trámite</b>.</span></li>
+            <li><span>Marque <b>Placa</b> (vehículos) o <b>Matrícula inmobiliaria</b> (inmuebles) y escriba el número. Puede poner <b>hasta 10 placas</b>: escriba cada una y presione Enter, coma o espacio (también puede pegar varias); quite una con la <b>X</b>.</span></li>
+            <li><span>En <b>¿Depende de envío de documentos?</b> marque <b>Sí</b> si el trámite no puede empezar hasta que lleguen los documentos. Aparecen los envíos de esa placa (o de cualquiera de las placas) o matrícula: elija el que corresponde. Si todavía no existe, guarde sin elegir y relaciónelo después en <b>Editar trámite</b>.</span></li>
             <li><span>Si ya tiene los documentos, presione <b>Seleccionar documentos</b> (PDF o JPG, hasta 10, de máximo 32 MB y con nombre de hasta 20 caracteres). Puede quitar uno con la <b>X</b>.</span></li>
             <li><span>Guarde. El analista se asigna solo según el municipio y los documentos se suben al trámite. Si fallan, el trámite igual queda creado y se suben desde la pestaña <b>Documentos</b>.</span></li>
           </ol>
@@ -412,7 +412,7 @@ footer { margin-top: 56px; text-align: center; color: var(--tenue); font-size: .
           <ol class="pasos">
             <li><span>Entre a <b>Cargue masivo de trámites</b>, pestaña <b>En pantalla</b>.</span></li>
             <li><span>Llene los <b>valores comunes</b> (cliente, tipo, operación, entidad, municipio, fecha…): se aplican a todas las filas que no los cambien.</span></li>
-            <li><span>Agregue las filas: con <b>Agregar fila</b>, <b>Pegar filas desde Excel</b> o <b>Importar Excel</b> (hay una plantilla para descargar). Lo que no se reconozca queda marcado para elegirlo.</span></li>
+            <li><span>Agregue las filas: con <b>Agregar fila</b>, <b>Pegar filas desde Excel</b> o <b>Importar Excel</b> (hay una plantilla para descargar). Lo que no se reconozca queda marcado para elegirlo. Una fila puede llevar <b>hasta 10 placas</b> separadas por coma (ej. <code>ABC123, DEF456</code>).</span></li>
             <li><span>Si el trámite lleva gasto, marque la casilla <b>Gasto</b> de esa fila y llene sus datos.</span></li>
             <li><span>Si los trámites dependen de un envío de documentos, marque <b>Sí</b> en <b>¿Depende de envío de documentos?</b> (para todos en los valores comunes, o fila por fila en la columna <b>Depende de envío</b>). En Excel use las columnas <b>Depende de envío</b> y <b>N° del envío</b>.</span></li>
             <li><span>Presione <b>Validar</b>: cada fila muestra sus errores y los avisos (por ejemplo, un trámite igual ya abierto). En las filas que dependen de un envío aparecen los envíos de esa placa o matrícula: si hay uno solo queda elegido; si hay varios, elija cuál. Si todavía no existe, guarde y relaciónelo después en <b>Editar trámite</b>.</span></li>

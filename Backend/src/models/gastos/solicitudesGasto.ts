@@ -129,8 +129,8 @@ class SolicitudesGasto extends Model {
   @Column({ type: DataType.STRING(50) })
   declare matriculaInmobiliaria: string
 
-  // Vehículo
-  @Column({ type: DataType.STRING(20) })
+  // Vehículo. 100: el gasto de un trámite con varias placas las lleva todas ("ABC123, DEF456")
+  @Column({ type: DataType.STRING(100) })
   declare placa: string
 
   @Column({ type: DataType.STRING(100) })

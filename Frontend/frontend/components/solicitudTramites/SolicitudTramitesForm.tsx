@@ -26,6 +26,7 @@ import { toast } from "react-toastify";
 import { TIPOS_DOCUMENTO, validarDocumentos } from "@/src/lib/documentosTramite";
 import CampoDireccion, { type MunicipioSugerido } from "../direcciones/CampoDireccion";
 import DependenciaEnvio from "./DependenciaEnvio";
+import CampoPlacas from "./CampoPlacas";
 
 
 
@@ -526,39 +527,13 @@ export default function SolicitudTramitesForm({
               "
             >
 
-              Placa
+              Placas
 
             </label>
 
 
-            <input
-              type="text"
-              id="placa"
-              name="placa"
-              required
-              placeholder="Ingrese la placa"
-              defaultValue={
-                solicitud?.placa ?? ""
-              }
-              onChange={e => setIdentificador(e.target.value)}
-              className="
-                w-full
-                h-10
-                px-3
-                text-xs
-                text-slate-700
-                bg-white
-                border
-                border-slate-200
-                rounded-md
-                outline-none
-                transition
-                placeholder:text-slate-300
-                focus:border-sky-400
-                focus:ring-2
-                focus:ring-sky-100
-              "
-            />
+            {/* Hasta 10 placas; se envían en "placa" como "ABC123, DEF456" */}
+            <CampoPlacas name="placa" onCambiar={setIdentificador} />
 
           </div>
 

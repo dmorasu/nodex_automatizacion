@@ -460,7 +460,7 @@ export default function CargueEnPantalla() {
                             // Si lo escrito tiene forma de placa (ABC123) se marca como placa
                             cambiarFila(f.clave, { identificador: f.tipoIdentificador === "placa" ? v.toUpperCase() : v, tipoIdentificador: parecePlaca(v) ? "placa" : f.tipoIdentificador, envios: null, envioTramiteId: null })
                           }}
-                          maxLength={50}
+                          maxLength={100}
                           placeholder={f.tipoIdentificador === "placa" ? "ABC123" : "Matrícula"}
                           className={claseCampo}
                         />

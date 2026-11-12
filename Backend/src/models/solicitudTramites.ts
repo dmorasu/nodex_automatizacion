@@ -29,6 +29,7 @@ import EvaluacionSolicitud from "./evaluacionSolicitud"
 import SubEstadosSolicitud from './subEstadosSolicitud';
 import DocumentoSolicitud from "./documentosSolicitud";
 import Estados from "./estados";
+import PlacaTramite from "./placaTramite";
 
 @Table({
   tableName: "SolicitudTramites",
@@ -151,6 +152,16 @@ class SolicitudTramites extends Model {
     await pasarTramitadorAGastos(solicitud.id, Number(solicitud.tramitadorId), solicitud.usuarioQueModifica ?? null, opciones.transaction ?? null)
   }
 
+  // Cada placa del texto en solicitud_tramite_placas, para buscar el trámite por cualquiera de ellas
+  // (al crear o cuando cambia la placa; en la misma transacción)
+  @AfterSave
+  static async sincronizarPlacas(solicitud: SolicitudTramites, opciones: { transaction?: Transaction | null }) {
+    if (!solicitud.changed('placa')) return
+    // require diferido: el servicio usa el modelo de placas, que importa este
+    const { sincronizarPlacas } = require('../services/placasTramite') as typeof import('../services/placasTramite')
+    await sincronizarPlacas(solicitud.id, solicitud.placa, opciones.transaction ?? null)
+  }
+
   // ===== Relaciones Base =====
 
   @ForeignKey(() => Usuarios)
@@ -225,6 +236,10 @@ declare evaluacion: EvaluacionSolicitud
   foreignKey: "solicitudTramiteId",
 })
 declare documentos: DocumentoSolicitud[];
+
+  // Placas del trámite, una por fila (hasta 10 en los nuevos)
+  @HasMany(() => PlacaTramite, { foreignKey: "solicitudTramiteId" })
+  declare placas: PlacaTramite[];
 
   @HasMany(() => EstadosTramites, { foreignKey: "solicitudTramiteId" })
   declare estadosTramites: EstadosTramites[];

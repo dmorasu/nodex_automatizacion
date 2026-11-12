@@ -547,7 +547,7 @@ export default function FormularioGasto({
         {codigoTipo === "VEHICULO" && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Campo etiqueta="Placa" obligatorio>
-              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
             </Campo>
             <Campo etiqueta="Tránsito" obligatorio>
               <input value={datos.transito} onChange={e => cambiar("transito", e.target.value)} maxLength={100} placeholder="Ej: Tránsito de Bogotá" className={claseInput} />
@@ -567,7 +567,7 @@ export default function FormularioGasto({
         {codigoTipo === "CTL" && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Campo etiqueta="Placa (si es de un vehículo)">
-              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
             </Campo>
             <Campo etiqueta="Matrícula inmobiliaria (si es de un inmueble)">
               <input value={datos.matriculaInmobiliaria} onChange={e => cambiar("matriculaInmobiliaria", e.target.value)} maxLength={50} className={claseInput} />
@@ -579,7 +579,7 @@ export default function FormularioGasto({
         {codigoTipo === "CAMARA_COMERCIO" && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Campo etiqueta="Placa">
-              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
             </Campo>
             <Campo etiqueta="Matrícula inmobiliaria">
               <input value={datos.matriculaInmobiliaria} onChange={e => cambiar("matriculaInmobiliaria", e.target.value)} maxLength={50} className={claseInput} />
@@ -591,7 +591,7 @@ export default function FormularioGasto({
         {codigoTipo === "RUNT" && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Campo etiqueta="Placa del vehículo">
-              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+              <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
             </Campo>
           </div>
         )}

@@ -16,6 +16,7 @@ import { ErrorGastos } from './gastos/errores'
 import { TIPOS_BOLSA } from './gastos/constantes'
 import { ubicarEnSegundoPlano } from './mensajeria/ubicacion'
 import { anotarDependenciaAlCrear, enviosRelacionables, type EnvioRelacionable } from './dependenciaEnvio'
+import { MAXIMO_PLACAS, separarPlacas, textoDePlacas } from './placasTramite'
 
 // =====================================
 // CARGUE MASIVO DE TRÁMITES EN PANTALLA
@@ -183,7 +184,7 @@ const datosGasto = (fila: FilaCargue, operacionId: number, solicitudTramiteId: n
     formaPagoId: Number(g.formaPagoId),
     conceptoPago: texto(g.conceptoPago),
     valorSolicitado: Number(String(g.valorSolicitado ?? '').replace(/[^\d.]/g, '')),
-    placa: texto(fila.placa) || null,
+    placa: textoDePlacas(separarPlacas(fila.placa)),
     matriculaInmobiliaria: texto(fila.matricula) || null,
     transito: texto(g.transito) || null,
     reembolsable: g.reembolsable ?? true,
@@ -210,17 +211,23 @@ export const validarCargue = async (filas: FilaCargue[]) => {
       Tramites.findAll({ attributes: ['id', 'nombreTramite'] }),
       db.query<{ id: number }>('SELECT id FROM "Municipios"', { type: QueryTypes.SELECT })
     ]),
-    // Trámites abiertos (ni Finalizado ni Desistido) con la misma placa o matrícula
+    // Trámites abiertos (ni Finalizado ni Desistido) con alguna de las placas o la misma matrícula.
+    // Las placas se cruzan con solicitud_tramite_placas: una fila por cada placa en común
     (async () => {
-      const placas = [...new Set(filas.map(f => normalizar(f.placa)).filter(Boolean))]
+      const placas = [...new Set(filas.flatMap(f => separarPlacas(f.placa)))]
       const matriculas = [...new Set(filas.map(f => normalizar(f.matricula)).filter(Boolean))]
       if (!placas.length && !matriculas.length) return []
       return db.query<{ id: number, placa: string | null, matricula: string | null, tramiteId: number | null }>(`
-        SELECT t.id, UPPER(TRIM(t.placa)) AS placa, UPPER(TRIM(t."matriculaInmobiliaria")) AS matricula, t."tramiteId"
+        SELECT t.id, pt.placa, NULL AS matricula, t."tramiteId"
+        FROM solicitud_tramite_placas pt
+        JOIN "SolicitudTramites" t ON t.id = pt.solicitud_tramite_id
+        LEFT JOIN "Estados" e ON e.id = t."estadoActualTramite"
+        WHERE pt.placa IN (:placas) AND COALESCE(e."nombreEstado", '') NOT IN ('Finalizado', 'Desistido')
+        UNION ALL
+        SELECT t.id, NULL, UPPER(TRIM(t."matriculaInmobiliaria")), t."tramiteId"
         FROM "SolicitudTramites" t
         LEFT JOIN "Estados" e ON e.id = t."estadoActualTramite"
-        WHERE (UPPER(TRIM(t.placa)) IN (:placas) OR UPPER(TRIM(t."matriculaInmobiliaria")) IN (:matriculas))
-          AND COALESCE(e."nombreEstado", '') NOT IN ('Finalizado', 'Desistido')
+        WHERE UPPER(TRIM(t."matriculaInmobiliaria")) IN (:matriculas) AND COALESCE(e."nombreEstado", '') NOT IN ('Finalizado', 'Desistido')
       `, { replacements: { placas: placas.length ? placas : [''], matriculas: matriculas.length ? matriculas : [''] }, type: QueryTypes.SELECT })
     })(),
     enviosDeLasFilas(filas)
@@ -248,13 +255,20 @@ export const validarCargue = async (filas: FilaCargue[]) => {
     if (!texto(fila.direccion)) errores.push('Falta la dirección')
     if (!fechaValida(texto(fila.fechaEntregaResultado))) errores.push('Falta la fecha de entrega del resultado')
     if (!texto(fila.placa) && !texto(fila.matricula)) errores.push('Falta la placa o la matrícula inmobiliaria')
+    const placas = separarPlacas(fila.placa)
+    if (texto(fila.placa) && !placas.length) errores.push(`"${texto(fila.placa)}" no es una placa válida`)
+    if (placas.length > MAXIMO_PLACAS) errores.push(`Máximo ${MAXIMO_PLACAS} placas por trámite (hay ${placas.length})`)
 
-    // Repetidos: en el mismo cargue y contra trámites abiertos del mismo tipo
-    const clave = normalizar(fila.placa) || normalizar(fila.matricula)
-    if (clave) {
-      const repetida = filas.findIndex((otra, j) => j !== i && (normalizar(otra.placa) || normalizar(otra.matricula)) === clave && Number(otra.tramiteId) === Number(fila.tramiteId))
+    // Repetidos: en el mismo cargue y contra trámites abiertos del mismo tipo (con varias placas,
+    // basta una en común)
+    const matricula = esPlaca(fila) ? '' : normalizar(fila.matricula)
+    const coincide = (otrasPlacas: string[], otraMatricula: string | null) =>
+      esPlaca(fila) ? otrasPlacas.some(p => placas.includes(p)) : Boolean(matricula) && otraMatricula === matricula
+    if (placas.length || matricula) {
+      const repetida = filas.findIndex((otra, j) => j !== i && Number(otra.tramiteId) === Number(fila.tramiteId)
+        && coincide(separarPlacas(otra.placa), esPlaca(otra) ? null : normalizar(otra.matricula)))
       if (repetida !== -1) avisos.push(`La fila ${repetida + 1} tiene la misma ${esPlaca(fila) ? 'placa' : 'matrícula'} y el mismo tipo de trámite`)
-      const abierto = abiertos.find(t => (esPlaca(fila) ? t.placa : t.matricula) === clave && Number(t.tramiteId) === Number(fila.tramiteId))
+      const abierto = abiertos.find(t => Number(t.tramiteId) === Number(fila.tramiteId) && coincide(t.placa ? [t.placa] : [], t.matricula))
       if (abierto) avisos.push(`Ya existe el trámite #${abierto.id} abierto de ${nombreTramite(fila.tramiteId)} para esta ${esPlaca(fila) ? 'placa' : 'matrícula'}`)
     }
 
@@ -335,7 +349,8 @@ export const crearCargue = async (filas: FilaCargue[], usuarioId: number) => {
         usuarioId,
         detalleSolicitud: texto(fila.detalle),
         direccionTramite: texto(fila.direccion),
-        placa: texto(fila.placa).toUpperCase() || null,
+        // Placas normalizadas ("ABC123, DEF456"); el hook del modelo llena la tabla de placas
+        placa: textoDePlacas(separarPlacas(fila.placa)),
         matriculaInmobiliaria: texto(fila.matricula) || null,
         documentosAportados: texto(fila.documentosAportados) || 'No',
         // Medianoche de Colombia, como el formulario
@@ -362,7 +377,7 @@ export const crearCargue = async (filas: FilaCargue[], usuarioId: number) => {
 // ── Plantilla e importación de Excel ──
 
 const COLUMNAS_EXCEL = [
-  { titulo: 'Placa', ancho: 10, nota: 'Placa del vehículo (o deje vacía y use Matrícula)' },
+  { titulo: 'Placa', ancho: 14, nota: 'Placa del vehículo; hasta 10 separadas por coma (o deje vacía y use Matrícula)' },
   { titulo: 'Matrícula', ancho: 14, nota: 'Matrícula inmobiliaria (si no es vehículo)' },
   { titulo: 'Detalle', ancho: 40, nota: 'Obligatorio. Máximo 200 caracteres' },
   { titulo: 'Dirección', ancho: 34, nota: 'Obligatoria' },

@@ -1,6 +1,8 @@
 // Lógica del cargue masivo de trámites en pantalla (sin React): tipos, lectura de lo pegado
 // desde Excel y resolución de nombres contra los catálogos.
 
+import { separarPlacas, textoDePlacas } from "./placas"
+
 export type Item = { id: number, nombre: string }
 export type Municipio = Item & { departamento: string | null }
 
@@ -106,8 +108,12 @@ const siNo = (texto?: string) => /^s[ií]$/i.test(texto?.trim() ?? "") ? true : 
 export const normalizar = (texto: string) =>
   texto.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toUpperCase()
 
-// Placa colombiana: ABC123 (carro) o ABC12D (moto). Lo demás se toma como matrícula inmobiliaria
-export const parecePlaca = (texto: string) => /^[A-Z]{3}\s?-?\d{2}[A-Z0-9]$/.test(texto.trim().toUpperCase())
+// Placa colombiana: ABC123 (carro) o ABC12D (moto). Lo demás se toma como matrícula inmobiliaria.
+// Con varias placas ("ABC123, DEF456", hasta 10 por trámite) todas deben tener esa forma
+export const parecePlaca = (texto: string) => {
+  const placas = separarPlacas(texto)
+  return placas.length > 0 && placas.every(p => /^[A-Z]{3}\d{2}[A-Z0-9]$/.test(p))
+}
 
 // Busca por nombre (sin tildes ni mayúsculas) o por id si es un número
 export const buscarEn = <T extends Item>(lista: T[], texto: string): T | null => {
@@ -182,7 +188,7 @@ export const filaDeDatos = (d: DatosCrudos, catalogos: Catalogos): Fila => {
 
   return {
     ...fila,
-    identificador: esPlaca ? identificador.toUpperCase().replace(/[\s-]/g, "") : identificador,
+    identificador: esPlaca ? textoDePlacas(separarPlacas(identificador)) : identificador,
     tipoIdentificador: esPlaca ? "placa" : "matricula",
     detalle: d.detalle ?? "",
     direccion: d.direccion ?? "",

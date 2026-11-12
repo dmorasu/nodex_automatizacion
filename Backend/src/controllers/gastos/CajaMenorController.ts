@@ -14,7 +14,7 @@ import {
   quitarDelReembolso, rechazarReembolso, contabilizarReembolso, resumenCajas, revisarTopeCaja, usuariosDeCajas, historialCaja, cajaBloqueada,
   type FiltrosHistorialCaja, subirSoportesCaja
 } from '../../services/gastos/cajaMenor'
-import { generarExcelHistorialCaja } from '../../services/gastos/excelCajaMenor'
+import { generarExcelHistorialCaja, generarExcelReembolsosCaja } from '../../services/gastos/excelCajaMenor'
 import { notificarReembolsoEnviado, notificarReembolsoRevisado, notificarTopeCaja } from '../../services/gastos/notificacionesGastos'
 import { ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
@@ -60,6 +60,21 @@ const filtrosHistorial = (req: Request): FiltrosHistorialCaja => ({
 const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
 const nombreArchivo = (texto: string) =>
   texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
+
+// Filtros del listado de reembolsos (y de su Excel): caja, estados y contabilizados. La auxiliar de
+// caja menor solo ve la caja que tiene asignada (salvo que también sea de Dirección)
+const condicionesReembolsos = async (req: Request) => {
+  const direccion = (req.roles ?? []).includes(ROLES.DIRECCION_NEGOCIO)
+  const permitidas = direccion ? null : await cajasPermitidas(req)
+  const bolsaId = Number(req.query.bolsaId) || null
+  if (bolsaId && permitidas && !permitidas.includes(bolsaId)) throw new ErrorGastos('No tiene acceso a esa caja menor', 403)
+  return {
+    ...(bolsaId ? { bolsaId } : permitidas ? { bolsaId: permitidas } : {}),
+    ...(req.query.estado ? { estado: String(req.query.estado).split(',') } : {}),
+    // Contabilidad: por contabilizar (no) o ya contabilizados en SIESA (si)
+    ...(req.query.contabilizado === 'si' ? { contabilizadoEn: { [Op.ne]: null } } : req.query.contabilizado === 'no' ? { contabilizadoEn: null } : {})
+  }
+}
 
 // Después de mover el saldo: avisa a Tesorería si la caja bajó del tope
 const revisarTope = (bolsaId: number) => void revisarTopeCaja(bolsaId, notificarTopeCaja)
@@ -203,20 +218,10 @@ export class CajaMenorController {
   // GET /caja-menor/reembolsos?bolsaId=&estado=A,B&pagina=&tamano=
   static reembolsos = async (req: Request, res: Response) => {
     try {
-      const direccion = (req.roles ?? []).includes(ROLES.DIRECCION_NEGOCIO)
-      const permitidas = direccion ? null : await cajasPermitidas(req)
-      const bolsaId = Number(req.query.bolsaId) || null
-      if (bolsaId && permitidas && !permitidas.includes(bolsaId)) throw new ErrorGastos('No tiene acceso a esa caja menor', 403)
-
       const pagina = Math.max(1, Number(req.query.pagina) || 1)
       const tamano = Math.min(100, Number(req.query.tamano) || 20)
       const { count, rows } = await ReembolsosCaja.findAndCountAll({
-        where: {
-          ...(bolsaId ? { bolsaId } : permitidas ? { bolsaId: permitidas } : {}),
-          ...(req.query.estado ? { estado: String(req.query.estado).split(',') } : {}),
-          // Contabilidad: por contabilizar (no) o ya contabilizados en SIESA (si)
-          ...(req.query.contabilizado === 'si' ? { contabilizadoEn: { [Op.ne]: null } } : req.query.contabilizado === 'no' ? { contabilizadoEn: null } : {})
-        },
+        where: await condicionesReembolsos(req),
         include: [
           { model: Bolsas, attributes: ['id', 'nombre'] },
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
@@ -231,6 +236,40 @@ export class CajaMenorController {
         offset: (pagina - 1) * tamano
       })
       res.json({ total: count, pagina, tamano, registros: rows })
+    } catch (error) {
+      responderError(res, error)
+    }
+  }
+
+  // GET /caja-menor/reembolsos/exportar (mismos filtros del listado) → Excel con una hoja de
+  // reembolsos y otra con cada gasto legalizado (factura, beneficiario, valores) para SIESA
+  static exportarReembolsos = async (req: Request, res: Response) => {
+    try {
+      const reembolsos = await ReembolsosCaja.findAll({
+        where: await condicionesReembolsos(req),
+        include: [
+          { model: Bolsas, attributes: ['id', 'nombre'] },
+          { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
+          { model: Usuarios, as: 'aprobador', attributes: ATRIBUTOS_USUARIO },
+          { model: Usuarios, as: 'contabilizador', attributes: ATRIBUTOS_USUARIO },
+          {
+            model: LegalizacionesCaja,
+            separate: true,
+            order: [['id', 'ASC']],
+            include: [{
+              model: SolicitudesGasto,
+              attributes: ['id', 'codigo', 'conceptoPago', 'valorRealmentePagado', 'fechaPago', 'placa', 'matriculaInmobiliaria'],
+              include: [{ model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO }]
+            }]
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: 5000
+      })
+      const archivo = generarExcelReembolsosCaja(reembolsos)
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', `attachment; filename="reembolsos-caja-menor-${hoy()}.xlsx"`)
+      res.send(archivo)
     } catch (error) {
       responderError(res, error)
     }

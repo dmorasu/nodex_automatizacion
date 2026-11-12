@@ -293,7 +293,7 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                   {codigoTipo === "VEHICULO" && (
                     <>
                       <Campo etiqueta="Placa" obligatorio>
-                        <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+                        <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
                       </Campo>
                       <Campo etiqueta="Tránsito" obligatorio>
                         <input value={datos.transito} onChange={e => cambiar("transito", e.target.value)} maxLength={100} placeholder="Ej: Tránsito de Bogotá" className={claseInput} />
@@ -340,14 +340,14 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                   {/* Certificado RUNT: de un vehículo (placa opcional). Lo paga Tesorería - Certificados */}
                   {codigoTipo === "RUNT" && (
                     <Campo etiqueta="Placa del vehículo">
-                      <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+                      <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
                     </Campo>
                   )}
                   {/* CTL: de un vehículo o de un inmueble (opcionales). Lo paga Tesorería - Certificados */}
                   {codigoTipo === "CTL" && (
                     <>
                       <Campo etiqueta="Placa (si es de vehículo)">
-                        <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+                        <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
                       </Campo>
                       <Campo etiqueta="Matrícula (si es de inmueble)">
                         <input value={datos.matriculaInmobiliaria} onChange={e => cambiar("matriculaInmobiliaria", e.target.value)} maxLength={50} className={claseInput} />

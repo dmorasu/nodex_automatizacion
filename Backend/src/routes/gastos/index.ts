@@ -172,9 +172,9 @@ router.get('/clientes-empresariales', ClientesEmpresarialesController.listar)
 // ── Documentos ──────────────────────
 router.post('/solicitudes/:id/documentos', recibirDocumentos, validarId, handleInputErrors, DocumentosGastoController.subir)
 router.get('/documentos/:documentoId/ver', DocumentosGastoController.ver)
-// Descarga masiva (ZIP): los roles del módulo que revisan documentos
+// Descarga masiva (ZIP): los roles del módulo que revisan documentos, y desde Mis gastos cualquier
+// usuario con los gastos que puede ver (lo revisa el controlador, verificarGastosDescarga)
 const validarGastosDescarga = [
-  requiereRol(ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA),
   body('gastoIds').isArray({ min: 1, max: 50 }).withMessage('Seleccione entre 1 y 50 gastos'),
   body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido')
 ]
@@ -401,6 +401,7 @@ router.post('/caja-menor/gastos/:id/deshacer', tesoreriaCaja, validarId, handleI
 
 router.get('/caja-menor/reembolsos', cajaODireccion, validarListadoReembolsos, handleInputErrors, CajaMenorController.reembolsos)
 router.post('/caja-menor/reembolsos', tesoreriaCaja, validarNuevoReembolso, handleInputErrors, CajaMenorController.crearReembolso)
+router.get('/caja-menor/reembolsos/exportar', cajaODireccion, validarListadoReembolsos, handleInputErrors, CajaMenorController.exportarReembolsos)
 router.get('/caja-menor/reembolsos/:id', cajaODireccion, validarId, handleInputErrors, CajaMenorController.reembolso)
 router.post('/caja-menor/reembolsos/:id/agregar', tesoreriaCaja, validarGastosReembolso, handleInputErrors, CajaMenorController.agregar)
 router.post('/caja-menor/reembolsos/:id/quitar', tesoreriaCaja, validarGastosReembolso, handleInputErrors, CajaMenorController.quitar)

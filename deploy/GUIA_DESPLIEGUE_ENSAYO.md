@@ -282,6 +282,10 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Varias placas por trámite (2026-11-12)** — cambia el backend, Nodex Trámites y Nodex Gastos: compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-gastos`.
+- **Sin variables.** **Cambios de base (los hace el arranque, idempotentes):** `sync()` crea la tabla `solicitud_tramite_placas` (una fila por placa del trámite, con índice `varchar_pattern_ops`); después `placasDeLosTramites()` la llena con los trámites que aún no tienen filas, separando lo que se escribió en la placa ("JUY118-JUY116", "ABC123 y DEF456"); y `gastos_solicitudes.placa` pasa de `VARCHAR(20)` a `VARCHAR(100)` (ampliar no reescribe la tabla). En desarrollo: 2.111 trámites → 2.739 placas.
+- **Revisar después de arrancar:** `SELECT count(*), count(DISTINCT solicitud_tramite_id) FROM solicitud_tramite_placas;` (los trámites deben ser casi todos los que tienen placa).
+
 **Facturas del tramitador subidas antes del pago (2026-11-11)** — cambia solo el backend: compilarlo y reiniciar `nodex-api` (va en el mismo despliegue que los cambios de Gastos del mismo día).
 - **Sin variables ni cambios de base.** Después de reiniciar, recuperar las que ya quedaron solo en el trámite: en `Backend`, `node dist/scripts/pasarFacturasDelTramiteAGastos.js` (revisión: en producción el 2026-11-11 listaba GAS-2026-000214, 000375, 000376 y 000470) y luego con `--aplicar`. Quedan en Legalización → Soportes de tramitadores.
 

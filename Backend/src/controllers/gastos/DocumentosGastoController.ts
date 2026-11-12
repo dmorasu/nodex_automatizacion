@@ -9,7 +9,7 @@ import Reintegros from '../../models/gastos/reintegros'
 import Anticipos from '../../models/gastos/anticipos'
 import { subirArchivo, obtenerArchivo, eliminarArchivo } from '../../services/azureFileStorage'
 import { codigoEstadoGasto } from '../../services/gastos/estadosGasto'
-import { ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_DOCUMENTO, ESTADOS_LOTE } from '../../services/gastos/constantes'
+import { ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_DOCUMENTO, ESTADOS_LOTE, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { obtenerGastoConAcceso } from './SolicitudesGastoController'
 import { esAdmin, esAuxiliarCaja, puedeVerTodos, responderError } from './utilidades'
@@ -85,6 +85,16 @@ const verificarAccesoLote = async (req: Request, lotePagoId: number) => {
 
 // Busca el documento y verifica acceso según a qué pertenece.
 // soloLectura: los documentos de un gasto (y de sus reintegros) los ven también los de su área, como el gasto
+// Descarga masiva: Legalización, Contabilidad y Tesorería descargan cualquier gasto (como antes);
+// los demás (Mis gastos, 2026-11-12) solo los que pueden ver: los suyos o los de su área
+const ROLES_DESCARGA_MASIVA: string[] = [ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA]
+const verificarGastosDescarga = async (req: Request) => {
+  if ((req.roles ?? []).some(rol => ROLES_DESCARGA_MASIVA.includes(rol))) return
+  for (const id of (req.body.gastoIds as unknown[]).map(Number)) {
+    await obtenerGastoConAcceso(req, id, { soloLectura: true })
+  }
+}
+
 const obtenerDocumentoConAcceso = async (req: Request, { soloLectura = false } = {}) => {
   const documento = await DocumentosGasto.findByPk(Number(req.params.documentoId))
 
@@ -236,6 +246,7 @@ export class DocumentosGastoController {
   // documentos y lo sugerido (la pantalla deja elegir antes de descargar)
   static revisionPdfsDePago = async (req: Request, res: Response) => {
     try {
+      await verificarGastosDescarga(req)
       res.json(await revisionPdfsDePago((req.body.gastoIds as unknown[]).map(Number)))
     } catch (error) {
       responderError(res, error)
@@ -246,6 +257,7 @@ export class DocumentosGastoController {
   // → ZIP sin carpetas (ver generarZipDocumentos)
   static descargarVarios = async (req: Request, res: Response) => {
     try {
+      await verificarGastosDescarga(req)
       const eleccion = (req.body.pdfPago && typeof req.body.pdfPago === 'object' ? req.body.pdfPago : {}) as EleccionPdfPago
       const { contenido, gastos, archivos, faltantes } = await generarZipDocumentos((req.body.gastoIds as unknown[]).map(Number), eleccion)
       const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })

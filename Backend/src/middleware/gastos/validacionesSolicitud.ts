@@ -55,7 +55,7 @@ export const validarGasto = [
 
   textoOpcional('numeroFactura', 50),
   textoOpcional('matriculaInmobiliaria', 50),
-  textoOpcional('placa', 20),
+  textoOpcional('placa', 100),
   textoOpcional('transito', 100),
   textoOpcional('contrato', 50),
   textoOpcional('nombreClienteBanco', 200),

@@ -1,6 +1,6 @@
 import Link from "next/link"
 import ExportarExcel from "@/components/gastos/ExportarExcel"
-import { Plus, Search, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react"
+import { Plus, Search, ChevronLeft, ChevronRight, FileSpreadsheet, Download } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
 import { tieneRolDeGastos } from "@/src/auth/permisos"
 import { fetchApi } from "@/src/lib/api"
@@ -41,6 +41,8 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
   if (searchParams.estado) consulta.set("estado", searchParams.estado)
   if (searchParams.operacionId) consulta.set("operacionId", searchParams.operacionId)
   if (searchParams.busqueda) consulta.set("busqueda", searchParams.busqueda)
+  // Totales de todo lo filtrado (no solo de la página) para la fila Total de la tabla
+  consulta.set("totales", "si")
 
   // Al buscar o filtrar por operación salen también los gastos de los usuarios de su área
   const buscando = Boolean(searchParams.operacionId || searchParams.busqueda)
@@ -53,7 +55,9 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
   ])
   const tasaGmf = tasas.gmf
 
-  const { total, registros } = ListadoGastosSchema.parse(await respuesta.json())
+  const { total, registros, totales } = ListadoGastosSchema.parse(await respuesta.json())
+  // 4x1000 sobre el valor solicitado, como la columna
+  const cuatroXMil = (valor: number) => Math.round(valor * tasaGmf * 100) / 100
   const totalPaginas = Math.max(1, Math.ceil(total / TAMANO_PAGINA))
 
   return (
@@ -68,6 +72,11 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
         </div>
         <div className="flex flex-wrap gap-2">
           {total > 0 && <ExportarExcel consulta={consulta} archivo="solicitudes" className="" />}
+          {/* La misma descarga de documentos de Legalización, con los gastos propios */}
+          <Link href="/solicitudes/descargas" className={claseBotonSecundario}>
+            <Download size={15} />
+            Descargar documentos
+          </Link>
           <Link href="/solicitudes/cargue" className={claseBotonSecundario}>
             <FileSpreadsheet size={15} />
             Cargue masivo
@@ -124,6 +133,7 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
               <th className="px-4 py-3 font-semibold">Operación</th>
               <th className="px-4 py-3 font-semibold">Bolsa</th>
               <th className="px-4 py-3 font-semibold text-right">Valor solicitado</th>
+              <th className="px-4 py-3 font-semibold text-right">Valor pagado</th>
               <th className="px-4 py-3 font-semibold text-right">4x1000</th>
               <th className="px-4 py-3 font-semibold">Estado</th>
             </tr>
@@ -154,12 +164,25 @@ export default async function SolicitudesPage(props: { searchParams: Promise<Fil
                 </td>
                 <td className="px-4 py-3 text-slate-600">{gasto.bolsa?.nombre ?? "—"}</td>
                 <td className="px-4 py-3 text-right font-medium text-slate-800 whitespace-nowrap">{formatoMoneda(gasto.valorSolicitadoPago)}</td>
+                <td className="px-4 py-3 text-right text-slate-700 whitespace-nowrap">{formatoMoneda(gasto.valorRealmentePagado)}</td>
                 {/* Calculado sobre el valor solicitado con la tasa del GMF (pedido del usuario, 2026-11-05) */}
-                <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatoMoneda(Math.round(Number(gasto.valorSolicitadoPago) * tasaGmf * 100) / 100)}</td>
+                <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatoMoneda(cuatroXMil(Number(gasto.valorSolicitadoPago)))}</td>
                 <td className="px-4 py-3"><EstadoGasto codigo={gasto.estado.codigo} nombre={gasto.estado.nombre} /></td>
               </tr>
             ))}
           </tbody>
+          {/* Total de todos los gastos filtrados (todas las páginas) */}
+          {totales && registros.length > 0 && (
+            <tfoot className="border-t border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
+              <tr>
+                <td className="px-4 py-3" colSpan={6}>Total ({total} gasto{total === 1 ? "" : "s"})</td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">{formatoMoneda(totales.solicitado)}</td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">{formatoMoneda(totales.pagado)}</td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">{formatoMoneda(cuatroXMil(totales.solicitado))}</td>
+                <td className="px-4 py-3" />
+              </tr>
+            </tfoot>
+          )}
         </table>
 
         {registros.length === 0 && (

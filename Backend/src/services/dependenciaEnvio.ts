@@ -6,6 +6,7 @@ import EstadosTramites from '../models/estadosTramites'
 import SolicitudesGasto from '../models/gastos/solicitudesGasto'
 import HistorialTramite, { type CambioCampo } from '../models/historialTramite'
 import { ErrorGastos } from './gastos/errores'
+import { separarPlacas } from './placasTramite'
 import { contextoActual, type ContextoPeticion } from '../utils/contextoPeticion'
 
 // =====================================
@@ -58,7 +59,9 @@ export const enviosRelacionables = async (
   { placa, matricula, excluirId }: { placa?: unknown, matricula?: unknown, excluirId?: number | null },
   transaction?: Transaction | null
 ): Promise<EnvioRelacionable[]> => {
-  const p = clave(placa)
+  // Con varias placas, sirve el envío que tenga cualquiera de ellas (tabla de placas, con índice)
+  const placas = separarPlacas(placa)
+  const p = placas.length ? placas : null
   const m = clave(matricula)
   if (!p && !m) return []
   return db.query<EnvioRelacionable>(`
@@ -78,7 +81,7 @@ export const enviosRelacionables = async (
     ) u ON true
     WHERE COALESCE(e."nombreEstado", '') <> :desistido
       AND s.id <> :excluirId
-      AND (${[p ? `UPPER(TRIM(s.placa)) = :placa` : null, m ? `UPPER(TRIM(s."matriculaInmobiliaria")) = :matricula` : null].filter(Boolean).join(' OR ')})
+      AND (${[p ? `s.id IN (SELECT pt.solicitud_tramite_id FROM solicitud_tramite_placas pt WHERE pt.placa IN (:placa))` : null, m ? `UPPER(TRIM(s."matriculaInmobiliaria")) = :matricula` : null].filter(Boolean).join(' OR ')})
     ORDER BY s.id DESC
     LIMIT 30
   `, {

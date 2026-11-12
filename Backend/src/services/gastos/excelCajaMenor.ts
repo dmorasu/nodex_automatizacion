@@ -1,5 +1,6 @@
 import XLSX from 'xlsx'
 import type { FiltrosHistorialCaja, historialCaja } from './cajaMenor'
+import type ReembolsosCaja from '../../models/gastos/reembolsosCaja'
 import { fechaHora, hoja } from './excelArqueo'
 
 // =====================================
@@ -60,5 +61,69 @@ export const generarExcelHistorialCaja = (
   })
 
   XLSX.utils.book_append_sheet(libro, hoja(filas, ['Entregado', 'Valor del soporte', 'Diferencia (soporte − entregado)'], resumen), 'Historial')
+  return XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' }) as Buffer
+}
+
+// =====================================
+// EXCEL DE LOS REEMBOLSOS DE CAJA MENOR (Contabilidad, 2026-11-12)
+// Hoja "Reembolsos": uno por fila, con su aprobación y contabilización. Hoja "Gastos": cada gasto
+// legalizado de esos reembolsos con la factura, el beneficiario y los valores, para registrarlos
+// en SIESA sin abrir uno por uno.
+// =====================================
+
+export const generarExcelReembolsosCaja = (reembolsos: ReembolsosCaja[]) => {
+  const libro = XLSX.utils.book_new()
+  const total = reembolsos.reduce((suma, r) => suma + Number(r.total ?? 0), 0)
+
+  const resumen = [
+    ['Reembolsos de caja menor', ''],
+    ['Generado', fechaHora(new Date())],
+    ['Reembolsos', reembolsos.length],
+    ['Total', total]
+  ]
+
+  const filasReembolsos = reembolsos.map(r => ({
+    Reembolso: r.codigo,
+    Caja: r.bolsa?.nombre ?? '',
+    Estado: ESTADOS_REEMBOLSO[r.estado] ?? r.estado,
+    Gastos: r.legalizaciones?.length ?? 0,
+    Total: numero(r.total),
+    'Creado': fechaHora(r.createdAt),
+    'Creado por': r.creador?.nombreUsuario ?? '',
+    'Enviado': fechaHora(r.fechaEnvio),
+    'Aprobado': fechaHora(r.fechaAprobacion),
+    'Aprobado por': r.aprobador?.nombreUsuario ?? '',
+    'Dinero recibido el': r.fechaLegalizacion ?? '',
+    'Contabilizado': fechaHora(r.contabilizadoEn),
+    'Documento contable': r.documentoContable ?? '',
+    'Contabilizado por': r.contabilizador?.nombreUsuario ?? '',
+    'Observación': r.observacion ?? ''
+  }))
+
+  const filasGastos = reembolsos.flatMap(r => (r.legalizaciones ?? []).map(l => {
+    const g = l.solicitudGasto
+    return {
+      Reembolso: r.codigo,
+      Caja: r.bolsa?.nombre ?? '',
+      Gasto: g?.codigo ?? '',
+      Concepto: g?.conceptoPago ?? '',
+      'Solicitado por': g?.creador?.nombreUsuario ?? '',
+      'Fecha de entrega': g?.fechaPago ?? '',
+      Entregado: numero(g?.valorRealmentePagado),
+      Factura: l.numeroFactura ?? '',
+      'Fecha de factura': l.fechaFactura ?? '',
+      Beneficiario: l.beneficiario ?? '',
+      'Tipo de documento': l.tipoIdentificacion ?? '',
+      'Identificación': l.identificacion ?? '',
+      'Placa / matrícula': l.placa ?? l.matriculaInmobiliaria ?? g?.placa ?? g?.matriculaInmobiliaria ?? '',
+      'Quién legaliza': l.quienLegaliza ?? '',
+      'Valor del soporte': numero(l.valorSoporte),
+      'Diferencia (soporte − entregado)': numero(l.diferencia),
+      'Observación': l.observacion ?? ''
+    }
+  }))
+
+  XLSX.utils.book_append_sheet(libro, hoja(filasReembolsos, ['Total'], resumen), 'Reembolsos')
+  XLSX.utils.book_append_sheet(libro, hoja(filasGastos, ['Entregado', 'Valor del soporte', 'Diferencia (soporte − entregado)']), 'Gastos')
   return XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' }) as Buffer
 }

@@ -39,7 +39,7 @@ import seguimientoTramitadorRouter from "./routes/tramitadores/seguimiento"
 import { seedGastos } from "./seeds/gastosSeed"
 import { ajustarEsquemaGastos } from "./seeds/ajustesEsquemaGastos"
 import { ajustarEsquemaTramitadores } from "./seeds/ajustesEsquemaTramitadores"
-import { ajustarEsquemaMensajeria, ajustarEsquemaTramites } from "./seeds/ajustesEsquemaTramites"
+import { ajustarEsquemaMensajeria, ajustarEsquemaTramites, placasDeLosTramites } from "./seeds/ajustesEsquemaTramites"
 import gestionMasivaRouter from "./routes/gestionMasivaRouter"
 import catalogosTramitesRouter from "./routes/catalogosTramitesRouter"
 import apiExternaRouter from "./routes/apiExternaRouter"
@@ -83,6 +83,8 @@ async function connectDB() {
         const liberados = await liberarDependientesCumplidos()
         if (liberados.length) console.log(`📦 Liberados para programar (envío Finalizado y pago completo): ${liberados.map(id => `#${id}`).join(', ')}`)
         await ajustarEsquemaMensajeria()
+        // Cada placa de los trámites en solicitud_tramite_placas (búsqueda por cualquiera de ellas)
+        await placasDeLosTramites()
         await ajustarEsquemaGastos()
         await seedGastos()
         console.log(colors.blue.bold('Conexion Exitosa'))

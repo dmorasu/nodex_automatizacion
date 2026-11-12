@@ -273,6 +273,31 @@ const areasDeUsuarios = async () => {
   })
 }
 
+// 2026-11-12 · Varias placas por trámite: cada placa en solicitud_tramite_placas (la crea sync()).
+// Se llena con los trámites que aún no tienen filas, separando lo que se escribió en el campo de
+// placa ("JUY118-JUY116", "ABC123 y DEF456", "FXT 925 - FXT 926", "R-12345"), con la misma regla de
+// separarPlacas (services/placasTramite.ts). Idempotente: solo toca los trámites sin filas.
+export const placasDeLosTramites = async () => {
+  if (!(await columnasDe('solicitud_tramite_placas'))) return
+  await db.query(`
+    INSERT INTO solicitud_tramite_placas (solicitud_tramite_id, placa, orden)
+    SELECT id, placa, ROW_NUMBER() OVER (PARTITION BY id ORDER BY primera)
+    FROM (
+      SELECT s.id, x.placa, MIN(x.n) AS primera
+      FROM "SolicitudTramites" s
+      CROSS JOIN LATERAL regexp_split_to_table(
+        regexp_replace(translate(UPPER(s.placa), 'ÁÉÍÓÚÜÑ', 'AEIOUUN'), '\\m([A-Z]{1,3})[[:space:]-]+([0-9]{2,5}[A-Z]?)\\M', '\\1\\2', 'g'),
+        '[^A-Z0-9]+'
+      ) WITH ORDINALITY AS x(placa, n)
+      WHERE s.placa IS NOT NULL
+        AND length(x.placa) BETWEEN 4 AND 20
+        AND NOT EXISTS (SELECT 1 FROM solicitud_tramite_placas pt WHERE pt.solicitud_tramite_id = s.id)
+      GROUP BY s.id, x.placa
+    ) t
+    ON CONFLICT DO NOTHING
+  `)
+}
+
 // Después de sync(): la sede del mensajero (mensajeria_sedes ya existe)
 export const ajustarEsquemaMensajeria = async () => {
   const tramitadores = await columnasDe('Tramitador')

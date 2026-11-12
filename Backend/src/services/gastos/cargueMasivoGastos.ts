@@ -276,7 +276,7 @@ const convertirFila = (
   const tipoCuenta = v.beneficiarioTipoCuenta.toUpperCase()
   if (tipoCuenta && !['AHORROS', 'CORRIENTE'].includes(tipoCuenta)) errores.push('beneficiarioTipoCuenta debe ser AHORROS o CORRIENTE')
 
-  largo('conceptoPago', 200); largo('placa', 20); largo('transito', 100); largo('matriculaInmobiliaria', 50)
+  largo('conceptoPago', 200); largo('placa', 100); largo('transito', 100); largo('matriculaInmobiliaria', 50)
   largo('contrato', 50)
   if (v.codigoBpr.length > 50) errores.push('codigoBPR/FTF supera 50 caracteres')
   largo('nombreClienteBanco', 200); largo('identificacionClienteBanco', 30)

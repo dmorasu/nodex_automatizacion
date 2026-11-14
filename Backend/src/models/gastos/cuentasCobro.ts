@@ -18,6 +18,12 @@ class CuentasCobro extends Model {
   @Column({ type: DataType.STRING(50) })
   declare numeroCuentaCobro: string
 
+  // POR_PAGO | LEGALIZACION_SIN_PAGO | ANTICIPO (TIPOS_CUENTA_COBRO). La columna la crea
+  // `tipoCuentaCobro` en ajustesEsquemaGastos para las tablas que ya existen
+  @AllowNull(false)
+  @Column({ type: DataType.STRING(30), defaultValue: 'POR_PAGO' })
+  declare tipo: string
+
   @ForeignKey(() => EstadosCuentaCobro)
   @AllowNull(false)
   @Column({ type: DataType.INTEGER })

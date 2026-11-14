@@ -5,15 +5,17 @@ import { toast } from "react-toastify"
 import { Loader2, Pencil } from "lucide-react"
 import { actualizarCuenta } from "@/actions/gastos/legalizacion"
 import { formatoFecha } from "@/src/lib/formato"
-import type { CuentaDetalle } from "@/src/schemas/gastos"
+import { TIPOS_CUENTA_COBRO, nombreTipoCuenta, type CuentaDetalle } from "@/src/schemas/gastos"
 import Dato from "../ui/Dato"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel, claseTextarea } from "../ui/estilos"
+import SelectBuscable from "../ui/SelectBuscable"
 
 // Datos generales de la cuenta de cobro; editables solo en borrador
 export default function DatosCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
   const [editando, setEditando] = useState(false)
   const [datos, setDatos] = useState({
     numeroCuentaCobro: cuenta.numeroCuentaCobro,
+    tipo: cuenta.tipo,
     fechaRadicacion: cuenta.fechaRadicacion ?? "",
     observacion: cuenta.observacion ?? ""
   })
@@ -40,8 +42,9 @@ export default function DatosCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
   if (!editando) {
     return (
       <div className="flex items-start justify-between gap-4">
-        <dl className="grid flex-1 gap-5 sm:grid-cols-3">
+        <dl className="grid flex-1 gap-5 sm:grid-cols-4">
           <Dato etiqueta="Número" valor={cuenta.numeroCuentaCobro} />
+          <Dato etiqueta="Tipo" valor={nombreTipoCuenta(cuenta.tipo)} />
           <Dato etiqueta="Fecha de radicación" valor={formatoFecha(cuenta.fechaRadicacion)} />
           <Dato etiqueta="Observación" valor={cuenta.observacion} />
         </dl>
@@ -60,6 +63,12 @@ export default function DatosCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
         <label className="block">
           <span className={claseLabel}>Número <span className="text-red-400">*</span></span>
           <input value={datos.numeroCuentaCobro} onChange={e => cambiar("numeroCuentaCobro", e.target.value)} maxLength={50} className={claseInput} />
+        </label>
+        <label className="block">
+          <span className={claseLabel}>Tipo <span className="text-red-400">*</span></span>
+          <SelectBuscable value={datos.tipo} onChange={e => cambiar("tipo", e.target.value)} className={claseInput}>
+            {TIPOS_CUENTA_COBRO.map(t => <option key={t.codigo} value={t.codigo}>{t.nombre}</option>)}
+          </SelectBuscable>
         </label>
         <label className="block">
           <span className={claseLabel}>Fecha de radicación</span>

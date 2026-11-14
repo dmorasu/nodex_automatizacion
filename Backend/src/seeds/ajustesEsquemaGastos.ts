@@ -229,6 +229,16 @@ export const ajustarEsquemaGastos = async () => {
   await tramitadorDesdeElTramite()
   await contabilizacionReembolsosCaja()
   await placaConVariasPlacas()
+  await tipoCuentaCobro()
+}
+
+// 2026-11-13 · Tipo de la cuenta de cobro (Por pago, Legalización sin pago, Anticipo). Las que ya
+// existen quedan Por pago (lo que hacían hasta ahora: el dinero vuelve a la bolsa). Solo agrega
+const tipoCuentaCobro = async () => {
+  const columnas = await columnasDe('gastos_cuentas_cobro')
+  if (columnas && !columnas.tipo) {
+    await db.query(`ALTER TABLE gastos_cuentas_cobro ADD COLUMN tipo VARCHAR(30) NOT NULL DEFAULT 'POR_PAGO'`)
+  }
 }
 
 // 2026-11-12 · El trámite puede tener hasta 10 placas ("ABC123, DEF456, …") y el gasto del trámite

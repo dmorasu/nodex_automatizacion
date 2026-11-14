@@ -1,5 +1,5 @@
 import { body, param, query } from 'express-validator'
-import { ESTADOS_GASTO, MOTIVOS_NOVEDAD_PAGO } from '../../services/gastos/constantes'
+import { ESTADOS_GASTO, LISTA_TIPOS_CUENTA_COBRO, MOTIVOS_NOVEDAD_PAGO } from '../../services/gastos/constantes'
 
 // Validan forma y tipos. Las reglas de negocio (tipo de gasto, beneficiario,
 // relaciones) se validan en services/gastos/solicitudesGasto.ts
@@ -220,6 +220,8 @@ export const validarCuentaCobro = [
     .isString().trim()
     .notEmpty().withMessage('El número de la cuenta de cobro es obligatorio')
     .isLength({ max: 50 }).withMessage('El número no puede superar 50 caracteres'),
+  body('tipo')
+    .isIn(LISTA_TIPOS_CUENTA_COBRO).withMessage('Seleccione el tipo de cuenta de cobro'),
   fechaOpcional('fechaRadicacion'),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 2000 })
 ]

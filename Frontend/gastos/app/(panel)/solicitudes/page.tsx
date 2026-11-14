@@ -2,7 +2,7 @@ import Link from "next/link"
 import ExportarExcel from "@/components/gastos/ExportarExcel"
 import { Plus, Search, ChevronLeft, ChevronRight, FileSpreadsheet, Download } from "lucide-react"
 import { requiereAcceso } from "@/src/auth/dal"
-import { tieneRolDeGastos } from "@/src/auth/permisos"
+import { veTodosLosGastos } from "@/src/auth/permisos"
 import { fetchApi } from "@/src/lib/api"
 import { obtenerCatalogos, obtenerOperaciones, obtenerTasas } from "@/src/lib/datosGastos"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
@@ -32,7 +32,7 @@ const urlCon = (filtros: Filtros, cambios: Filtros) => {
 export default async function SolicitudesPage(props: { searchParams: Promise<Filtros> }) {
   const searchParams = await props.searchParams
   const sesion = await requiereAcceso([])
-  const puedeVerTodos = tieneRolDeGastos(sesion.roles)
+  const puedeVerTodos = veTodosLosGastos(sesion.roles)
 
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
   const alcance = puedeVerTodos && searchParams.alcance === "todos" ? "todos" : "mios"

@@ -12,12 +12,13 @@ export type FiltrosTablero = {
 // Los valores de dinero llegan de PostgreSQL como texto
 const numero = (valor: unknown) => Number(valor ?? 0)
 
-// El gasto está en una cuenta de cobro activa (reembolsable: su valor vuelve a la bolsa al legalizar)
+// El gasto está en una cuenta de cobro activa (reembolsable: su valor vuelve a la bolsa al legalizar).
+// Las de legalización sin pago (2026-11-13) no devuelven el dinero: su gasto cuenta como asumido
 const EN_CUENTA = `EXISTS (
   SELECT 1 FROM gastos_cuentas_cobro_gastos l
   JOIN gastos_cuentas_cobro c ON c.id = l.cuenta_cobro_id
   JOIN gastos_estados_cuenta_cobro ec ON ec.id = c.estado_id
-  WHERE l.solicitud_gasto_id = g.id AND ec.codigo <> 'ANULADA'
+  WHERE l.solicitud_gasto_id = g.id AND ec.codigo <> 'ANULADA' AND c.tipo <> 'LEGALIZACION_SIN_PAGO'
 )`
 
 // Filtro por fecha de pago del gasto (el saldo de la bolsa siempre es el actual)

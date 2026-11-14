@@ -26,7 +26,7 @@ import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../servi
 import { ESTADOS_GASTO, ESTADOS_REEMBOLSO_CAJA, ESTADOS_SIN_PAGO, PARAMETROS, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { notificarGastosCreados } from '../../services/gastos/notificacionesGastos'
-import { ATRIBUTOS_USUARIO, esAdmin, esAuxiliarCaja, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados } from './utilidades'
+import { ATRIBUTOS_USUARIO, esAdmin, esAuxiliarCaja, idsTiposCertificados, puedeGestionarFactura, puedeVerTodos, responderError, soloCertificados, veTodosLosGastos } from './utilidades'
 import { anularGastoCaja, cajaDelUsuario, ESTADOS_ANULABLES_CAJA, revisarTopeCaja } from '../../services/gastos/cajaMenor'
 import { notificarTopeCaja } from '../../services/gastos/notificacionesGastos'
 import LegalizacionesCaja from '../../models/gastos/legalizacionesCaja'
@@ -70,11 +70,13 @@ export const puedeGestionarGasto = async (req: Request, gasto: SolicitudesGasto)
 
 // Busca el gasto y verifica que el usuario pueda usarlo.
 // Para solo ver (soloLectura) también sirven los gastos que crearon los de su área (los encuentra
-// al buscar). A quien no puede se le responde 404 (no se revela que existe).
+// al buscar) y Torre de control de Gastos ve cualquiera. A quien no puede se le responde 404
+// (no se revela que existe).
 export const obtenerGastoConAcceso = async (req: Request, id: number, { soloLectura = false } = {}) => {
   const gasto = await SolicitudesGasto.findByPk(id)
   const puede = gasto && (
     await puedeGestionarGasto(req, gasto) ||
+    (soloLectura && veTodosLosGastos(req)) ||
     (soloLectura && (await usuariosDeMiArea(req)).includes(gasto.creadoPor))
   )
   if (!puede) throw new ErrorGastos('El gasto no existe', 404)
@@ -153,9 +155,9 @@ export const condicionesListado = async (req: Request) => {
 
   // Sin rol solo se ven los propios, aunque pida "todos". La auxiliar de caja menor ve los de su caja
   let alcance: WhereOptions | null = null
-  if (q.alcance === 'todos' && !puedeVerTodos(req) && esAuxiliarCaja(req)) {
+  if (q.alcance === 'todos' && !veTodosLosGastos(req) && esAuxiliarCaja(req)) {
     alcance = { bolsaId: (await cajaDelUsuario(req.usuario.id))?.id ?? -1 }
-  } else if (q.alcance !== 'todos' || !puedeVerTodos(req)) {
+  } else if (q.alcance !== 'todos' || !veTodosLosGastos(req)) {
     const buscando = String(q.busqueda ?? '').trim() || q.operacionId
     alcance = { creadoPor: buscando ? await usuariosDeMiArea(req) : req.usuario.id }
   }
@@ -526,8 +528,9 @@ export class SolicitudesGastoController {
         : []
 
       // Soportes del pago: están en el lote, no en el gasto (el del banco puede traer otros
-      // gastos del lote: no se muestra a quien solo ve el gasto)
-      const documentosPago = gasto.lotePagoId && gestiona
+      // gastos del lote: no se muestra a quien solo ve el gasto por su área; Torre de control de
+      // Gastos sí lo ve, porque ve todos los gastos)
+      const documentosPago = gasto.lotePagoId && (gestiona || veTodosLosGastos(req))
         ? await DocumentosGasto.findAll({
           where: { lotePagoId: gasto.lotePagoId },
           attributes: ['id', 'nombreOriginal', 'tipoArchivo', 'tamano', 'subidoPor', 'createdAt'],

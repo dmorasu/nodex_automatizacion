@@ -51,7 +51,7 @@ export class CuentasCobroController {
 
       const { count, rows } = await CuentasCobro.findAndCountAll({
         where: { [Op.and]: condiciones },
-        attributes: ['id', 'numeroCuentaCobro', 'fechaRadicacion', 'totalFacturas', 'totalCuatroXMil', 'totalLegalizado', 'fechaLegalizacion', 'createdAt'],
+        attributes: ['id', 'numeroCuentaCobro', 'tipo', 'fechaRadicacion', 'totalFacturas', 'totalCuatroXMil', 'totalLegalizado', 'fechaLegalizacion', 'createdAt'],
         include: [
           { model: EstadosCuentaCobro, attributes: ATRIBUTOS_ESTADO },
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },

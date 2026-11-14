@@ -9,6 +9,7 @@ type Resultado<T = undefined> =
 
 export type DatosCuenta = {
   numeroCuentaCobro: string
+  tipo: string
   fechaRadicacion: string
   observacion: string
 }

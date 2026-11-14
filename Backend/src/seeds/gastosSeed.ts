@@ -96,6 +96,7 @@ const ROLES_INICIALES = [
   { codigo: ROLES.ANALISTA_TESORERIA, nombre: 'Analista de Tesorería', descripcion: 'Paga gastos y certificados, caja menor y cuentas de cobro; no administra bolsas ni ve Indicadores' },
   { codigo: ROLES.DIRECCION_NEGOCIO, nombre: 'Dirección de Negocio', descripcion: 'Aprueba los pagos que programa Tesorería' },
   { codigo: ROLES.AUXILIAR_TESORERIA_CAJA, nombre: 'Auxiliar de Tesorería - Caja menor', descripcion: 'Paga, legaliza y reembolsa solo la caja menor que tiene asignada' },
+  { codigo: ROLES.TORRE_CONTROL_GASTOS, nombre: 'Torre de control - Gastos', descripcion: 'Ve todos los gastos; solo edita y anula los que creó' },
   { codigo: ROLES.GESTION_ACTIVOS, nombre: 'Gestión de activos', descripcion: 'Trámites: crea y edita sus propios trámites y les crea gastos' },
   { codigo: ROLES.TORRE_CONTROL, nombre: 'Torre de control', descripcion: 'Trámites: acceso completo a la gestión de trámites' },
   { codigo: ROLES.ANALISTA_TRAMITES, nombre: 'Analista de trámites', descripcion: 'Trámites: permisos de Torre de control; en el inicio ve solo sus trámites asignados' },

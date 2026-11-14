@@ -6,7 +6,7 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { CheckCircle2, Loader2, Paperclip } from "lucide-react"
 import { legalizarCuenta, subirDocumentosCuenta } from "@/actions/gastos/legalizacion"
 import { formatoMoneda } from "@/src/lib/formato"
-import type { CuentaDetalle } from "@/src/schemas/gastos"
+import { SIN_PAGO, type CuentaDetalle } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
 
 const hoyEnBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
@@ -17,6 +17,9 @@ export default function LegalizarCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
   const [legalizando, startLegalizar] = useTransition()
   // La cuenta de cobro firmada se puede adjuntar al legalizar (queda en Documentos de la cuenta)
   const [archivos, setArchivos] = useState<File[]>([])
+
+  // Legalización sin pago: el dinero no vuelve a la bolsa (el backend no registra movimiento)
+  const sinPago = cuenta.tipo === SIN_PAGO
 
   // Cuánto vuelve a cada bolsa al legalizar
   const porBolsa = new Map<string, number>()
@@ -65,18 +68,18 @@ export default function LegalizarCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
           <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <DialogTitle className="text-sm font-semibold text-slate-800">Legalizar {cuenta.numeroCuentaCobro}</DialogTitle>
             <p className="mt-1 text-xs text-slate-400">
-              Los {cuenta.lineas.length} gasto(s) quedan Legalizados, el total de la cuenta de cobro vuelve a la bolsa y la cuenta pasa a Contabilidad.
+              Los {cuenta.lineas.length} gasto(s) quedan Legalizados, {sinPago ? "el dinero no vuelve a la bolsa" : "el total de la cuenta de cobro vuelve a la bolsa"} y la cuenta pasa a Contabilidad.
               Solo se puede reversar mientras Contabilidad no la contabilice.
             </p>
 
             <div className="mt-4 rounded-md bg-slate-50 px-4 py-3 text-xs">
-              <p className="mb-2 font-semibold text-slate-600">Vuelve a las bolsas</p>
-              {[...porBolsa].map(([bolsa, valor]) => (
+              {!sinPago && <p className="mb-2 font-semibold text-slate-600">Vuelve a las bolsas</p>}
+              {!sinPago && [...porBolsa].map(([bolsa, valor]) => (
                 <p key={bolsa} className="flex justify-between text-slate-600">
                   <span>{bolsa}</span><b className="text-emerald-700">+{formatoMoneda(valor)}</b>
                 </p>
               ))}
-              <p className="mt-2 flex justify-between border-t border-slate-200 pt-2 font-semibold text-slate-800">
+              <p className={`flex justify-between font-semibold text-slate-800 ${sinPago ? "" : "mt-2 border-t border-slate-200 pt-2"}`}>
                 <span>Total legalizado</span><span>{formatoMoneda(cuenta.totalLegalizado)}</span>
               </p>
             </div>

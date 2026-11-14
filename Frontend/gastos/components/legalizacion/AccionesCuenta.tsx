@@ -2,7 +2,7 @@
 
 import { anularCuenta, eliminarDocumentoLegalizacion, reversarCuenta, subirDocumentosCuenta } from "@/actions/gastos/legalizacion"
 import { formatoMoneda } from "@/src/lib/formato"
-import type { CuentaDetalle } from "@/src/schemas/gastos"
+import { SIN_PAGO, type CuentaDetalle } from "@/src/schemas/gastos"
 import BotonConMotivo from "../ui/BotonConMotivo"
 import DocumentosConCarga from "../gastos/DocumentosConCarga"
 import LegalizarCuenta from "./LegalizarCuenta"
@@ -17,7 +17,9 @@ export function BotonesCuenta({ cuenta }: { cuenta: CuentaDetalle }) {
       {cuenta.permisos.reversar && <BotonConMotivo
         etiqueta="Reversar legalización"
         titulo={`Reversar ${cuenta.numeroCuentaCobro}`}
-        descripcion={`Sale de la bolsa lo que entró al legalizarla (${formatoMoneda(cuenta.totalLegalizado)}) y la cuenta vuelve a Borrador para corregirla, anularla o legalizarla de nuevo.`}
+        descripcion={cuenta.tipo === SIN_PAGO
+          ? "La cuenta vuelve a Borrador para corregirla, anularla o legalizarla de nuevo."
+          : `Sale de la bolsa lo que entró al legalizarla (${formatoMoneda(cuenta.totalLegalizado)}) y la cuenta vuelve a Borrador para corregirla, anularla o legalizarla de nuevo.`}
         mensajeExito={`Legalización de ${cuenta.numeroCuentaCobro} reversada`}
         onConfirmar={motivo => reversarCuenta(cuenta.id, motivo)}
       />}

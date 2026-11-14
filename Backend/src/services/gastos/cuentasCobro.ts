@@ -11,7 +11,7 @@ import FacturasGasto from '../../models/gastos/facturasGasto'
 import { catalogoEnMemoria } from './catalogoEnMemoria'
 import { cambiarEstadoGasto, codigoEstadoGasto } from './estadosGasto'
 import { registrarMovimientos } from './bolsas'
-import { ESTADOS_CUENTA_COBRO, ESTADOS_GASTO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
+import { ESTADOS_CUENTA_COBRO, ESTADOS_GASTO, TIPOS_CUENTA_COBRO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
 import { ErrorGastos } from './errores'
 
 type CodigoEstadoCuenta = typeof ESTADOS_CUENTA_COBRO[keyof typeof ESTADOS_CUENTA_COBRO]
@@ -20,6 +20,7 @@ export const estadosCuenta = catalogoEnMemoria<CodigoEstadoCuenta>(EstadosCuenta
 
 export type DatosCuenta = {
   numeroCuentaCobro: string
+  tipo: string
   fechaRadicacion?: string | null
   observacion?: string | null
 }
@@ -107,6 +108,7 @@ export const crearCuenta = (datos: DatosCuenta, usuarioId: number) =>
 
     const cuenta = await CuentasCobro.create({
       numeroCuentaCobro: numero,
+      tipo: datos.tipo,
       estadoId: await estadosCuenta.id(ESTADOS_CUENTA_COBRO.BORRADOR),
       fechaRadicacion: datos.fechaRadicacion || null,
       observacion: texto(datos.observacion),
@@ -131,8 +133,10 @@ export const actualizarCuenta = (cuentaId: number, datos: DatosCuenta) =>
 
     await validarNumeroUnico(numero, transaction, cuenta.id)
 
+    // El tipo se puede cambiar mientras la cuenta esté en borrador (decisión del usuario)
     await cuenta.update({
       numeroCuentaCobro: numero,
+      tipo: datos.tipo,
       fechaRadicacion: datos.fechaRadicacion || null,
       observacion: texto(datos.observacion)
     }, { transaction })
@@ -203,6 +207,8 @@ export const quitarLinea = (cuentaId: number, lineaId: number, usuarioId: number
 // Legaliza la cuenta: los gastos quedan Legalizados y el total de la cuenta vuelve
 // a la bolsa en UN movimiento por bolsa que indica la cuenta de cobro. Se crea la
 // contabilización pendiente. Todo o nada.
+// Legalización sin pago (2026-11-13): el dinero no vuelve, así que no hay movimiento de bolsa
+// (el reverso de esa cuenta no encuentra nada que sacar de la bolsa).
 export const legalizarCuenta = (cuentaId: number, fechaRadicacion: string | null, usuarioId: number) =>
   db.transaction(async transaction => {
     const cuenta = await cuentaEnBorrador(cuentaId, transaction)
@@ -241,7 +247,8 @@ export const legalizarCuenta = (cuentaId: number, fechaRadicacion: string | null
     }
 
     // El total de la cuenta de cobro vuelve a la bolsa (repartido si hay gastos de varias bolsas)
-    for (const [bolsaId, { centavos, gastos: cantidad }] of porBolsa) {
+    const vuelveALaBolsa = cuenta.tipo !== TIPOS_CUENTA_COBRO.LEGALIZACION_SIN_PAGO
+    for (const [bolsaId, { centavos, gastos: cantidad }] of vuelveALaBolsa ? porBolsa : []) {
       await registrarMovimientos(bolsaId, [{
         tipo: TIPOS_MOVIMIENTO_BOLSA.LEGALIZACION,
         valor: centavos / 100,

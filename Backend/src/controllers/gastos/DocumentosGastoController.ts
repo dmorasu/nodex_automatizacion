@@ -12,7 +12,7 @@ import { codigoEstadoGasto } from '../../services/gastos/estadosGasto'
 import { ESTADOS_ANTICIPO, ESTADOS_GASTO, TIPOS_DOCUMENTO, ESTADOS_LOTE, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
 import { obtenerGastoConAcceso } from './SolicitudesGastoController'
-import { esAdmin, esAuxiliarCaja, puedeVerTodos, responderError } from './utilidades'
+import { esAdmin, esAuxiliarCaja, puedeVerTodos, responderError, veTodosLosGastos } from './utilidades'
 import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
 import { cajaDelUsuario } from '../../services/gastos/cajaMenor'
 import { generarZipDocumentos, revisionPdfsDePago, type EleccionPdfPago } from '../../services/gastos/descargaDocumentos'
@@ -75,9 +75,10 @@ const guardarArchivos = async (
   }
 }
 
-// Un documento de lote lo ve cualquier rol o quien creó alguno de los gastos del lote
+// Un documento de lote lo ve cualquier rol (también Torre de control de Gastos, que ve todos los
+// gastos) o quien creó alguno de los gastos del lote
 const verificarAccesoLote = async (req: Request, lotePagoId: number) => {
-  if (puedeVerTodos(req)) return
+  if (veTodosLosGastos(req)) return
 
   const propio = await SolicitudesGasto.count({ where: { lotePagoId, creadoPor: req.usuario.id } })
   if (!propio) throw new ErrorGastos('El documento no existe', 404)
@@ -87,7 +88,8 @@ const verificarAccesoLote = async (req: Request, lotePagoId: number) => {
 // soloLectura: los documentos de un gasto (y de sus reintegros) los ven también los de su área, como el gasto
 // Descarga masiva: Legalización, Contabilidad y Tesorería descargan cualquier gasto (como antes);
 // los demás (Mis gastos, 2026-11-12) solo los que pueden ver: los suyos o los de su área
-const ROLES_DESCARGA_MASIVA: string[] = [ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA]
+// Torre de control de Gastos también: ve todos los gastos
+const ROLES_DESCARGA_MASIVA: string[] = [ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.TORRE_CONTROL_GASTOS]
 const verificarGastosDescarga = async (req: Request) => {
   if ((req.roles ?? []).some(rol => ROLES_DESCARGA_MASIVA.includes(rol))) return
   for (const id of (req.body.gastoIds as unknown[]).map(Number)) {

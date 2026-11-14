@@ -28,14 +28,17 @@ export const ROLES = {
   // Administrador de Torre de control: además reasigna analistas
   ADMIN_TORRE_CONTROL: 'ADMIN_TORRE_CONTROL',
   // Hace el trabajo de Tesorería solo en la caja menor que tiene asignada (ej: Bogotá)
-  AUXILIAR_TESORERIA_CAJA: 'AUXILIAR_TESORERIA_CAJA'
+  AUXILIAR_TESORERIA_CAJA: 'AUXILIAR_TESORERIA_CAJA',
+  // Torre de control en Nodex Gastos (2026-11-13): ve todos los gastos pero solo gestiona los que creó.
+  // Distinto de TORRE_CONTROL, que es el perfil de Trámites
+  TORRE_CONTROL_GASTOS: 'TORRE_CONTROL_GASTOS'
 } as const
 
 // Perfiles de cada app: cada una asigna y quita solo los suyos (los de la otra no se tocan)
 export const ROLES_TRAMITES: string[] = [ROLES.GESTION_ACTIVOS, ROLES.TORRE_CONTROL, ROLES.ANALISTA_TRAMITES, ROLES.ADMIN_TORRE_CONTROL, ROLES.ADMIN_TRAMITES]
 export const ROLES_GASTOS_ASIGNABLES: string[] = [
   ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES.TESORERIA_CERTIFICADOS, ROLES.AUXILIAR_TESORERIA_CAJA,
-  ROLES.DIRECCION_NEGOCIO, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.ADMIN_GASTOS
+  ROLES.DIRECCION_NEGOCIO, ROLES.LEGALIZACION, ROLES.CONTABILIDAD, ROLES.TORRE_CONTROL_GASTOS, ROLES.ADMIN_GASTOS
 ]
 export type ModuloRoles = 'GASTOS' | 'TRAMITES'
 export const rolesDelModulo = (modulo: ModuloRoles) => (modulo === 'GASTOS' ? ROLES_GASTOS_ASIGNABLES : ROLES_TRAMITES)
@@ -89,6 +92,18 @@ export const ESTADOS_LOTE = {
   PAGADO: 'PAGADO',           // pago confirmado: bolsa descontada
   RECHAZADO: 'RECHAZADO'      // se quitaron o rechazaron todos sus gastos
 } as const
+
+// Tipos de cuenta de cobro (2026-11-13, pedido del usuario para tipificarlas):
+// POR_PAGO: la bolsa se legaliza y el dinero vuelve a ella (lo de siempre; las cuentas viejas quedan así)
+// LEGALIZACION_SIN_PAGO: la bolsa se legaliza pero el dinero no vuelve (no hay movimiento de bolsa)
+// ANTICIPO: solicitud de dinero y gestión de pagos; en la bolsa se comporta como POR_PAGO
+export const TIPOS_CUENTA_COBRO = {
+  POR_PAGO: 'POR_PAGO',
+  LEGALIZACION_SIN_PAGO: 'LEGALIZACION_SIN_PAGO',
+  ANTICIPO: 'ANTICIPO'
+} as const
+
+export const LISTA_TIPOS_CUENTA_COBRO: string[] = Object.values(TIPOS_CUENTA_COBRO)
 
 export const ESTADOS_CUENTA_COBRO = {
   BORRADOR: 'BORRADOR',

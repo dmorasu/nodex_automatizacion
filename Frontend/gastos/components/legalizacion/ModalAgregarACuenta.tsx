@@ -7,8 +7,9 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { Loader2 } from "lucide-react"
 import { agregarGastosACuenta, crearCuenta } from "@/actions/gastos/legalizacion"
 import { formatoMoneda } from "@/src/lib/formato"
-import type { CuentaListado, GastoListado } from "@/src/schemas/gastos"
+import { TIPOS_CUENTA_COBRO, nombreTipoCuenta, type CuentaListado, type GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
+import SelectBuscable from "../ui/SelectBuscable"
 
 // Agrega los gastos seleccionados a una cuenta de cobro en borrador o a una nueva
 export default function ModalAgregarACuenta({
@@ -23,12 +24,15 @@ export default function ModalAgregarACuenta({
   const router = useRouter()
   const [destino, setDestino] = useState<"nueva" | number>(borradores[0]?.id ?? "nueva")
   const [numero, setNumero] = useState("")
+  // Sin valor por defecto: el tipo decide si el dinero vuelve a la bolsa al legalizar
+  const [tipo, setTipo] = useState("")
   const [guardando, startGuardar] = useTransition()
 
   const total = gastos.reduce((suma, g) => suma + Number(g.factura?.valorLegalizado ?? 0), 0)
 
   const agregar = () => {
     if (destino === "nueva" && !numero.trim()) return toast.error("Escriba el número de la cuenta de cobro")
+    if (destino === "nueva" && !tipo) return toast.error("Seleccione el tipo de cuenta de cobro")
 
     startGuardar(async () => {
       let cuentaId = destino
@@ -36,6 +40,7 @@ export default function ModalAgregarACuenta({
       if (cuentaId === "nueva") {
         const creada = await crearCuenta({
           numeroCuentaCobro: numero.trim(),
+          tipo,
           fechaRadicacion: "",
           observacion: ""
         })
@@ -76,7 +81,7 @@ export default function ModalAgregarACuenta({
                 <input type="radio" checked={destino === cuenta.id} onChange={() => setDestino(cuenta.id)} className="accent-emerald-600" />
                 <span>
                   <b className="text-slate-700">{cuenta.numeroCuentaCobro}</b>
-                  <span className="text-slate-400"> · borrador · {cuenta.cantidadGastos} gasto(s) · {formatoMoneda(cuenta.totalLegalizado)}</span>
+                  <span className="text-slate-400"> · {nombreTipoCuenta(cuenta.tipo)} · borrador · {cuenta.cantidadGastos} gasto(s) · {formatoMoneda(cuenta.totalLegalizado)}</span>
                 </span>
               </label>
             ))}
@@ -91,6 +96,13 @@ export default function ModalAgregarACuenta({
                 <label className="block">
                   <span className={claseLabel}>Número <span className="text-red-400">*</span></span>
                   <input value={numero} onChange={e => setNumero(e.target.value)} maxLength={50} placeholder="Ej: CC-045" className={claseInput} autoFocus />
+                </label>
+                <label className="block">
+                  <span className={claseLabel}>Tipo <span className="text-red-400">*</span></span>
+                  <SelectBuscable value={tipo} onChange={e => setTipo(e.target.value)} className={claseInput}>
+                    <option value="">Seleccione…</option>
+                    {TIPOS_CUENTA_COBRO.map(t => <option key={t.codigo} value={t.codigo}>{t.nombre}</option>)}
+                  </SelectBuscable>
                 </label>
               </div>
             )}

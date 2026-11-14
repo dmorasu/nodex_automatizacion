@@ -16,6 +16,8 @@ export const ROLES = {
   DIRECCION_NEGOCIO: "DIRECCION_NEGOCIO",
   // Hace el trabajo de Tesorería solo en la caja menor que tiene asignada
   AUXILIAR_TESORERIA_CAJA: "AUXILIAR_TESORERIA_CAJA",
+  // Ve todos los gastos en solo lectura; edita y anula solo los que creó
+  TORRE_CONTROL_GASTOS: "TORRE_CONTROL_GASTOS",
   // Administrador de Gastos (se asigna); la sesión le agrega ADMIN, que es el que revisan las pantallas
   ADMIN_GASTOS: "ADMIN_GASTOS",
   ADMIN: "ADMIN"
@@ -24,7 +26,7 @@ export const ROLES = {
 // Perfiles que se asignan en Usuarios de Nodex Gastos (los de Trámites se manejan en Nodex Trámites)
 export const ROLES_GASTOS_ASIGNABLES: string[] = [
   "TESORERIA", "ANALISTA_TESORERIA", "TESORERIA_CERTIFICADOS", "AUXILIAR_TESORERIA_CAJA",
-  "DIRECCION_NEGOCIO", "LEGALIZACION", "CONTABILIDAD", "ADMIN_GASTOS"
+  "DIRECCION_NEGOCIO", "LEGALIZACION", "CONTABILIDAD", "TORRE_CONTROL_GASTOS", "ADMIN_GASTOS"
 ]
 
 export type CodigoRol = typeof ROLES[keyof typeof ROLES]
@@ -40,6 +42,7 @@ export const NOMBRES_ROL: Record<string, string> = {
   CONTABILIDAD: "Contabilidad",
   DIRECCION_NEGOCIO: "Dirección de Negocio",
   AUXILIAR_TESORERIA_CAJA: "Auxiliar de Tesorería - Caja menor",
+  TORRE_CONTROL_GASTOS: "Torre de control - Gastos",
   ADMIN: "Administrador",
   ADMIN_GASTOS: "Administrador de Gastos",
   ADMIN_TRAMITES: "Administrador de Trámites",
@@ -52,6 +55,11 @@ export const NOMBRES_ROL: Record<string, string> = {
 // Roles del módulo de gastos: con alguno se ven todos los gastos
 export const tieneRolDeGastos = (roles: string[]) =>
   roles.some(rol => ["TESORERIA", "ANALISTA_TESORERIA", "TESORERIA_CERTIFICADOS", "LEGALIZACION", "CONTABILIDAD", "DIRECCION_NEGOCIO", "ADMIN"].includes(rol))
+
+// "Todos los gastos" en Mis gastos: los roles del módulo y Torre de control de Gastos (este en solo
+// lectura; no cuenta en tieneRolDeGastos porque no ve todos los anticipos)
+export const veTodosLosGastos = (roles: string[]) =>
+  tieneRolDeGastos(roles) || roles.includes(ROLES.TORRE_CONTROL_GASTOS)
 
 // Tesorería - Certificados sin otro rol de gastos: solo ve y paga las compras de certificados
 export const soloCertificados = (roles: string[]) =>

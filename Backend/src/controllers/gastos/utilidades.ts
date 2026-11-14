@@ -22,6 +22,11 @@ const ROLES_GASTOS: string[] = [ROLES.TESORERIA, ROLES.ANALISTA_TESORERIA, ROLES
 // Con un rol del módulo de gastos se ven todos los gastos; sin él, cada usuario ve solo los suyos
 export const puedeVerTodos = (req: Request) => (req.roles ?? []).some(rol => ROLES_GASTOS.includes(rol))
 
+// Torre de control de Gastos ve todos los gastos (listado, detalle, documentos y Excel) en solo lectura:
+// no cuenta en puedeVerTodos porque ese también da permiso de gestionar (editar, anular, subir documentos)
+export const veTodosLosGastos = (req: Request) =>
+  puedeVerTodos(req) || (req.roles ?? []).includes(ROLES.TORRE_CONTROL_GASTOS)
+
 // Tesorería - Certificados sin otro rol de gastos: solo ve y paga las compras de certificados
 // (CTL, Cámara de Comercio y RUNT)
 export const soloCertificados = (req: Request) => {

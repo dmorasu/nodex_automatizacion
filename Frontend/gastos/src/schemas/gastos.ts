@@ -359,9 +359,20 @@ export const LoteDetalleSchema = LoteListadoSchema.omit({ cantidadGastos: true }
 
 // ── Legalización ───────────────────────────
 
+// Tipos de cuenta de cobro (deben coincidir con TIPOS_CUENTA_COBRO del backend). En Legalización sin
+// pago el dinero no vuelve a la bolsa al legalizar
+export const TIPOS_CUENTA_COBRO = [
+  { codigo: "POR_PAGO", nombre: "Cuenta de cobro por pago" },
+  { codigo: "LEGALIZACION_SIN_PAGO", nombre: "Cuenta de cobro legalización sin pago" },
+  { codigo: "ANTICIPO", nombre: "Cuenta de cobro de anticipo" }
+]
+export const nombreTipoCuenta = (codigo: string) => TIPOS_CUENTA_COBRO.find(t => t.codigo === codigo)?.nombre ?? codigo
+export const SIN_PAGO = "LEGALIZACION_SIN_PAGO"
+
 export const CuentaListadoSchema = z.object({
   id: z.number(),
   numeroCuentaCobro: z.string(),
+  tipo: z.string().default("POR_PAGO"),
   fechaRadicacion: textoNulo,
   totalFacturas: z.string(),
   totalCuatroXMil: z.string(),

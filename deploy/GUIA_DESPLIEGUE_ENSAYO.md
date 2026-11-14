@@ -282,6 +282,9 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Gastos: perfil Torre de control - Gastos y tipos de cuenta de cobro (2026-11-13)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
+- **Sin variables.** **Cambios de base (los hace el arranque, idempotentes):** `seedGastos` agrega el perfil `TORRE_CONTROL_GASTOS` en `gastos_roles`; `ajustarEsquemaGastos` agrega `gastos_cuentas_cobro.tipo VARCHAR(30) NOT NULL DEFAULT 'POR_PAGO'` (las cuentas que ya existen quedan "por pago"). Después, asignar el perfil a mano en Nodex Gastos → Usuarios.
+
 **Varias placas por trámite (2026-11-12)** — cambia el backend, Nodex Trámites y Nodex Gastos: compilar los tres y reiniciar `nodex-api`, `nodex-tramites` y `nodex-gastos`.
 - **Sin variables.** **Cambios de base (los hace el arranque, idempotentes):** `sync()` crea la tabla `solicitud_tramite_placas` (una fila por placa del trámite, con índice `varchar_pattern_ops`); después `placasDeLosTramites()` la llena con los trámites que aún no tienen filas, separando lo que se escribió en la placa ("JUY118-JUY116", "ABC123 y DEF456"); y `gastos_solicitudes.placa` pasa de `VARCHAR(20)` a `VARCHAR(100)` (ampliar no reescribe la tabla). En desarrollo: 2.111 trámites → 2.739 placas.
 - **Revisar después de arrancar:** `SELECT count(*), count(DISTINCT solicitud_tramite_id) FROM solicitud_tramite_placas;` (los trámites deben ser casi todos los que tienen placa).

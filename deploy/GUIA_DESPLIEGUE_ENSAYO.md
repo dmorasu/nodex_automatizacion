@@ -282,6 +282,9 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Seguridad: Next 16.4.6 y dependencias del backend (2026-11-16)** — cambian solo los `package.json` / `package-lock.json` del Backend y de las tres apps: en cada uno **`npm ci`** (las dependencias cambiaron) y compilar; reiniciar `nodex-api`, `nodex-worker`, `nodex-tramites`, `nodex-gastos` y `nodex-tramitadores`.
+- **Sin variables ni cambios de base.** **Revisar después:** `node -p "require('next/package.json').version"` en cada app debe decir 16.4.6, y entrar a las tres apps y subir un documento.
+
 **Gastos: perfil Torre de control - Gastos y tipos de cuenta de cobro (2026-11-13)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
 - **Sin variables.** **Cambios de base (los hace el arranque, idempotentes):** `seedGastos` agrega el perfil `TORRE_CONTROL_GASTOS` en `gastos_roles`; `ajustarEsquemaGastos` agrega `gastos_cuentas_cobro.tipo VARCHAR(30) NOT NULL DEFAULT 'POR_PAGO'` (las cuentas que ya existen quedan "por pago"). Después, asignar el perfil a mano en Nodex Gastos → Usuarios.
 

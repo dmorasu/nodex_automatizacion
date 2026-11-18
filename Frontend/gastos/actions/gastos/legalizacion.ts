@@ -14,12 +14,10 @@ export type DatosCuenta = {
   observacion: string
 }
 
+// Una o varias facturas (hasta 4): el total es el valor de la factura del gasto
 export type DatosFactura = {
-  numeroFactura: string
   tieneFacturaReal: boolean
-  identificacionTerceroReal: string
-  nombreTerceroReal: string
-  valorFactura: number
+  facturas: { numeroFactura: string, identificacionTercero: string, nombreTercero: string, valor: number }[]
   observacion: string
 }
 

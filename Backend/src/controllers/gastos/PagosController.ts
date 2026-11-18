@@ -237,6 +237,37 @@ export class PagosController {
       if (req.query.desde) condiciones.push({ fechaPago: { [Op.gte]: String(req.query.desde) } })
       if (req.query.hasta) condiciones.push({ fechaPago: { [Op.lte]: String(req.query.hasta) } })
 
+      // Filtros por columna de Contabilidad → Egresos (pedido del usuario, 2026-11-18)
+      if (req.query.lote) condiciones.push({ id: Number(req.query.lote) })
+      if (req.query.creadoPor) condiciones.push({ creadoPor: Number(req.query.creadoPor) })
+      if (req.query.numeroEgreso) condiciones.push({ numeroEgreso: { [Op.iLike]: `%${String(req.query.numeroEgreso).trim()}%` } })
+      // El valor de una línea del archivo del banco: el total del lote o lo pagado a uno de sus gastos
+      if (req.query.valor) {
+        const valor = Number(req.query.valor)
+        condiciones.push({
+          [Op.or]: [
+            { total: valor },
+            { id: { [Op.in]: literal(`(SELECT g.lote_pago_id FROM gastos_solicitudes g WHERE g.lote_pago_id IS NOT NULL AND g.valor_realmente_pagado = ${db.escape(valor)})`) } }
+          ]
+        })
+      }
+      // Gasto: código, concepto, beneficiario o su identificación
+      if (req.query.gasto) {
+        const patron = db.escape(`%${String(req.query.gasto).trim()}%`)
+        condiciones.push({
+          id: {
+            [Op.in]: literal(`(
+              SELECT g.lote_pago_id
+              FROM gastos_solicitudes g
+              LEFT JOIN gastos_terceros t ON t.id = g.beneficiario_id
+              WHERE g.lote_pago_id IS NOT NULL
+                AND (g.codigo ILIKE ${patron} OR g.concepto_pago ILIKE ${patron}
+                  OR t.nombre ILIKE ${patron} OR t.identificacion ILIKE ${patron})
+            )`)
+          }
+        })
+      }
+
       // Búsqueda: número de lote, egreso, o cualquiera de sus gastos (código, concepto, beneficiario).
       // El texto se escapa para evitar inyección SQL.
       if (busqueda) {
@@ -267,18 +298,36 @@ export class PagosController {
         include: [
           { model: Bolsas, attributes: ['id', 'nombre'] },
           { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
-          { model: SolicitudesGasto, attributes: ['id', 'codigo'] }
+          {
+            // Con lo pagado y la cuenta del beneficiario: Contabilidad compara cada lote con el
+            // archivo del banco sin abrirlo (aparte, por el límite de filas del listado)
+            model: SolicitudesGasto,
+            attributes: ['id', 'codigo', 'conceptoPago', 'valorRealmentePagado', 'lotePagoId'],
+            include: [{ model: Terceros, attributes: ['nombre', 'identificacion', 'banco', 'tipoCuenta', 'numeroCuenta'] }],
+            separate: true,
+            order: [['codigo', 'ASC']]
+          }
         ],
-        order: [['id', 'DESC'], [{ model: SolicitudesGasto, as: 'gastos' }, 'codigo', 'ASC']],
+        order: [['id', 'DESC']],
         limit: tamano,
         offset: (pagina - 1) * tamano,
         distinct: true
       })
 
+      // Quienes han pagado lotes, para el filtro "Pagado por" de Egresos
+      const pagadores = req.query.egreso
+        ? await Usuarios.findAll({
+          attributes: ATRIBUTOS_USUARIO,
+          where: { id: { [Op.in]: literal(`(SELECT DISTINCT l.creado_por FROM gastos_lotes_pago l WHERE l.estado = '${ESTADOS_LOTE.PAGADO}')`) } },
+          order: [['nombreUsuario', 'ASC']]
+        })
+        : undefined
+
       res.json({
         total: count,
         pagina,
         tamano,
+        pagadores,
         registros: rows.map(lote => {
           const { gastos, ...datos } = lote.toJSON()
           return { ...datos, cantidadGastos: gastos.length, gastos }

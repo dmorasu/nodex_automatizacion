@@ -321,13 +321,75 @@ export const notificarReintegroTramitador = async (soporteId: number) => {
   }
 }
 
-// Correos de quienes tienen el perfil Dirección de Negocio
-const correosDireccion = async () => {
+// Correos de quienes tienen un perfil de Gastos
+const correosDelPerfil = async (codigo: string) => {
   const usuarios = await Usuarios.findAll({
     attributes: ['correoUsuario'],
-    include: [{ model: Roles, attributes: [], where: { codigo: ROLES.DIRECCION_NEGOCIO }, through: { attributes: [] } }]
+    include: [{ model: Roles, attributes: [], where: { codigo }, through: { attributes: [] } }]
   })
-  return [...new Set(usuarios.map(u => u.correoUsuario).filter(Boolean))]
+  return [...new Set(usuarios.map(u => u.correoUsuario?.trim()).filter(Boolean))]
+}
+
+const correosDireccion = () => correosDelPerfil(ROLES.DIRECCION_NEGOCIO)
+
+const NOMBRE_SOPORTE: Record<string, string> = {
+  [TIPOS_SOPORTE.FACTURA]: 'una factura',
+  [TIPOS_SOPORTE.REINTEGRO]: 'el comprobante de un reintegro',
+  [TIPOS_SOPORTE.OTRO]: 'un documento'
+}
+
+// Avisa a los usuarios con perfil Legalización que el tramitador subió un soporte de un gasto
+// reembolsable (factura, comprobante de reintegro u otro) y está por revisar en "Soportes por
+// revisar" (pedido del usuario, 2026-11-18: no se enteraban y el reintegro seguía pendiente).
+// Los de gastos no reembolsables los revisa Contabilidad y no van aquí. Si nadie tiene el perfil
+// con correo, va al buzón de Legalización. Se llama DESPUÉS de guardar; si falla, el soporte queda.
+export const notificarSoporteParaLegalizacion = async (soporteId: number) => {
+  try {
+    const soporte = await SoporteTramitador.findByPk(soporteId, {
+      include: [
+        {
+          model: SolicitudesGasto,
+          include: [
+            { model: Terceros, attributes: ['nombre'] },
+            { model: Bolsas, attributes: ['nombre'] }
+          ]
+        },
+        { model: Reintegros, attributes: ['id', 'valorReintegro'] },
+        { model: Tramitador, attributes: ['nombreTramitador'] }
+      ]
+    })
+    if (!soporte?.solicitudGasto?.reembolsable) return
+
+    const gasto = soporte.solicitudGasto
+    const tramitador = soporte.tramitador?.nombreTramitador
+    const esReintegro = soporte.tipo === TIPOS_SOPORTE.REINTEGRO
+    const queSubio = NOMBRE_SOPORTE[soporte.tipo] ?? 'un soporte'
+
+    const mensaje = correoGastos({
+      estado: esReintegro ? ESTADOS_CORREO.REINTEGRO : ESTADOS_CORREO.POR_LEGALIZAR,
+      titulo: esReintegro ? 'Comprobante de reintegro por revisar' : 'Soporte del tramitador por revisar',
+      saludo: 'Hola equipo de Legalización,',
+      intro: `${tramitador ? `<strong>${html(tramitador)}</strong>` : 'El tramitador'} subió ${queSubio} del gasto <strong>${html(gasto.codigo)}</strong>. Está en Legalización → Soportes por revisar; ${esReintegro ? 'al aprobarlo el reintegro queda recibido' : 'al aprobarlo pasa a los documentos del gasto'}.`,
+      gastos: [gasto],
+      monto: g => esReintegro ? soporte.reintegro?.valorReintegro : g.valorRealmentePagado,
+      etiquetaTotal: esReintegro ? 'Valor del reintegro' : 'Valor pagado',
+      detalles: g => [
+        ['Trámite', tramite(g)],
+        ['Tramitador', html(tramitador)],
+        ['Beneficiario', html(g.beneficiario?.nombre)],
+        ['Bolsa', html(g.bolsa?.nombre)],
+        ['Observación', html(soporte.observacion)]
+      ]
+    })
+
+    const asunto = `${esReintegro ? 'Reintegro' : 'Soporte'} del tramitador por revisar · ${gasto.codigo}`
+    const perfil = await correosDelPerfil(ROLES.LEGALIZACION)
+    for (const correo of perfil.length ? perfil : [correoLegalizacion()]) {
+      await encolarCorreo('GASTO_SOPORTE_LEGALIZACION', correo, asunto, mensaje)
+    }
+  } catch (error) {
+    console.error(`⚠️ No se pudo avisar a Legalización del soporte ${soporteId}:`, error)
+  }
 }
 
 const gastosConDetalle = (where: Record<string, unknown>) =>

@@ -101,6 +101,15 @@ export const ajustarEsquemaTramites = async () => {
   await horaFinDeLaCita()
   await dependenciaDeEnvio()
   await pagoContraEntrega()
+  await comentarioDelDocumento()
+}
+
+// 2026-11-18 · Comentario del tramitador al subir una factura (models/documentosSolicitud.ts)
+const comentarioDelDocumento = async () => {
+  const documentos = await columnasDe('DocumentosSolicitud')
+  if (documentos && !documentos.comentario) {
+    await db.query(`ALTER TABLE "DocumentosSolicitud" ADD COLUMN "comentario" TEXT`)
+  }
 }
 
 // 2026-11-04 · Logística: pago contra entrega (services/reglasLogistica.ts)

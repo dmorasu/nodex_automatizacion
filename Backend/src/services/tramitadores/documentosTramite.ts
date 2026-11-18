@@ -11,7 +11,8 @@ export const registrarDocumentosTramite = async (
   solicitudTramiteId: number,
   tramitadorId: number,
   tipoDocumento: TipoDocumentoTramite,
-  archivos: Express.Multer.File[]
+  archivos: Express.Multer.File[],
+  comentario: string | null = null
 ) => {
   const rutaDirectorio = `solicitudes/${solicitudTramiteId}`
   const subidos: string[] = []
@@ -32,7 +33,8 @@ export const registrarDocumentosTramite = async (
       nombreArchivo: subidos[i],
       rutaArchivo: `${rutaDirectorio}/${subidos[i]}`,
       tipoArchivo: archivo.mimetype,
-      tamano: archivo.size
+      tamano: archivo.size,
+      comentario
     })))
   } catch (error) {
     // No dejar archivos sueltos en Azure si algo falló

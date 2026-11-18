@@ -18,7 +18,7 @@ import SolicitudTramites from '../../models/solicitudTramites'
 import { subirArchivo, eliminarArchivo, obtenerArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { ESTADOS_GASTO, ESTADOS_REINTEGRO, TIPOS_DOCUMENTO } from '../gastos/constantes'
-import { notificarReintegroTramitador } from '../gastos/notificacionesGastos'
+import { notificarReintegroTramitador, notificarSoporteParaLegalizacion } from '../gastos/notificacionesGastos'
 import { codigoEstadoGasto } from '../gastos/estadosGasto'
 import { marcarReintegradoEn } from '../gastos/reintegros'
 import { ErrorGastos as ErrorNegocio } from '../gastos/errores'
@@ -223,10 +223,11 @@ export const subirSoporte = async (
 
   // Fuera de la transacción: un fallo en el correo no revierte el soporte
   if (datos.tipo === TIPOS_SOPORTE.REINTEGRO) void notificarReintegroTramitador(soporte.id)
+  void notificarSoporteParaLegalizacion(soporte.id)
 
   if (soporte.solicitudTramiteId) {
     try {
-      await registrarDocumentosTramite(soporte.solicitudTramiteId, tramitadorId, TIPO_EN_TRAMITE[datos.tipo], archivos)
+      await registrarDocumentosTramite(soporte.solicitudTramiteId, tramitadorId, TIPO_EN_TRAMITE[datos.tipo], archivos, datos.observacion?.trim() || null)
     } catch (error) {
       // El soporte ya quedó para Legalización; solo faltó la copia en el trámite
       console.error('No se pudo copiar el soporte a los documentos del trámite:', error)
@@ -385,7 +386,11 @@ export const pasarFacturasDelTramite = async (gastoId: number) => {
         reintegroId: null,
         tramitadorId: documentos[0].tramitadorId,
         tipo: TIPOS_SOPORTE.FACTURA,
-        observacion: `Factura subida en el trámite #${porPasar.solicitudTramiteId} antes del pago; pasó al gasto al pagarlo`
+        // Con lo que el tramitador comentó al subirla (ej: si pagó con tarjeta o un tercero)
+        observacion: [
+          `Factura subida en el trámite #${porPasar.solicitudTramiteId} antes del pago; pasó al gasto al pagarlo`,
+          ...new Set(documentos.map(d => d.comentario?.trim()).filter(Boolean))
+        ].join('\n')
       }, { transaction })
 
       await ArchivoSoporte.bulkCreate(subidos.map(({ nombreArchivo, documento }) => ({

@@ -246,10 +246,15 @@ export const subirDocumentosTramite = async (
   solicitudTramiteId: number,
   tipoDocumento: TipoDocumentoTramite,
   archivos: Express.Multer.File[],
-  solicitudGastoId: number | null = null
+  solicitudGastoId: number | null = null,
+  comentarioRecibido: string | null = null
 ) => {
   await tramiteDelTramitador(tramitadorId, solicitudTramiteId)
   if (archivos.length === 0) throw new ErrorNegocio('Debe adjuntar al menos un archivo')
+
+  // Comentario de la factura (ej: si pagó con tarjeta o un tercero): solo en las facturas
+  const comentario = tipoDocumento === 'FACTURA' ? comentarioRecibido?.trim() || null : null
+  if (comentario && comentario.length > 500) throw new ErrorNegocio('El comentario no puede superar 500 caracteres')
 
   const vaAlGasto = tipoDocumento === 'FACTURA' || tipoDocumento === 'BOLETA_REINTEGRO'
   if (!vaAlGasto) {
@@ -277,14 +282,16 @@ export const subirDocumentosTramite = async (
   }
 
   if (!destino) {
-    const documentos = await registrarDocumentosTramite(solicitudTramiteId, tramitadorId, tipoDocumento, archivos)
+    // Queda con su comentario: si después pasa al gasto (al pagarlo), lo lleva al soporte
+    const documentos = await registrarDocumentosTramite(solicitudTramiteId, tramitadorId, tipoDocumento, archivos, comentario)
     return { cantidad: documentos.length, gasto: null }
   }
 
   // Soporte del gasto (para Legalización) + copia en los documentos del trámite
   await subirSoporte(tramitadorId, destino.id, {
     tipo: tipoDocumento === 'FACTURA' ? 'FACTURA' : 'REINTEGRO',
-    reintegroId: tipoDocumento === 'FACTURA' ? null : destino.reintegrosPorSoportar[0]
+    reintegroId: tipoDocumento === 'FACTURA' ? null : destino.reintegrosPorSoportar[0],
+    observacion: comentario
   }, archivos)
 
   return { cantidad: archivos.length, gasto: destino.codigo }

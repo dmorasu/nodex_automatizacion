@@ -118,7 +118,8 @@ class SolicitudesGasto extends Model {
   @Column({ type: DataType.BOOLEAN })
   declare reembolsable: boolean
 
-  @Column({ type: DataType.STRING(50) })
+  // Con varias facturas, sus números separados por coma
+  @Column({ type: DataType.STRING(250) })
   declare numeroFactura: string
 
   @AllowNull(false)

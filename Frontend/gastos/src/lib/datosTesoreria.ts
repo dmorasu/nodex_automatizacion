@@ -24,6 +24,12 @@ export type FiltrosLotes = {
   bolsaId?: string
   desde?: string
   hasta?: string
+  // Filtros por columna de Contabilidad → Egresos
+  lote?: string
+  creadoPor?: string
+  numeroEgreso?: string
+  gasto?: string
+  valor?: string
 }
 
 export const obtenerLotes = async (filtros: FiltrosLotes) => {

@@ -56,6 +56,14 @@ class DocumentoSolicitud extends Model {
   })
   declare tipoDocumento: string | null;
 
+  // Comentario del tramitador al subir una factura desde la app (ej: si pagó con tarjeta o un
+  // tercero). Viaja al soporte que revisa Legalización, aunque la factura pase al gasto después
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  declare comentario: string | null;
+
 
   @Column({
     type: DataType.STRING(255),

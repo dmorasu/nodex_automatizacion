@@ -4,6 +4,7 @@ import { requiereAcceso } from "@/src/auth/dal"
 import { ROLES, TESORERIA_OPERATIVA, tieneAcceso } from "@/src/auth/permisos"
 import ListaDocumentos from "@/components/gastos/ListaDocumentos"
 import SeccionLegalizacionGasto from "@/components/legalizacion/SeccionLegalizacionGasto"
+import SoportesPorRevisar from "@/components/legalizacion/SoportesPorRevisar"
 import { obtenerCatalogos, obtenerGasto, obtenerTasas } from "@/src/lib/datosGastos"
 import { formatoFecha, formatoFechaHora, formatoMoneda, formatoPorcentaje } from "@/src/lib/formato"
 import EstadoGasto from "@/components/gastos/EstadoGasto"
@@ -91,6 +92,8 @@ export default async function DetalleGastoPage(props: { params: Promise<{ id: st
             <span className="font-semibold">Motivo de anulación:</span> {gasto.motivoAnulacion}
           </div>
         )}
+
+        <SoportesPorRevisar gasto={gasto} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

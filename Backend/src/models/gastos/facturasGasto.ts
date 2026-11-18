@@ -1,6 +1,7 @@
-import { Table, Column, DataType, Model, AllowNull, Default, Unique, ForeignKey, BelongsTo } from 'sequelize-typescript'
+import { Table, Column, DataType, Model, AllowNull, Default, Unique, ForeignKey, BelongsTo, HasMany } from 'sequelize-typescript'
 import Usuarios from '../usuarios'
 import SolicitudesGasto from './solicitudesGasto'
+import FacturasDetalleGasto from './facturasDetalleGasto'
 
 // Factura real de un gasto pagado. La registra Legalización.
 // Con ella se calcula la retención, el 4x1000, el valor a legalizar
@@ -20,7 +21,8 @@ class FacturasGasto extends Model {
   @BelongsTo(() => SolicitudesGasto)
   declare solicitudGasto: SolicitudesGasto
 
-  @Column({ type: DataType.STRING(50) })
+  // Con varias facturas, sus números separados por coma (hasta 4 de 50)
+  @Column({ type: DataType.STRING(250) })
   declare numeroFactura: string
 
   @AllowNull(false)
@@ -86,6 +88,10 @@ class FacturasGasto extends Model {
 
   @Column({ type: DataType.TEXT })
   declare observacion: string
+
+  // Cada factura cuando son varias (también la única, desde 2026-11-18)
+  @HasMany(() => FacturasDetalleGasto)
+  declare detalle: FacturasDetalleGasto[]
 }
 
 export default FacturasGasto

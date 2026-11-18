@@ -18,7 +18,7 @@ import SolicitudTramites from '../../models/solicitudTramites'
 import { subirArchivo, eliminarArchivo, obtenerArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
 import { ESTADOS_GASTO, ESTADOS_REINTEGRO, TIPOS_DOCUMENTO } from '../gastos/constantes'
-import { notificarReintegroTramitador } from '../gastos/notificacionesGastos'
+import { notificarReintegroTramitador, notificarSoporteParaLegalizacion } from '../gastos/notificacionesGastos'
 import { codigoEstadoGasto } from '../gastos/estadosGasto'
 import { marcarReintegradoEn } from '../gastos/reintegros'
 import { ErrorGastos as ErrorNegocio } from '../gastos/errores'
@@ -223,6 +223,7 @@ export const subirSoporte = async (
 
   // Fuera de la transacción: un fallo en el correo no revierte el soporte
   if (datos.tipo === TIPOS_SOPORTE.REINTEGRO) void notificarReintegroTramitador(soporte.id)
+  void notificarSoporteParaLegalizacion(soporte.id)
 
   if (soporte.solicitudTramiteId) {
     try {

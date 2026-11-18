@@ -265,6 +265,17 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
   // Tipos de documento que se pueden subir en la etapa actual del gasto
   tiposDocumento: z.array(ItemCatalogoSchema).default([]),
   legalizacionCaja: z.lazy(() => LegalizacionCajaSchema).nullish(),
+  // Lo que subió el tramitador y está por revisar (aún no está en los documentos ni en el reintegro)
+  soportesPendientes: z.array(z.object({
+    id: z.number(),
+    tipo: z.enum(["FACTURA", "REINTEGRO", "OTRO"]),
+    observacion: textoNulo,
+    createdAt: z.string(),
+    tramitador: z.object({ id: z.number(), nombreTramitador: z.string() }).nullable(),
+    reintegro: z.object({ id: z.number(), valorReintegro: z.string() }).nullable(),
+    // Solo llegan a quien puede revisarlos
+    archivos: z.array(z.object({ id: z.number(), nombreOriginal: z.string() })).optional()
+  })).default([]),
   permisos: z.object({
     registrarFactura: z.boolean(),
     editar: z.boolean(),
@@ -272,6 +283,7 @@ export const GastoDetalleSchema = GastoListadoSchema.extend({
     edicionAdmin: z.boolean().optional(),
     anular: z.boolean(),
     subirDocumentos: z.boolean(),
+    revisarSoportes: z.boolean().optional(),
     soloLectura: z.boolean().optional()
   })
 })

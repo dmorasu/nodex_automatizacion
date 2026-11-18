@@ -18,6 +18,8 @@ import CuentasCobroGastos from '../../models/gastos/cuentasCobroGastos'
 import CuentasCobro from '../../models/gastos/cuentasCobro'
 import EstadosCuentaCobro from '../../models/gastos/estadosCuentaCobro'
 import FacturasGasto from '../../models/gastos/facturasGasto'
+import SoporteTramitador, { ESTADOS_SOPORTE } from '../../models/tramitadores/soporteTramitador'
+import ArchivoSoporte from '../../models/tramitadores/archivoSoporte'
 import { actualizarGasto, anularGasto, crearGasto } from '../../services/gastos/solicitudesGasto'
 import { INCLUDES_REPORTE, libroDeGastos } from '../../services/gastos/reportes'
 import { editarGastoComoAdmin } from '../../services/gastos/edicionAdmin'
@@ -547,6 +549,20 @@ export class SolicitudesGastoController {
       const json = gasto.toJSON()
       const esLegalizacion = puedeGestionarFactura(req, gasto.reembolsable)
 
+      // Lo que subió el tramitador y aún nadie revisa: no está en los documentos ni en el reintegro
+      // hasta que se apruebe (caso del trámite 6262), así que el detalle lo avisa. Los archivos solo
+      // se listan a quien puede revisarlos (la ruta para verlos exige ese mismo permiso)
+      const soportesPendientes = await SoporteTramitador.findAll({
+        where: { solicitudGastoId: gasto.id, estado: ESTADOS_SOPORTE.PENDIENTE },
+        attributes: ['id', 'tipo', 'observacion', 'createdAt'],
+        include: [
+          { model: Tramitador, attributes: ['id', 'nombreTramitador'] },
+          { model: Reintegros, attributes: ['id', 'valorReintegro'] },
+          ...(esLegalizacion ? [{ model: ArchivoSoporte, attributes: ['id', 'nombreOriginal', 'tipoArchivo', 'tamano'] }] : [])
+        ],
+        order: [['createdAt', 'ASC']]
+      })
+
       res.json({
         ...json,
         reintegros: json.reintegros.map((r: { id: number }) => ({
@@ -554,6 +570,7 @@ export class SolicitudesGastoController {
           documentos: documentosReintegros.filter(d => d.reintegroId === r.id)
         })),
         documentosPago,
+        soportesPendientes,
         // Gasto de un anticipo: cómo va el saldo del cliente en la bolsa
         saldoAnticipo: gasto.anticipo ? await saldoDelCliente(gasto.anticipo.bolsaId, gasto.anticipo.clienteId) : null,
         // Tipos de documento que se pueden subir en la etapa actual del gasto
@@ -574,6 +591,8 @@ export class SolicitudesGastoController {
             (estado !== ESTADOS_GASTO.EN_REEMBOLSO || gasto.legalizacionCaja?.reembolso?.estado === ESTADOS_REEMBOLSO_CAJA.BORRADOR)
           ),
           subirDocumentos: gestiona && estado !== ESTADOS_GASTO.ANULADO && estado !== ESTADOS_GASTO.CONTABILIZADO,
+          // Aprobar o rechazar lo que subió el tramitador (Legalización o Contabilidad, según el gasto)
+          revisarSoportes: esLegalizacion,
           soloLectura: !gestiona
         }
       })

@@ -39,7 +39,7 @@ export const generarPlantillaExcel = async (req: Request, res: Response) => {
     Municipios.findAll({ attributes:['id','nombreMunicipio','departamento'], order:[['id','ASC']] }),
     Operaciones.findAll({ attributes:['id','nombreOperacion'], order:[['id','ASC']] }),
     Entidad.findAll({ attributes:['id','nombreEntidad'], order:[['id','ASC']] }),
-    Tramites.findAll({ attributes:['id','nombreTramite'], order:[['id','ASC']] })
+    Tramites.findAll({ where:{ activo:true }, attributes:['id','nombreTramite'], order:[['id','ASC']] })
   ])
 
   const wb = XLSX.utils.book_new()
@@ -99,7 +99,9 @@ export const validarSolicitudesExcel = async (req: Request, res: Response) => {
       if (!await Municipios.findByPk(municipioId)) errores.push({ fila:filaExcel, error:'municipiosId no existe' })
       if (!await Operaciones.findByPk(operacionId)) errores.push({ fila:filaExcel, error:'operacionesId no existe' })
       if (!await Entidad.findByPk(entidadId)) errores.push({ fila:filaExcel, error:'entidadId no existe' })
-      if (!await Tramites.findByPk(tramiteId)) errores.push({ fila:filaExcel, error:'tramiteId no existe' })
+      const tipo = await Tramites.findByPk(tramiteId)
+      if (!tipo) errores.push({ fila:filaExcel, error:'tramiteId no existe' })
+      else if (!tipo.activo) errores.push({ fila:filaExcel, error:'tramiteId está inactivo' })
     }
 
     return res.json({
@@ -172,6 +174,12 @@ export const cargaMasivaSolicitudes = async (req: Request, res: Response) => {
           isNaN(tramiteId)
         ) {
           errores.push({ fila: filaExcel, error: "IDs inválidos o vacíos" })
+          continue
+        }
+
+        // Tipo de trámite inactivo: no se crean trámites nuevos con él
+        if (!await Tramites.findOne({ where: { id: tramiteId, activo: true }, attributes: ['id'] })) {
+          errores.push({ fila: filaExcel, error: "tramiteId no existe o está inactivo" })
           continue
         }
 

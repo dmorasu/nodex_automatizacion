@@ -6,6 +6,7 @@ import SubEstados from '../models/subEstados'
 import TiposRechazo from '../models/tiposRechazos'
 import Areas from '../models/areas'
 import Entidad from '../models/entidad'
+import { ErrorGastos } from './gastos/errores'
 
 // =====================================
 // CATÁLOGOS DE TRÁMITES (Nodex Trámites → Catálogos)
@@ -43,7 +44,7 @@ const revisarDuplicado = async (tabla: string, columna: string, valor: string, i
 export const listarCatalogos = async () => {
   const [tramites, subestados, operaciones, rechazos, areas, entidades] = await Promise.all([
     db.query(`
-      SELECT t.id, t."nombreTramite" AS nombre, t.responsable,
+      SELECT t.id, t."nombreTramite" AS nombre, t.responsable, t.activo,
         (SELECT COUNT(*) FROM "SolicitudTramites" s WHERE s."tramiteId" = t.id)::int AS uso
       FROM "Tramites" t ORDER BY t."nombreTramite"
     `, { type: QueryTypes.SELECT }),
@@ -139,6 +140,19 @@ export const guardarCatalogo = async (tipo: TipoCatalogo, datos: Record<string, 
   }
 }
 
+// ── Activar o desactivar un tipo de trámite ──
+// Desactivado no se ofrece para trámites nuevos; los que ya lo tienen no cambian
+export const cambiarActivoTipoTramite = async (id: number, activo: unknown) => {
+  if (typeof activo !== 'boolean') throw new ErrorCatalogo('Indique si queda activo o inactivo')
+  return (await existente(porId.tramites, id)).update({ activo })
+}
+
+// Un trámite nuevo (o al que le cambian el tipo) solo puede llevar un tipo activo
+export const revisarTipoTramiteActivo = async (tramiteId: unknown) => {
+  const tipo = await Tramite.findByPk(Number(tramiteId), { attributes: ['id', 'nombreTramite', 'activo'] })
+  if (tipo && !tipo.activo) throw new ErrorGastos(`El tipo de trámite "${tipo.nombreTramite}" está inactivo`, 400)
+}
+
 // ── Borrar (solo si no se usa) ──
 export const borrarCatalogo = async (tipo: TipoCatalogo, id: number) => {
   const registro = await existente(porId[tipo] as (id: number) => Promise<{ destroy: () => Promise<void> } | null>, id)
@@ -210,12 +224,12 @@ const porId = {
   entidades: (id: number) => Entidad.findByPk(id)
 }
 
-// Nombres de los tipos de trámite, sin repetidos: sugerencias del concepto de los gastos de
+// Nombres de los tipos de trámite activos, sin repetidos: sugerencias del concepto de los gastos de
 // vehículo en Nodex Gastos (formulario y plantilla del cargue masivo)
 export const nombresTiposTramite = async (): Promise<string[]> => {
   const filas = await db.query<{ nombre: string }>(`
     SELECT DISTINCT TRIM("nombreTramite") AS nombre FROM "Tramites"
-    WHERE TRIM(COALESCE("nombreTramite", '')) <> ''
+    WHERE TRIM(COALESCE("nombreTramite", '')) <> '' AND activo
     ORDER BY 1
   `, { type: QueryTypes.SELECT })
   return filas.map(f => f.nombre)

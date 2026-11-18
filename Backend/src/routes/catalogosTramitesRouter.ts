@@ -1,6 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from 'express'
 import { puedeAsignarAnalistas } from '../middleware/auth'
-import { borrarCatalogo, ErrorCatalogo, guardarCatalogo, listarAreas, listarCatalogos, type TipoCatalogo } from '../services/catalogosTramites'
+import { borrarCatalogo, cambiarActivoTipoTramite, ErrorCatalogo, guardarCatalogo, listarAreas, listarCatalogos, type TipoCatalogo } from '../services/catalogosTramites'
 import { generarExcelCatalogos } from '../services/exportarCatalogos'
 
 // Catálogos de Nodex Trámites (/api/catalogos-tramites): tipos de trámite, subestados,
@@ -67,6 +67,15 @@ router.post('/:tipo', async (req: Request, res: Response) => {
 router.put('/:tipo/:id', async (req: Request, res: Response) => {
   try {
     res.json(await guardarCatalogo(req.params.tipo as TipoCatalogo, req.body ?? {}, Number(req.params.id)))
+  } catch (error) {
+    responder(res, error)
+  }
+})
+
+// Activar o desactivar un tipo de trámite: { activo: boolean }
+router.patch('/tramites/:id/activo', async (req: Request, res: Response) => {
+  try {
+    res.json(await cambiarActivoTipoTramite(Number(req.params.id), req.body?.activo))
   } catch (error) {
     responder(res, error)
   }

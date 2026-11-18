@@ -16,7 +16,7 @@ export class TramiteController{
                     order:[
                         ['nombreTramite','ASC']
                     ],
-                    attributes:["id","nombreTramite","responsable"]
+                    attributes:["id","nombreTramite","responsable","activo"]
                     
 
                 })

@@ -3,13 +3,14 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "react-toastify"
 import clsx from "clsx"
-import { Check, ChevronDown, ChevronRight, ListTree, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, ListTree, Loader2, Pencil, Plus, Power, Search, Trash2, X } from "lucide-react"
 import { llamarApi } from "@/src/lib/apiCliente"
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from "@/components/ui/estilos"
 
 type TipoCatalogo = "tramites" | "operaciones" | "subestados" | "rechazos" | "areas" | "entidades"
 
-type TipoTramite = { id: number, nombre: string, responsable: string | null, uso: number }
+// activo = false: no se ofrece para trámites nuevos
+type TipoTramite = { id: number, nombre: string, responsable: string | null, activo: boolean, uso: number }
 type SubEstado = { id: number, nombre: string, tramiteId: number, uso: number }
 // descargaPagoUnificada: Legalización baja sus gastos como un solo PDF de pago por gasto
 type Operacion = { id: number, nombre: string, centroDeCostos: string | null, usoTramites: number, usoGastos: number, descargaPagoUnificada: boolean }
@@ -84,15 +85,28 @@ function FormularioCatalogo({ tipo, inicial, onGuardar, onCancelar }: {
   )
 }
 
-// ── Botones de cada fila: editar y eliminar (eliminar solo si no se usa) ──
-function AccionesFila({ enUso, motivo, onEditar, onEliminar }: {
+// ── Botones de cada fila: editar, activar/desactivar (tipos de trámite) y eliminar (solo si no se usa) ──
+function AccionesFila({ enUso, motivo, onEditar, onEliminar, activo, onAlternarActivo }: {
   enUso: boolean
   motivo: string
   onEditar: () => void
   onEliminar: () => void
+  activo?: boolean
+  onAlternarActivo?: () => void
 }) {
   return (
     <div className="flex justify-end gap-1">
+      {onAlternarActivo && (
+        <button
+          type="button"
+          onClick={onAlternarActivo}
+          className={clsx("rounded-md p-1.5 transition", activo ? "text-emerald-500 hover:bg-amber-50 hover:text-amber-600" : "text-slate-300 hover:bg-emerald-50 hover:text-emerald-600")}
+          aria-label={activo ? "Desactivar" : "Activar"}
+          title={activo ? "Desactivar" : "Activar"}
+        >
+          <Power size={14} />
+        </button>
+      )}
       <button type="button" onClick={onEditar} className="rounded-md p-1.5 text-slate-400 transition hover:bg-sky-50 hover:text-sky-600" aria-label="Editar" title="Editar">
         <Pencil size={14} />
       </button>
@@ -150,6 +164,14 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
     const r = await llamarApi(`/catalogos-tramites/${tipo}/${id}`, "DELETE")
     if (!r.ok) return toast.error(r.error)
     toast.success("Registro eliminado")
+    await cargar()
+  }
+
+  const alternarActivo = async (t: TipoTramite) => {
+    if (t.activo && !confirm(`¿Desactivar "${t.nombre}"? No se podrá elegir en trámites nuevos.`)) return
+    const r = await llamarApi(`/catalogos-tramites/tramites/${t.id}/activo`, "PATCH", { activo: !t.activo })
+    if (!r.ok) return toast.error(r.error)
+    toast.success(t.activo ? "Tipo de trámite desactivado" : "Tipo de trámite activado")
     await cargar()
   }
 
@@ -219,7 +241,7 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
                 {pestana === "tramites" && <th className="hidden px-4 py-3 font-semibold md:table-cell">Responsable</th>}
                 {pestana === "operaciones" && <th className="hidden px-4 py-3 font-semibold md:table-cell">Centro de costos</th>}
                 <th className="hidden px-4 py-3 font-semibold sm:table-cell">Uso</th>
-                <th className="w-24 px-4 py-3"><span className="sr-only">Acciones</span></th>
+                <th className="w-28 px-4 py-3"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -239,12 +261,13 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
                     ) : (
                       <>
                         <td className="px-4 py-2.5">
-                          <button type="button" onClick={() => alternar(t.id)} className="flex items-center gap-1.5 text-left font-medium text-slate-700 hover:text-sky-700">
+                          <button type="button" onClick={() => alternar(t.id)} className={clsx("flex items-center gap-1.5 text-left font-medium hover:text-sky-700", t.activo ? "text-slate-700" : "text-slate-400")}>
                             {abierto ? <ChevronDown size={14} className="shrink-0 text-slate-400" /> : <ChevronRight size={14} className="shrink-0 text-slate-400" />}
                             {t.nombre}
                             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-normal text-slate-500">
                               <ListTree size={10} /> {subestados.length} subestado(s)
                             </span>
+                            {!t.activo && <span className="rounded-full bg-amber-50 px-1.5 py-px text-[10px] font-semibold text-amber-700">Inactivo</span>}
                           </button>
                         </td>
                         <td className="hidden px-4 py-2.5 text-slate-500 md:table-cell">{t.responsable || "—"}</td>
@@ -252,7 +275,8 @@ export default function AdministrarCatalogos({ pestana }: { pestana: PestanaCata
                         <td className="px-4 py-2.5">
                           <AccionesFila enUso={Boolean(motivo)} motivo={motivo}
                             onEditar={() => { setEditando(`tramites:${t.id}`); setCreando(false) }}
-                            onEliminar={() => eliminar("tramites", t.id, t.nombre)} />
+                            onEliminar={() => eliminar("tramites", t.id, t.nombre)}
+                            activo={t.activo} onAlternarActivo={() => alternarActivo(t)} />
                         </td>
                       </>
                     )}

@@ -82,7 +82,7 @@ export const catalogosCargue = async (conGastos: boolean) => {
   const [operaciones, entidades, tramites, municipios, gastos] = await Promise.all([
     Operaciones.findAll({ attributes: ['id', 'nombreOperacion'], order: [['nombreOperacion', 'ASC']] }),
     Entidad.findAll({ attributes: ['id', 'nombreEntidad'], order: [['nombreEntidad', 'ASC']] }),
-    Tramites.findAll({ attributes: ['id', 'nombreTramite'], order: [['nombreTramite', 'ASC']] }),
+    Tramites.findAll({ where: { activo: true }, attributes: ['id', 'nombreTramite'], order: [['nombreTramite', 'ASC']] }),
     // Cada municipio una sola vez (la tabla tiene copias; se toma la de menor id, como el buscador)
     db.query<{ id: number, nombreMunicipio: string, departamento: string | null }>(`
       SELECT DISTINCT ON (UPPER(TRIM("nombreMunicipio")), UPPER(TRIM(departamento))) id, TRIM("nombreMunicipio") AS "nombreMunicipio", TRIM(departamento) AS departamento
@@ -208,7 +208,7 @@ export const validarCargue = async (filas: FilaCargue[]) => {
     resolverClientes(filas),
     Promise.all([
       Operaciones.findAll({ attributes: ['id'] }), Entidad.findAll({ attributes: ['id'] }),
-      Tramites.findAll({ attributes: ['id', 'nombreTramite'] }),
+      Tramites.findAll({ attributes: ['id', 'nombreTramite', 'activo'] }),
       db.query<{ id: number }>('SELECT id FROM "Municipios"', { type: QueryTypes.SELECT })
     ]),
     // Trámites abiertos (ni Finalizado ni Desistido) con alguna de las placas o la misma matrícula.
@@ -250,6 +250,7 @@ export const validarCargue = async (filas: FilaCargue[]) => {
     if (!existe(operaciones, fila.operacionId)) errores.push('Falta la operación')
     if (!existe(entidades, fila.entidadId)) errores.push('Falta la entidad')
     if (!existe(tramites, fila.tramiteId)) errores.push('Falta el tipo de trámite')
+    else if (tramites.find(t => Number(t.id) === Number(fila.tramiteId))?.activo === false) errores.push(`El tipo de trámite "${nombreTramite(fila.tramiteId)}" está inactivo`)
     if (!texto(fila.detalle)) errores.push('Falta el detalle')
     else if (texto(fila.detalle).length > 200) errores.push('El detalle supera 200 caracteres')
     if (!texto(fila.direccion)) errores.push('Falta la dirección')

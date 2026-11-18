@@ -59,7 +59,8 @@ export default function TramitesSelect({
         const result =
           TramitesSchema.parse(json)
 
-        setData(result)
+        // Los inactivos no se ofrecen; se deja el que ya tiene el trámite que se edita
+        setData(result.filter(t => t.activo !== false || t.id === Number(defaultValue)))
 
       } catch (error) {
 
@@ -76,7 +77,7 @@ export default function TramitesSelect({
 
     cargarTramites()
 
-  }, [])
+  }, [defaultValue])
 
 
 

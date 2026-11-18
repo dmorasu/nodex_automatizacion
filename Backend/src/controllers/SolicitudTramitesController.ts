@@ -28,6 +28,7 @@ import { ubicarEnSegundoPlano, ubicarManual } from '../services/mensajeria/ubica
 import { verificarCitaDelTramite } from '../services/mensajeria/agenda'
 import { ErrorGastos } from '../services/gastos/errores'
 import { anotarDependenciaAlCrear, datosDependencia } from '../services/dependenciaEnvio'
+import { revisarTipoTramiteActivo } from '../services/catalogosTramites'
 import { placasParaGuardar, subconsultaPlaca } from '../services/placasTramite'
 
 
@@ -336,6 +337,7 @@ static getAll = async (req: Request, res: Response) => {
     // Hasta 10 placas; se guardan normalizadas ("ABC123, DEF456") y el hook del modelo llena la
     // tabla de placas con la que se busca
     datos.placa = placasParaGuardar(datos.placa)
+    await revisarTipoTramiteActivo(datos.tramiteId)
     // ¿Depende de un envío de documentos? (validado contra la placa o matrícula del trámite)
     const dependencia = await datosDependencia({ dependeEnvio, envioTramiteId }, { placa: datos.placa, matriculaInmobiliaria: datos.matriculaInmobiliaria })
     const solicitudTramites =
@@ -486,6 +488,8 @@ static getAll = async (req: Request, res: Response) => {
         try {
           // ¿Depende de un envío de documentos? Solo si el formulario lo manda
           const dependencia = await datosDependencia({ dependeEnvio, envioTramiteId }, req.solicitudTramites)
+          // Si le cambian el tipo, el nuevo debe estar activo (el que ya tenía se conserva aunque esté inactivo)
+          if (datos.tramiteId !== undefined && Number(datos.tramiteId) !== Number(req.solicitudTramites.tramiteId)) await revisarTipoTramiteActivo(datos.tramiteId)
           await db.transaction(async transaction => {
             if (cambiaTramitador) await verificarCitaDelTramite(req.solicitudTramites.id, { tramitadorId: datos.tramitadorId ? Number(datos.tramitadorId) : null }, transaction)
             req.solicitudTramites.usuarioQueModifica = req.usuario.id

@@ -54,7 +54,7 @@ export const generarExcelCatalogos = async (incluirAdministracion: boolean) => {
 
   const [tramites, subestados, operaciones, rechazos, areas, entidades] = await Promise.all([
     consultar(`
-      SELECT t.id, t."nombreTramite", t.responsable,
+      SELECT t.id, t."nombreTramite", t.responsable, t.activo,
         (SELECT COUNT(*) FROM "SubEstados" se WHERE se."tramiteId" = t.id)::int AS subestados,
         (SELECT COUNT(*) FROM "SolicitudTramites" s WHERE s."tramiteId" = t.id)::int AS uso
       FROM "Tramites" t ORDER BY t."nombreTramite"
@@ -90,6 +90,7 @@ export const generarExcelCatalogos = async (incluirAdministracion: boolean) => {
     'Id': t.id,
     'Tipo de trámite': t.nombreTramite,
     'Responsable': t.responsable ?? '',
+    'Activo': t.activo === false ? 'No' : 'Sí',
     'Subestados': t.subestados,
     'Trámites': t.uso
   }))), 'Tipos de trámite')

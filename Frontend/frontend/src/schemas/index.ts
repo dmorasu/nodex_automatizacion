@@ -294,7 +294,9 @@ export const OperacionesSchema = z.array(OperacionSchema);
 
 export const TramiteSchema= z.object({
         id:z.number(),
-        nombreTramite:z.string()
+        nombreTramite:z.string(),
+        // Inactivo: solo se muestra en el trámite que ya lo tiene
+        activo:z.boolean().optional()
 });
 
 export const TramitesSchema =z.array(TramiteSchema);

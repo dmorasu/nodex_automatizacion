@@ -102,6 +102,15 @@ export const ajustarEsquemaTramites = async () => {
   await dependenciaDeEnvio()
   await pagoContraEntrega()
   await comentarioDelDocumento()
+  await tiposDeTramiteActivos()
+}
+
+// 2026-11-18 · Tipos de trámite activos/inactivos desde Catálogos (models/tramite.ts)
+const tiposDeTramiteActivos = async () => {
+  const tramites = await columnasDe('Tramites')
+  if (tramites && !tramites.activo) {
+    await db.query(`ALTER TABLE "Tramites" ADD COLUMN "activo" BOOLEAN NOT NULL DEFAULT true`)
+  }
 }
 
 // 2026-11-18 · Comentario del tramitador al subir una factura (models/documentosSolicitud.ts)

@@ -282,6 +282,10 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Trámites: desactivar tipos de trámite en Catálogos (2026-11-18)** — cambian el backend y Nodex Trámites: compilar los dos y reiniciar `nodex-api` y `nodex-tramites`.
+- **Sin variables.** **Cambio de base (lo hace el arranque, idempotente, solo agrega):** antes de `sync()`, `ajustarEsquemaTramites` → `tiposDeTramiteActivos` agrega `"Tramites"."activo" BOOLEAN NOT NULL DEFAULT true` (todos los tipos quedan activos).
+- **Revisar después de arrancar:** `SELECT COUNT(*) FILTER (WHERE activo) AS activos, COUNT(*) AS total FROM "Tramites";` (los dos iguales).
+
 **Gastos, Trámites y Tramitadores: varias facturas, Egresos con filtros, caja menor desde el trámite y comentario de la factura (2026-11-18)** — cambian el backend y las tres apps: compilar los cuatro y reiniciar `nodex-api`, `nodex-tramites`, `nodex-gastos` y `nodex-tramitadores` (también va el aviso de soportes por revisar y el correo a Legalización del mismo día).
 - **Sin variables.** **Cambios de base (los hace el arranque, idempotentes, solo agregan):** antes de `sync()`, `ajustarEsquemaTramites` agrega `"DocumentosSolicitud"."comentario" TEXT`; `sync()` crea la tabla `gastos_facturas_detalle` (cada factura de un gasto: `factura_id` → `gastos_facturas` con borrado en cascada, `orden`, número, tercero y valor; índice `gastos_facturas_detalle_factura`); `ajustarEsquemaGastos` amplía `numero_factura` de `gastos_facturas` y `gastos_solicitudes` de `VARCHAR(50)` a `VARCHAR(250)` (ampliar no reescribe la tabla). Las facturas ya registradas no tienen filas de detalle y se siguen viendo igual.
 - **Revisar después de arrancar:** `SELECT to_regclass('gastos_facturas_detalle');` (no nulo) y `SELECT character_maximum_length FROM information_schema.columns WHERE table_name = 'gastos_facturas' AND column_name = 'numero_factura';` (250).

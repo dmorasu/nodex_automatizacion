@@ -230,6 +230,22 @@ export const ajustarEsquemaGastos = async () => {
   await contabilizacionReembolsosCaja()
   await placaConVariasPlacas()
   await tipoCuentaCobro()
+  await variasFacturasPorGasto()
+}
+
+// 2026-11-18 · Un gasto se puede legalizar con hasta 4 facturas: el detalle va en la tabla nueva
+// gastos_facturas_detalle (la crea sync()) y el número de factura del gasto y de su factura guarda
+// los números separados por coma (de 50 a 250). Ampliar un VARCHAR no reescribe la tabla
+const variasFacturasPorGasto = async () => {
+  for (const tabla of ['gastos_facturas', 'gastos_solicitudes']) {
+    const [filas] = await db.query(`
+      SELECT character_maximum_length AS largo FROM information_schema.columns
+      WHERE table_name = :tabla AND column_name = 'numero_factura'
+    `, { replacements: { tabla } }) as [{ largo: number | null }[], unknown]
+    if (filas[0]?.largo && filas[0].largo < 250) {
+      await db.query(`ALTER TABLE ${tabla} ALTER COLUMN numero_factura TYPE VARCHAR(250)`)
+    }
+  }
 }
 
 // 2026-11-13 · Tipo de la cuenta de cobro (Por pago, Legalización sin pago, Anticipo). Las que ya

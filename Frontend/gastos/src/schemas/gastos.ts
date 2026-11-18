@@ -207,7 +207,16 @@ export const FacturaSchema = z.object({
   valorLegalizado: z.string(),
   observacion: textoNulo,
   updatedAt: z.string(),
-  registrador: UsuarioCortoSchema
+  registrador: UsuarioCortoSchema,
+  // Cada factura con que se legalizó (hasta 4); las registradas antes del 2026-11-18 no lo tienen
+  detalle: z.array(z.object({
+    id: z.number(),
+    orden: z.number(),
+    numeroFactura: textoNulo,
+    identificacionTercero: textoNulo,
+    nombreTercero: textoNulo,
+    valor: z.string()
+  })).optional()
 })
 
 export const GastoDetalleSchema = GastoListadoSchema.extend({
@@ -328,8 +337,21 @@ export const LoteListadoSchema = z.object({
   total: z.string(),
   createdAt: z.string(),
   cantidadGastos: z.number(),
-  // Gastos pagados en el lote (código para mostrar y enlazar)
-  gastos: z.array(z.object({ id: z.number(), codigo: z.string() })),
+  // Gastos pagados en el lote, con lo pagado y la cuenta del beneficiario (Egresos los compara
+  // con el archivo del banco sin abrir el lote)
+  gastos: z.array(z.object({
+    id: z.number(),
+    codigo: z.string(),
+    conceptoPago: z.string().optional(),
+    valorRealmentePagado: dinero.optional(),
+    beneficiario: z.object({
+      nombre: z.string(),
+      identificacion: z.string(),
+      banco: textoNulo,
+      tipoCuenta: textoNulo,
+      numeroCuenta: textoNulo
+    }).nullish()
+  })),
   bolsa: z.object({ id: z.number(), nombre: z.string() }),
   creador: UsuarioCortoSchema
 })
@@ -338,6 +360,8 @@ export const ListadoLotesSchema = z.object({
   total: z.number(),
   pagina: z.number(),
   tamano: z.number(),
+  // Quienes han pagado lotes (solo en Egresos, para su filtro)
+  pagadores: z.array(z.object({ id: z.number(), nombreUsuario: z.string() })).optional(),
   registros: z.array(LoteListadoSchema)
 })
 

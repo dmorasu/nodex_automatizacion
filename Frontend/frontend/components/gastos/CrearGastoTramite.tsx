@@ -103,7 +103,10 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
   })
 
   const [datos, setDatos] = useState(inicial)
-  const bolsasDelGasto = datos.reembolsable ? bolsasGenerales : opciones.bolsas
+  // Con forma de pago Caja menor se elige la caja (Bogotá, Medellín…), como en Nodex Gastos
+  const esCaja = (formaPagoId: number | null) => opciones.formasPago.find(f => f.id === formaPagoId)?.codigo === "CAJA_MENOR"
+  const porCajaMenor = esCaja(datos.formaPagoId)
+  const bolsasDelGasto = porCajaMenor ? opciones.cajas : datos.reembolsable ? bolsasGenerales : opciones.bolsas
   const [beneficiario, setBeneficiario] = useState<TerceroGasto | null>(null)
   const [nuevo, setNuevo] = useState<typeof BENEFICIARIO_VACIO | null>(null)
   const [busqueda, setBusqueda] = useState("")
@@ -262,9 +265,13 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
 
               <div className="px-6 py-5 space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Campo etiqueta="Bolsa" obligatorio>
+                  <Campo etiqueta={porCajaMenor ? "Caja menor" : "Bolsa"} obligatorio>
                     <SelectBuscable value={datos.bolsaId ?? ""} onChange={e => cambiar("bolsaId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
-                      <option value="">{bolsasDelGasto.length ? "Seleccione la bolsa" : "No hay bolsas activas"}</option>
+                      <option value="">
+                        {porCajaMenor
+                          ? bolsasDelGasto.length ? "Seleccione la caja menor" : "No hay cajas menores activas"
+                          : bolsasDelGasto.length ? "Seleccione la bolsa" : "No hay bolsas activas"}
+                      </option>
                       {bolsasDelGasto.map(b => <option key={b.id} value={b.id}>{b.lineaNegocio ? `${b.nombre} · ${b.lineaNegocio}` : b.nombre}</option>)}
                     </SelectBuscable>
                   </Campo>
@@ -275,7 +282,16 @@ export default function CrearGastoTramite({ tramite, opciones }: { tramite: Tram
                     </SelectBuscable>
                   </Campo>
                   <Campo etiqueta="Forma de pago" obligatorio>
-                    <SelectBuscable value={datos.formaPagoId ?? ""} onChange={e => cambiar("formaPagoId", e.target.value ? Number(e.target.value) : null)} className={claseInput}>
+                    <SelectBuscable
+                      value={datos.formaPagoId ?? ""}
+                      onChange={e => {
+                        const formaPagoId = e.target.value ? Number(e.target.value) : null
+                        cambiar("formaPagoId", formaPagoId)
+                        // Al pasar de bolsa a caja menor (o al revés) la elegida ya no sirve
+                        if (esCaja(formaPagoId) !== porCajaMenor) cambiar("bolsaId", null)
+                      }}
+                      className={claseInput}
+                    >
                       <option value="">Seleccione</option>
                       {opciones.formasPago.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
                     </SelectBuscable>

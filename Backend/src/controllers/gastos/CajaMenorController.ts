@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import { Op } from 'sequelize'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import ReembolsosCaja from '../../models/gastos/reembolsosCaja'
+import Operaciones from '../../models/operaciones'
 import LegalizacionesCaja from '../../models/gastos/legalizacionesCaja'
 import TrazabilidadReembolsosCaja from '../../models/gastos/trazabilidadReembolsosCaja'
 import DocumentosGasto from '../../models/gastos/documentosGasto'
@@ -259,7 +260,11 @@ export class CajaMenorController {
             include: [{
               model: SolicitudesGasto,
               attributes: ['id', 'codigo', 'conceptoPago', 'valorRealmentePagado', 'fechaPago', 'placa', 'matriculaInmobiliaria'],
-              include: [{ model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO }]
+              include: [
+                { model: Usuarios, as: 'creador', attributes: ATRIBUTOS_USUARIO },
+                // Contabilidad registra cada gasto en SIESA con su centro de costos
+                { model: Operaciones, attributes: ['nombreOperacion', 'centroDeCostos'] }
+              ]
             }]
           }
         ],

@@ -53,7 +53,8 @@ export const validarGasto = [
 
   body('reembolsable').optional().isBoolean().withMessage('Reembolsable debe ser verdadero o falso').toBoolean(),
 
-  textoOpcional('numeroFactura', 50),
+  // Legalizado con varias facturas guarda sus números separados por coma
+  textoOpcional('numeroFactura', 250),
   textoOpcional('matriculaInmobiliaria', 50),
   textoOpcional('placa', 100),
   textoOpcional('transito', 100),
@@ -236,7 +237,13 @@ export const validarFactura = [
   validarId,
   body('numeroFactura').optional({ values: 'null' }).isString().trim().isLength({ max: 50 }),
   body('tieneFacturaReal').isBoolean().withMessage('Indique si tiene factura real').toBoolean(),
-  body('valorFactura').isFloat({ gt: 0 }).withMessage('El valor de la factura debe ser mayor a cero').toFloat(),
+  // Una factura (valorFactura) o varias (facturas: hasta 4, cada una con su número, tercero y valor)
+  body('valorFactura').if(body('facturas').not().exists()).isFloat({ gt: 0 }).withMessage('El valor de la factura debe ser mayor a cero').toFloat(),
+  body('facturas').optional().isArray({ min: 1, max: 4 }).withMessage('Registre entre 1 y 4 facturas'),
+  body('facturas.*.numeroFactura').optional({ values: 'null' }).isString().trim().isLength({ max: 50 }).withMessage('El número de factura no puede superar 50 caracteres'),
+  body('facturas.*.identificacionTercero').optional({ values: 'null' }).isString().trim().isLength({ max: 30 }).withMessage('La identificación del tercero no puede superar 30 caracteres'),
+  body('facturas.*.nombreTercero').optional({ values: 'null' }).isString().trim().isLength({ max: 200 }).withMessage('El nombre del tercero no puede superar 200 caracteres'),
+  body('facturas.*.valor').isFloat({ gt: 0 }).withMessage('El valor de cada factura debe ser mayor a cero').toFloat(),
   body('identificacionTerceroReal').optional({ values: 'null' }).isString().trim().isLength({ max: 30 }),
   body('nombreTerceroReal').optional({ values: 'null' }).isString().trim().isLength({ max: 200 }),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 2000 })
@@ -298,6 +305,12 @@ export const validarListadoLotes = [
   query('desde').optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida'),
   query('hasta').optional({ values: 'falsy' }).isISO8601({ strict: true }).withMessage('Fecha no válida'),
   query('egreso').optional({ values: 'falsy' }).isIn(['pendiente', 'registrado']),
+  // Filtros por columna de Contabilidad → Egresos
+  query('lote').optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Número de lote no válido'),
+  query('creadoPor').optional({ values: 'falsy' }).isInt({ min: 1 }).withMessage('Usuario no válido'),
+  query('numeroEgreso').optional({ values: 'falsy' }).isString().trim().isLength({ max: 50 }),
+  query('gasto').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }),
+  query('valor').optional({ values: 'falsy' }).isFloat({ min: 0 }).withMessage('Valor no válido'),
   // Uno o varios estados del lote separados por coma (PROGRAMADO,APROBADO)
   query('estado').optional({ values: 'falsy' }).matches(/^(PROGRAMADO|APROBADO|PAGADO|RECHAZADO)(,(PROGRAMADO|APROBADO|PAGADO|RECHAZADO))*$/).withMessage('Estado no válido'),
   query('pagina').optional().isInt({ min: 1 }).toInt()

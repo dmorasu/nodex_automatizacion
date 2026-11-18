@@ -72,7 +72,8 @@ export class TramitesTramitadorController {
         Number(req.params.id),
         tipoDocumento,
         archivos,
-        req.body.solicitudGastoId ? Number(req.body.solicitudGastoId) : null
+        req.body.solicitudGastoId ? Number(req.body.solicitudGastoId) : null,
+        textoOpcional(req.body.comentario)
       )
       res.status(201).json(gasto
         ? `${cantidad} documento(s) cargado(s) al trámite y enviado(s) a Legalización con el gasto ${gasto}`

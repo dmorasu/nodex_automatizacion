@@ -24,6 +24,8 @@ export type GastoTramite = {
 export type OpcionesGasto = {
   // sinSaldo: bolsa de no reembolsables (solo se ofrece cuando el gasto no es reembolsable)
   bolsas: { id: number, nombre: string, lineaNegocio: string | null, sinSaldo?: boolean }[]
+  // Cajas menores activas (Bogotá, Medellín…): con forma de pago Caja menor se elige una
+  cajas: { id: number, nombre: string, lineaNegocio: string | null }[]
   tiposGasto: { id: number, codigo: string, nombre: string }[]
   formasPago: { id: number, codigo: string, nombre: string }[]
   // Tipos de documento que se pueden subir al crear el gasto (los de pago, en Catálogos de Gastos)
@@ -51,8 +53,9 @@ export const obtenerGastosDeTramite = (tramiteId: number, token: string) =>
 
 // Bolsas activas y catálogos para el formulario de crear gasto
 export const obtenerOpcionesGasto = async (token: string): Promise<OpcionesGasto> => {
-  const [bolsas, catalogos, parametros, tiposTramite] = await Promise.all([
+  const [bolsas, cajas, catalogos, parametros, tiposTramite] = await Promise.all([
     leer<OpcionesGasto["bolsas"]>("/gastos/apoyo/bolsas", token, []),
+    leer<OpcionesGasto["cajas"]>("/gastos/apoyo/bolsas?tipo=CAJA_MENOR", token, []),
     leer<{
       tiposGasto: OpcionesGasto["tiposGasto"]
       formasPago: OpcionesGasto["formasPago"]
@@ -68,6 +71,7 @@ export const obtenerOpcionesGasto = async (token: string): Promise<OpcionesGasto
 
   return {
     bolsas,
+    cajas,
     tiposGasto: catalogos.tiposGasto,
     formasPago: catalogos.formasPago,
     tiposDocumentoPago: (catalogos.tiposDocumento ?? []).filter(t => t.paraPago).map(({ id, nombre }) => ({ id, nombre })),

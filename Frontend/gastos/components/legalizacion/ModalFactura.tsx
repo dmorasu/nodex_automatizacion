@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import clsx from "clsx"
 import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Plus, X } from "lucide-react"
 import { registrarFactura } from "@/actions/gastos/legalizacion"
 import { formatoMoneda, formatoPorcentaje } from "@/src/lib/formato"
 import type { Factura } from "@/src/schemas/gastos"
@@ -23,6 +23,11 @@ export type Tasas = { retencion: number, gmf: number }
 
 const centavos = (valor: string | number | null) => Math.round(Number(valor || 0) * 100)
 
+// A veces el gasto se legaliza con varias facturas (pedido del usuario, 2026-11-18)
+const MAXIMO_FACTURAS = 4
+
+type Linea = { numeroFactura: string, identificacionTercero: string, nombreTercero: string, valor: string }
+
 // Registra o corrige la factura real de un gasto pagado
 export default function ModalFactura({
   gasto,
@@ -40,26 +45,56 @@ export default function ModalFactura({
   const pagado = Number(gasto.valorRealmentePagado ?? 0)
 
   const [datos, setDatos] = useState({
-    numeroFactura: factura?.numeroFactura ?? gasto.numeroFactura ?? "",
     tieneFacturaReal: factura?.tieneFacturaReal ?? true,
-    identificacionTerceroReal: factura?.identificacionTerceroReal ?? gasto.beneficiario.identificacion,
-    nombreTerceroReal: factura?.nombreTerceroReal ?? gasto.beneficiario.nombre,
-    valorFactura: factura ? String(Number(factura.valorFactura)) : String(pagado),
     observacion: factura?.observacion ?? ""
   })
+  // Las facturas registradas antes del detalle se corrigen como una sola
+  const [lineas, setLineas] = useState<Linea[]>(() =>
+    factura?.detalle?.length
+      ? factura.detalle.map(d => ({
+        numeroFactura: d.numeroFactura ?? "",
+        identificacionTercero: d.identificacionTercero ?? "",
+        nombreTercero: d.nombreTercero ?? "",
+        valor: String(Number(d.valor))
+      }))
+      : [{
+        numeroFactura: factura?.numeroFactura ?? gasto.numeroFactura ?? "",
+        identificacionTercero: factura?.identificacionTerceroReal ?? gasto.beneficiario.identificacion,
+        nombreTercero: factura?.nombreTerceroReal ?? gasto.beneficiario.nombre,
+        valor: factura ? String(Number(factura.valorFactura)) : String(pagado)
+      }]
+  )
   const [archivos, setArchivos] = useState<File[]>([])
   const [guardando, startGuardar] = useTransition()
 
   const cambiar = <K extends keyof typeof datos>(campo: K, valor: (typeof datos)[K]) =>
     setDatos(actuales => ({ ...actuales, [campo]: valor }))
 
+  const cambiarLinea = (indice: number, campo: keyof Linea, valor: string) =>
+    setLineas(actuales => actuales.map((l, i) => i === indice ? { ...l, [campo]: valor } : l))
+
+  // La nueva arranca con lo que falta para completar lo pagado y el mismo tercero de la anterior
+  const agregarLinea = () =>
+    setLineas(actuales => {
+      const faltaC = centavos(pagado) - actuales.reduce((suma, l) => suma + centavos(l.valor), 0)
+      const anterior = actuales[actuales.length - 1]
+      return [...actuales, {
+        numeroFactura: "",
+        identificacionTercero: anterior?.identificacionTercero ?? "",
+        nombreTercero: anterior?.nombreTercero ?? "",
+        valor: faltaC > 0 ? String(faltaC / 100) : ""
+      }]
+    })
+
   // Vista previa (el cálculo definitivo lo hace el backend), en centavos
-  const facturaC = centavos(datos.valorFactura)
+  const facturaC = lineas.reduce((suma, l) => suma + centavos(l.valor), 0)
   const gmfC = Math.round(facturaC * tasas.gmf)
   const diferenciaC = centavos(pagado) - facturaC
 
   const guardar = () => {
-    if (!(facturaC > 0)) return toast.error("El valor de la factura debe ser mayor a cero")
+    if (lineas.some(l => !(centavos(l.valor) > 0))) {
+      return toast.error(lineas.length > 1 ? "El valor de cada factura debe ser mayor a cero" : "El valor de la factura debe ser mayor a cero")
+    }
 
     let archivo: FormData | null = null
     if (archivos.length > 0 && tipoDocumentoFacturaId) {
@@ -71,7 +106,7 @@ export default function ModalFactura({
     startGuardar(async () => {
       const resultado = await registrarFactura(gasto.id, {
         ...datos,
-        valorFactura: facturaC / 100
+        facturas: lineas.map(l => ({ ...l, valor: centavos(l.valor) / 100 }))
       }, archivo)
 
       if (!resultado.ok) {
@@ -109,24 +144,53 @@ export default function ModalFactura({
             </div>
 
             <div className="px-6 py-5 space-y-5">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className="block">
-                  <span className={claseLabel}>Número de factura</span>
-                  <input value={datos.numeroFactura} onChange={e => cambiar("numeroFactura", e.target.value)} maxLength={50} className={claseInput} />
-                </label>
-                <label className="block">
-                  <span className={claseLabel}>Valor de la factura <span className="text-red-400">*</span></span>
-                  <input type="number" min={0} step="0.01" value={datos.valorFactura} onChange={e => cambiar("valorFactura", e.target.value)} className={claseInput} autoFocus />
-                </label>
-                <label className="block">
-                  <span className={claseLabel}>Identificación del tercero</span>
-                  <input value={datos.identificacionTerceroReal} onChange={e => cambiar("identificacionTerceroReal", e.target.value)} maxLength={30} className={claseInput} />
-                </label>
-                <label className="block sm:col-span-3">
-                  <span className={claseLabel}>Nombre del tercero (quien factura)</span>
-                  <input value={datos.nombreTerceroReal} onChange={e => cambiar("nombreTerceroReal", e.target.value)} maxLength={200} className={claseInput} />
-                </label>
-                <label className="flex items-center gap-2 text-xs text-slate-600 sm:col-span-3">
+              <div className="space-y-3">
+                {lineas.map((linea, i) => (
+                  <div key={i} className={clsx("grid gap-3 sm:grid-cols-12", lineas.length > 1 && "rounded-md border border-slate-200 p-3")}>
+                    <label className="block sm:col-span-3">
+                      <span className={claseLabel}>{lineas.length > 1 ? `Factura ${i + 1}` : "Número de factura"}</span>
+                      <input value={linea.numeroFactura} onChange={e => cambiarLinea(i, "numeroFactura", e.target.value)} maxLength={50} className={claseInput} />
+                    </label>
+                    <label className="block sm:col-span-3">
+                      <span className={claseLabel}>Identificación del tercero</span>
+                      <input value={linea.identificacionTercero} onChange={e => cambiarLinea(i, "identificacionTercero", e.target.value)} maxLength={30} className={claseInput} />
+                    </label>
+                    <label className="block sm:col-span-3">
+                      <span className={claseLabel}>Valor <span className="text-red-400">*</span></span>
+                      <input type="number" min={0} step="0.01" value={linea.valor} onChange={e => cambiarLinea(i, "valor", e.target.value)} className={claseInput} autoFocus={i === 0} />
+                    </label>
+                    <div className="flex items-end justify-end sm:col-span-3">
+                      {lineas.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setLineas(actuales => actuales.filter((_, k) => k !== i))}
+                          className="inline-flex h-10 items-center gap-1 px-2 text-xs text-slate-400 hover:text-red-600"
+                        >
+                          <X size={14} />
+                          Quitar
+                        </button>
+                      )}
+                    </div>
+                    <label className="block sm:col-span-12">
+                      <span className={claseLabel}>Nombre del tercero (quien factura)</span>
+                      <input value={linea.nombreTercero} onChange={e => cambiarLinea(i, "nombreTercero", e.target.value)} maxLength={200} className={claseInput} />
+                    </label>
+                  </div>
+                ))}
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {lineas.length < MAXIMO_FACTURAS ? (
+                    <button type="button" onClick={agregarLinea} className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline">
+                      <Plus size={14} />
+                      Agregar otra factura
+                    </button>
+                  ) : <span />}
+                  {lineas.length > 1 && (
+                    <p className="text-xs text-slate-500">Total de las {lineas.length} facturas: <b className="text-slate-800">{formatoMoneda(facturaC / 100)}</b></p>
+                  )}
+                </div>
+
+                <label className="flex items-center gap-2 text-xs text-slate-600">
                   <input type="checkbox" checked={datos.tieneFacturaReal} onChange={e => cambiar("tieneFacturaReal", e.target.checked)} className="h-4 w-4 accent-emerald-600" />
                   Tiene factura real (si no, se legaliza con otro soporte)
                 </label>
@@ -134,7 +198,7 @@ export default function ModalFactura({
 
               {/* Cálculos (la retención se define al crear el gasto) */}
               <div className="grid gap-x-6 gap-y-2 rounded-md bg-slate-50 px-4 py-3 text-xs sm:grid-cols-2">
-                <p className="flex justify-between"><span className="text-slate-500">4x1000 ({formatoPorcentaje(tasas.gmf)} sobre la factura)</span><b>{formatoMoneda(gmfC / 100)}</b></p>
+                <p className="flex justify-between"><span className="text-slate-500">4x1000 ({formatoPorcentaje(tasas.gmf)} sobre {lineas.length > 1 ? "las facturas" : "la factura"})</span><b>{formatoMoneda(gmfC / 100)}</b></p>
                 <p className="flex justify-between"><span className="text-slate-500">Valor a legalizar (factura + 4x1000)</span><b className="text-slate-800">{formatoMoneda((facturaC + gmfC) / 100)}</b></p>
                 <p className={clsx(
                   "flex justify-between border-t border-slate-200 pt-2 sm:col-span-2",

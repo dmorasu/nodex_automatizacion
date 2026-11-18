@@ -107,6 +107,8 @@ export const generarExcelReembolsosCaja = (reembolsos: ReembolsosCaja[]) => {
       Caja: r.bolsa?.nombre ?? '',
       Gasto: g?.codigo ?? '',
       Concepto: g?.conceptoPago ?? '',
+      'Centro de costos': g?.operacion?.centroDeCostos ?? '',
+      'Operación': g?.operacion?.nombreOperacion ?? '',
       'Solicitado por': g?.creador?.nombreUsuario ?? '',
       'Fecha de entrega': g?.fechaPago ?? '',
       Entregado: numero(g?.valorRealmentePagado),

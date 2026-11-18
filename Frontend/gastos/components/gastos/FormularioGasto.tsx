@@ -515,7 +515,7 @@ export default function FormularioGasto({
           </Campo>
 
           <Campo etiqueta="Número de factura">
-            <input value={datos.numeroFactura} onChange={e => cambiar("numeroFactura", e.target.value)} maxLength={50} className={claseInput} />
+            <input value={datos.numeroFactura} onChange={e => cambiar("numeroFactura", e.target.value)} maxLength={250} className={claseInput} />
           </Campo>
 
           <Campo etiqueta="Tramitador">

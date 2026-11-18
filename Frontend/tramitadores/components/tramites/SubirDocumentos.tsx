@@ -10,7 +10,7 @@ import { TIPOS_DOCUMENTO, type TipoDocumento } from "@/src/tiposDocumento"
 import HojaInferior from "../ui/HojaInferior"
 import SelectorArchivos from "../ui/SelectorArchivos"
 import SelectorTipo from "../ui/SelectorTipo"
-import { claseBotonPrimario, claseBotonSecundario, claseSelect } from "../ui/estilos"
+import { claseBotonPrimario, claseBotonSecundario, claseSelect, claseTextarea } from "../ui/estilos"
 
 // Gastos del trámite que necesitan este tipo de documento
 const gastosQueLoNecesitan = (gastos: GastoDelTramite[], tipo: TipoDocumento | null) =>
@@ -40,6 +40,8 @@ export default function SubirDocumentos({
   const [tipo, setTipo] = useState<TipoDocumento | null>(tipoInicial)
   const [gastoId, setGastoId] = useState<number | null>(gastoInicialId)
   const [archivos, setArchivos] = useState<File[]>([])
+  // Comentario de la factura: Legalización lo lee al revisarla (ej: si pagó con tarjeta o un tercero)
+  const [comentario, setComentario] = useState("")
   const [enviando, startEnviar] = useTransition()
 
   const candidatos = gastosQueLoNecesitan(gastos, tipo)
@@ -51,6 +53,7 @@ export default function SubirDocumentos({
     setTipo(tipoInicial)
     setGastoId(gastoInicialId)
     setArchivos([])
+    setComentario("")
   }
 
   const cerrar = () => {
@@ -67,6 +70,7 @@ export default function SubirDocumentos({
     const datos = new FormData()
     datos.append("tipoDocumento", tipo)
     if (destino) datos.append("solicitudGastoId", String(destino.id))
+    if (tipo === "FACTURA" && comentario.trim()) datos.append("comentario", comentario.trim())
     archivos.forEach(archivo => datos.append("archivos", archivo))
 
     startEnviar(async () => {
@@ -127,6 +131,21 @@ export default function SubirDocumentos({
 
         <p className="mt-5 mb-2 text-xs font-semibold text-slate-600">2. Tome la foto o elija el archivo</p>
         <SelectorArchivos archivos={archivos} onCambio={setArchivos} deshabilitado={enviando} />
+
+        {tipo === "FACTURA" && (
+          <label className="mt-5 block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Comentario (opcional)</span>
+            <textarea
+              value={comentario}
+              onChange={e => setComentario(e.target.value)}
+              rows={2}
+              maxLength={500}
+              placeholder="Ej: pagué con tarjeta / lo pagó un tercero"
+              disabled={enviando}
+              className={claseTextarea}
+            />
+          </label>
+        )}
       </HojaInferior>
     </>
   )

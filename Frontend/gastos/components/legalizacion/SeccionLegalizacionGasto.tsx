@@ -28,6 +28,8 @@ export default function SeccionLegalizacionGasto({
   // Solo una cuenta activa; las anuladas quedan como historial
   const linea = gasto.lineasCuentaCobro.find(l => l.cuentaCobro.estado.codigo !== "ANULADA")
   const retencionAnterior = factura && (gasto.retencionBase === null || gasto.retencionBase === undefined) && Number(factura.baseRetencion) > 0
+  // Legalizado con varias facturas: se listan con su tercero y valor
+  const varias = (factura?.detalle?.length ?? 0) > 1 ? factura!.detalle! : null
 
   return (
     <Seccion
@@ -42,9 +44,9 @@ export default function SeccionLegalizacionGasto({
         {factura ? (
           <div>
             <dl className="grid gap-5 sm:grid-cols-4">
-              <Dato etiqueta="Número de factura" valor={factura.numeroFactura} />
-              <Dato etiqueta="Valor de la factura" valor={<b>{formatoMoneda(factura.valorFactura)}</b>} />
-              <Dato etiqueta="Tercero" valor={factura.nombreTerceroReal && `${factura.nombreTerceroReal} (${factura.identificacionTerceroReal ?? "—"})`} />
+              <Dato etiqueta={varias ? "Números de factura" : "Número de factura"} valor={factura.numeroFactura} />
+              <Dato etiqueta={varias ? `Valor de las ${varias.length} facturas` : "Valor de la factura"} valor={<b>{formatoMoneda(factura.valorFactura)}</b>} />
+              {!varias && <Dato etiqueta="Tercero" valor={factura.nombreTerceroReal && `${factura.nombreTerceroReal} (${factura.identificacionTerceroReal ?? "—"})`} />}
               <Dato etiqueta="Factura real" valor={factura.tieneFacturaReal ? "Sí" : "No"} />
               {/* La retención ahora se define al crear el gasto; aquí solo se ve en facturas anteriores al cambio */}
               {retencionAnterior && (
@@ -57,6 +59,19 @@ export default function SeccionLegalizacionGasto({
               <Dato etiqueta="4x1000" valor={formatoMoneda(factura.cuatroXMil)} />
               <Dato etiqueta="Valor a legalizar" valor={<b className="text-slate-800">{formatoMoneda(factura.valorLegalizado)}</b>} />
             </dl>
+            {varias && (
+              <ul className="mt-4 divide-y divide-slate-100 rounded-md border border-slate-200 text-xs">
+                {varias.map(d => (
+                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+                    <span>
+                      <b className="text-slate-700">{d.numeroFactura ?? "Sin número"}</b>
+                      {d.nombreTercero && <span className="text-slate-500"> · {d.nombreTercero}{d.identificacionTercero && ` (${d.identificacionTercero})`}</span>}
+                    </span>
+                    <b className="text-slate-800">{formatoMoneda(d.valor)}</b>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="mt-3 text-[11px] text-slate-400">
               Registrada por {factura.registrador?.nombreUsuario} · {formatoFechaHora(factura.updatedAt)}
               {factura.observacion && ` · ${factura.observacion}`}

@@ -7,6 +7,8 @@ import FormasPago from '../../models/gastos/formasPago'
 import Terceros from '../../models/gastos/terceros'
 import Bolsas from '../../models/gastos/bolsas'
 import FacturasGasto from '../../models/gastos/facturasGasto'
+import FacturasDetalleGasto from '../../models/gastos/facturasDetalleGasto'
+import { formatoMoneda } from './formato'
 import Reintegros from '../../models/gastos/reintegros'
 import EstadosReintegro from '../../models/gastos/estadosReintegro'
 import CuentasCobroGastos from '../../models/gastos/cuentasCobroGastos'
@@ -55,6 +57,17 @@ export const generarReporteGastos = async (filtros: FiltrosReporte) => {
   return { buffer: await libroDeGastos(gastos), filas: gastos.length }
 }
 
+// "F-1 · 900123 ACME · 120.000 | F-2 · …" (solo cuando el gasto se legalizó con varias facturas)
+const detalleDeFacturas = (factura: FacturasGasto | null | undefined) => {
+  const detalle = factura?.detalle ?? []
+  if (detalle.length < 2) return null
+  return detalle.map(d => [
+    d.numeroFactura ?? 'Sin número',
+    [d.identificacionTercero, d.nombreTercero].filter(Boolean).join(' '),
+    formatoMoneda(d.valor)
+  ].filter(Boolean).join(' · ')).join(' | ')
+}
+
 // Lo que necesita cada fila del Excel detallado (reporte del Tablero y exportable de cada bandeja)
 export const INCLUDES_REPORTE: Includeable[] = [
   { model: EstadosGasto, attributes: ['nombre'] },
@@ -66,7 +79,8 @@ export const INCLUDES_REPORTE: Includeable[] = [
   { model: Tramitador, attributes: ['nombreTramitador', 'identificacion'] },
   { model: Anticipos, attributes: ['codigo'] },
   { model: Usuarios, as: 'creador', attributes: ['nombreUsuario'] },
-  { model: FacturasGasto },
+  // Con cada factura cuando el gasto se legalizó con varias
+  { model: FacturasGasto, include: [{ model: FacturasDetalleGasto, separate: true, order: [['orden', 'ASC']] }] },
   // Los hasMany van aparte (separate): con el límite de filas y los filtros del listado sobre los
   // includes (beneficiario en la búsqueda), en la misma consulta Sequelize arma una subconsulta que falla
   { model: Reintegros, separate: true, include: [{ model: EstadosReintegro, attributes: ['nombre'] }] },
@@ -133,6 +147,8 @@ export const libroDeGastos = async (gastos: SolicitudesGasto[]) => {
     { header: 'Número de egreso', key: 'egreso', width: 16 },
     { header: 'Número de factura', key: 'numeroFactura', width: 16 },
     { header: 'Tercero de la factura', key: 'terceroFactura', width: 30 },
+    // Solo con varias facturas: número · tercero · valor de cada una
+    { header: 'Detalle de las facturas', key: 'detalleFacturas', width: 50 },
     { header: 'Valor factura', key: 'valorFactura', width: 16, style: { numFmt: MONEDA } },
     { header: 'Base retención', key: 'baseRetencion', width: 16, style: { numFmt: MONEDA } },
     { header: '% retención', key: 'porcentajeRetencion', width: 11, style: { numFmt: '0.00%' } },
@@ -196,6 +212,7 @@ export const libroDeGastos = async (gastos: SolicitudesGasto[]) => {
       egreso: g.numeroEgreso,
       numeroFactura: factura?.numeroFactura,
       terceroFactura: factura?.nombreTerceroReal,
+      detalleFacturas: detalleDeFacturas(factura),
       valorFactura: dinero(factura?.valorFactura),
       // La retención se define al crear el gasto (inmuebles); los anteriores la tienen en la factura
       baseRetencion: dinero(g.retencionBase ?? factura?.baseRetencion),

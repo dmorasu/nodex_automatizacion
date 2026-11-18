@@ -18,6 +18,7 @@ import CuentasCobroGastos from '../../models/gastos/cuentasCobroGastos'
 import CuentasCobro from '../../models/gastos/cuentasCobro'
 import EstadosCuentaCobro from '../../models/gastos/estadosCuentaCobro'
 import FacturasGasto from '../../models/gastos/facturasGasto'
+import FacturasDetalleGasto from '../../models/gastos/facturasDetalleGasto'
 import SoporteTramitador, { ESTADOS_SOPORTE } from '../../models/tramitadores/soporteTramitador'
 import ArchivoSoporte from '../../models/tramitadores/archivoSoporte'
 import { actualizarGasto, anularGasto, crearGasto } from '../../services/gastos/solicitudesGasto'
@@ -462,7 +463,11 @@ export class SolicitudesGastoController {
           },
           {
             model: FacturasGasto,
-            include: [{ model: Usuarios, as: 'registrador', attributes: ATRIBUTOS_USUARIO }]
+            include: [
+              { model: Usuarios, as: 'registrador', attributes: ATRIBUTOS_USUARIO },
+              // Cada factura cuando son varias
+              { model: FacturasDetalleGasto, attributes: ['id', 'facturaId', 'orden', 'numeroFactura', 'identificacionTercero', 'nombreTercero', 'valor'], separate: true, order: [['orden', 'ASC']] }
+            ]
           },
           {
             // Legalización en caja menor y el reembolso donde está

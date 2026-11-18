@@ -157,12 +157,15 @@ export default function CargaMasivaFacturas({
       }
 
       try {
+        // Una factura por gasto (los demás archivos del grupo son sus páginas)
         const resultado = await registrarFactura(gastoId, {
-          numeroFactura: principal.numeroFactura.trim(),
           tieneFacturaReal: true,
-          identificacionTerceroReal: principal.identificacionTercero.trim(),
-          nombreTerceroReal: principal.nombreTercero.trim(),
-          valorFactura: valor / 100,
+          facturas: [{
+            numeroFactura: principal.numeroFactura.trim(),
+            identificacionTercero: principal.identificacionTercero.trim(),
+            nombreTercero: principal.nombreTercero.trim(),
+            valor: valor / 100
+          }],
           observacion: "Registrada en carga masiva de facturas"
         }, archivos)
 

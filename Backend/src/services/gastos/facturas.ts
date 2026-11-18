@@ -1,5 +1,6 @@
 import { db } from '../../config/db'
 import FacturasGasto from '../../models/gastos/facturasGasto'
+import FacturasDetalleGasto from '../../models/gastos/facturasDetalleGasto'
 import Reintegros from '../../models/gastos/reintegros'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
 import { calcularLegalizacion } from './calculos'
@@ -10,14 +11,25 @@ import { ESTADOS_GASTO, ESTADOS_REINTEGRO, PARAMETROS } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
 
+export type LineaFactura = {
+  numeroFactura?: string | null
+  identificacionTercero?: string | null
+  nombreTercero?: string | null
+  valor: number
+}
+
 export type DatosFactura = {
   numeroFactura?: string | null
   tieneFacturaReal: boolean
   identificacionTerceroReal?: string | null
   nombreTerceroReal?: string | null
-  valorFactura: number
+  valorFactura?: number
+  // Varias facturas (hasta 4). Sin esto, la factura es una con los campos de arriba
+  facturas?: LineaFactura[] | null
   observacion?: string | null
 }
+
+export const MAXIMO_FACTURAS = 4
 
 const aCentavos = (valor: number | string | null) => Math.round(Number(valor ?? 0) * 100)
 const texto = (valor: unknown) => String(valor ?? '').trim() || null
@@ -76,18 +88,37 @@ export const registrarFactura = (gastoId: number, datos: DatosFactura, usuarioId
       throw new ErrorGastos(`El gasto ${gasto.codigo} ya tiene un reintegro recibido; la factura no se puede modificar`)
     }
 
-    const valorFactura = Number(datos.valorFactura)
-    if (!(valorFactura > 0)) throw new ErrorGastos('El valor de la factura debe ser mayor a cero')
+    // Una o varias facturas: el total es "la factura" del gasto para todos los cálculos
+    const lineas = (datos.facturas?.length ? datos.facturas : [{
+      numeroFactura: datos.numeroFactura,
+      identificacionTercero: datos.identificacionTerceroReal,
+      nombreTercero: datos.nombreTerceroReal,
+      valor: Number(datos.valorFactura)
+    }]).map(l => ({
+      numeroFactura: texto(l.numeroFactura),
+      identificacionTercero: texto(l.identificacionTercero),
+      nombreTercero: texto(l.nombreTercero),
+      valorCentavos: aCentavos(l.valor)
+    }))
+    if (lineas.length > MAXIMO_FACTURAS) throw new ErrorGastos(`Un gasto se legaliza con máximo ${MAXIMO_FACTURAS} facturas`)
+    if (lineas.some(l => !(l.valorCentavos > 0))) {
+      throw new ErrorGastos(lineas.length > 1 ? 'El valor de cada factura debe ser mayor a cero' : 'El valor de la factura debe ser mayor a cero')
+    }
+    const numeros = lineas.map(l => l.numeroFactura).filter(Boolean)
+    if (new Set(numeros.map(n => n!.toUpperCase())).size !== numeros.length) throw new ErrorGastos('Hay un número de factura repetido')
+
+    const valorFactura = lineas.reduce((suma, l) => suma + l.valorCentavos, 0) / 100
 
     const tasaGmf = await obtenerParametro(PARAMETROS.GMF)
     const { cuatroXMil, valorLegalizado } = calcularLegalizacion(valorFactura, tasaGmf)
     const existente = await FacturasGasto.findOne({ where: { solicitudGastoId: gasto.id }, transaction })
 
     const campos = {
-      numeroFactura: texto(datos.numeroFactura),
+      // Con varias, los números separados por coma; el tercero es el de la primera factura
+      numeroFactura: numeros.join(', ') || null,
       tieneFacturaReal: Boolean(datos.tieneFacturaReal),
-      identificacionTerceroReal: texto(datos.identificacionTerceroReal),
-      nombreTerceroReal: texto(datos.nombreTerceroReal),
+      identificacionTerceroReal: lineas[0].identificacionTercero,
+      nombreTerceroReal: lineas[0].nombreTercero,
       valorFactura: String(aCentavos(valorFactura) / 100),
       ...retencionDeLaFactura(gasto, existente),
       tasaGmf: String(tasaGmf),
@@ -97,14 +128,28 @@ export const registrarFactura = (gastoId: number, datos: DatosFactura, usuarioId
       observacion: texto(datos.observacion)
     }
 
-    if (existente) await existente.update(campos, { transaction })
-    else await FacturasGasto.create({ ...campos, solicitudGastoId: gasto.id }, { transaction })
+    const factura = existente
+      ? await existente.update(campos, { transaction })
+      : await FacturasGasto.create({ ...campos, solicitudGastoId: gasto.id }, { transaction })
+
+    // El detalle se reemplaza completo en cada corrección
+    await FacturasDetalleGasto.destroy({ where: { facturaId: factura.id }, transaction })
+    await FacturasDetalleGasto.bulkCreate(lineas.map((l, i) => ({
+      facturaId: factura.id,
+      orden: i + 1,
+      numeroFactura: l.numeroFactura,
+      identificacionTercero: l.identificacionTercero,
+      nombreTercero: l.nombreTercero,
+      valor: String(l.valorCentavos / 100)
+    })), { transaction })
 
     // Reintegro = lo pagado − la factura. Se recalcula cada vez que se corrige la factura.
     await Reintegros.destroy({ where: { solicitudGastoId: gasto.id, estadoId: idPendiente }, transaction })
 
     const diferencia = (aCentavos(gasto.valorRealmentePagado) - aCentavos(valorFactura)) / 100
-    let nota = `Factura ${campos.numeroFactura ?? 'sin número'} por ${formatoMoneda(valorFactura)}`
+    let nota = lineas.length > 1
+      ? `${lineas.length} facturas (${campos.numeroFactura ?? 'sin número'}) por ${formatoMoneda(valorFactura)}`
+      : `Factura ${campos.numeroFactura ?? 'sin número'} por ${formatoMoneda(valorFactura)}`
 
     if (diferencia > 0) {
       await Reintegros.create({

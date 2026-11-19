@@ -25,7 +25,7 @@ import { actualizarGasto, anularGasto, crearGasto } from '../../services/gastos/
 import { INCLUDES_REPORTE, libroDeGastos } from '../../services/gastos/reportes'
 import { editarGastoComoAdmin } from '../../services/gastos/edicionAdmin'
 import { registrarFactura } from '../../services/gastos/facturas'
-import { anularGastoDelLote } from '../../services/gastos/pagos'
+import { anularGastoDelLote, anularGastoPagado } from '../../services/gastos/pagos'
 import { anularGastoDeCuenta } from '../../services/gastos/cuentasCobro'
 import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../services/gastos/estadosGasto'
 import { ESTADOS_GASTO, ESTADOS_REEMBOLSO_CAJA, ESTADOS_SIN_PAGO, PARAMETROS, ROLES } from '../../services/gastos/constantes'
@@ -733,10 +733,14 @@ export class SolicitudesGastoController {
         await anularGastoDelLote(gasto.id, motivo, req.usuario.id)
       } else if (estado === ESTADOS_GASTO.EN_CUENTA_COBRO) {
         await anularGastoDeCuenta(gasto.id, motivo, req.usuario.id)
-      } else {
-        // Solicitado, o ya pagado / legalizado / contabilizado: queda Anulado sin mover dinero
-        // (lo pagado ya salió de la bolsa y la cuenta de cobro o el reembolso ya se cerraron)
+      } else if (estado === ESTADOS_GASTO.SOLICITADO || estado === ESTADOS_GASTO.LEGALIZADO_CAJA) {
+        // Solicitado: no ha salido dinero. Caja menor con reembolso legalizado: la caja ya se repuso
+        // con ese dinero, no se mueve nada
         await anularGasto(gasto, motivo, req.usuario.id)
+      } else {
+        // Pagado, Facturado, Legalizado o Contabilizado: lo pagado vuelve a la bolsa (pedido del
+        // usuario, 2026-11-19), menos lo que ya había vuelto al legalizar su cuenta de cobro
+        await anularGastoPagado(gasto.id, motivo, req.usuario.id)
       }
       res.json('Gasto anulado correctamente')
     } catch (error) {

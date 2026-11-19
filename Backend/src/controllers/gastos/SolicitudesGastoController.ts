@@ -25,6 +25,8 @@ import { actualizarGasto, anularGasto, crearGasto } from '../../services/gastos/
 import { INCLUDES_REPORTE, libroDeGastos } from '../../services/gastos/reportes'
 import { editarGastoComoAdmin } from '../../services/gastos/edicionAdmin'
 import { registrarFactura } from '../../services/gastos/facturas'
+import { anularGastoDelLote } from '../../services/gastos/pagos'
+import { anularGastoDeCuenta } from '../../services/gastos/cuentasCobro'
 import { codigoEstadoGasto, idEstadoGasto, CodigoEstadoGasto } from '../../services/gastos/estadosGasto'
 import { ESTADOS_GASTO, ESTADOS_REEMBOLSO_CAJA, ESTADOS_SIN_PAGO, PARAMETROS, ROLES } from '../../services/gastos/constantes'
 import { ErrorGastos } from '../../services/gastos/errores'
@@ -590,9 +592,10 @@ export class SolicitudesGastoController {
           editar: (creadorOAdmin && estado === ESTADOS_GASTO.SOLICITADO) || (esAdmin(req) && estado !== ESTADOS_GASTO.ANULADO),
           // Edición del Administrador fuera de Solicitado: pide motivo y no cambia valor ni forma de pago
           edicionAdmin: esAdmin(req) && estado !== ESTADOS_GASTO.SOLICITADO && estado !== ESTADOS_GASTO.ANULADO,
-          // Caja menor ya entregada: solo el Administrador, y en un reembolso solo si está en borrador
+          // Fuera de Solicitado solo el Administrador de Gastos, en cualquier estado (2026-11-19).
+          // Un reembolso de caja enviado o aprobado lo tiene que devolver Dirección primero.
           anular: (creadorOAdmin && estado === ESTADOS_GASTO.SOLICITADO) || (
-            esAdmin(req) && ESTADOS_ANULABLES_CAJA.includes(estado) &&
+            esAdmin(req) && estado !== ESTADOS_GASTO.ANULADO &&
             (estado !== ESTADOS_GASTO.EN_REEMBOLSO || gasto.legalizacionCaja?.reembolso?.estado === ESTADOS_REEMBOLSO_CAJA.BORRADOR)
           ),
           subirDocumentos: gestiona && estado !== ESTADOS_GASTO.ANULADO && estado !== ESTADOS_GASTO.CONTABILIZADO,
@@ -714,13 +717,26 @@ export class SolicitudesGastoController {
         throw new ErrorGastos('Solo quien creó el gasto puede anularlo', 403)
       }
 
-      // Caja menor ya entregada: solo el Administrador de Gastos; el efectivo vuelve a la caja
-      if (ESTADOS_ANULABLES_CAJA.includes(await codigoEstadoGasto(gasto.estadoId))) {
-        if (!esAdmin(req)) throw new ErrorGastos('Solo el Administrador de Gastos anula un gasto de caja menor ya entregado', 403)
-        const { bolsaId } = await anularGastoCaja(gasto.id, req.body.motivo, req.usuario.id)
+      // Fuera de Solicitado solo el Administrador de Gastos, en cualquier estado (2026-11-19)
+      const estado = await codigoEstadoGasto(gasto.estadoId)
+      if (estado === ESTADOS_GASTO.ANULADO) throw new ErrorGastos(`${gasto.codigo} ya está anulado`)
+      if (estado !== ESTADOS_GASTO.SOLICITADO && !esAdmin(req)) {
+        throw new ErrorGastos('Solo el Administrador de Gastos anula un gasto que ya no está en Solicitado', 403)
+      }
+      const { motivo } = req.body
+
+      if (ESTADOS_ANULABLES_CAJA.includes(estado)) {
+        // Caja menor sin reembolso legalizado: el efectivo vuelve a la caja
+        const { bolsaId } = await anularGastoCaja(gasto.id, motivo, req.usuario.id)
         void revisarTopeCaja(bolsaId, notificarTopeCaja)
+      } else if (estado === ESTADOS_GASTO.PROGRAMADO || estado === ESTADOS_GASTO.APROBADO_PAGO) {
+        await anularGastoDelLote(gasto.id, motivo, req.usuario.id)
+      } else if (estado === ESTADOS_GASTO.EN_CUENTA_COBRO) {
+        await anularGastoDeCuenta(gasto.id, motivo, req.usuario.id)
       } else {
-        await anularGasto(gasto, req.body.motivo, req.usuario.id)
+        // Solicitado, o ya pagado / legalizado / contabilizado: queda Anulado sin mover dinero
+        // (lo pagado ya salió de la bolsa y la cuenta de cobro o el reembolso ya se cerraron)
+        await anularGasto(gasto, motivo, req.usuario.id)
       }
       res.json('Gasto anulado correctamente')
     } catch (error) {

@@ -330,15 +330,43 @@ export const reversarLegalizacion = (cuentaId: number, motivo: string, usuarioId
       lock: transaction.LOCK.UPDATE
     })
     for (const gasto of gastos) {
+      // Anulado por el Administrador después de legalizar (2026-11-19): sale de la cuenta, así al
+      // volver a legalizarla su valor ya no entra a la bolsa
+      if (await codigoEstadoGasto(gasto.estadoId) === ESTADOS_GASTO.ANULADO) {
+        await CuentasCobroGastos.destroy({ where: { cuentaCobroId: cuenta.id, solicitudGastoId: gasto.id }, transaction })
+        continue
+      }
       await cambiarEstadoGasto(gasto, ESTADOS_GASTO.EN_CUENTA_COBRO, usuarioId, transaction, {
         observacion: nota,
         cambios: { observacionLegalizacion: null }
       })
     }
+    await recalcularTotales(cuenta, transaction)
 
     await contabilizacion?.destroy({ transaction })
     await cuenta.update({ fechaLegalizacion: null }, { transaction })
     await registrarTrazabilidad(cuenta, ESTADOS_CUENTA_COBRO.BORRADOR, usuarioId, transaction, nota)
+  })
+
+// El Administrador de Gastos anula un gasto que está en una cuenta de cobro en borrador
+// (2026-11-19): sale de la cuenta, que recalcula sus totales, y el gasto queda Anulado.
+export const anularGastoDeCuenta = (gastoId: number, motivo: string, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const linea = await CuentasCobroGastos.findOne({
+      where: { solicitudGastoId: gastoId },
+      include: [{ model: CuentasCobro, required: true, where: { estadoId: await estadosCuenta.id(ESTADOS_CUENTA_COBRO.BORRADOR) } }],
+      transaction
+    })
+    if (!linea) throw new ErrorGastos('El gasto no está en una cuenta de cobro en borrador')
+    const cuenta = await cuentaEnBorrador(linea.cuentaCobroId, transaction)
+    const gasto = await SolicitudesGasto.findByPk(gastoId, { transaction, lock: transaction.LOCK.UPDATE })
+
+    await cambiarEstadoGasto(gasto, ESTADOS_GASTO.ANULADO, usuarioId, transaction, {
+      observacion: `Anulado y retirado de la cuenta de cobro ${cuenta.numeroCuentaCobro}: ${motivo}`,
+      cambios: { motivoAnulacion: motivo }
+    })
+    await linea.destroy({ transaction })
+    await recalcularTotales(cuenta, transaction)
   })
 
 // Solo en borrador: los gastos vuelven a Facturado. Las líneas se conservan como historial.

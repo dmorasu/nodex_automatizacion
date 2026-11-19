@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { fetchApi, leerErrores } from "@/src/lib/api"
-import { TerceroSchema, TramiteApoyoSchema, type DatosGasto } from "@/src/schemas/gastos"
+import { ListadoGastosSchema, TerceroSchema, TramiteApoyoSchema, type DatosGasto, type GastoListado } from "@/src/schemas/gastos"
 import type { ProgramacionPago } from "@/components/gastos/avisoProgramacion"
 
 type Resultado<T = undefined> =
@@ -37,8 +37,10 @@ export async function anularGasto(id: number, motivo: string): Promise<Resultado
   if (!req.ok) return { ok: false, errores: await leerErrores(req) }
 
   revalidatePath(`/solicitudes/${id}`)
-  // Un gasto de caja menor anulado cambia el saldo y las bandejas de la caja
-  revalidatePath("/tesoreria/caja-menor", "layout")
+  // Un gasto de caja menor anulado cambia el saldo y las bandejas de la caja; el que estaba en un
+  // lote o en una cuenta de cobro sale de ellos
+  revalidatePath("/tesoreria", "layout")
+  revalidatePath("/legalizacion", "layout")
   return { ok: true, datos: undefined }
 }
 
@@ -104,4 +106,22 @@ export async function eliminarDocumento(documentoId: number, gastoId: number): P
 
   revalidatePath(`/solicitudes/${gastoId}`)
   return { ok: true, datos: undefined }
+}
+
+// Máximo de gastos que se seleccionan de una vez (el backend acepta lo mismo en cada acción)
+const MAXIMO_SELECCION = 1000
+
+// "Seleccionar todos" en las bandejas paginadas: trae todos los gastos que cumplen los mismos
+// filtros de la bandeja (todas las páginas) para aplicarles la acción de una vez
+export async function traerGastosFiltrados(consulta: string): Promise<Resultado<GastoListado[]>> {
+  const params = new URLSearchParams(consulta)
+  params.set("pagina", "1")
+  params.set("tamano", String(MAXIMO_SELECCION))
+  const req = await fetchApi(`/gastos/solicitudes?${params}`)
+  if (!req.ok) return { ok: false, errores: await leerErrores(req) }
+  const { total, registros } = ListadoGastosSchema.parse(await req.json())
+  if (total > MAXIMO_SELECCION) {
+    return { ok: false, errores: [`Hay ${total} gastos: se pueden seleccionar hasta ${MAXIMO_SELECCION} a la vez. Use los filtros para dividirlos.`] }
+  }
+  return { ok: true, datos: registros }
 }

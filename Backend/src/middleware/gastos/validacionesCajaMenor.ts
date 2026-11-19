@@ -32,7 +32,7 @@ export const validarAsignacion = [
 export const validarPagoCaja = [
   body('bolsaId').isInt({ min: 1 }).withMessage('Seleccione la caja').toInt(),
   fecha('fechaPago', 'la fecha de entrega del efectivo'),
-  body('gastos').isArray({ min: 1, max: 100 }).withMessage('Seleccione entre 1 y 100 gastos'),
+  body('gastos').isArray({ min: 1, max: 1000 }).withMessage('Seleccione entre 1 y 1000 gastos'),
   body('gastos.*.id').isInt({ min: 1 }).toInt(),
   body('gastos.*.valorEntregado').isFloat({ gt: 0 }).withMessage('El valor entregado debe ser mayor a cero').toFloat(),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
@@ -55,14 +55,14 @@ export const validarLegalizacionCaja = [
 
 export const validarNuevoReembolso = [
   body('bolsaId').isInt({ min: 1 }).withMessage('Seleccione la caja').toInt(),
-  body('gastoIds').isArray({ min: 1, max: 300 }).withMessage('Seleccione los gastos del reembolso'),
+  body('gastoIds').isArray({ min: 1, max: 1000 }).withMessage('Seleccione los gastos del reembolso'),
   body('gastoIds.*').isInt({ min: 1 }).toInt(),
   body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
 ]
 
 export const validarGastosReembolso = [
   param('id').isInt({ min: 1 }).toInt(),
-  body('gastoIds').isArray({ min: 1, max: 300 }).withMessage('Seleccione los gastos'),
+  body('gastoIds').isArray({ min: 1, max: 1000 }).withMessage('Seleccione los gastos'),
   body('gastoIds.*').isInt({ min: 1 }).toInt()
 ]
 

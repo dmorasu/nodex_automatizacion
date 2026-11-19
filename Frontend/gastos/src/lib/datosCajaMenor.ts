@@ -18,10 +18,15 @@ export const obtenerCajas = async () => {
   return z.array(ResumenCajaSchema).parse(await req.json())
 }
 
-// Gastos de una caja en un estado (el backend limita a la auxiliar a su caja)
-export const obtenerGastosCaja = async (bolsaId: number, estado: string) => {
-  const params = new URLSearchParams({ alcance: "todos", cajaMenor: "si", bolsaId: String(bolsaId), estado, tamano: "100", orden: "antiguos" })
-  const req = await fetchApi(`/gastos/solicitudes?${params}`)
+export const TAMANO_PAGINA_CAJA = 100
+
+// Consulta de los gastos de una caja en un estado, sin página: la usa "Seleccionar todos"
+export const consultaGastosCaja = (bolsaId: number, estado: string) =>
+  new URLSearchParams({ alcance: "todos", cajaMenor: "si", bolsaId: String(bolsaId), estado, orden: "antiguos" }).toString()
+
+// Gastos de una caja en un estado, por páginas (el backend limita a la auxiliar a su caja)
+export const obtenerGastosCaja = async (bolsaId: number, estado: string, pagina = 1) => {
+  const req = await fetchApi(`/gastos/solicitudes?${consultaGastosCaja(bolsaId, estado)}&pagina=${pagina}&tamano=${TAMANO_PAGINA_CAJA}`)
   if (!req.ok) throw new Error("No se pudieron cargar los gastos de la caja")
   return ListadoGastosSchema.parse(await req.json())
 }

@@ -214,6 +214,26 @@ export const sacarDelLote = (
     return actualizarLote(lote, usuarioId, transaction)
   })
 
+// El Administrador de Gastos anula un gasto programado o aprobado (2026-11-19): sale del lote, que
+// recalcula su total y estado (sin gastos queda Rechazado), y el gasto queda Anulado. No toca la
+// bolsa: el dinero se descuenta al confirmar el pago.
+export const anularGastoDelLote = (gastoId: number, motivo: string, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const gasto = await SolicitudesGasto.findByPk(gastoId, { transaction, lock: transaction.LOCK.UPDATE })
+    if (!gasto) throw new ErrorGastos('El gasto no existe', 404)
+    const lote = gasto.lotePagoId ? await loteBloqueado(gasto.lotePagoId, transaction) : null
+
+    if (lote && !([ESTADOS_LOTE.PROGRAMADO, ESTADOS_LOTE.APROBADO] as string[]).includes(lote.estado)) {
+      throw new ErrorGastos(`El lote #${lote.id} de ${gasto.codigo} ya no se puede modificar`)
+    }
+
+    await cambiarEstadoGasto(gasto, ESTADOS_GASTO.ANULADO, usuarioId, transaction, {
+      observacion: lote ? `Anulado y retirado del lote #${lote.id}: ${motivo}` : motivo,
+      cambios: { motivoAnulacion: motivo, lotePagoId: null as unknown as number, valorProgramado: null }
+    })
+    if (lote) await actualizarLote(lote, usuarioId, transaction)
+  })
+
 // ── Soportes de pago ──────────────────────
 
 // Archivos de la confirmación: `soporte_<gastoId>` es el soporte de ese gasto (obligatorio, uno

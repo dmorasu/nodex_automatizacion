@@ -9,20 +9,22 @@ export type CodigoEstadoGasto = typeof ESTADOS_GASTO[keyof typeof ESTADOS_GASTO]
 
 // Qué estados pueden seguir a cada estado. Cualquier otro cambio se rechaza.
 const TRANSICIONES: Record<CodigoEstadoGasto, CodigoEstadoGasto[]> = {
+  // ANULADO fuera de Solicitado = solo el Administrador de Gastos, en cualquier estado (pedido del
+  // usuario, 2026-11-19); el controlador decide qué se deshace en cada uno (anularGastoComoAdmin)
   SOLICITADO: ['PROGRAMADO', 'PAGADO', 'PAGADO_CAJA', 'ANULADO'],   // PAGADO directo = certificados y anticipos
-  PROGRAMADO: ['APROBADO_PAGO', 'SOLICITADO'],     // SOLICITADO = rechazado o quitado del lote
-  APROBADO_PAGO: ['PAGADO', 'SOLICITADO'],
-  PAGADO: ['FACTURADO'],
-  FACTURADO: ['EN_CUENTA_COBRO', 'LEGALIZADO'],   // LEGALIZADO directo = no reembolsable
-  EN_CUENTA_COBRO: ['FACTURADO', 'LEGALIZADO'],   // FACTURADO = se sacó de la cuenta de cobro
-  LEGALIZADO: ['CONTABILIZADO', 'EN_CUENTA_COBRO'],   // EN_CUENTA_COBRO = se reversó la legalización de su cuenta de cobro
+  PROGRAMADO: ['APROBADO_PAGO', 'SOLICITADO', 'ANULADO'],     // SOLICITADO = rechazado o quitado del lote
+  APROBADO_PAGO: ['PAGADO', 'SOLICITADO', 'ANULADO'],
+  PAGADO: ['FACTURADO', 'ANULADO'],
+  FACTURADO: ['EN_CUENTA_COBRO', 'LEGALIZADO', 'ANULADO'],   // LEGALIZADO directo = no reembolsable
+  EN_CUENTA_COBRO: ['FACTURADO', 'LEGALIZADO', 'ANULADO'],   // FACTURADO = se sacó de la cuenta de cobro
+  LEGALIZADO: ['CONTABILIZADO', 'EN_CUENTA_COBRO', 'ANULADO'],   // EN_CUENTA_COBRO = se reversó la legalización de su cuenta de cobro
   // Caja menor (no pasa por Legalización ni por Contabilidad)
-  // ANULADO = lo anula el Administrador de Gastos y el efectivo vuelve a la caja (anularGastoCaja)
+  // ANULADO antes de legalizar el reembolso: el efectivo vuelve a la caja (anularGastoCaja)
   PAGADO_CAJA: ['PENDIENTE_REEMBOLSO', 'ANULADO'],
   PENDIENTE_REEMBOLSO: ['EN_REEMBOLSO', 'PAGADO_CAJA', 'ANULADO'],   // PAGADO_CAJA = se deshizo la legalización
-  EN_REEMBOLSO: ['PENDIENTE_REEMBOLSO', 'LEGALIZADO_CAJA'], // PENDIENTE = se sacó del reembolso
-  LEGALIZADO_CAJA: [],
-  CONTABILIZADO: [],
+  EN_REEMBOLSO: ['PENDIENTE_REEMBOLSO', 'LEGALIZADO_CAJA', 'ANULADO'], // PENDIENTE = se sacó del reembolso
+  LEGALIZADO_CAJA: ['ANULADO'],
+  CONTABILIZADO: ['ANULADO'],
   ANULADO: []
 }
 

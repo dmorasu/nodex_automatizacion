@@ -3,7 +3,7 @@ import clsx from "clsx"
 import { Settings2 } from "lucide-react"
 import { obtenerSesion } from "@/src/auth/dal"
 import { ROLES, tieneAcceso } from "@/src/auth/permisos"
-import { obtenerCajas, obtenerGastosCaja, obtenerHistorialCaja, obtenerReembolsos } from "@/src/lib/datosCajaMenor"
+import { consultaGastosCaja, obtenerCajas, obtenerGastosCaja, obtenerHistorialCaja, obtenerReembolsos, TAMANO_PAGINA_CAJA } from "@/src/lib/datosCajaMenor"
 import { ESTADOS_REEMBOLSO } from "@/src/schemas/gastos"
 import HistorialCaja from "@/components/cajaMenor/HistorialCaja"
 import TarjetasCaja from "@/components/cajaMenor/TarjetasCaja"
@@ -65,7 +65,7 @@ export default async function CajaMenorPage(props: { searchParams: Promise<Filtr
   const pagina = Math.max(1, Number(searchParams.pagina) || 1)
 
   const [gastos, reembolsos, historial] = await Promise.all([
-    vista === "reembolsos" || vista === "historial" ? null : obtenerGastosCaja(caja.id, ESTADO_DE_VISTA[vista]),
+    vista === "reembolsos" || vista === "historial" ? null : obtenerGastosCaja(caja.id, ESTADO_DE_VISTA[vista], pagina),
     vista === "reembolsos" ? obtenerReembolsos({ bolsaId: caja.id, estado: estadoReembolso || undefined, pagina }) : null,
     vista === "historial" ? obtenerHistorialCaja(caja.id, filtrosHistorial) : null
   ])
@@ -103,7 +103,18 @@ export default async function CajaMenorPage(props: { searchParams: Promise<Filtr
         {vistas.map(v => <Link key={v} href={url({ vista: v })} className={claseChip(v === vista)}>{conteo[v]}</Link>)}
       </div>
 
-      {gastos && <TablaGastosCaja bolsaId={caja.id} vista={vista as VistaCaja} gastos={gastos.registros} disponible={caja.saldo} />}
+      {gastos && (
+        <>
+          <TablaGastosCaja
+            bolsaId={caja.id}
+            vista={vista as VistaCaja}
+            gastos={gastos.registros}
+            disponible={caja.saldo}
+            todasLasPaginas={{ total: gastos.total, consulta: consultaGastosCaja(caja.id, ESTADO_DE_VISTA[vista as VistaCaja]) }}
+          />
+          <Paginacion pagina={pagina} total={gastos.total} tamano={TAMANO_PAGINA_CAJA} url={p => url({ pagina: String(p) })} />
+        </>
+      )}
       {reembolsos && (
         <>
           <div className="flex flex-wrap gap-2">

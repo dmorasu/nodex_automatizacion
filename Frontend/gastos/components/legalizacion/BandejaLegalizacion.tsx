@@ -10,13 +10,18 @@ import { claseBotonPrimario } from "../ui/estilos"
 import ModalAgregarACuenta from "./ModalAgregarACuenta"
 
 // Gastos con factura registrada que aún no están en una cuenta de cobro
-export default function BandejaLegalizacion({ gastos, borradores }: { gastos: GastoListado[], borradores: CuentaListado[] }) {
+export default function BandejaLegalizacion({ gastos, borradores, todasLasPaginas }: {
+  gastos: GastoListado[]
+  borradores: CuentaListado[]
+  todasLasPaginas?: { total: number, consulta: string }
+}) {
   const [aAgregar, setAAgregar] = useState<GastoListado[] | null>(null)
 
   return (
     <>
       <SeleccionGastos
         gastos={gastos}
+        todasLasPaginas={todasLasPaginas}
         vacio="No hay gastos facturados pendientes de legalizar. Registre las facturas en la pestaña Gastos sin factura."
         valorTotal={g => Number(g.factura?.valorLegalizado ?? 0)}
         columnas={[

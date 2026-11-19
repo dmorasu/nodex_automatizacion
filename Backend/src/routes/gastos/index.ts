@@ -175,7 +175,7 @@ router.get('/documentos/:documentoId/ver', DocumentosGastoController.ver)
 // Descarga masiva (ZIP): los roles del módulo que revisan documentos, y desde Mis gastos cualquier
 // usuario con los gastos que puede ver (lo revisa el controlador, verificarGastosDescarga)
 const validarGastosDescarga = [
-  body('gastoIds').isArray({ min: 1, max: 50 }).withMessage('Seleccione entre 1 y 50 gastos'),
+  body('gastoIds').isArray({ min: 1, max: 1000 }).withMessage('Seleccione entre 1 y 1000 gastos'),
   body('gastoIds.*').isInt({ min: 1 }).withMessage('Gasto no válido')
 ]
 router.post('/documentos/descargar/revision', validarGastosDescarga, handleInputErrors, DocumentosGastoController.revisionPdfsDePago)

@@ -7,6 +7,7 @@ import { toast } from "react-toastify"
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react"
 import { Banknote, FileCheck2, Layers, Loader2, Paperclip, Undo2 } from "lucide-react"
 import { crearReembolso, deshacerLegalizacionCaja } from "@/actions/gastos/cajaMenor"
+import { traerGastosFiltrados } from "@/actions/gastos/gastos"
 import { formatoFecha, formatoMoneda } from "@/src/lib/formato"
 import type { GastoListado } from "@/src/schemas/gastos"
 import { claseBotonPrimario, claseBotonSecundario, claseInput, claseLabel } from "../ui/estilos"
@@ -30,11 +31,14 @@ const valorDe = (g: GastoListado, vista: VistaCaja) =>
 //  · por legalizar: se cargan los soportes de varios a la vez y cada uno se legaliza con su factura
 //    (si ya tiene soporte no hay que volver a subirlo);
 //  · pendientes por reembolso: se marcan varios y se arma el reembolso (o se deshace una legalización).
-export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: {
+// `todasLasPaginas`: con la página marcada completa aparece "Seleccionar los N", que trae todos los
+// gastos de la vista (todas las páginas) para entregar el efectivo o armar el reembolso de una vez.
+export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible, todasLasPaginas }: {
   bolsaId: number
   vista: VistaCaja
   gastos: GastoListado[]
   disponible: number
+  todasLasPaginas: { total: number, consulta: string }
 }) {
   const router = useRouter()
   const [seleccion, setSeleccion] = useState<number[]>([])
@@ -45,12 +49,30 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
   const [observacion, setObservacion] = useState("")
   const [procesando, startProcesar] = useTransition()
 
+  // Todos los gastos de la vista (todas las páginas); se descarta si cambia la página o la vista
+  const [deTodasLasPaginas, setDeTodasLasPaginas] = useState<{ consulta: string, gastos: GastoListado[] } | null>(null)
+  const [cargandoTodos, startCargarTodos] = useTransition()
+
   const seleccionable = vista !== "por-legalizar"
-  const seleccionados = gastos.filter(g => seleccion.includes(g.id))
+  const todosVigentes = deTodasLasPaginas?.consulta === todasLasPaginas.consulta ? deTodasLasPaginas.gastos : null
+  const seleccionados = todosVigentes ?? gastos.filter(g => seleccion.includes(g.id))
+  const idsSeleccionados = seleccionados.map(g => g.id)
   const totalSeleccionado = seleccionados.reduce((t, g) => t + Number(valorDe(g, vista) ?? 0), 0)
-  const todos = gastos.length > 0 && seleccion.length === gastos.length
-  const alternar = (id: number) => setSeleccion(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
-  const listo = () => { setSeleccion([]); router.refresh() }
+  const todos = gastos.length > 0 && (!!todosVigentes || gastos.every(g => seleccion.includes(g.id)))
+  const hayMasPaginas = todasLasPaginas.total > gastos.length
+  const limpiar = () => { setSeleccion([]); setDeTodasLasPaginas(null) }
+  const alternar = (id: number) => {
+    // Al desmarcar uno se vuelve a la selección de esta página
+    if (todosVigentes) { setSeleccion(gastos.map(g => g.id).filter(x => x !== id)); setDeTodasLasPaginas(null); return }
+    setSeleccion(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
+  }
+  const listo = () => { limpiar(); router.refresh() }
+
+  const seleccionarTodasLasPaginas = () => startCargarTodos(async () => {
+    const resultado = await traerGastosFiltrados(todasLasPaginas.consulta)
+    if (!resultado.ok) return resultado.errores.forEach(e => toast.error(e))
+    setDeTodasLasPaginas({ consulta: todasLasPaginas.consulta, gastos: resultado.datos })
+  })
 
   const deshacer = (g: GastoListado) => {
     if (!confirm(`¿Deshacer la legalización de ${g.codigo}? Vuelve a "entregado sin legalizar" y la diferencia con el soporte se revierte en la caja.`)) return
@@ -63,7 +85,7 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
   }
 
   const armarReembolso = () => startProcesar(async () => {
-    const resultado = await crearReembolso({ bolsaId, gastoIds: seleccion, observacion: observacion.trim() || null })
+    const resultado = await crearReembolso({ bolsaId, gastoIds: idsSeleccionados, observacion: observacion.trim() || null })
     if (!resultado.ok) return resultado.errores.forEach(e => toast.error(e))
     toast.success("Reembolso creado en borrador")
     router.push(`/tesoreria/caja-menor/reembolsos/${resultado.id}`)
@@ -82,9 +104,20 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
         </div>
       )}
 
-      {seleccionable && seleccion.length > 0 && (
+      {seleccionable && seleccionados.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5">
-          <p className="text-xs text-emerald-800">{seleccion.length} seleccionado(s) · {formatoMoneda(totalSeleccionado)}</p>
+          <p className="text-xs text-emerald-800">
+            {seleccionados.length} seleccionado(s){todosVigentes && " de todas las páginas"} · {formatoMoneda(totalSeleccionado)}
+            {hayMasPaginas && todos && !todosVigentes && (
+              <button type="button" onClick={seleccionarTodasLasPaginas} disabled={cargandoTodos} className="ml-3 inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline disabled:opacity-50">
+                {cargandoTodos && <Loader2 size={12} className="animate-spin" />}
+                Seleccionar los {todasLasPaginas.total}
+              </button>
+            )}
+            {todosVigentes && (
+              <button type="button" onClick={limpiar} className="ml-3 font-semibold text-slate-500 hover:underline">Quitar selección</button>
+            )}
+          </p>
           {vista === "por-pagar" ? (
             <button type="button" onClick={() => setPagando(true)} className={claseBotonPrimario}>
               <Banknote size={15} /> Entregar efectivo
@@ -103,7 +136,7 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
             <tr>
               {seleccionable && (
                 <th className="w-10 px-4 py-3">
-                  <input type="checkbox" checked={todos} onChange={() => setSeleccion(todos ? [] : gastos.map(g => g.id))} className="h-4 w-4 accent-emerald-600" aria-label="Seleccionar todos" />
+                  <input type="checkbox" checked={todos} onChange={() => todos ? limpiar() : setSeleccion(gastos.map(g => g.id))} className="h-4 w-4 accent-emerald-600" aria-label="Seleccionar todos" />
                 </th>
               )}
               <th className="px-4 py-3 font-semibold">Gasto</th>
@@ -116,10 +149,10 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
           </thead>
           <tbody className="divide-y divide-slate-100">
             {gastos.map(g => (
-              <tr key={g.id} className={seleccion.includes(g.id) ? "bg-emerald-50/40" : "hover:bg-slate-50"}>
+              <tr key={g.id} className={idsSeleccionados.includes(g.id) ? "bg-emerald-50/40" : "hover:bg-slate-50"}>
                 {seleccionable && (
                   <td className="px-4 py-3">
-                    <input type="checkbox" checked={seleccion.includes(g.id)} onChange={() => alternar(g.id)} className="h-4 w-4 accent-emerald-600" aria-label={`Seleccionar ${g.codigo}`} />
+                    <input type="checkbox" checked={idsSeleccionados.includes(g.id)} onChange={() => alternar(g.id)} className="h-4 w-4 accent-emerald-600" aria-label={`Seleccionar ${g.codigo}`} />
                   </td>
                 )}
                 <td className="px-4 py-3">
@@ -179,7 +212,7 @@ export default function TablaGastosCaja({ bolsaId, vista, gastos, disponible }: 
             <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
               <DialogTitle className="text-sm font-semibold text-slate-800">Armar reembolso</DialogTitle>
               <p className="mt-1 text-xs text-slate-500">
-                {seleccion.length} gasto(s) por {formatoMoneda(totalSeleccionado)}. Queda en borrador hasta que lo envíe a Dirección de Negocio.
+                {seleccionados.length} gasto(s) por {formatoMoneda(totalSeleccionado)}. Queda en borrador hasta que lo envíe a Dirección de Negocio.
               </p>
               <label className="mt-4 block">
                 <span className={claseLabel}>Observación</span>

@@ -6,19 +6,22 @@ import ExportarExcel from "@/components/gastos/ExportarExcel"
 import TablaGastosPorFacturar from "@/components/legalizacion/TablaGastosPorFacturar"
 import FiltrosLegalizacion, { filtrosActivos, type FiltrosLegalizacion as Filtros } from "@/components/legalizacion/FiltrosLegalizacion"
 import Seccion from "@/components/ui/Seccion"
+import Paginacion from "@/components/ui/Paginacion"
 
 const MAXIMO_BANDEJA = 100
 
 // Gastos reembolsables con factura:
 //  1. La factura ya está registrada: listos para agregarlos a una cuenta de cobro.
 //  2. El tramitador ya subió la factura desde su app: falta registrar sus valores.
-export default async function GastosConFacturaPage(props: { searchParams: Promise<Filtros> }) {
+export default async function GastosConFacturaPage(props: { searchParams: Promise<Filtros & { pagina?: string }> }) {
   const searchParams = await props.searchParams
   const filtros = filtrosActivos(searchParams)
-  const consulta = new URLSearchParams({ alcance: "todos", estado: "FACTURADO", reembolsable: "si", tamano: String(MAXIMO_BANDEJA), ...filtros })
+  const pagina = Math.max(1, Number(searchParams.pagina) || 1)
+  // Sin página ni tamaño: es la que usan Exportar y "Seleccionar todos" (todas las páginas)
+  const consulta = new URLSearchParams({ alcance: "todos", estado: "FACTURADO", reembolsable: "si", ...filtros })
 
   const [respuesta, borradores] = await Promise.all([
-    fetchApi(`/gastos/solicitudes?${consulta}`),
+    fetchApi(`/gastos/solicitudes?${consulta}&pagina=${pagina}&tamano=${MAXIMO_BANDEJA}`),
     obtenerCuentas({ estado: "BORRADOR", tamano: 50 })
   ])
 
@@ -32,12 +35,18 @@ export default async function GastosConFacturaPage(props: { searchParams: Promis
         titulo="Factura registrada"
       >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-amber-700">
-            {total > MAXIMO_BANDEJA && `Se muestran ${MAXIMO_BANDEJA} de ${total} gastos facturados. Use los filtros o exporte el listado completo.`}
-          </p>
+          <p className="text-xs text-slate-500">{total} gasto(s) facturado(s)</p>
           {total > 0 && <ExportarExcel consulta={consulta} archivo="legalizacion-con-factura" />}
         </div>
-        <BandejaLegalizacion gastos={registros} borradores={borradores.registros} />
+        <BandejaLegalizacion gastos={registros} borradores={borradores.registros} todasLasPaginas={{ total, consulta: consulta.toString() }} />
+        <div className="mt-3">
+          <Paginacion
+            pagina={pagina}
+            total={total}
+            tamano={MAXIMO_BANDEJA}
+            url={p => `/legalizacion/facturados?${new URLSearchParams({ ...filtros, pagina: String(p) })}`}
+          />
+        </div>
       </Seccion>
 
       <Seccion

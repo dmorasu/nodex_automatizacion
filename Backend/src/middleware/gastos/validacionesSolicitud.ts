@@ -348,5 +348,6 @@ export const validarListado = [
   query('totales').optional({ values: 'falsy' }).isIn(['si']),
   query('busqueda').optional().isString().trim().isLength({ max: 100 }),
   query('pagina').optional().isInt({ min: 1 }).toInt(),
-  query('tamano').optional().isInt({ min: 1, max: 100 }).toInt()
+  // 1000 = "Seleccionar los N" de las bandejas paginadas (traerGastosFiltrados en Nodex Gastos)
+  query('tamano').optional().isInt({ min: 1, max: 1000 }).toInt()
 ]

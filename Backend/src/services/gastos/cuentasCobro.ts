@@ -11,8 +11,10 @@ import FacturasGasto from '../../models/gastos/facturasGasto'
 import { catalogoEnMemoria } from './catalogoEnMemoria'
 import { cambiarEstadoGasto, codigoEstadoGasto } from './estadosGasto'
 import { registrarMovimientos } from './bolsas'
+import { devolverPagoDelGasto } from './pagos'
 import { ESTADOS_CUENTA_COBRO, ESTADOS_GASTO, TIPOS_CUENTA_COBRO, TIPOS_MOVIMIENTO_BOLSA } from './constantes'
 import { ErrorGastos } from './errores'
+import { formatoMoneda } from './formato'
 
 type CodigoEstadoCuenta = typeof ESTADOS_CUENTA_COBRO[keyof typeof ESTADOS_CUENTA_COBRO]
 
@@ -360,9 +362,11 @@ export const anularGastoDeCuenta = (gastoId: number, motivo: string, usuarioId: 
     if (!linea) throw new ErrorGastos('El gasto no está en una cuenta de cobro en borrador')
     const cuenta = await cuentaEnBorrador(linea.cuentaCobroId, transaction)
     const gasto = await SolicitudesGasto.findByPk(gastoId, { transaction, lock: transaction.LOCK.UPDATE })
+    // Ya estaba pagado: lo pagado vuelve a la bolsa
+    const devueltoC = await devolverPagoDelGasto(gasto, usuarioId, transaction)
 
     await cambiarEstadoGasto(gasto, ESTADOS_GASTO.ANULADO, usuarioId, transaction, {
-      observacion: `Anulado y retirado de la cuenta de cobro ${cuenta.numeroCuentaCobro}: ${motivo}`,
+      observacion: [`Anulado y retirado de la cuenta de cobro ${cuenta.numeroCuentaCobro}: ${motivo}`, devueltoC !== 0 ? `vuelven a la bolsa: ${formatoMoneda(devueltoC / 100)}` : null].filter(Boolean).join(' · '),
       cambios: { motivoAnulacion: motivo }
     })
     await linea.destroy({ transaction })

@@ -4,13 +4,16 @@ import { db } from '../../config/db'
 import Bolsas from '../../models/gastos/bolsas'
 import LotesPago from '../../models/gastos/lotesPago'
 import SolicitudesGasto from '../../models/gastos/solicitudesGasto'
+import MovimientosBolsa from '../../models/gastos/movimientosBolsa'
+import CuentasCobro from '../../models/gastos/cuentasCobro'
+import CuentasCobroGastos from '../../models/gastos/cuentasCobroGastos'
 import DocumentosGasto from '../../models/gastos/documentosGasto'
 import TiposDocumentoGasto from '../../models/gastos/tiposDocumentoGasto'
 import { subirArchivo, eliminarArchivo } from '../azureFileStorage'
 import { nombreSeguro } from '../../controllers/gastos/DocumentosGastoController'
-import { registrarMovimientos, validarBolsaDelGasto, validarQueNoSeaDeCaja } from './bolsas'
+import { registrarMovimientos, validarBolsaDelGasto, validarQueNoSeaDeCaja, type Movimiento } from './bolsas'
 import { cambiarEstadoGasto, codigoEstadoGasto, idEstadoGasto, registrarTrazabilidad } from './estadosGasto'
-import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA, type MotivoNovedadPago } from './constantes'
+import { ESTADOS_GASTO, ESTADOS_LOTE, TIPOS_CUENTA_COBRO, TIPOS_DOCUMENTO, TIPOS_MOVIMIENTO_BOLSA, type MotivoNovedadPago } from './constantes'
 import { ErrorGastos } from './errores'
 import { formatoMoneda } from './formato'
 
@@ -232,6 +235,64 @@ export const anularGastoDelLote = (gastoId: number, motivo: string, usuarioId: n
       cambios: { motivoAnulacion: motivo, lotePagoId: null as unknown as number, valorProgramado: null }
     })
     if (lote) await actualizarLote(lote, usuarioId, transaction)
+  })
+
+// Al anular un gasto ya pagado (Pagado, Facturado, En cuenta de cobro, Legalizado, Contabilizado) lo
+// pagado vuelve a su bolsa (pedido del usuario, 2026-11-19): el neto de lo que salió por el gasto
+// (pago, correcciones, reintegros) con un REVERSO. Si su cuenta de cobro ya se legalizó, esa parte ya
+// había vuelto a la bolsa: se descuenta con un REVERSO de la cuenta, así no se devuelve dos veces y,
+// si después se reversa la legalización, la cuenta solo saca lo que le queda neto.
+// Devuelve los centavos que quedaron de más en la bolsa (0 si no se movió nada).
+export const devolverPagoDelGasto = async (gasto: SolicitudesGasto, usuarioId: number, transaction: Transaction) => {
+  if (!gasto.bolsaId) return 0
+  const movimientos = await MovimientosBolsa.findAll({
+    where: { bolsaId: gasto.bolsaId, solicitudGastoId: gasto.id }, attributes: ['valor'], transaction
+  })
+  const pagadoC = -movimientos.reduce((suma, m) => suma + aCentavos(m.valor), 0)
+
+  const linea = await CuentasCobroGastos.findOne({
+    where: { solicitudGastoId: gasto.id },
+    include: [{ model: CuentasCobro, required: true, attributes: ['id', 'numeroCuentaCobro', 'tipo'], where: { fechaLegalizacion: { [Op.ne]: null } } }],
+    transaction
+  })
+  // Hasta lo pagado: lo legalizado incluye el 4x1000, y anular nunca saca dinero de la bolsa (lo que
+  // sobra queda en la cuenta y sale si después se reversa su legalización)
+  const legalizadoC = linea && linea.cuentaCobro.tipo !== TIPOS_CUENTA_COBRO.LEGALIZACION_SIN_PAGO
+    ? Math.min(aCentavos(linea.valorLegalizado), Math.max(pagadoC, 0)) : 0
+
+  const devolver: Movimiento[] = []
+  if (pagadoC !== 0) {
+    devolver.push({
+      tipo: TIPOS_MOVIMIENTO_BOLSA.REVERSO, valor: pagadoC / 100, solicitudGastoId: gasto.id,
+      observacion: `Anulación de ${gasto.codigo}: lo pagado vuelve a la bolsa`
+    })
+  }
+  if (linea && legalizadoC !== 0) {
+    // Mismo cliente que la legalización de la cuenta (bolsas de anticipos)
+    const legalizacion = await MovimientosBolsa.findOne({
+      where: { bolsaId: gasto.bolsaId, cuentaCobroId: linea.cuentaCobroId, tipo: TIPOS_MOVIMIENTO_BOLSA.LEGALIZACION },
+      attributes: ['clienteId'], transaction
+    })
+    devolver.push({
+      tipo: TIPOS_MOVIMIENTO_BOLSA.REVERSO, valor: -legalizadoC / 100, cuentaCobroId: linea.cuentaCobroId,
+      clienteId: legalizacion?.clienteId ?? null,
+      observacion: `Anulación de ${gasto.codigo}: lo legalizado en la cuenta de cobro ${linea.cuentaCobro.numeroCuentaCobro} ya había vuelto a la bolsa`
+    })
+  }
+  if (devolver.length) await registrarMovimientos(gasto.bolsaId, devolver, usuarioId, transaction)
+  return pagadoC - legalizadoC
+}
+
+// El Administrador de Gastos anula un gasto ya pagado: lo pagado vuelve a la bolsa (devolverPagoDelGasto)
+export const anularGastoPagado = (gastoId: number, motivo: string, usuarioId: number) =>
+  db.transaction(async transaction => {
+    const gasto = await SolicitudesGasto.findByPk(gastoId, { transaction, lock: transaction.LOCK.UPDATE })
+    if (!gasto) throw new ErrorGastos('El gasto no existe', 404)
+    const devueltoC = await devolverPagoDelGasto(gasto, usuarioId, transaction)
+    await cambiarEstadoGasto(gasto, ESTADOS_GASTO.ANULADO, usuarioId, transaction, {
+      observacion: [motivo, devueltoC !== 0 ? `vuelven a la bolsa: ${formatoMoneda(devueltoC / 100)}` : null].filter(Boolean).join(' · '),
+      cambios: { motivoAnulacion: motivo }
+    })
   })
 
 // ── Soportes de pago ──────────────────────

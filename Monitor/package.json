@@ -1,0 +1,12 @@
+{
+  "name": "nodex-monitor",
+  "version": "1.0.0",
+  "description": "Salud del servidor de Nodex: panel web y avisos urgentes de rendimiento y seguridad",
+  "private": true,
+  "main": "src/index.js",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "start": "node src/index.js",
+    "clave": "node src/clave.js"
+  }
+}

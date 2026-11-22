@@ -1,0 +1,33 @@
+# /etc/systemd/system/nodex-monitor.service
+# Va en systemd y no en PM2 a propósito: si PM2 se cae, el monitor tiene que seguir arriba para avisarlo.
+[Unit]
+Description=Nodex Monitor (salud del servidor y avisos)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=nodexmon
+Group=nodexmon
+# adm: leer /var/log/auth.log y los logs de Nginx sin ser root
+SupplementaryGroups=adm
+WorkingDirectory=/opt/nodex-monitor
+# Node propio del monitor (no el de nvm de desarrolloti): una actualización de Nodex no lo toca
+ExecStart=/opt/nodex-monitor/node/bin/node src/index.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+# Crea /var/lib/nodex-monitor (estado.json) con dueño nodexmon
+StateDirectory=nodex-monitor
+StateDirectoryMode=0700
+
+# Endurecimiento que no estorba a sudo (NoNewPrivileges lo rompería)
+ProtectSystem=full
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+MemoryMax=300M
+CPUQuota=25%
+
+[Install]
+WantedBy=multi-user.target

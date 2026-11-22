@@ -1,0 +1,14 @@
+#!/bin/bash
+# /usr/local/bin/nodex-monitor-pg (root:root, 755). Lo llama el monitor cada minuto con:
+#   sudo -n -u postgres /usr/local/bin/nodex-monitor-pg
+# Una sola consulta de lectura: conexiones|máximo|MB de la base nodex|consultas de más de 5 min|esperando bloqueo
+set -uo pipefail
+cd /tmp   # postgres no puede entrar a /home
+exec psql -XAtq -F'|' -d postgres -c "
+SELECT
+  (SELECT count(*) FROM pg_stat_activity),
+  current_setting('max_connections'),
+  (SELECT pg_database_size('nodex') / 1048576),
+  (SELECT count(*) FROM pg_stat_activity
+     WHERE backend_type = 'client backend' AND state <> 'idle' AND now() - query_start > interval '5 minutes'),
+  (SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock')"

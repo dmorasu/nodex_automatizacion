@@ -1,0 +1,162 @@
+/* Nodex Monitor: mismo aspecto que las apps Nodex (docs/GUIA_DISENO_NODEX.txt), acento violet.
+   Siempre modo claro, como las demás apps. Rojo y ámbar quedan solo para alertas. */
+:root {
+  color-scheme: light;
+  --fondo: #f8fafc;
+  --superficie: #ffffff;
+  --borde: #e2e8f0;
+  --borde-suave: #f1f5f9;
+  --texto: #1e293b;
+  --texto-normal: #475569;
+  --texto-apagado: #94a3b8;
+  --texto-medio: #64748b;
+  --acento: #7c3aed;
+  --acento-oscuro: #6d28d9;
+  --acento-suave: #f5f3ff;
+  --acento-anillo: #ede9fe;
+  --ok: #059669;
+  --ok-texto: #047857;
+  --ok-fondo: #ecfdf5;
+  --aviso: #f59e0b;
+  --aviso-texto: #b45309;
+  --aviso-fondo: #fffbeb;
+  --urgente: #dc2626;
+  --urgente-texto: #b91c1c;
+  --urgente-fondo: #fef2f2;
+  --pista: #f1f5f9;
+  --cuadricula: #e2e8f0;
+  --eje: #cbd5e1;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: Manrope, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+}
+h1, h2, h3 { margin: 0; font-weight: 600; }
+button, input { font: inherit; }
+.apagado { color: var(--texto-apagado); }
+.numero { font-variant-numeric: tabular-nums; }
+
+/* Barra superior */
+.barra { background: var(--superficie); border-bottom: 1px solid var(--borde); position: sticky; top: 0; z-index: 10; }
+.barra-contenido { max-width: 1280px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.marca { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--texto); }
+.marca b { color: var(--acento); font-weight: 600; }
+.barra-acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.barra-acciones form { margin: 0; }
+
+.boton {
+  height: 34px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--borde);
+  background: var(--superficie); color: var(--texto-normal); font-weight: 600; font-size: 12px; cursor: pointer;
+}
+.boton:hover { background: var(--fondo); }
+.boton:focus-visible, input:focus-visible { outline: 2px solid var(--acento-anillo); outline-offset: 1px; border-color: #a78bfa; }
+.boton-primario { background: var(--acento); border-color: var(--acento); color: #fff; height: 40px; }
+.boton-primario:hover { background: var(--acento-oscuro); }
+.boton:disabled { opacity: .6; cursor: default; }
+
+/* Contenido */
+.contenido { max-width: 1280px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+.tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 23, 42, .04); padding: 16px; min-width: 0; }
+.tarjeta-titulo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+.tarjeta-titulo h2 { font-size: 14px; color: #334155; }
+.rejilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .rejilla { grid-template-columns: minmax(0, 1fr); } }
+
+/* Franja de estado general */
+.estado-general { display: flex; align-items: center; gap: 10px; border-radius: 12px; padding: 12px 16px; font-size: 14px; font-weight: 600; border: 1px solid; }
+.estado-general .detalle { font-weight: 400; font-size: 12px; }
+.estado-ok { background: var(--ok-fondo); border-color: #a7f3d0; color: var(--ok-texto); }
+.estado-aviso { background: var(--aviso-fondo); border-color: #fde68a; color: var(--aviso-texto); }
+.estado-urgente { background: var(--urgente-fondo); border-color: #fecaca; color: var(--urgente-texto); }
+.estado-cargando { background: var(--superficie); border-color: var(--borde); color: var(--texto-medio); }
+.icono-estado { width: 18px; height: 18px; flex: none; }
+
+/* Indicadores de capacidad */
+.indicadores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1000px) { .indicadores { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.indicador { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.etiqueta { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-medio); }
+.valor { font-size: 22px; font-weight: 600; color: var(--texto); font-variant-numeric: tabular-nums; margin: 2px 0 8px; white-space: nowrap; }
+.valor small { font-size: 12px; font-weight: 500; color: var(--texto-medio); }
+.medidor { height: 6px; border-radius: 99px; background: var(--pista); overflow: hidden; }
+.medidor span { display: block; height: 100%; border-radius: 99px; }
+.indicador .pie { margin-top: 6px; color: var(--texto-medio); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Chips de estado: siempre con ícono + texto, nunca solo color */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.chip svg { width: 11px; height: 11px; }
+.chip-ok { background: var(--ok-fondo); color: var(--ok-texto); }
+.chip-aviso { background: var(--aviso-fondo); color: var(--aviso-texto); }
+.chip-urgente { background: var(--urgente-fondo); color: var(--urgente-texto); }
+.chip-neutro { background: var(--pista); color: var(--texto-normal); }
+
+/* Alertas activas */
+.alerta { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--borde-suave); }
+.alerta:first-child { border-top: 0; padding-top: 0; }
+.alerta-titulo { font-weight: 600; color: var(--texto); font-size: 13px; }
+.alerta-detalle { color: var(--texto-normal); overflow-wrap: anywhere; }
+.alerta-desde { color: var(--texto-apagado); white-space: nowrap; }
+.vacio { color: var(--texto-apagado); padding: 4px 0; }
+
+/* Tablas */
+.tabla-contenedor { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-apagado); padding: 0 8px 6px; white-space: nowrap; }
+td { padding: 7px 8px; border-top: 1px solid var(--borde-suave); color: var(--texto-normal); vertical-align: top; }
+td.derecha, th.derecha { text-align: right; }
+td.fuerte { color: var(--texto); font-weight: 600; }
+td.corto { max-width: 340px; overflow-wrap: anywhere; }
+tr:hover td { background: #fbfcfe; }
+
+/* Listas clave-valor */
+.datos { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0; }
+.datos > div { display: contents; }
+.datos dt, .datos dd { padding: 7px 0; border-top: 1px solid var(--borde-suave); margin: 0; }
+.datos dt { color: var(--texto-normal); }
+.datos dd { text-align: right; font-weight: 600; color: var(--texto); font-variant-numeric: tabular-nums; padding-left: 12px; }
+.datos > div:first-child dt, .datos > div:first-child dd { border-top: 0; }
+.subtitulo { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-apagado); margin: 14px 0 4px; }
+.subtitulo:first-child { margin-top: 0; }
+
+/* Gráficas */
+.graficas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; }
+@media (max-width: 800px) { .graficas { grid-template-columns: minmax(0, 1fr); } }
+.grafica h3 { font-size: 12px; color: #334155; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
+.grafica h3 span { font-weight: 500; color: var(--texto-medio); font-variant-numeric: tabular-nums; }
+.grafica svg { display: block; width: 100%; height: 150px; overflow: visible; }
+.grafica svg text { font-size: 10px; fill: var(--texto-apagado); font-variant-numeric: tabular-nums; }
+.grafica .linea { fill: none; stroke: var(--acento); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.grafica .area { fill: var(--acento); opacity: .07; }
+.grafica .cuadricula { stroke: var(--cuadricula); stroke-width: 1; }
+.grafica .base { stroke: var(--eje); stroke-width: 1; }
+.grafica .umbral { stroke: var(--urgente); stroke-width: 1; stroke-dasharray: 4 3; opacity: .7; }
+.grafica .umbral-texto { fill: var(--urgente-texto); }
+.grafica .cruz { stroke: var(--texto-medio); stroke-width: 1; }
+.grafica .punto { fill: var(--acento); stroke: #fff; stroke-width: 2; }
+.grafica details { margin-top: 4px; }
+.grafica summary { cursor: pointer; color: var(--texto-medio); font-size: 11px; width: fit-content; }
+.grafica details table { margin-top: 4px; }
+.grafica details td { padding: 3px 8px; }
+.tooltip { position: fixed; pointer-events: none; z-index: 20; background: var(--texto); color: #fff; padding: 5px 8px; border-radius: 6px; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; box-shadow: 0 4px 12px rgba(15, 23, 42, .2); }
+.tooltip b { font-weight: 600; }
+
+/* Aviso flotante */
+.aviso { position: fixed; right: 16px; bottom: 16px; max-width: min(420px, calc(100vw - 32px)); background: var(--superficie); border: 1px solid var(--borde); border-left: 4px solid var(--acento); border-radius: 8px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(15, 23, 42, .12); color: var(--texto-normal); z-index: 30; }
+
+/* Ingreso */
+.pagina-ingreso { min-height: 100vh; background: linear-gradient(135deg, #7c3aed, #6b21a8 45%, #0f172a); display: grid; place-items: center; padding: 16px; }
+.ingreso { width: 100%; max-width: 360px; display: grid; gap: 16px; }
+.ingreso-marca { display: flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 20px; font-weight: 600; }
+.ingreso-marca img { border-radius: 10px; box-shadow: 0 0 0 2px rgba(255, 255, 255, .25); }
+.ingreso-tarjeta { display: grid; gap: 12px; padding: 24px; }
+.ingreso-tarjeta h1 { font-size: 20px; color: var(--texto); }
+.ingreso-tarjeta label { display: grid; gap: 4px; font-size: 11px; font-weight: 500; color: var(--texto-medio); }
+.ingreso-tarjeta input { height: 40px; border: 1px solid var(--borde); border-radius: 6px; padding: 0 10px; font-size: 13px; color: var(--texto); }
+.error-ingreso { margin: 0; background: var(--urgente-fondo); color: var(--urgente-texto); border-radius: 6px; padding: 8px 10px; font-weight: 600; }

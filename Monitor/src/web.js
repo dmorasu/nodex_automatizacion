@@ -17,7 +17,8 @@ const ENCABEZADOS = {
   'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'",
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
-  'Referrer-Policy': 'no-referrer',
+  // same-origin y no no-referrer: con no-referrer Chrome manda "Origin: null" en el POST del ingreso y mismoOrigen lo rechaza
+  'Referrer-Policy': 'same-origin',
   'Cache-Control': 'no-store',
   'X-Robots-Tag': 'noindex, nofollow'
 }

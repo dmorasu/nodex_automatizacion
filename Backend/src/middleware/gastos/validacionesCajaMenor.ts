@@ -46,11 +46,11 @@ export const validarLegalizacionCaja = [
   obligatorio('beneficiario', 'El beneficiario', 200),
   body('tipoIdentificacion').isIn(['CC', 'NIT']).withMessage('El tipo de documento debe ser CC o NIT'),
   obligatorio('identificacion', 'La identificación', 30),
-  body('placa').optional({ values: 'null' }).isString().trim().isLength({ max: 20 }),
-  body('matriculaInmobiliaria').optional({ values: 'null' }).isString().trim().isLength({ max: 50 }),
+  body('placa').optional({ values: 'null' }).isString().trim().isLength({ max: 100 }).withMessage('La placa no puede superar 100 caracteres'),
+  body('matriculaInmobiliaria').optional({ values: 'null' }).isString().trim().isLength({ max: 50 }).withMessage('La matrícula no puede superar 50 caracteres'),
   obligatorio('quienLegaliza', 'Quién legaliza', 150),
   body('valorSoporte').isFloat({ gt: 0 }).withMessage('El valor del soporte debe ser mayor a cero').toFloat(),
-  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 })
+  body('observacion').optional({ values: 'null' }).isString().trim().isLength({ max: 1000 }).withMessage('La observación no puede superar 1000 caracteres')
 ]
 
 export const validarNuevoReembolso = [

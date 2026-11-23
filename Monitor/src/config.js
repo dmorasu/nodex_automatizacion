@@ -28,8 +28,8 @@ module.exports = {
 
   // El monitor usa sudo cada minuto: esas líneas de auth.log no son eventos de seguridad
   usuarioSistema: texto('MONITOR_USUARIO_SISTEMA', 'nodexmon'),
-  // Envoltorios de solo lectura (deploy/monitor): PM2 corre como desarrolloti y Postgres como postgres
-  cmdPm2: comando('MONITOR_CMD_PM2', 'sudo -n -u desarrolloti /usr/local/bin/nodex-monitor-pm2'),
+  // Envoltorios de solo lectura (deploy/monitor): PM2 corre como root (/root/.pm2) y Postgres como postgres
+  cmdPm2: comando('MONITOR_CMD_PM2', 'sudo -n -u root /usr/local/bin/nodex-monitor-pm2'),
   cmdPostgres: comando('MONITOR_CMD_POSTGRES', 'sudo -n -u postgres /usr/local/bin/nodex-monitor-pg'),
   procesosIgnorar: lista('MONITOR_PROCESOS_IGNORAR'),
 

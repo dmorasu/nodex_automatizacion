@@ -11,7 +11,7 @@ Group=nodexmon
 # adm: leer /var/log/auth.log y los logs de Nginx sin ser root
 SupplementaryGroups=adm
 WorkingDirectory=/opt/nodex-monitor
-# Node propio del monitor (no el de nvm de desarrolloti): una actualización de Nodex no lo toca
+# Node propio del monitor (no el de Nodex): una actualización de Nodex no lo toca
 ExecStart=/opt/nodex-monitor/node/bin/node src/index.js
 Restart=always
 RestartSec=10

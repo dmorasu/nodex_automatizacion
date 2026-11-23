@@ -1,6 +1,6 @@
 'use strict'
 // Procesos de PM2 y logins fallidos de Nodex. Los da el envoltorio nodex-monitor-pm2, que corre
-// como desarrolloti y quita las variables de entorno (llevan las claves) antes de entregarlos.
+// como root (dueño de PM2 en el servidor) y quita las variables de entorno (llevan las claves) antes de entregarlos.
 const { ejecutar } = require('../utilidades')
 
 // El envoltorio cuenta los 401/429 del login en el log del backend; aquí se saca cuántos son nuevos.

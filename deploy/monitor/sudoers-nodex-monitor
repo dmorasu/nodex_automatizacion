@@ -1,0 +1,8 @@
+# /etc/sudoers.d/nodex-monitor (root:root, 440). Comprobar SIEMPRE antes con:
+#   visudo -cf /etc/sudoers.d/nodex-monitor
+# El usuario del monitor solo puede correr estos dos envoltorios de lectura, y sin argumentos ("").
+nodexmon ALL=(desarrolloti) NOPASSWD: /usr/local/bin/nodex-monitor-pm2 ""
+nodexmon ALL=(postgres) NOPASSWD: /usr/local/bin/nodex-monitor-pg ""
+
+# Corre dos veces por minuto: sin esto llenaría auth.log y taparía lo que sí importa
+Defaults:nodexmon !syslog, !pam_session

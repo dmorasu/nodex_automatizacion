@@ -1,0 +1,37 @@
+#!/bin/bash
+# /usr/local/bin/nodex-monitor-pm2 (root:root, 755). Lo llama el monitor cada minuto con:
+#   sudo -n -u desarrolloti /usr/local/bin/nodex-monitor-pm2
+# Entrega solo nombre, estado, reinicios, CPU y memoria de cada proceso de PM2 (nunca las variables
+# de entorno: pm2 jlist las trae y ahí están las claves) y cuántos logins fallidos (401/429) hay en
+# el log actual del backend. Sin argumentos: el sudoers no permite pasarle nada.
+set -uo pipefail
+# Carpeta donde están node y pm2 de desarrolloti (la instalación la llena con: sudo -u desarrolloti -i which pm2)
+export PATH="__RUTA_NODE__:/usr/local/bin:/usr/bin:/bin"
+export HOME=/home/desarrolloti
+export PROCESO_API=nodex-api
+cd /tmp
+
+pm2 jlist 2>/dev/null | node -e '
+let texto = ""
+process.stdin.on("data", d => { texto += d }).on("end", () => {
+  // pm2 a veces escribe avisos antes del JSON: se toma desde el primer renglón que empieza con [
+  const inicio = texto.search(/^\[/m)
+  const lista = inicio >= 0 ? JSON.parse(texto.slice(inicio)) : []
+  const procesos = lista.filter(p => !(p.pm2_env && p.pm2_env.pmx_module)).map(p => ({
+    nombre: p.name,
+    estado: (p.pm2_env && p.pm2_env.status) || "desconocido",
+    reinicios: (p.pm2_env && p.pm2_env.restart_time) || 0,
+    desde: (p.pm2_env && p.pm2_env.pm_uptime) || null,
+    cpu: (p.monit && p.monit.cpu) || 0,
+    memoriaMb: Math.round(((p.monit && p.monit.memory) || 0) / 1048576)
+  }))
+  // morgan (formato dev) escribe "POST /api/auth/login <color>401<color> ..."
+  let loginFallidos = null
+  const api = lista.find(p => p.name === process.env.PROCESO_API)
+  const log = api && api.pm2_env && api.pm2_env.pm_out_log_path
+  if (log) {
+    const r = require("child_process").spawnSync("grep", ["-cE", "auth/login .{0,12}(401|429)[^0-9]", log], { encoding: "utf8" })
+    loginFallidos = Number(String(r.stdout).trim()) || 0
+  }
+  process.stdout.write(JSON.stringify({ procesos, loginFallidos }))
+})'

@@ -282,6 +282,10 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Nodex Monitor (2026-11-22)**: servicio aparte (systemd, usuario `nodexmon`, `/opt/nodex-monitor`). No se compila ni se reinicia nada de Nodex. Instalación y actualización en `deploy/monitor/INSTALACION.md`.
+- **Variables solo en `/opt/nodex-monitor/.env`** (plantilla en `Monitor/.env.example`); el `.env` del backend no cambia. **Sin cambios de base.**
+- **Revisar después:** `systemctl status nodex-monitor`, entrar a `https://monitor.nodexgpa.com` y usar **Probar avisos** (debe llegar el correo y el WhatsApp).
+
 **Trámites: desactivar tipos de trámite en Catálogos (2026-11-18)** — cambian el backend y Nodex Trámites: compilar los dos y reiniciar `nodex-api` y `nodex-tramites`.
 - **Sin variables.** **Cambio de base (lo hace el arranque, idempotente, solo agrega):** antes de `sync()`, `ajustarEsquemaTramites` → `tiposDeTramiteActivos` agrega `"Tramites"."activo" BOOLEAN NOT NULL DEFAULT true` (todos los tipos quedan activos).
 - **Revisar después de arrancar:** `SELECT COUNT(*) FILTER (WHERE activo) AS activos, COUNT(*) AS total FROM "Tramites";` (los dos iguales).

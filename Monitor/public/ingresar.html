@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Nodex Monitor</title>
+  <link rel="icon" href="/icono.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body class="pagina-ingreso">
+  <main class="ingreso">
+    <div class="ingreso-marca">
+      <img src="/icono.svg" alt="" width="40" height="40">
+      <span>Nodex Monitor</span>
+    </div>
+    <form class="tarjeta ingreso-tarjeta" method="post" action="/ingresar">
+      <h1>Ingresar</h1>
+      <!--error-->
+      <label>Usuario
+        <input name="usuario" autocomplete="username" required autofocus>
+      </label>
+      <label>Contraseña
+        <input name="clave" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="boton boton-primario" type="submit">Ingresar</button>
+    </form>
+  </main>
+</body>
+</html>

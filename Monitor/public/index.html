@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Nodex Monitor</title>
+  <link rel="icon" href="/icono.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/panel.css">
+  <script src="/panel.js" defer></script>
+</head>
+<body>
+  <header class="barra">
+    <div class="barra-contenido">
+      <div class="marca"><img src="/icono.svg" alt="" width="28" height="28"><span>Nodex <b>Monitor</b></span></div>
+      <div class="barra-acciones">
+        <span id="actualizado" class="apagado"></span>
+        <button id="probar" class="boton" type="button">Probar avisos</button>
+        <form method="post" action="/salir"><button class="boton" type="submit">Salir</button></form>
+      </div>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <div id="estado-general" class="estado-general"></div>
+
+    <section id="indicadores" class="indicadores" aria-label="Capacidad"></section>
+
+    <section class="tarjeta">
+      <div class="tarjeta-titulo"><h2>Alertas activas</h2></div>
+      <div id="alertas"></div>
+    </section>
+
+    <section class="tarjeta">
+      <div class="tarjeta-titulo"><h2>Últimas 24 horas</h2></div>
+      <div id="graficas" class="graficas"></div>
+    </section>
+
+    <div class="rejilla">
+      <section class="tarjeta">
+        <div class="tarjeta-titulo"><h2>Procesos (PM2)</h2></div>
+        <div id="procesos" class="tabla-contenedor"></div>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-titulo"><h2>Servicios</h2></div>
+        <div id="servicios"></div>
+      </section>
+    </div>
+
+    <section class="tarjeta">
+      <div class="tarjeta-titulo"><h2>Sitios y certificados</h2></div>
+      <div id="sitios" class="tabla-contenedor"></div>
+    </section>
+
+    <div class="rejilla">
+      <section class="tarjeta">
+        <div class="tarjeta-titulo"><h2>Seguridad</h2></div>
+        <div id="seguridad"></div>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-titulo"><h2>Tráfico</h2></div>
+        <div id="trafico"></div>
+      </section>
+    </div>
+
+    <div class="rejilla">
+      <section class="tarjeta">
+        <div class="tarjeta-titulo"><h2>Eventos de seguridad</h2></div>
+        <div id="eventos" class="tabla-contenedor"></div>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-titulo"><h2>Historial de alertas</h2></div>
+        <div id="historial" class="tabla-contenedor"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="aviso" class="aviso" role="status" hidden></div>
+  <div id="tooltip" class="tooltip" hidden></div>
+</body>
+</html>

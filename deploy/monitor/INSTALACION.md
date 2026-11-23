@@ -89,7 +89,11 @@ En Twilio: *Messaging → Content Template Builder → Create new*. Tipo *Text*,
 
 ```
 ⚠️ Alerta del servidor de Nodex: {{1}}
+
+Revisa el panel en monitor.nodexgpa.com
 ```
+
+La variable no puede quedar al final del cuerpo (Meta rechaza la plantilla): por eso va la línea del panel.
 
 Cuando Meta la apruebe, copiar su `ContentSid` (`HX...`) en `MONITOR_TWILIO_PLANTILLA` y reiniciar: `systemctl restart nodex-monitor`. Luego, en el panel, **Probar avisos** debe hacer llegar el correo y el WhatsApp.
 

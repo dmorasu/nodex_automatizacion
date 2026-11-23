@@ -20,12 +20,11 @@ Environment=NODE_ENV=production
 StateDirectory=nodex-monitor
 StateDirectoryMode=0700
 
-# Endurecimiento que no estorba a sudo (NoNewPrivileges lo rompería)
+# Endurecimiento que no estorba a sudo. Sin ProtectKernelTunables, ProtectKernelModules ni
+# ProtectControlGroups: con User= activan NoNewPrivileges y sudo falla ("no new privileges flag"),
+# y el monitor no puede leer PM2 ni Postgres.
 ProtectSystem=full
 PrivateTmp=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
 MemoryMax=300M
 CPUQuota=25%
 

@@ -282,6 +282,10 @@ Todo como `root` (`sudo -i`). La producción 4.5 no se toca.
 
 ### Variables por versión
 
+**Gastos: legalizar en caja menor gastos con varias placas (2026-11-23)** — cambian el backend y Nodex Gastos: compilar los dos y reiniciar `nodex-api` y `nodex-gastos`.
+- **Sin variables.** **Cambio de base (lo hace el arranque, idempotente, solo amplía):** `ajustarEsquemaGastos` → `placaConVariasPlacas` amplía `gastos_legalizaciones_caja.placa` de `VARCHAR(20)` a `VARCHAR(100)` (ampliar no reescribe la tabla).
+- **Revisar después de arrancar:** `SELECT character_maximum_length FROM information_schema.columns WHERE table_name = 'gastos_legalizaciones_caja' AND column_name = 'placa';` (100) y legalizar en Caja menor un gasto con varias placas.
+
 **Nodex Monitor (2026-11-22)**: servicio aparte (systemd, usuario `nodexmon`, `/opt/nodex-monitor`). No se compila ni se reinicia nada de Nodex. Instalación y actualización en `deploy/monitor/INSTALACION.md`.
 - **Variables solo en `/opt/nodex-monitor/.env`** (plantilla en `Monitor/.env.example`); el `.env` del backend no cambia. **Sin cambios de base.**
 - **Revisar después:** `systemctl status nodex-monitor`, entrar a `https://monitor.nodexgpa.com` y usar **Probar avisos** (debe llegar el correo y el WhatsApp).

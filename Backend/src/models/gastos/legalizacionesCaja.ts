@@ -52,7 +52,8 @@ class LegalizacionesCaja extends Model {
   @Column({ type: DataType.STRING(30) })
   declare identificacion: string
 
-  @Column({ type: DataType.STRING(20) })
+  // 100, como la placa del gasto: puede traer varias ("ABC123, DEF456")
+  @Column({ type: DataType.STRING(100) })
   declare placa: string | null
 
   @Column({ type: DataType.STRING(50) })

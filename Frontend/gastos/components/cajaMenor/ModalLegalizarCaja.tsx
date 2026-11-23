@@ -119,7 +119,7 @@ export default function ModalLegalizarCaja({ gasto, onCerrar, onLegalizado }: {
                 <input value={datos.identificacion} onChange={e => cambiar("identificacion", e.target.value)} maxLength={30} className={claseInput} />
               </Campo>
               <Campo etiqueta="Placa" obligatorio={false}>
-                <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={20} className={claseInput} />
+                <input value={datos.placa} onChange={e => cambiar("placa", e.target.value.toUpperCase())} maxLength={100} className={claseInput} />
               </Campo>
               <Campo etiqueta="Matrícula inmobiliaria" obligatorio={false}>
                 <input value={datos.matriculaInmobiliaria} onChange={e => cambiar("matriculaInmobiliaria", e.target.value)} maxLength={50} className={claseInput} />

@@ -259,14 +259,18 @@ const tipoCuentaCobro = async () => {
 
 // 2026-11-12 · El trámite puede tener hasta 10 placas ("ABC123, DEF456, …") y el gasto del trámite
 // las copia: la placa del gasto pasa de 20 a 100 caracteres. Ampliar un VARCHAR no reescribe la
-// tabla ni cambia lo guardado
+// tabla ni cambia lo guardado.
+// 2026-11-23 · La legalización de caja menor copia la placa del gasto y seguía en 20: los gastos con
+// varias placas no se podían legalizar ("Invalid value"). Se amplía igual
 const placaConVariasPlacas = async () => {
-  const [filas] = await db.query(`
-    SELECT character_maximum_length AS largo FROM information_schema.columns
-    WHERE table_name = 'gastos_solicitudes' AND column_name = 'placa'
-  `) as [{ largo: number | null }[], unknown]
-  if (filas[0]?.largo && filas[0].largo < 100) {
-    await db.query('ALTER TABLE gastos_solicitudes ALTER COLUMN placa TYPE VARCHAR(100)')
+  for (const tabla of ['gastos_solicitudes', 'gastos_legalizaciones_caja']) {
+    const [filas] = await db.query(`
+      SELECT character_maximum_length AS largo FROM information_schema.columns
+      WHERE table_name = :tabla AND column_name = 'placa'
+    `, { replacements: { tabla } }) as [{ largo: number | null }[], unknown]
+    if (filas[0]?.largo && filas[0].largo < 100) {
+      await db.query(`ALTER TABLE ${tabla} ALTER COLUMN placa TYPE VARCHAR(100)`)
+    }
   }
 }
 

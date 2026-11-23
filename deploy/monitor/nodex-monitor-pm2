@@ -1,13 +1,14 @@
 #!/bin/bash
 # /usr/local/bin/nodex-monitor-pm2 (root:root, 755). Lo llama el monitor cada minuto con:
-#   sudo -n -u desarrolloti /usr/local/bin/nodex-monitor-pm2
+#   sudo -n -u root /usr/local/bin/nodex-monitor-pm2
+# PM2 de producción corre como root (/root/.pm2): el de desarrolloti está vacío.
 # Entrega solo nombre, estado, reinicios, CPU y memoria de cada proceso de PM2 (nunca las variables
 # de entorno: pm2 jlist las trae y ahí están las claves) y cuántos logins fallidos (401/429) hay en
 # el log actual del backend. Sin argumentos: el sudoers no permite pasarle nada.
 set -uo pipefail
-# Carpeta donde están node y pm2 de desarrolloti (la instalación la llena con: sudo -u desarrolloti -i which pm2)
+# Carpeta donde están node y pm2 (la instalación la llena con: dirname "$(which pm2)")
 export PATH="__RUTA_NODE__:/usr/local/bin:/usr/bin:/bin"
-export HOME=/home/desarrolloti
+export HOME=/root
 export PROCESO_API=nodex-api
 cd /tmp
 

@@ -2,7 +2,7 @@
 
 Panel web en `https://monitor.nodexgpa.com` con la salud del servidor, y avisos de rendimiento y seguridad: **correo para todo, WhatsApp solo para lo urgente**. Corre como el usuario `nodexmon` (sin privilegios), en systemd (no en PM2: si PM2 se cae, el monitor tiene que seguir arriba para avisarlo) y sin dependencias de npm. Código en `Monitor/`, archivos del servidor en esta carpeta.
 
-Todo como root (`sudo -i`), desde `/home/desarrolloti/nodex5.0` ya actualizado con `git pull`.
+Todo como root (`sudo -i`), desde `/home/desarrolloti/nodex5.0` ya actualizado con `git pull origin produccion` (como root: como `desarrolloti` git responde "dubious ownership"). `$REPO` se pierde al abrir otra sesión: volver a definirla.
 
 ## 1. Usuario y permisos
 
@@ -12,23 +12,23 @@ usermod -aG adm nodexmon            # leer auth.log y los logs de Nginx
 ls -l /var/log/auth.log /var/log/nginx/access.log /var/log/respaldo-nodex.log   # grupo adm (o legibles por todos)
 ```
 
-Envoltorios de solo lectura (PM2 como `desarrolloti`, Postgres como `postgres`):
+Envoltorios de solo lectura (PM2 como `root`, que es su dueño en el servidor: `/root/.pm2`; Postgres como `postgres`):
 
 ```bash
 REPO=/home/desarrolloti/nodex5.0
-RUTA_NODE=$(dirname "$(sudo -u desarrolloti -i which pm2)")   # ej. /home/desarrolloti/.nvm/versions/node/v20.20.0/bin
+RUTA_NODE=$(dirname "$(which pm2)")   # en SRVWEBNOX02: /usr/bin
 install -o root -g root -m 755 $REPO/deploy/monitor/nodex-monitor-pm2 /usr/local/bin/
 install -o root -g root -m 755 $REPO/deploy/monitor/nodex-monitor-pg /usr/local/bin/
 sed -i "s#__RUTA_NODE__#$RUTA_NODE#" /usr/local/bin/nodex-monitor-pm2
 install -o root -g root -m 440 $REPO/deploy/monitor/sudoers-nodex-monitor /etc/sudoers.d/nodex-monitor
 visudo -cf /etc/sudoers.d/nodex-monitor        # debe decir "parsed OK"; si no, borrar el archivo
-sudo -u nodexmon sudo -n -u desarrolloti /usr/local/bin/nodex-monitor-pm2 | head -c 300; echo
+sudo -u nodexmon sudo -n -u root /usr/local/bin/nodex-monitor-pm2 | head -c 300; echo   # deben salir nodex-api y los demás
 sudo -u nodexmon sudo -n -u postgres /usr/local/bin/nodex-monitor-pg     # ej. 34|100|81|0|0
 ```
 
 ## 2. Código y Node propio
 
-El monitor usa su propio Node (no el de nvm de `desarrolloti`), para que una actualización de Nodex no lo afecte:
+El monitor usa su propio Node (no el de Nodex), para que una actualización de Nodex no lo afecte:
 
 ```bash
 mkdir -p /opt/nodex-monitor && cd /opt/nodex-monitor

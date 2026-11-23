@@ -23,7 +23,7 @@ const ENCABEZADOS = {
   'X-Robots-Tag': 'noindex, nofollow'
 }
 
-const crearServidor = (config, obtenerEstado, alIntentoFallido, enviarPrueba) => {
+const crearServidor = (config, obtenerEstado, alIntentoFallido, enviarPrueba, ejecutarAccion) => {
   const sesiones = new Map()
   // Intentos fallidos por IP: 5 en 15 min y la IP queda bloqueada hasta que pasen los 15 min
   const fallidos = new Map()
@@ -138,6 +138,17 @@ const crearServidor = (config, obtenerEstado, alIntentoFallido, enviarPrueba) =>
       if (ruta === '/api/prueba' && req.method === 'POST') {
         if (!mismoOrigen(req)) return responder(res, 403, { error: 'origen no permitido' })
         return responder(res, 200, await enviarPrueba(sesion.usuario))
+      }
+      // Ocultar alertas, permitir puertos e IPs y limpiar el historial: { accion, ...datos }
+      if (ruta === '/api/accion' && req.method === 'POST') {
+        if (!mismoOrigen(req)) return responder(res, 403, { error: 'origen no permitido' })
+        let cuerpo
+        try { cuerpo = JSON.parse(await leerCuerpo(req)) } catch { return responder(res, 400, { error: 'datos no válidos' }) }
+        try {
+          return responder(res, 200, ejecutarAccion(String(cuerpo?.accion || ''), cuerpo || {}, sesion.usuario))
+        } catch (error) {
+          return responder(res, 400, { error: error.message })
+        }
       }
 
       return responder(res, 404, { error: 'no existe' })

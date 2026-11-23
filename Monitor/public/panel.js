@@ -93,12 +93,23 @@ const pintarIndicadores = () => {
 // --- Alertas activas ---
 const pintarAlertas = () => {
   if (!datos.activas.length) { $('alertas').innerHTML = `<div class="vacio">${chip('ok', 'Sin alertas')}</div>`; return }
-  $('alertas').innerHTML = datos.activas.map(a => `
+  $('alertas').innerHTML = datos.activas.map(a => {
+    // Alertas de puerto: "puerto-tcp-5432" → se puede permitir el puerto en vez de solo ocultarla
+    const puerto = /^puerto-(?:tcp|udp)-(\d+)$/.exec(a.id)?.[1]
+    return `
     <div class="alerta">
       ${chip(a.nivel, a.nivel === 'urgente' ? 'Urgente' : 'Aviso')}
-      <div><div class="alerta-titulo">${esc(a.titulo)}</div><div class="alerta-detalle">${esc(a.detalle)}</div></div>
-      <div class="alerta-desde">hace ${hace(Date.now() - a.desde)}</div>
-    </div>`).join('')
+      <div><div class="alerta-titulo">${esc(a.titulo)}</div><div class="alerta-detalle">${esc(a.detalle)}</div>
+        <div class="alerta-desde">Desde el ${fechaHora(a.desde)}</div></div>
+      <div class="alerta-acciones">
+        <div class="alerta-desde">hace ${hace(Date.now() - a.desde)}</div>
+        <div class="alerta-botones">
+          ${puerto ? `<button class="boton boton-chico" type="button" data-accion="agregar-puerto" data-puerto="${esc(puerto)}">Permitir puerto</button>` : ''}
+          <button class="boton boton-chico" type="button" data-accion="ocultar" data-id="${esc(a.id)}" data-titulo="${esc(a.titulo)}">Ocultar</button>
+        </div>
+      </div>
+    </div>`
+  }).join('')
 }
 
 // --- Gráficas de 24 h (una serie cada una: el título la nombra, sin leyenda) ---
@@ -357,11 +368,57 @@ const pintarEventos = () => {
 
 const pintarHistorial = () => {
   if (!datos.historial.length) { $('historial').innerHTML = '<div class="vacio">Sin alertas</div>'; return }
-  $('historial').innerHTML = `<table><thead><tr><th>Nivel</th><th>Alerta</th><th>Inicio</th><th class="derecha">Duró</th></tr></thead><tbody>${datos.historial.map(h => `
+  // La IP de un acceso SSH viene al inicio del detalle ("192.168.5.1 (password) el …")
+  const ipSsh = h => h.titulo.startsWith('Acceso SSH') ? /^([0-9a-f.:]+) /i.exec(h.detalle || '')?.[1] : null
+  const conocida = ip => datos.ipsConocidas.some(c => ip === c || (c.endsWith('.') && ip.startsWith(c)))
+  // El panel se repinta cada 15 s: los detalles abiertos siguen abiertos
+  const abiertos = new Set([...$('historial').querySelectorAll('details[open]')].map(d => d.dataset.clave))
+  const clave = h => `${h.desde}|${h.titulo}`
+  $('historial').innerHTML = `<table><thead><tr><th>Nivel</th><th>Alerta</th><th>Inicio</th><th class="derecha">Duró</th><th></th></tr></thead><tbody>${datos.historial.map(h => {
+    const ip = ipSsh(h)
+    return `
     <tr><td>${chip(h.nivel, h.nivel === 'urgente' ? 'Urgente' : 'Aviso')}</td>
-    <td class="corto"><div class="fuerte">${esc(h.titulo)}</div>${esc(h.detalle)}</td>
+    <td class="corto"><details class="detalle" data-clave="${esc(clave(h))}"${abiertos.has(clave(h)) ? ' open' : ''}><summary>${esc(h.titulo)}</summary><div class="detalle-cuerpo">${esc(h.detalle)}
+      <div>Inicio: ${fechaHora(h.desde)}${h.evento ? '' : ` · Fin: ${fechaHora(h.hasta)}`}</div></div></details></td>
     <td>${fechaHora(h.desde)}</td>
-    <td class="derecha">${h.evento ? 'evento' : hace(h.hasta - h.desde)}</td></tr>`).join('')}</tbody></table>`
+    <td class="derecha">${h.evento ? 'evento' : hace(h.hasta - h.desde)}</td>
+    <td><div class="fila-botones">
+      ${ip && !conocida(ip) ? `<button class="boton boton-chico" type="button" data-accion="agregar-ip" data-ip="${esc(ip)}">IP conocida</button>` : ''}
+      <button class="boton boton-chico boton-peligro" type="button" data-accion="eliminar-historial" data-desde="${esc(h.desde)}" data-titulo="${esc(h.titulo)}">Eliminar</button>
+    </div></td></tr>`
+  }).join('')}</tbody></table>`
+}
+
+// --- Configuración: lo del .env se ve pero no se quita desde aquí ---
+const pintarConfiguracion = () => {
+  const aj = datos.ajustes
+  if (!aj) return
+  // No repintar mientras se escribe en un campo (el panel se refresca cada 15 s)
+  if ($('configuracion').contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return
+  const lista = (fijos, delPanel, accion, campo) => {
+    const soloEnv = fijos.filter(v => !delPanel.includes(v))
+    const items = [
+      ...soloEnv.map(v => `<span class="ajuste ajuste-fijo" title="Definido en el .env">${esc(v)}</span>`),
+      ...delPanel.map(v => `<span class="ajuste">${esc(v)}<button type="button" aria-label="Quitar ${esc(v)}" data-accion="${accion}" data-${campo}="${esc(v)}">×</button></span>`)
+    ]
+    return `<div class="lista-ajustes">${items.join('') || '<span class="vacio">Ninguna</span>'}</div>`
+  }
+  $('configuracion').innerHTML = `
+    <div>
+      <div class="subtitulo">IPs conocidas (SSH)</div>
+      ${lista(aj.env.ipsConocidas, aj.panel.ipsConocidas, 'quitar-ip', 'ip')}
+      <form class="form-ajuste" data-agregar="agregar-ip"><input name="valor" placeholder="192.168.5.1 o 190.85." maxlength="45" required><button class="boton" type="submit">Agregar</button></form>
+    </div>
+    <div>
+      <div class="subtitulo">Puertos permitidos</div>
+      ${lista(aj.env.puertosPermitidos, aj.panel.puertosPermitidos, 'quitar-puerto', 'puerto')}
+      <form class="form-ajuste" data-agregar="agregar-puerto"><input name="valor" placeholder="5432" inputmode="numeric" pattern="[0-9]{1,5}" required><button class="boton" type="submit">Agregar</button></form>
+    </div>
+    <div>
+      <div class="subtitulo">Alertas ocultas</div>
+      ${aj.ocultas.length ? aj.ocultas.map(o => `<div class="oculta"><span>${esc(o.titulo)}<br><span class="apagado">${fechaHora(o.cuando)} · ${esc(o.usuario || '')}</span></span>
+        <button class="boton boton-chico" type="button" data-accion="mostrar" data-id="${esc(o.id)}">Mostrar</button></div>`).join('') : '<div class="vacio">Ninguna</div>'}
+    </div>`
 }
 
 // --- Ciclo ---
@@ -377,6 +434,7 @@ const pintar = () => {
   pintarTrafico()
   pintarEventos()
   pintarHistorial()
+  pintarConfiguracion()
   $('actualizado').textContent = datos.lectura ? `Lectura de las ${hora(datos.lectura.t)}` : ''
 }
 
@@ -414,6 +472,46 @@ $('probar').addEventListener('click', async evento => {
   } finally {
     boton.disabled = false
   }
+})
+
+// --- Acciones (botones con data-accion y formularios de Configuración) ---
+const accion = async (nombre, datosAccion, boton) => {
+  if (boton) boton.disabled = true
+  try {
+    const respuesta = await fetch('/api/accion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: nombre, ...datosAccion }) })
+    if (respuesta.status === 401) { location.href = '/ingresar'; return false }
+    const r = await respuesta.json().catch(() => ({}))
+    if (!respuesta.ok) { mostrarAviso(r.error || `No se pudo (HTTP ${respuesta.status})`); return false }
+    await cargar()
+    return true
+  } catch (error) {
+    mostrarAviso(`No se pudo: ${error.message}`)
+    return false
+  } finally {
+    if (boton) boton.disabled = false
+  }
+}
+
+document.addEventListener('click', evento => {
+  const boton = evento.target.closest?.('button[data-accion]')
+  if (!boton) return
+  const d = boton.dataset
+  const nombre = d.accion
+  if (nombre === 'ocultar' && !confirm(`¿Ocultar "${d.titulo}"? No volverá a avisar hasta que la muestres de nuevo en Configuración.`)) return
+  if (nombre === 'eliminar-historial' && !confirm('¿Eliminar esta alerta del historial?')) return
+  const datosAccion = { id: d.id, titulo: d.titulo, puerto: d.puerto, ip: d.ip, desde: d.desde ? Number(d.desde) : undefined }
+  accion(nombre, datosAccion, boton)
+})
+
+document.addEventListener('submit', async evento => {
+  const form = evento.target.closest?.('form[data-agregar]')
+  if (!form) return
+  evento.preventDefault()
+  const valor = form.elements.valor.value.trim()
+  if (!valor) return
+  const nombre = form.dataset.agregar
+  const ok = await accion(nombre, nombre === 'agregar-ip' ? { ip: valor } : { puerto: valor }, form.querySelector('button'))
+  if (ok) { form.elements.valor.value = ''; form.elements.valor.blur(); pintarConfiguracion() }
 })
 
 let redimension

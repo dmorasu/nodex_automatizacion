@@ -106,6 +106,8 @@ systemctl restart nodex-monitor
 
 Si cambian los envoltorios o el sudoers, repetir el paso 1. Las alertas activas y las 24 h de historia quedan en `/var/lib/nodex-monitor/estado.json`.
 
+Lo que se cambia desde la tarjeta **Configuración** del panel (IPs conocidas, puertos permitidos y alertas ocultas) queda en `/var/lib/nodex-monitor/ajustes.json` y se **suma** a `MONITOR_IPS_CONOCIDAS` y `MONITOR_PUERTOS_PERMITIDOS` del `.env` (lo del `.env` no se puede quitar desde el panel). Para volver a empezar: borrar ese archivo y reiniciar el servicio.
+
 ## Qué avisa
 
 | Urgente (WhatsApp + correo) | Aviso (correo) |

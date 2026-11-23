@@ -2,6 +2,7 @@
 // Nodex Monitor: cada minuto mide el servidor, evalúa las reglas y avisa; además sirve el panel.
 const config = require('./config')
 const almacen = require('./almacen')
+const { crearAjustes } = require('./ajustes')
 const reglas = require('./reglas')
 const alertas = require('./alertas')
 const { crearNotificador } = require('./notificaciones')
@@ -17,6 +18,8 @@ const seguridad = require('./recolectores/seguridad')
 if (!config.usuario || !config.claveHash) console.warn('⚠️  Sin MONITOR_USUARIO o MONITOR_CLAVE_HASH: nadie podrá entrar al panel.')
 
 const estado = almacen.cargar(config.dirDatos)
+// Antes de la primera lectura: suma al config las IPs y puertos agregados desde el panel
+const ajustes = crearAjustes(config)
 const notificador = crearNotificador(config)
 const HORAS_HISTORIA = 24
 let ultimaLectura = null
@@ -71,7 +74,8 @@ const ciclo = async () => {
 
   const { condiciones, eventos } = reglas.evaluar(lectura, estado.ventana, estado.activas, config)
   estado.nombreServidor = s.nombre
-  await alertas.procesar(condiciones, eventos, estado, config, notificador)
+  // Las ocultas desde el panel no avisan ni se muestran (se sacaron de activas al ocultarlas)
+  await alertas.procesar(condiciones.filter(c => !ajustes.oculta(c.id)), eventos, estado, config, notificador)
 
   if (!s.error) {
     estado.historia.push({
@@ -124,8 +128,38 @@ const obtenerEstado = () => ({
     loginNodex60: sumar(60, 'loginNodex'),
     loginMonitor60: sumar(60, 'loginMonitor')
   },
-  ipsConocidas: config.ipsConocidas
+  ipsConocidas: config.ipsConocidas,
+  ajustes: ajustes.resumen()
 })
+
+// Acciones del panel. Lo que se oculta o se permite sale de activas sin pasar por el historial ni
+// mandar "Resuelto": no se resolvió, se decidió que no es alerta
+const quitarActiva = id => { delete estado.activas[id] }
+const ejecutarAccion = (accion, d, usuario) => {
+  switch (accion) {
+    case 'ocultar':
+      ajustes.ocultar(d.id, estado.activas[d.id]?.titulo || d.titulo, usuario)
+      quitarActiva(d.id)
+      break
+    case 'mostrar': ajustes.mostrar(d.id); break
+    case 'agregar-puerto':
+      ajustes.agregarPuerto(d.puerto)
+      quitarActiva(`puerto-tcp-${Number(d.puerto)}`)
+      quitarActiva(`puerto-udp-${Number(d.puerto)}`)
+      break
+    case 'quitar-puerto': ajustes.quitarPuerto(d.puerto); break
+    case 'agregar-ip': ajustes.agregarIp(d.ip); break
+    case 'quitar-ip': ajustes.quitarIp(d.ip); break
+    case 'eliminar-historial': {
+      const i = estado.historial.findIndex(h => h.desde === d.desde && h.titulo === d.titulo)
+      if (i >= 0) estado.historial.splice(i, 1)
+      break
+    }
+    default: throw new Error('Acción no válida')
+  }
+  almacen.guardar(config.dirDatos, estado)
+  return { ok: true }
+}
 
 const alIntentoFallido = (ip, usuario) => {
   intentosMonitor++
@@ -141,7 +175,7 @@ const enviarPrueba = async usuario => {
   return resultado
 }
 
-crearServidor(config, obtenerEstado, alIntentoFallido, enviarPrueba)
+crearServidor(config, obtenerEstado, alIntentoFallido, enviarPrueba, ejecutarAccion)
 
 // Un ciclo a la vez: el siguiente se programa cuando termina el anterior
 const programar = async () => {
